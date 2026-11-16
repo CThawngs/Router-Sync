@@ -1,0 +1,39 @@
+{
+  "entries": [
+    {
+      "route": "health",
+      "token": "P-0b / P-0c",
+      "reason": "Static probe-ladder step label printed by HealthScreen (packages/ui/src/screens/HealthScreen.tsx). The ladder names the probe steps; only the state column comes from the daemon. Not sample data."
+    },
+    {
+      "route": "health",
+      "token": "P-0d",
+      "reason": "Static probe-ladder step label printed by HealthScreen (packages/ui/src/screens/HealthScreen.tsx). The ladder names the probe steps; only the state column comes from the daemon. Not sample data."
+    },
+    {
+      "route": "guide",
+      "token": "opencode",
+      "reason": "OpenCode is a product name of an agent client RouterSync supports. It appears in the static guide copy of this route, so it is vocabulary, not leaked sample data."
+    },
+    {
+      "route": "changes",
+      "token": "reorder",
+      "reason": "Plain English word used by the static i18n copy c_rk1 (\"reorder within the same tier\") to describe a change kind on the Changes route. The word alone is not leaked sample data."
+    },
+    {
+      "route": "settings",
+      "token": "reorder",
+      "reason": "R19-1 (AT-155): the static i18n copy of the policy description on the Settings route (\"Auto-applies low-risk work (add a model at the end, remove a confirmed-gone model, reorder within a tier). Medium and high still wait for you.\") uses the plain English word \"reorder\". The sentence describes the policy, it states no measurement. Hand-written exception, named in REPORT-ROUND19.txt."
+    },
+    {
+      "route": "setup",
+      "token": "reorder",
+      "reason": "R19-1 (AT-155): the wizard reuses the same static policy description (\"... reorder within a tier ...\") on its safety step. The word describes the policy, it states no measurement. Hand-written exception, named in REPORT-ROUND19.txt."
+    },
+    {
+      "route": "guide",
+      "token": "OmniRoute, 9Router",
+      "reason": "R19-1 (AT-155): the static guide copy of the concepts tab names the products RouterSync supports (\"for example OmniRoute, 9Router, OpenCode\"). The product names are vocabulary of the app, not leaked sample data. Hand-written exception, named in REPORT-ROUND19.txt."
+    }
+  ]
+}

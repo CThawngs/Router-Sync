@@ -1,0 +1,4 @@
+# Community model registry
+# Every entry in this registry must have an authoritative source cited.
+version: 1
+models: []

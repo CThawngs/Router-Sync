@@ -1,0 +1,18 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "composite": false,
+    "noEmit": true,
+    "allowJs": true,
+    "checkJs": false
+  },
+  "include": [
+    "vitest.workspace.ts",
+    "tools/**/*.mjs",
+    "test/**/*.mjs",
+    "test/**/*.ts",
+    "packages/cli/test/c4p-safeguards.test.ts",
+    "packages/cli/test/providers-safety.test.ts",
+    "packages/cli/test/schedule-c4q.test.ts"
+  ]
+}

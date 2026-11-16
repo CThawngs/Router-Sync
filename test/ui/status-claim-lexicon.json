@@ -1,0 +1,84 @@
+{
+  "$comment": "AT-156 (R18-4.3): phrases and marks that CLAIM a status was measured. Scanned over the rendered DOM of every route while the daemon is down or every source is unavailable. An exception must be {route, token, reason} and it excuses ONE route only, the same rule the poison allow list uses.",
+  "tokens": [
+    "✓",
+    "đã tìm thấy",
+    "đã quét",
+    "đã xác minh",
+    "đã phát hiện",
+    "found",
+    "scanned",
+    "verified",
+    "detected",
+    "không tìm thấy",
+    "chưa tìm thấy",
+    "không phát hiện",
+    "không có nơi áp dụng",
+    "no router found",
+    "no target was detected",
+    "nothing found",
+    "none found"
+  ],
+  "allow": [
+    {
+      "route": "providers",
+      "token": "đã phát hiện",
+      "reason": "p_lf1 is the FIRST STEP LABEL of the static key-detection legend (paste a key -> save it -> 'Detected'), an instruction, not a status about this machine; the legend paints no value of its own. Reviewed by hand in R18-4."
+    },
+    {
+      "route": "providers",
+      "token": "verified",
+      "reason": "p_lf3 is the third step label of the same static legend ('Key verified'), describing what the step does. The screen paints no provider row while nothing was measured. Reviewed by hand in R18-4."
+    },
+    {
+      "route": "health",
+      "token": "found",
+      "reason": "h_tr3 is the static NAME of a metric column ('Config drift: found / auto-fixed'); the metric itself is not measured in S1 and its value paints as a dash. Reviewed by hand in R18-4."
+    },
+    {
+      "route": "overview",
+      "token": "found",
+      "reason": "l2 is the static label of the L2 bucket in the 'where things come from' legend ('Newly found or proposed'), a taxonomy name, not a count of anything found on this machine. Reviewed by hand in R18-4."
+    },
+    {
+      "route": "settings",
+      "token": "✓",
+      "reason": "R19-1 (AT-155): the check glyph in front of an approval channel is the marker of a LOCAL client-side preference chip (the chip is on or off), not a status of a measurement. The chip paints no value about this machine. Hand-written exception, named in REPORT-ROUND19.txt."
+    },
+    {
+      "route": "settings",
+      "token": "verified",
+      "reason": "R19-1 (AT-155): the static copy of the advanced tab explains what a backup does ('Updated separately, checksum and schema verified, keeps the last good copy if a new one is broken'). It describes the feature, it states no measurement of this machine. Hand-written exception, named in REPORT-ROUND19.txt."
+    },
+    {
+      "route": "guide",
+      "token": "verified",
+      "reason": "R19-1 (AT-155): the static copy of the FAQ tab says which integrations are covered by the first phase ('Support for each is verified in the first phase of the ...'). It is a statement about the roadmap, not about this machine. Hand-written exception, named in REPORT-ROUND19.txt."
+    },
+    {
+      "route": "guide",
+      "token": "found",
+      "reason": "R19-1 (AT-155): the static copy of the troubleshooting tab says that nothing was found ('No router found on this machine'). The sentence denies a finding, it does not claim one. Hand-written exception, named in REPORT-ROUND19.txt."
+    },
+    {
+      "route": "guide",
+      "token": "no router found",
+      "reason": "R20-3: g_t2 is the static title of a troubleshooting guide row in the FAQ/Troubleshooting tab ('No router found on this machine'), static guidance on how to fix a missing router, not a status measurement about this machine."
+    },
+    {
+      "route": "guide",
+      "token": "không tìm thấy",
+      "reason": "R20-3: g_t2 is the static title of a troubleshooting guide row in the FAQ/Troubleshooting tab ('Không tìm thấy router trên máy'), static guidance on how to fix a missing router, not a status measurement about this machine."
+    },
+    {
+      "route": "setup",
+      "token": "found",
+      "reason": "R19-1 (AT-155): 'Models found' is the static NAME of a preview tile of the wizard step 4; the value of the tile paints as a dash while nothing was measured. Same rule as the health metric column excused in R18-4. Hand-written exception, named in REPORT-ROUND19.txt."
+    },
+    {
+      "route": "health",
+      "token": "verified",
+      "reason": "R19-1 (AT-155): the name of the doctor condition 'SQLite schema fingerprints verified' is printed by HealthScreen. In the live states the doctor really measured that condition, and in the other states the condition is not printed at all. Hand-written exception, named in REPORT-ROUND19.txt."
+    }
+  ]
+}

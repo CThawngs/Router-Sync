@@ -1,0 +1,40 @@
+# RouterSync User Profile Template (Neutral Default)
+# Configure via: `routersync profile init` or edit directly.
+version: 1
+name: "default-profile"
+updatedAt: "2026-11-03T13:21:50.935Z"
+
+# [P1-P3] General Workload Preferences
+general:
+  # P1: Primary workload role (coding | reasoning | general-chat | agent)
+  workload: coding
+  # P2: Cost preference (free-only | budget | performance-first)
+  costPreference: free-only
+  # P3: Preferred providers (empty = no preference, all allowed)
+  preferredProviders: []
+  excludedProviders: []
+
+# [C1-C5] Combo-Specific Rules
+combos:
+  - # C1: Target combo name pattern ("all" matches any combo)
+    targetCombo: all
+    # C2: Routing strategy (fallback | round-robin | priority-matrix)
+    strategy: fallback
+    # C3: Minimum required steps (Invariant I3 >= 2)
+    minSteps: 2
+    # C4: Enable provider interleaving on tail to avoid single-provider rate-limits
+    enableInterleaving: true
+    # C5: Strict zero-cost filter
+    freeOnly: true
+
+# Router Native Strategy Mappings (9Router Sequential vs OmniRoute Policy §12 Matrix)
+strategyMapping:
+  fallback:
+    nineRouter: fallback
+    omniRoute: priority
+  round-robin:
+    nineRouter: round-robin
+    omniRoute: round-robin
+  priority-matrix:
+    nineRouter: fallback
+    omniRoute: priority

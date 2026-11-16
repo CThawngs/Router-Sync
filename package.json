@@ -1,0 +1,48 @@
+{
+  "name": "routersync",
+  "version": "0.0.1-prealpha",
+  "description": "Keeps model lists and combos in sync across LLM routers, agent tools, and providers",
+  "license": "MIT",
+  "author": "CThawngs",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/CThawngs/Router-Sync.git"
+  },
+  "bugs": {
+    "url": "https://github.com/CThawngs/Router-Sync/issues"
+  },
+  "homepage": "https://github.com/CThawngs/Router-Sync#readme",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.12.0",
+    "pnpm": ">=10.0.0"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit && pnpm -r typecheck",
+    "lint": "node tools/guard/no-secrets.mjs && node tools/guard/no-personal-paths.mjs",
+    "guard:paths": "node tools/guard/no-personal-paths.mjs",
+    "test": "vitest run --project root-tools --project packages",
+    "test:slow": "vitest run --project ui",
+    "e2e": "vitest run --project e2e",
+    "verify:release": "pnpm typecheck && pnpm lint && pnpm build && pnpm test && pnpm e2e",
+    "build": "pnpm -r build",
+    "routersync": "node packages/cli/dist/index.js",
+    "ui:dev": "pnpm --filter @routersync/ui dev",
+    "ui:build": "pnpm --filter @routersync/ui build",
+    "ui:test": "pnpm --filter @routersync/ui test",
+    "ui:preview": "pnpm --filter @routersync/ui preview"
+  },
+  "packageManager": "pnpm@10.20.0",
+  "devDependencies": {
+    "@modelcontextprotocol/sdk": "1.32.1",
+    "@routersync/adapter-sdk": "workspace:*",
+    "@routersync/core": "workspace:*",
+    "@routersync/daemon": "workspace:*",
+    "@types/node": "^26.6.5",
+    "better-sqlite3": "13.0.3",
+    "playwright-core": "^1.64.1",
+    "typescript": "5.6.3",
+    "vitest": "2.1.3"
+  }
+}

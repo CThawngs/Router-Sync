@@ -1,0 +1,75 @@
+# Research sources — dữ liệu, không suy đoán. verifiedAt là ngày kiểm tra thật.
+version: 1
+sources:
+  - id: openrouter-models
+    url: https://openrouter.ai/api/v1/models
+    loai: catalog-gia
+    reliability: 0.85
+    license: open
+    rateLimit: "60/phut (không chính thức, ước lượng)"
+    tosNote: "API public không cần khóa; tôn trọng rate limit"
+    verifiedAt: "2026-11-12"
+  - id: models-dev
+    url: https://models.dev/api.json
+    loai: catalog
+    reliability: 0.8
+    license: open
+    rateLimit: "không ghi rõ"
+    tosNote: "Nguồn cộng đồng, đối chứng với nguồn chính thức"
+    verifiedAt: "2026-11-12"
+  - id: litellm-prices
+    url: https://raw.githubusercontent.com/BerriAI/litellm/main/model_prices_and_context_window.json
+    loai: gia-kha-nang
+    reliability: 0.8
+    license: MIT
+    rateLimit: "rate limit GitHub raw"
+    tosNote: "Dữ liệu giá từ LiteLLM, kiểm tra lại chủ nhật đối với giá miễn phí"
+    verifiedAt: "2026-11-12"
+  - id: hf-hub
+    url: https://huggingface.co/api/models?sort=downloads&direction=-1&limit=100
+    loai: catalog-moi
+    reliability: 0.9
+    license: open
+    rateLimit: "không cần khóa cho danh sách public"
+    tosNote: "Không gửi khóa lên huggingface.co"
+    verifiedAt: "2026-11-12"
+  - id: openrouter-changelog
+    url: https://openrouter.ai/blog
+    loai: changelog
+    reliability: 0.7
+    license: open
+    rateLimit: "rate limit website"
+    tosNote: "RSS/blog công khai"
+    verifiedAt: "2026-11-12"
+  - id: openai-deprecations
+    url: https://platform.openai.com/docs/deprecations
+    loai: deprecations
+    reliability: 0.95
+    license: open
+    rateLimit: "rate limit website"
+    tosNote: "Tài liệu ngừng hỗ trợ chính thức của OpenAI"
+    verifiedAt: "2026-11-12"
+  - id: anthropic-deprecations
+    url: https://docs.anthropic.com/en/docs/resources/model-deprecations
+    loai: deprecations
+    reliability: 0.95
+    license: open
+    rateLimit: "rate limit website"
+    tosNote: "Tài liệu ngừng hỗ trợ chính thức của Anthropic"
+    verifiedAt: "2026-11-12"
+  - id: groq-deprecations
+    url: https://console.groq.com/docs/deprecations
+    loai: deprecations
+    reliability: 0.95
+    license: open
+    rateLimit: "rate limit website"
+    tosNote: "Tài liệu ngừng hỗ trợ chính thức của Groq"
+    verifiedAt: "2026-11-12"
+  - id: gemini-deprecations
+    url: https://ai.google.dev/gemini-api/docs/models/gemini
+    loai: deprecations
+    reliability: 0.95
+    license: open
+    rateLimit: "rate limit website"
+    tosNote: "Tài liệu model và vòng đời chính thức của Google Gemini API"
+    verifiedAt: "2026-11-12"

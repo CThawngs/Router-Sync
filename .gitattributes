@@ -1,0 +1,35 @@
+# Normalise line endings for text files on every platform.
+* text=auto eol=lf
+
+# Explicitly LF for source, config, docs and scripts.
+*.ts   text eol=lf
+*.js   text eol=lf
+*.mjs  text eol=lf
+*.cjs  text eol=lf
+*.json text eol=lf
+*.yaml text eol=lf
+*.yml  text eol=lf
+*.md   text eol=lf
+*.sh   text eol=lf
+*.css  text eol=lf
+*.html text eol=lf
+*.tsx  text eol=lf
+
+# Windows-only scripts keep CRLF so cmd.exe and PowerShell read them correctly.
+*.cmd text eol=crlf
+*.ps1  text eol=crlf
+*.bat  text eol=crlf
+
+# Binary files must never be line-ending converted.
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.ico  binary
+*.pdf  binary
+*.woff  binary
+*.woff2 binary
+*.sqlite binary
+*.db   binary
+*.zip  binary
+*.gz   binary

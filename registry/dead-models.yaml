@@ -1,0 +1,14 @@
+# Configuration for `routersync dead-models`.
+#
+# The command has no built-in model list: the ids to inspect are data, not
+# code. Put the ids you care about here, or pass them with `--id`.
+#
+# provider      : combo prefix to inspect (empty = use the prefix given on the
+#                 command line)
+# candidates    : model ids to check when `--id` is not given
+# catalogSizes  : two catalog sizes to compare, e.g. [94, 69]. The command
+#                 reports which ids disappeared between the two snapshots.
+version: 1
+provider: ''
+candidates: []
+catalogSizes: []

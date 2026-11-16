@@ -1,0 +1,24 @@
+# Gateways without single-model GET endpoints (Spec F4 / Round C4d B6)
+version: 1
+gateways:
+  - id: openrouter
+    name: OpenRouter
+    hasSingleModelGet: false
+    reason: "Chỉ có GET /api/v1/models (danh sách đầy đủ), không có endpoint GET đơn lẻ per-model"
+  - id: models-dev
+    name: models.dev
+    hasSingleModelGet: false
+    reason: "Catalog tĩnh api.json chứa toàn bộ providers và models"
+  - id: litellm
+    name: LiteLLM
+    hasSingleModelGet: false
+    reason: "Dữ liệu model_prices_and_context_window.json là file JSON tĩnh tổng hợp"
+  - id: cloudflare-ai-gateway
+    name: Cloudflare AI Gateway
+    hasSingleModelGet: false
+    reason: "Gateway proxy, không có endpoint tra cứu metadata model đơn lẻ"
+  - id: node-b
+    name: node-b
+    hasSingleModelGet: false
+    reason: "Chỉ có GET /models trả danh sách đầy đủ, không có endpoint GET đơn lẻ theo model"
+

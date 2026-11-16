@@ -1,0 +1,51 @@
+{
+  "object": "list",
+  "data": [
+    {
+      "id": "dummy-provider/model-alpha",
+      "object": "model",
+      "owned_by": "dummy-provider",
+      "capabilities": {
+        "vision": true,
+        "pdf": true,
+        "audioInput": false,
+        "videoInput": false,
+        "imageOutput": false,
+        "audioOutput": false,
+        "search": false,
+        "tools": true,
+        "reasoning": false,
+        "thinkingFormat": null,
+        "thinkingCanDisable": true,
+        "thinkingRange": null,
+        "contextWindow": 128000,
+        "maxOutput": 8192
+      },
+      "context_length": 128000,
+      "max_completion_tokens": 8192
+    },
+    {
+      "id": "Sample-Agent-Combo",
+      "object": "model",
+      "owned_by": "combo",
+      "capabilities": {
+        "vision": true,
+        "pdf": true,
+        "audioInput": true,
+        "videoInput": true,
+        "imageOutput": true,
+        "audioOutput": false,
+        "search": true,
+        "tools": true,
+        "reasoning": false,
+        "thinkingFormat": null,
+        "thinkingCanDisable": true,
+        "thinkingRange": null,
+        "contextWindow": 24000,
+        "maxOutput": 384000
+      },
+      "context_length": 24000,
+      "max_completion_tokens": 4000
+    }
+  ]
+}

@@ -1,0 +1,11 @@
+# RouterSync Local Provider Registry Example
+#
+# Copy this file to providers.local.yaml (or ~/.routersync/providers.local.yaml)
+# to define private gateways, custom OpenAI-compatible proxies, or personal endpoints.
+# This file is an uncommitted local override template and is NEVER loaded by default.
+#
+providers:
+  my-private-gateway: https://gateway.example.com/api/v1
+alias:
+  mpg: my-private-gateway
+noKeyPublic: []

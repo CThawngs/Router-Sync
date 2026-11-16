@@ -1,0 +1,393 @@
+/* RouterSync UI tokens (nguồn: concept v5, lib.js). Màu và đổ bóng là chuẩn; không thêm màu cố định ngoài bộ này.
+   Chủ đề: :root = sáng; [data-theme="dark"] = tối; "auto" = theo prefers-color-scheme (xem khối cuối). */
+:root {
+  --bg:#F4F4FA;
+  --bg2:#FBFBFE;
+  --card:#FFFFFF;
+  --fill:#F1F1F8;
+  --well:#ECECF8;
+  --line:#E6E6F0;
+  --dash:#B9B8CC;
+  --conn:#C3C6DD;
+  --text:#14131F;
+  --muted:#5B5A6B;
+  --faint:#6E6D85;
+  --ink:#14131F;
+  --on-ink:#FFFFFF;
+  --sh:0 12px 30px rgba(60,60,120,.08);
+  --sh2:0 6px 18px rgba(60,60,120,.08);
+  --shL:0 16px 40px rgba(60,60,120,.09);
+  --blue:#3D6BFF;
+  --blue-b:#3A5FEA;
+  --blue-i:#2A52D6;
+  --blue-t:#E3EBFF;
+  --blue-sel:#F4F7FF;
+  --vio-t:#EFE6FF;
+  --vio-i:#6B3FD1;
+  --grn:#63C384;
+  --grn-g:#1FA35B;
+  --grn-t:#DDF5E5;
+  --grn-i:#1F6B40;
+  --yel:#FFC93C;
+  --yel-t:#FFF6D6;
+  --yel-t2:#FFE9A8;
+  --yel-i:#6B4A00;
+  --amb:#C98A00;
+  --cor:#E0452B;
+  --unk:#6E6D85;
+  --add-bg:#E6F7EC;
+  --add-tx:#14502F;
+  --add-n:#5E8F72;
+  --del-bg:#FDE8E4;
+  --del-tx:#7A261A;
+  --del-n:#B3786F;
+  --hl:#9DE6B0;
+  --link:#2A52D6;
+  --track:#ECECF3;
+  --cor-t:#FDE8E4;
+  --cor-ink:#A62812;
+  --cor-i:#A62812;
+  --amb-ink:#7A4B00;
+  --grn-ink:#146C36;
+  --cta1:#6D45E8;
+  --cta2:#3A5FEA;
+}
+
+:root[data-theme="dark"] {
+  --bg:#0B0A14;
+  --bg2:#0B0A14;
+  --card:#171630;
+  --fill:#222141;
+  --well:#10101F;
+  --line:#2C2B4B;
+  --dash:#4B4A6B;
+  --conn:#3A3960;
+  --text:#F3F2FB;
+  --muted:#A9A8C4;
+  --faint:#9695B3;
+  --ink:#F3F2FB;
+  --on-ink:#14131F;
+  --sh:0 14px 34px rgba(0,0,0,.4),0 0 0 1px #2C2B4B;
+  --sh2:0 6px 18px rgba(0,0,0,.35),0 0 0 1px #2C2B4B;
+  --shL:0 18px 44px rgba(0,0,0,.45),0 0 0 1px #2C2B4B;
+  --blue:#7C9BFF;
+  --blue-b:#3A5FEA;
+  --blue-i:#B9CBFF;
+  --blue-t:rgba(124,155,255,.18);
+  --blue-sel:rgba(124,155,255,.10);
+  --vio-t:rgba(167,139,250,.2);
+  --vio-i:#D0C0FF;
+  --grn:#4FC487;
+  --grn-g:#5FD394;
+  --grn-t:rgba(95,211,148,.16);
+  --grn-i:#8EE5B5;
+  --yel:#FFC93C;
+  --yel-t:rgba(255,201,60,.10);
+  --yel-t2:rgba(255,201,60,.20);
+  --yel-i:#FFE08A;
+  --amb:#FFC94D;
+  --cor:#FF8B75;
+  --unk:#A5A4BF;
+  --add-bg:rgba(95,211,148,.14);
+  --add-tx:#A9F0C8;
+  --add-n:#5FA583;
+  --del-bg:rgba(255,139,117,.14);
+  --del-tx:#FFC2B6;
+  --del-n:#B9786D;
+  --hl:rgba(95,211,148,.4);
+  --link:#9DB5FF;
+  --track:#2A2949;
+  --cor-t:rgba(255,139,117,.16);
+  --cor-ink:#FFB4A4;
+  --cor-i:#FFB4A4;
+  --amb-ink:#FFE08A;
+  --grn-ink:#8EE5B5;
+  --cta1:#6D45E8;
+  --cta2:#3A5FEA;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root[data-theme="auto"] {
+    --bg:#0B0A14;
+    --bg2:#0B0A14;
+    --card:#171630;
+    --fill:#222141;
+    --well:#10101F;
+    --line:#2C2B4B;
+    --dash:#4B4A6B;
+    --conn:#3A3960;
+    --text:#F3F2FB;
+    --muted:#A9A8C4;
+    --faint:#9695B3;
+    --ink:#F3F2FB;
+    --on-ink:#14131F;
+    --sh:0 14px 34px rgba(0,0,0,.4),0 0 0 1px #2C2B4B;
+    --sh2:0 6px 18px rgba(0,0,0,.35),0 0 0 1px #2C2B4B;
+    --shL:0 18px 44px rgba(0,0,0,.45),0 0 0 1px #2C2B4B;
+    --blue:#7C9BFF;
+    --blue-b:#3A5FEA;
+    --blue-i:#B9CBFF;
+    --blue-t:rgba(124,155,255,.18);
+    --blue-sel:rgba(124,155,255,.10);
+    --vio-t:rgba(167,139,250,.2);
+    --vio-i:#D0C0FF;
+    --grn:#4FC487;
+    --grn-g:#5FD394;
+    --grn-t:rgba(95,211,148,.16);
+    --grn-i:#8EE5B5;
+    --yel:#FFC93C;
+    --yel-t:rgba(255,201,60,.10);
+    --yel-t2:rgba(255,201,60,.20);
+    --yel-i:#FFE08A;
+    --amb:#FFC94D;
+    --cor:#FF8B75;
+    --unk:#A5A4BF;
+    --add-bg:rgba(95,211,148,.14);
+    --add-tx:#A9F0C8;
+    --add-n:#5FA583;
+    --del-bg:rgba(255,139,117,.14);
+    --del-tx:#FFC2B6;
+    --del-n:#B9786D;
+    --hl:rgba(95,211,148,.4);
+    --link:#9DB5FF;
+    --track:#2A2949;
+    --cor-t:rgba(255,139,117,.16);
+    --cor-ink:#FFB4A4;
+    --cor-i:#FFB4A4;
+    --amb-ink:#FFE08A;
+    --grn-ink:#8EE5B5;
+    --cta1:#6D45E8;
+    --cta2:#3A5FEA;
+  }
+}
+
+/* Chữ: Plus Jakarta Sans (400-800) cho giao diện, JetBrains Mono (400-500) cho ID model, đường dẫn, hash, diff. Đóng gói cục bộ, không dùng CDN. */
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+.m {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+a {
+  color: var(--link);
+  text-decoration: none;
+}
+a:hover {
+  text-decoration: underline;
+}
+
+button {
+  font: inherit;
+  cursor: pointer;
+  border: none;
+  background: none;
+  padding: 0;
+  color: inherit;
+}
+
+button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible {
+  outline: 3px solid var(--blue);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+/* Responsive layout & mobile navigation drawer */
+.rs-mobile-nav-btn {
+  display: none !important;
+}
+
+.rs-mobile-close-btn {
+  display: none !important;
+}
+
+@media (max-width: 960px) {
+  .rs-mobile-nav-btn {
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 999px;
+    background: var(--card);
+    border: 1.5px solid var(--line);
+    color: var(--text);
+    flex-shrink: 0;
+    cursor: pointer;
+  }
+
+  .rs-mobile-close-btn {
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: 1px solid var(--line);
+    background: var(--fill);
+    color: var(--muted);
+    cursor: pointer;
+    margin-left: auto;
+  }
+
+  aside.side {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    bottom: 0 !important;
+    height: 100vh !important;
+    max-height: 100vh !important;
+    margin: 0 !important;
+    border-radius: 0 28px 28px 0 !important;
+    z-index: 1000 !important;
+    transform: translateX(-105%) !important;
+    transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1) !important;
+    width: min(300px, 85vw) !important;
+    max-width: 85vw !important;
+    box-shadow: none !important;
+    overflow-y: auto !important;
+  }
+
+  aside.side:not(.is-open) {
+    visibility: hidden !important;
+    pointer-events: none !important;
+  }
+
+  aside.side.is-open {
+    visibility: visible !important;
+    pointer-events: auto !important;
+    transform: translateX(0) !important;
+    box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.5), var(--sh) !important;
+  }
+
+  .rs-main-content {
+    padding: 0 16px 40px !important;
+  }
+
+  .stub {
+    display: none !important;
+  }
+}
+
+@media (max-width: 640px) {
+  /* UI-OBS-6: compact 2-row layout at 360px and 390px mobile viewports */
+  .rs-topbar {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 8px !important;
+    padding: 12px 0 0 !important;
+  }
+  .rs-topbar-left {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    align-items: center !important;
+    gap: 8px !important;
+    flex: 0 1 auto !important;
+    min-width: 0 !important;
+    max-width: calc((100%) - 130px) !important;
+  }
+  .rs-topbar-left [data-testid="mode-chip"] {
+    padding: 6px 12px !important;
+    font-size: 12px !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+  .rs-topbar-right {
+    display: contents !important;
+  }
+  .rs-topbar-emergency {
+    order: 1 !important;
+    margin-left: auto !important;
+    flex-shrink: 0 !important;
+  }
+  .rs-topbar-emergency button {
+    min-width: 44px !important;
+    min-height: 44px !important;
+    white-space: nowrap !important;
+  }
+  .rs-topbar-controls {
+    order: 2 !important;
+    width: 100% !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    padding-bottom: 2px !important;
+    scrollbar-width: none !important;
+  }
+  .rs-topbar-controls::-webkit-scrollbar {
+    display: none !important;
+  }
+  .rs-topbar-controls > * {
+    flex-shrink: 0 !important;
+  }
+  .rs-topbar-controls button {
+    white-space: nowrap !important;
+    flex-shrink: 0 !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .rs-main-content {
+    padding: 0 12px 32px !important;
+  }
+  .rs-topbar-controls button {
+    padding: 0 10px !important;
+    font-size: 12px !important;
+  }
+}
+
+/* Onboarding tour styles & accessibility */
+@keyframes rsTourFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.rs-tour-backdrop {
+  backdrop-filter: blur(2px);
+}
+
+.rs-tour-modal {
+  animation: rsTourFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rs-tour-modal {
+    animation: none !important;
+    transition: none !important;
+  }
+  .rs-tour-backdrop {
+    backdrop-filter: none !important;
+    transition: none !important;
+  }
+}
+
+

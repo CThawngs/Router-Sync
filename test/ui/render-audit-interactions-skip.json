@@ -1,0 +1,12 @@
+[
+  {
+    "route": "targets",
+    "control": "role:button#0",
+    "reason": "The target action button is a prototype: its onClick is an empty function and it is disabled outside sample mode, so clicking it can never change anything and never reaches the network. It is the only button of the target screen in every audited state."
+  },
+  {
+    "route": "shell",
+    "control": "role:button#4",
+    "reason": "The top-bar pause button is a WRITE control (it asks the daemon to toggle the emergency pause, which the S1 daemon refuses with 'cần daemon (P3b/P4)'). The S1 render audit is read-only, so the button is never clicked. It lives in the top bar, outside the audited route content, and the shell scenario covers the language, the theme and the agent drawer."
+  }
+]

@@ -1,0 +1,19 @@
+# RouterSync policy template (neutral, sanitized)
+# Chỗ trống thôi — không khóa thật, không tên riêng, không đường máy.
+purpose: general coding
+priority:
+  - quality
+  - speed
+  - price
+  - context
+freeOnly: true
+preferredProviders: []
+dislikedProviders: []
+favorites: []
+keepHead: 0
+allowList: []
+denyList: []
+automationLevel: observe
+quotaLimit: 0
+timezone: Asia/Ho_Chi_Minh
+schedule: manual

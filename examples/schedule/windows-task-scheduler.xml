@@ -1,0 +1,56 @@
+# Lịch chạy `routersync tick` trên Windows Task Scheduler.
+#
+# `tick` chỉ đọc danh mục model bằng GET /models với khóa của chính bạn,
+# nên KHÔNG tốn token.
+#
+# Cách dùng nhanh (PowerShell):
+#   schtasks /Create /TN "RouterSync tick" /SC HOURLY /MO 1 `
+#     /TR "node C:\path\to\routersync\dist\index.js tick --mode observe"
+#
+# Cách dùng bằng giao diện: Task Scheduler > Create Task > Trigger (hourly)
+# > Action "Start a program" -> node.exe, arguments:
+#   "C:\path\to\routersync\dist\index.js" tick --mode observe
+#
+# Bản XML để nhập trực tiếp: Task Scheduler > Import Task.
+
+<?xml version="1.0" encoding="UTF-16"?>
+<Task version="1.2" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">
+  <RegistrationInfo>
+    <Description>RouterSync tick - doc danh muc model, khong ton token.</Description>
+  </RegistrationInfo>
+  <Triggers>
+    <CalendarTrigger>
+      <StartBoundary>2026-01-01T00:15:00</StartBoundary>
+      <Enabled>true</Enabled>
+      <ScheduleByDay>
+        <DaysInterval>1</DaysInterval>
+      </ScheduleByDay>
+      <Repetition>
+        <Interval>PT1H</Interval>
+        <StopAtDurationEnd>false</StopAtDurationEnd>
+      </Repetition>
+    </CalendarTrigger>
+  </Triggers>
+  <Principals>
+    <Principal id="Author">
+      <UserId>YOUR_USER</UserId>
+      <LogonType>InteractiveToken</LogonType>
+      <RunLevel>LeastPrivilege</RunLevel>
+    </Principal>
+  </Principals>
+  <Settings>
+    <MultipleInstancesPolicy>IgnoreNew</MultipleInstancesPolicy>
+    <DisallowStartIfOnBatteries>true</DisallowStartIfOnBatteries>
+    <StopIfGoingOnBatteries>true</StopIfGoingOnBatteries>
+    <StartWhenAvailable>false</StartWhenAvailable>
+    <RunOnlyIfNetworkAvailable>false</RunOnlyIfNetworkAvailable>
+    <Enabled>true</Enabled>
+  </Settings>
+  <Actions Context="Author">
+    <Exec>
+      <Command>node.exe</Command>
+      <Arguments>"C:\path\to\routersync\dist\index.js" tick --mode observe</Arguments>
+      <WorkingDirectory>C:\path\to\routersync</WorkingDirectory>
+    </Exec>
+  </Actions>
+</Task>

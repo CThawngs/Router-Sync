@@ -1,0 +1,40 @@
+{
+  "name": "@routersync/sources",
+  "version": "0.0.1-prealpha",
+  "description": "Public catalog sources (OpenRouter, LiteLLM) for RouterSync",
+  "license": "MIT",
+  "author": "CThawngs",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/CThawngs/routersync.git",
+    "directory": "packages/sources"
+  },
+  "bugs": {
+    "url": "https://github.com/CThawngs/routersync/issues"
+  },
+  "homepage": "https://github.com/CThawngs/routersync#readme",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "dependencies": {
+    "@routersync/adapter-sdk": "workspace:*",
+    "@routersync/core": "workspace:*"
+  }
+}

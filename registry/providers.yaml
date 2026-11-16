@@ -1,0 +1,43 @@
+# Provider registry (public data, shared by the product).
+#
+# baseUrl      : known public GET /models endpoint for a provider prefix
+# alias        : combo prefix that is not the provider id verbatim
+# noKeyPublic  : provider serves /models without Authorization
+#
+# A provider that is not listed here still works when the router itself
+# declares its base URL and key in its own database.
+version: 1
+providers:
+  nvidia: https://integrate.api.nvidia.com/v1
+  openrouter: https://openrouter.ai/api/v1
+  groq: https://api.groq.com/openai/v1
+  mistral: https://api.mistral.ai/v1
+  cohere: https://api.cohere.com/compatibility/v1
+  deepseek: https://api.deepseek.com/v1
+  huggingface: https://router.huggingface.co/v1
+  gemini: https://generativelanguage.googleapis.com/v1beta/openai
+  cerebras: https://api.cerebras.ai/v1
+  sambanova: https://api.sambanova.ai/v1
+  fireworks: https://api.fireworks.ai/inference/v1
+  siliconflow: https://api.siliconflow.com/v1
+  novita: https://api.novita.ai/v3/openai
+  kilo: https://api.kilo.ai/api/gateway
+alias:
+  hf: huggingface
+  cf: cloudflare-ai
+  aihm: aihubmix
+  ag: antigravity
+  kc: kilo
+noKeyPublic: []
+officialSources:
+  gemini: https://ai.google.dev/gemini-api/docs/models
+  nvidia: https://build.nvidia.com/explore/discover
+  openrouter: https://openrouter.ai/models
+  groq: https://console.groq.com/docs/models
+  mistral: https://docs.mistral.ai/getting-started/models/
+  deepseek: https://api-docs.deepseek.com/quick_start/pricing
+  cerebras: https://inference-docs.cerebras.ai/models
+  sambanova: https://docs.sambanova.ai/cloud/docs/models/
+  fireworks: https://fireworks.ai/models
+  siliconflow: https://docs.siliconflow.cn/models
+

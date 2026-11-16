@@ -1,0 +1,44 @@
+# ranking.example.yaml — mau cau hinh xep hang RouterSync
+#
+# Chep file nay thanh:
+#   Windows : %APPDATA%\routersync\ranking.yaml
+#   Linux   : ~/.config/routersync/ranking.yaml
+#   macOS   : ~/.config/routersync/ranking.yaml
+# roi chinh theo nhu cau.
+#
+# KHONG chua chinh sach that. Day la mau co cau truc day du.
+
+# Bo loc loai tru model (mau: toi da 5 muc, moi muc la mot chuoi pattern)
+blacklist:
+  - "example-deprecated-model"
+  - "example-prototype-v0"
+  - "example-vendor-discontinued/"
+  - "example-broken-gateway"
+  - "example-nonchat-embedding"
+
+# Combo loai tru khoi moi phep tinh xep hang
+excludeCombos: []
+
+# Quy tac bac — giu du 8 bac, thay bang model that
+tierRules:
+  tier1:
+    - "example-tier1-model-a"
+    - "example-tier1-model-b"
+  tier2:
+    - "example-tier2-model"
+  tier3:
+    - "example-tier3-model"
+  tier4:
+    - "example-tier4-model"
+  tier5:
+    - "example-tier5-model"
+  tier6:
+    - "example-tier6-model"
+  tier7:
+    - "example-tier7-model"
+  tier8_fallback:
+    - "example-openrouter-free/"
+
+# Diem so mo hinh — de trong; chi dien khi co bang chung kiem that
+# (moi muc can idPattern, scores, sources (>=1 URL), checked_at YYYY-MM-DD)
+modelScores: []

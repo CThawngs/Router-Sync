@@ -1,0 +1,16 @@
+# Catalog trust — dữ liệu, không suy đoán. Mỗi dòng cần link tài liệu; [VERIFY] nếu chưa đọc.
+# trustComplete=true chỉ khi tài liệu cam kết danh mục đầy đủ trong một phản hồi (hoặc phân trang có tín hiệu hết rõ ràng).
+version: 1
+providers:
+  - provider: groq
+    trustComplete: false
+    pagination: none
+    doc: https://console.groq.com/docs/models  # [VERIFY] chưa đọc trang chính thức
+  - provider: gemini
+    trustComplete: false
+    pagination: nextPageToken
+    doc: https://ai.google.dev/api/generate-content  # [VERIFY] chưa đọc trang chính thức
+  - provider: hf
+    trustComplete: false
+    pagination: next
+    doc: https://huggingface.co/docs/huggingface_hub/api-reference  # [VERIFY] chưa đọc trang chính thức

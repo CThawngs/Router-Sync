@@ -1,0 +1,27 @@
+# RouterSync zero-trust example policy (de-PIIed ranking policy)
+# Policy xếp hạng mẫu đã khử định danh: tier weights + priority khác mặc định.
+# tierWeights: trọng số theo tier mẫu (T0 cao nhất, dùng minh họa xếp hạng).
+# Không khóa thật, không tên riêng, không đường máy.
+purpose: coding-focused ranking sample
+priority:
+  - speed
+  - quality
+  - context
+  - price
+tierWeights:
+  T0: 4.0
+  T1: 2.0
+  T2: 1.0
+freeOnly: false
+preferredProviders:
+  - sample-free
+dislikedProviders: []
+favorites: []
+keepHead: 7
+allowList: []
+denyList: []
+automationLevel: propose
+quotaLimit: "2.5, move"
+scanCycle: daily
+timezone: UTC
+schedule: manual

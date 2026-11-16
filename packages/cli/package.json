@@ -1,0 +1,44 @@
+{
+  "name": "@routersync/cli",
+  "version": "0.0.1-prealpha",
+  "description": "Command-line interface for RouterSync",
+  "license": "MIT",
+  "author": "CThawngs",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/CThawngs/routersync.git",
+    "directory": "packages/cli"
+  },
+  "bugs": {
+    "url": "https://github.com/CThawngs/routersync/issues"
+  },
+  "homepage": "https://github.com/CThawngs/routersync#readme",
+  "type": "module",
+  "bin": {
+    "routersync": "./dist/index.js"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "dependencies": {
+    "@routersync/adapter-9router": "workspace:*",
+    "@routersync/adapter-omniroute": "workspace:*",
+    "@routersync/adapter-sdk": "workspace:*",
+    "@routersync/core": "workspace:*",
+    "@routersync/daemon": "workspace:*",
+    "@routersync/sources": "workspace:*",
+    "commander": "15.0.0",
+    "yaml": "2.9.1",
+    "zod": "^3.23.8"
+  }
+}

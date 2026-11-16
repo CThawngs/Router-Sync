@@ -1,0 +1,45 @@
+{
+  "name": "@routersync/adapter-omniroute",
+  "version": "0.0.1-prealpha",
+  "description": "Tier 3 SQLite and Health Adapter for OmniRoute",
+  "license": "MIT",
+  "author": "CThawngs",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/CThawngs/routersync.git",
+    "directory": "packages/adapter-omniroute"
+  },
+  "bugs": {
+    "url": "https://github.com/CThawngs/routersync/issues"
+  },
+  "homepage": "https://github.com/CThawngs/routersync#readme",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "dependencies": {
+    "@routersync/adapter-sdk": "workspace:*",
+    "@routersync/core": "workspace:*",
+    "better-sqlite3": "13.0.3",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "9.6.0"
+  }
+}

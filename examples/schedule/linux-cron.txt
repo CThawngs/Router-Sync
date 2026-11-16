@@ -1,0 +1,19 @@
+# Lịch chạy `routersync tick` trên Linux bằng cron.
+#
+# `tick` chỉ đọc danh mục model bằng GET /models với khóa của chính bạn,
+# nên KHÔNG tốn token.
+#
+# Cài đặt:
+#   crontab -e
+#   # rồi dán dòng dưới đây (thay /path/to/routersync bằng đường dẫn thật)
+#
+# Chạy thử bằng tay trước khi đưa vào cron:
+#   /usr/bin/node /path/to/routersync/dist/index.js tick --mode observe
+
+# Chạy mỗi giờ, vào phút thứ 15
+15 * * * * /usr/bin/node /path/to/routersync/dist/index.js tick --mode observe >> /path/to/routersync/tick.log 2>&1
+
+# Hoặc dùng crontab của user (không cần root):
+# crontab -l > /tmp/mycron
+# echo "15 * * * * /usr/bin/node /path/to/routersync/dist/index.js tick --mode observe" >> /tmp/mycron
+# crontab /tmp/mycron

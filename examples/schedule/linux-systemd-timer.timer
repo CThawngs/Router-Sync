@@ -1,0 +1,19 @@
+# Lịch chạy `routersync tick` trên Linux bằng systemd timer (phần timer).
+#
+# `tick` chỉ đọc danh mục model bằng GET /models với khóa của chính bạn,
+# nên KHÔNG tốn token.
+#
+# Đặt cạnh file .service cùng thư mục. Xem hướng dẫn cài đặt trong
+# examples/schedule/linux-systemd-timer.service.
+
+[Unit]
+Description=Chạy RouterSync tick mỗi giờ
+Documentation=https://github.com/CThawngs/routersync
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=1h
+Unit=routersync-tick.service
+
+[Install]
+WantedBy=timers.target

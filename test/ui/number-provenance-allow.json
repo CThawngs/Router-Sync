@@ -1,0 +1,12 @@
+[
+  {
+    "route": "guide",
+    "token": "3100",
+    "reason": "Static docker port 3100 in GuideScreen quickstart code snippet, describing how to run the container, not a measured router port."
+  },
+  {
+    "route": "settings",
+    "token": "4,000",
+    "reason": "Static label '~4,000' in SettingsScreen AI/MCP tab describing the token pagination cap, not a measurement about this machine."
+  }
+]

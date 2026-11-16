@@ -1,0 +1,5 @@
+# Community model aliases registry
+# Maps standardized generic aliases to provider/router-specific model identifiers.
+# Every alias definition must have an authoritative source cited.
+version: 1
+aliases: {}

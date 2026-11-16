@@ -1,0 +1,29 @@
+# Lịch chạy `routersync tick` trên Linux bằng systemd timer.
+#
+# `tick` chỉ đọc danh mục model bằng GET /models với khóa của chính bạn,
+# nên KHÔNG tốn token.
+#
+# Cài đặt cho user (không cần root):
+#   mkdir -p ~/.config/systemd/user
+#   cp examples/schedule/linux-systemd-timer.service ~/.config/systemd/user/
+#   cp examples/schedule/linux-systemd-timer.timer  ~/.config/systemd/user/
+#   # sửa ExecStart cho dung duong dan
+#   systemctl --user daemon-reload
+#   systemctl --user enable --now routersync-tick.timer
+#
+# Xem log:
+#   journalctl --user -u routersync-tick.service -f
+#
+# Gỡ:
+#   systemctl --user disable --now routersync-tick.timer
+
+[Unit]
+Description=RouterSync tick - doc danh muc model, khong ton token.
+Documentation=https://github.com/CThawngs/routersync
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/node /path/to/routersync/dist/index.js tick --mode observe
+WorkingDirectory=/path/to/routersync

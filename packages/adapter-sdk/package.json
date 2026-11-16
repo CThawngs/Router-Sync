@@ -1,0 +1,35 @@
+{
+  "name": "@routersync/adapter-sdk",
+  "version": "0.0.1-prealpha",
+  "description": "Standardized contracts and interfaces for RouterSync adapters",
+  "license": "MIT",
+  "author": "CThawngs",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/CThawngs/routersync.git",
+    "directory": "packages/adapter-sdk"
+  },
+  "bugs": {
+    "url": "https://github.com/CThawngs/routersync/issues"
+  },
+  "homepage": "https://github.com/CThawngs/routersync#readme",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit"
+  },
+  "engines": {
+    "node": ">=22.12.0"
+  }
+}

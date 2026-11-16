@@ -1,0 +1,15 @@
+{
+  "nav": "nav.nav button.nav-btn",
+  "screens": [
+    { "name": "overview", "url": "/?tour=0#overview", "waitFor": "main" },
+    { "name": "changes", "url": "/?tour=0#changes", "waitFor": "main" },
+    { "name": "combos", "url": "/?tour=0#combos", "waitFor": "main" },
+    { "name": "providers", "url": "/?tour=0#providers", "waitFor": "main" },
+    { "name": "targets", "url": "/?tour=0#targets", "waitFor": "main" },
+    { "name": "models", "url": "/?tour=0#models", "waitFor": "main" },
+    { "name": "health", "url": "/?tour=0#health", "waitFor": "main" },
+    { "name": "connect", "url": "/?tour=0#agents", "waitFor": "main" },
+    { "name": "guide", "url": "/?tour=0#guide", "waitFor": "main" },
+    { "name": "settings", "url": "/?tour=0#settings", "waitFor": "main" }
+  ]
+}

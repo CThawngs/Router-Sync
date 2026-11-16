@@ -1,0 +1,43 @@
+{
+  "combos": [
+    {
+      "id": "sample-agent-combo",
+      "sortOrder": 0,
+      "version": 2,
+      "config": {
+        "maxGlobalAttempts": 120,
+        "comboTimeoutMs": 420000
+      },
+      "computed_context_length": 4000,
+      "models": [
+        {
+          "id": "model-sample-1",
+          "kind": "model",
+          "model": "dummy-provider/model-alpha",
+          "providerId": "dummy-provider",
+          "weight": 2
+        }
+      ]
+    },
+    {
+      "id": "sample-coder-combo",
+      "sortOrder": 1,
+      "version": 2,
+      "config": {
+        "maxGlobalAttempts": 120,
+        "comboTimeoutMs": 420000
+      },
+      "computed_context_length": 4000,
+      "models": [
+        {
+          "id": "model-sample-2",
+          "kind": "model",
+          "model": "dummy-provider/model-beta",
+          "providerId": "dummy-provider",
+          "weight": 2
+        }
+      ]
+    }
+  ],
+  "total": 2
+}

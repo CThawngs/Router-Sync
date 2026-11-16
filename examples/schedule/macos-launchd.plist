@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Lịch chạy `routersync tick` trên macOS bằng launchd.
+
+  `tick` chỉ đọc danh mục model bằng GET /models với khóa của chính bạn,
+  nên KHÔNG tốn token.
+
+  Cài đặt:
+    cp examples/schedule/macos-launchd.plist ~/Library/LaunchAgents/com.routersync.tick.plist
+    # sửa đường dẫn trong <string> ở ProgramArguments
+    launchctl load -w ~/Library/LaunchAgents/com.routersync.tick.plist
+
+  Xem log:
+    tail -f ~/Library/Logs/routersync-tick.log
+
+  Gỡ:
+    launchctl unload -w ~/Library/LaunchAgents/com.routersync.tick.plist
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.routersync.tick</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/usr/local/bin/node</string>
+    <string>/path/to/routersync/dist/index.js</string>
+    <string>tick</string>
+    <string>--mode</string>
+    <string>observe</string>
+  </array>
+
+  <key>WorkingDirectory</key>
+  <string>/path/to/routersync</string>
+
+  <key>StartInterval</key>
+  <integer>3600</integer>
+
+  <key>RunAtLoad</key>
+  <false/>
+
+  <key>StandardOutPath</key>
+  <string>/Users/YOUR_USER/Library/Logs/routersync-tick.log</string>
+
+  <key>StandardErrorPath</key>
+  <string>/Users/YOUR_USER/Library/Logs/routersync-tick.err.log</string>
+
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+  </dict>
+</dict>
+</plist>
