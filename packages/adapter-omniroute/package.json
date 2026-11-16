@@ -6,13 +6,13 @@
   "author": "CThawngs",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/CThawngs/routersync.git",
+    "url": "git+https://github.com/CThawngs/Router-Sync.git",
     "directory": "packages/adapter-omniroute"
   },
   "bugs": {
-    "url": "https://github.com/CThawngs/routersync/issues"
+    "url": "https://github.com/CThawngs/Router-Sync/issues"
   },
-  "homepage": "https://github.com/CThawngs/routersync#readme",
+  "homepage": "https://github.com/CThawngs/Router-Sync#readme",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

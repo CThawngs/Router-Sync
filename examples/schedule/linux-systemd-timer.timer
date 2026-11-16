@@ -8,7 +8,7 @@
 
 [Unit]
 Description=Chạy RouterSync tick mỗi giờ
-Documentation=https://github.com/CThawngs/routersync
+Documentation=https://github.com/CThawngs/Router-Sync
 
 [Timer]
 OnBootSec=2min

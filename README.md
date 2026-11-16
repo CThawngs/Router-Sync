@@ -4,7 +4,7 @@
 
 # RouterSync
 
-[![CI](https://github.com/CThawngs/routersync/actions/workflows/ci.yml/badge.svg)](https://github.com/CThawngs/routersync/actions/workflows/ci.yml)
+[![CI](https://github.com/CThawngs/Router-Sync/actions/workflows/ci.yml/badge.svg)](https://github.com/CThawngs/Router-Sync/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Node: >=22.12](https://img.shields.io/badge/Node-%3E%3D22.12-3fa66f.svg)](https://nodejs.org)
 [![Status: Pre-Alpha](https://img.shields.io/badge/Status-Pre--alpha-orange.svg)](CHANGELOG.md)
@@ -104,7 +104,7 @@ in `.nvmrc`, so `corepack enable pnpm` picks the right one.
 ```powershell
 node --version          # must be >= v22.12.0
 corepack enable pnpm    # or: npm install -g pnpm@10
-git clone https://github.com/CThawngs/routersync.git
+git clone https://github.com/CThawngs/Router-Sync.git
 cd routersync
 pnpm install --frozen-lockfile
 pnpm build
@@ -119,7 +119,7 @@ node packages/cli/dist/index.js scan     # first read-only command
 ```bash
 node --version          # must be >= v22.12.0
 corepack enable pnpm    # or: npm install -g pnpm@10
-git clone https://github.com/CThawngs/routersync.git
+git clone https://github.com/CThawngs/Router-Sync.git
 cd routersync
 pnpm install --frozen-lockfile
 pnpm build
@@ -133,7 +133,7 @@ node packages/cli/dist/index.js scan     # first read-only command
 ```bash
 node --version          # must be >= v22.12.0
 corepack enable pnpm    # or: npm install -g pnpm@10
-git clone https://github.com/CThawngs/routersync.git
+git clone https://github.com/CThawngs/Router-Sync.git
 cd routersync
 pnpm install --frozen-lockfile
 pnpm build
@@ -371,7 +371,7 @@ trong `.nvmrc`, nên `corepack enable pnpm` sẽ chọn đúng phiên bản.
 ```powershell
 node --version          # phải là >= v22.12.0
 corepack enable pnpm    # hoặc: npm install -g pnpm@10
-git clone https://github.com/CThawngs/routersync.git
+git clone https://github.com/CThawngs/Router-Sync.git
 cd routersync
 pnpm install --frozen-lockfile
 pnpm build
@@ -386,7 +386,7 @@ node packages/cli/dist/index.js scan     # lệnh chỉ đọc đầu tiên
 ```bash
 node --version          # phải là >= v22.12.0
 corepack enable pnpm    # hoặc: npm install -g pnpm@10
-git clone https://github.com/CThawngs/routersync.git
+git clone https://github.com/CThawngs/Router-Sync.git
 cd routersync
 pnpm install --frozen-lockfile
 pnpm build
@@ -400,7 +400,7 @@ node packages/cli/dist/index.js scan     # lệnh chỉ đọc đầu tiên
 ```bash
 node --version          # phải là >= v22.12.0
 corepack enable pnpm    # hoặc: npm install -g pnpm@10
-git clone https://github.com/CThawngs/routersync.git
+git clone https://github.com/CThawngs/Router-Sync.git
 cd routersync
 pnpm install --frozen-lockfile
 pnpm build

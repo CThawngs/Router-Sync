@@ -19,7 +19,7 @@
 
 [Unit]
 Description=RouterSync tick - doc danh muc model, khong ton token.
-Documentation=https://github.com/CThawngs/routersync
+Documentation=https://github.com/CThawngs/Router-Sync
 After=network-online.target
 Wants=network-online.target
 
