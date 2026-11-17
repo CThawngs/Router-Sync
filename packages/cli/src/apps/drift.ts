@@ -8,19 +8,25 @@
  * (id provider hoặc host:cổng của baseURL đã ánh xạ). Provider không ánh xạ được
  * tới router nào ⇒ NOT-ROUTED.
  *
- * Phân loại theo RouterModelState từ core (tầng A/B/C/UNKNOWN):
- *   OK         : tier A — model đang active trong router
- *   DISABLED   : tier B do bị tắt
- *   MISSING    : tier C — router không biết model này
- *   UNKNOWN    : tier UNKNOWN — không xác định được (ví dụ versionMismatch)
+ * Phân loại theo trạng thái router (đọc chỉ đọc qua readRouterModelState + readCombos):
+ *   9Router:
+ *     OK       : model có trong availableModels (tầng A — active) hoặc comboModels (combo)
+ *     DISABLED : model có trong disabledModels (bị tắt)
+ *     MISSING  : model không có trong bất kỳ tập nào
+ *     UNKNOWN  : versionMismatch hoặc không đọc được router
+ *   OmniRoute:
+ *     OK       : model có trong comboModels (tên combo)
+ *     DISABLED : UNKNOWN với lý do 'omniroute-no-disable-source' (không có nguồn biết model bị tắt)
+ *     MISSING  : model không có trong comboModels
+ *     UNKNOWN  : không đọc được router
  *   NOT-ROUTED : provider trực tiếp, không qua router
  *
  * ID chuẩn hóa: bỏ tiền tố provider khi so với router catalog
  *   (ví dụ `9router/test-3` → `test-3`).
  *
- * Khóa so sánh từng router:
- *   9Router: Available Models (availableModels) + combo/alias
- *   OmniRoute: combos.data.models (trường m.model ?? m.id)
+ * availableModels và comboModels trong router state dùng định dạng alias/modelId
+ * (ví dụ `ag/gemini-4-carbon-high`, `oc/claude-sonnet-5-5`), không phải
+ * provider/modelId. Code trích xuất model ID gốc và so sánh với phần sau dấu `/`.
  */
 
 import * as os from 'node:os';
@@ -34,7 +40,7 @@ import type {
 import {
   readRouterModelState,
   type RouterModelState,
-  type ModelTierClassification,
+  getProviderAliases,
 } from '@routersync/core';
 import { AGENT_APP_ADAPTERS, getAgentAppAdapter, type AgentAppId } from './inspect.js';
 import { detectRouter } from './inspect.js';
@@ -55,6 +61,8 @@ export interface DriftEntry {
   kind: 'combo' | 'alias' | 'model' | 'NOT-ROUTED';
   status: DriftStatus;
   reason: string;
+  /** inCombo: model có nằm trong một combo không. Dùng cho UNUSED. */
+  inCombo: boolean;
 }
 
 export interface RouterDriftView {
@@ -67,6 +75,12 @@ export interface RouterDriftView {
   comboNames: Set<string>;
   /** Tên alias. */
   aliasNames: Set<string>;
+  /** Tất cả model ID có sẵn (bare name và alias/modelId). */
+  availableIds: Set<string>;
+  /** Tất cả model ID bị tắt (bare name và alias/modelId). */
+  disabledIds: Set<string>;
+  /** Tất cả model ID trong combo (bare name và alias/modelId). */
+  comboIds: Set<string>;
 }
 
 export interface DriftResult {
@@ -83,6 +97,7 @@ export interface DriftReport {
     name: string;
     kind: 'combo' | 'alias' | 'model';
     provider: string;
+    inCombo: boolean;
   }>;
   totals: Record<DriftStatus, number>;
   idFormatMismatchSuspected: boolean;
@@ -150,46 +165,20 @@ export function tierToStatus(tier: 'A' | 'B' | 'C' | 'UNKNOWN', reason?: string)
   return 'UNKNOWN';
 }
 
-/** Phân loại một model đơn lẻ đối với một router view. */
-export function classifyModelDrift(
-  modelId: string,
-  provider: string,
-  view: RouterDriftView
-): { entry: Omit<DriftEntry, 'app'>; matchedRouter: boolean } {
-  const strippedId = stripProviderPrefix(modelId);
-  const kind = driftKindOf(strippedId, view.comboNames, view.aliasNames);
-  const state = view.state;
-
-  if (!state) {
-    return {
-      entry: {
-        router: view.router,
-        name: modelId,
-        modelId: strippedId,
-        provider,
-        kind,
-        status: 'UNKNOWN',
-        reason: 'không đọc được router',
-      },
-      matchedRouter: false,
-    };
+/**
+ * Trích xuất tất cả model ID từ một Set các id có dạng 'alias/modelId' hoặc bare name.
+ * Trả về Set chứa cả dạng đầy đủ và dạng bare name (phần sau '/').
+ */
+export function extractAllIds(ids: Set<string>): Set<string> {
+  const out = new Set<string>();
+  for (const id of ids) {
+    out.add(id);
+    const slash = id.indexOf('/');
+    if (slash !== -1) {
+      out.add(id.slice(slash + 1));
+    }
   }
-
-  const classification = state.classify(provider, strippedId);
-  const status = tierToStatus(classification.tier, classification.reason);
-
-  return {
-    entry: {
-      router: view.router,
-      name: modelId,
-      modelId: strippedId,
-      provider,
-      kind,
-      status,
-      reason: classification.reason ?? '',
-    },
-    matchedRouter: status !== 'NOT-ROUTED',
-  };
+  return out;
 }
 
 /** Xây dựng view chỉ đọc của một router từ readRouterModelState + combos. */
@@ -212,7 +201,17 @@ export async function buildRouterView(
   }
   const aliasNames = new Set<string>();
 
-  return { router, state, error, comboNames, aliasNames };
+  let availableIds: Set<string> = new Set();
+  let disabledIds: Set<string> = new Set();
+  let comboIds: Set<string> = new Set();
+
+  if (state) {
+    availableIds = extractAllIds(state.availableModels);
+    disabledIds = extractAllIds(state.disabledModels);
+    comboIds = extractAllIds(state.comboModels);
+  }
+
+  return { router, state, error, comboNames, aliasNames, availableIds, disabledIds, comboIds };
 }
 
 /** Tải danh sách provider public từ registry cục bộ (nếu có). */
@@ -226,7 +225,6 @@ export function loadLocalProviderAllowlist(): Set<string> {
     if (!fs.existsSync(file)) continue;
     try {
       const content = fs.readFileSync(file, 'utf8');
-      // Parse đơn giản: các dòng tên provider (mỗi dòng 1 tên, bỏ qua comment và trống).
       for (const line of content.split(/\r?\n/)) {
         const trimmed = line.trim();
         if (!trimmed || trimmed.startsWith('#')) continue;
@@ -239,39 +237,242 @@ export function loadLocalProviderAllowlist(): Set<string> {
   return allowlist;
 }
 
-/** Danh sách provider công khai (từ 9Router provider aliases). */
-export function getPublicProviderRegistry(): Set<string> {
-  // Import động để tránh cyclic dependency; dùng danh sách tĩnh từ 9router-provider-models.
-  // Các key này là tên provider đầy đủ (antigravity, kilocode, kiro, opencode, ...).
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const mod = require('@routersync/core');
-    // NINE_ROUTER_PROVIDER_ALIASES không được export trực tiếp từ core index,
-    // nên dùng danh sách provider đã biết từ inspect fixtures + tên router chuẩn.
-  } catch {
-    // ignore
+/**
+ * Phân loại một model đơn lẻ đối với một router view.
+ * Sử dụng availableIds/disabledIds/comboIds (đã trích xuất bare name) thay vì
+ * state.classify() để tránh vấn đề định dạng id giữa alias/modelId và provider/id.
+ */
+export function classifyModelDrift(
+  modelId: string,
+  provider: string,
+  view: RouterDriftView
+): { entry: Omit<DriftEntry, 'app'>; matchedRouter: boolean } {
+  const strippedId = stripProviderPrefix(modelId);
+  const kind = driftKindOf(strippedId, view.comboNames, view.aliasNames);
+  const router = view.router;
+
+  if (!view.state || !view.availableIds || !view.disabledIds || !view.comboIds) {
+    return {
+      entry: {
+        router,
+        name: modelId,
+        modelId: strippedId,
+        provider,
+        kind,
+        status: 'UNKNOWN',
+        reason: 'không đọc được router',
+        inCombo: false,
+      },
+      matchedRouter: false,
+    };
   }
+
+  const is9Router = router === '9router';
+  const isOmniRoute = router === 'omniroute';
+
+  // Tính inCombo: model có nằm trong một combo không?
+  let inCombo = view.comboIds.has(strippedId);
+
+  // 9Router: versionMismatch ⇒ UNKNOWN
+  if (is9Router && view.state.versionMismatch) {
+    return {
+      entry: {
+        router,
+        name: modelId,
+        modelId: strippedId,
+        provider,
+        kind,
+        status: 'UNKNOWN',
+        reason: 'snapshot-version-mismatch',
+        inCombo,
+      },
+      matchedRouter: true,
+    };
+  }
+
+  // 9Router: kiểm tra disabled
+  if (is9Router && view.disabledIds.has(strippedId)) {
+    return {
+      entry: {
+        router,
+        name: modelId,
+        modelId: strippedId,
+        provider,
+        kind,
+        status: 'DISABLED',
+        reason: inCombo
+          ? 'Inconsistent: disabled in router kv but configured in active combo'
+          : 'Disabled in router kv',
+        inCombo,
+      },
+      matchedRouter: true,
+    };
+  }
+
+  // 9Router: kiểm tra availableModels (tầng A — model đang bật)
+  if (is9Router && view.availableIds.has(strippedId)) {
+    return {
+      entry: {
+        router,
+        name: modelId,
+        modelId: strippedId,
+        provider,
+        kind,
+        status: 'OK',
+        reason: inCombo
+          ? 'Available in router UI and configured in active combo'
+          : 'Available in router UI (provider registry, custom model, or alias)',
+        inCombo,
+      },
+      matchedRouter: true,
+    };
+  }
+
+  // OmniRoute: chỉ OK nếu trong comboModels
+  if (isOmniRoute && view.comboIds.has(strippedId)) {
+    return {
+      entry: {
+        router,
+        name: modelId,
+        modelId: strippedId,
+        provider,
+        kind,
+        status: 'OK',
+        reason: 'Active in OmniRoute combo',
+        inCombo,
+      },
+      matchedRouter: true,
+    };
+  }
+
+  // 9Router: kiểm tra customModels (dùng state.customModels trực tiếp vì đã extractAllIds)
+  // customModels cũng đã được extract vào availableIds? Không — availableIds chỉ từ availableModels.
+  // Kiểm tra riêng customModels từ state.
+  if (is9Router && view.state.customModels.has(strippedId)) {
+    return {
+      entry: {
+        router,
+        name: modelId,
+        modelId: strippedId,
+        provider,
+        kind,
+        status: 'OK',
+        reason: 'Available in router UI (custom model or alias)',
+        inCombo,
+      },
+      matchedRouter: true,
+    };
+  }
+
+  // OmniRoute: chỉ OK nếu trong comboModels; không có trong combo ⇒ MISSING
+  // UNKNOWN chỉ dùng khi không đọc được router (xử lý ở trên)
+  if (isOmniRoute) {
+    return {
+      entry: {
+        router,
+        name: modelId,
+        modelId: strippedId,
+        provider,
+        kind,
+        status: 'MISSING',
+        reason: 'Unconfigured in router',
+        inCombo,
+      },
+      matchedRouter: true,
+    };
+  }
+
+  // Không tìm thấy trong bất kỳ tập nào ⇒ MISSING
+  return {
+    entry: {
+      router,
+      name: modelId,
+      modelId: strippedId,
+      provider,
+      kind,
+      status: 'MISSING',
+      reason: 'Unconfigured in router',
+      inCombo,
+    },
+    matchedRouter: true,
+  };
+}
+
+/**
+ * Xây dựng tập tên provider công khai (không bị redact).
+ * Bao gồm: tên router, tên provider từ NINE_ROUTER_PROVIDER_ALIASES keys,
+ * và các provider công khai phổ biến (302ai, huggingface, nvidia, ...).
+ */
+export function getPublicProviderRegistry(): Set<string> {
   const known = new Set<string>([
+    // Tên router
     '9router',
     'omniroute',
-    'hugging-face',
+    'nine-router',
+    // Provider có alias trong 9Router registry (các key của NINE_ROUTER_PROVIDER_ALIASES)
+    'antigravity',
+    'api-airforce',
+    'aws-polly',
+    'baidu',
+    'bedrock',
+    'bedrock-xai',
+    'blackbox',
+    'bluesminds',
+    'byteplus',
+    'claude',
+    'cline',
+    'cloudflare-ai',
+    'codebuddy-cn',
+    'codebuddy-intl',
+    'codex',
+    'commandcode',
+    'cursor',
     'deepseek',
+    'featherless',
+    'fish-audio',
+    'gemini-cli',
+    'github',
+    'grok-cli',
+    'grok-web',
+    'hyperbolic',
+    'iflow',
+    'jina-ai',
+    'kilo-gateway',
     'kilocode',
     'kiro',
+    'mimo-free',
+    'minimax-code',
+    'minimax-code-global',
     'opencode',
-    'cursor',
-    'claude',
-    'gemini',
-    'github',
+    'opencode-go',
+    'opencode-zen',
     'perplexity',
-    'anthropic',
+    'perplexity-agent',
+    'perplexity-web',
+    'poolside',
+    'qoder',
+    'qoder-cn',
+    'runcrate',
+    'sambanova',
+    'synthetic',
+    'tencent',
+    'vertex',
+    'vertex-partner',
+    'volcengine-ark',
+    'xiaomi-mimo',
+    'xiaomi-tokenplan',
+    // Provider công khai phổ biến khác
+    '302ai',
+    'hugging-face',
+    'huggingface',
+    'nvidia',
     'openai',
+    'anthropic',
     'cohere',
     'mistral',
     'meta',
     'google',
     'xai',
-    'nvidia',
     'minimax',
     'poolside',
     'sambanova',
@@ -285,7 +486,11 @@ export function getPublicProviderRegistry(): Set<string> {
   return known;
 }
 
-/** Quyết định xem tên provider có bị redact không. */
+/**
+ * Quyết định xem tên provider có bị redact không.
+ * Chỉ che id có trong providers.local.yaml hoặc không tìm thấy trong registry công
+ * khai lẫn danh sách router. Provider công khai giữ nguyên tên.
+ */
 export function shouldRedactProvider(
   provider: string,
   publicRegistry: Set<string>,
@@ -310,7 +515,10 @@ export class ProviderRedactor {
   }
 }
 
-/** Kiểm tra id-format-mismatch: router có catalog > 0 nhưng 0 model của app khớp. */
+/**
+ * Kiểm tra id-format-mismatch: router có availableModels > 0 nhưng 0 tham chiếu của
+ * app khớp. Xuất hiện trong bảng và --json.
+ */
 export function checkIdFormatMismatch(
   results: DriftResult[],
   views: RouterDriftView[]
@@ -319,14 +527,15 @@ export function checkIdFormatMismatch(
   let suspected = false;
 
   for (const v of views) {
-    if (!v.state || v.state.catalogModels.size === 0) continue;
+    if (!v.state || v.state.availableModels.size === 0) continue;
     // Kiểm tra xem có app nào có model khớp với router này không.
     let anyMatch = false;
     for (const r of results) {
       if (r.router !== v.router) continue;
       for (const e of r.entries) {
+        // Chỉ kiểm tra các model qua router (không phải NOT-ROUTED)
         if (e.kind === 'NOT-ROUTED') continue;
-        if (v.state.catalogModels.has(e.modelId) || v.comboNames.has(e.modelId)) {
+        if (v.availableIds.has(e.modelId) || v.comboIds.has(e.modelId)) {
           anyMatch = true;
           break;
         }
@@ -335,7 +544,7 @@ export function checkIdFormatMismatch(
     }
     if (!anyMatch) {
       suspected = true;
-      // Lấy 3 ví dụ cặp (id của app, id của router) đã redact.
+      // Lấy 3 ví dụ cặp (id của app, id của router).
       const appIds: string[] = [];
       const routerIds: string[] = [];
       for (const r of results) {
@@ -361,17 +570,14 @@ export function checkIdFormatMismatch(
   return { suspected, examples };
 }
 
-export function zeroTotalsFull(): Record<DriftStatus, number> {
-  return { OK: 0, DISABLED: 0, MISSING: 0, UNKNOWN: 0, 'NOT-ROUTED': 0 };
-}
-
 /** Gộp nhiều kết quả thành báo cáo, tính UNUSED và tổng hợp. */
 export function buildDriftReport(
   results: DriftResult[],
   views: RouterDriftView[],
   redactor: ProviderRedactor,
   publicRegistry: Set<string>,
-  localAllowlist: Set<string>
+  localAllowlist: Set<string>,
+  connectedProviders: Set<string>
 ): DriftReport {
   const used = new Set<string>();
   for (const r of results) {
@@ -380,30 +586,52 @@ export function buildDriftReport(
     }
   }
 
+  // Xây dựng tập alias của các provider đang kết nối (được app tham chiếu)
+  const connectedAliases = new Set<string>();
+  for (const prov of connectedProviders) {
+    for (const alias of getProviderAliases(prov)) {
+      connectedAliases.add(alias);
+    }
+  }
+
   const unused: Array<{
     router: string;
     name: string;
     kind: 'combo' | 'alias' | 'model';
     provider: string;
+    inCombo: boolean;
   }> = [];
   for (const v of views) {
-    if (!v.state) continue;
-    for (const id of v.state.catalogModels) {
-      if (used.has(`${v.router}|${id}`)) continue;
-      const provider = extractProvider(id);
+    if (!v.state || !v.availableIds) continue;
+    // UNUSED chỉ tính model/combo đang bật của provider đang kết nối,
+    // không dùng catalogModels (registry dựng sẵn có nhiều provider chưa kết nối).
+    // Iterate over state.availableModels (alias/modelId format) to preserve provider info.
+    for (const fullId of v.state.availableModels) {
+      const slash = fullId.indexOf('/');
+      if (slash === -1) continue; // bare name, không xác định được provider
+      const alias = fullId.slice(0, slash);
+      const modelId = fullId.slice(slash + 1);
+      // Chỉ include nếu alias thuộc về một provider đang kết nối
+      if (!connectedAliases.has(alias)) continue;
+      if (used.has(`${v.router}|${modelId}`)) continue;
+      // Kiểm tra inCombo
+      const inCombo = v.comboIds.has(modelId);
+      // Lấy tên provider từ alias (đơn giản hóa: dùng alias làm provider name)
+      const providerName = alias;
       unused.push({
         router: v.router,
-        name: id,
-        kind: driftKindOf(id, v.comboNames, v.aliasNames),
-        provider: shouldRedactProvider(provider, publicRegistry, localAllowlist)
-          ? redactor.redact(provider)
-          : provider,
+        name: modelId,
+        kind: driftKindOf(modelId, v.comboNames, v.aliasNames),
+        provider: shouldRedactProvider(providerName, publicRegistry, localAllowlist)
+          ? redactor.redact(providerName)
+          : providerName,
+        inCombo,
       });
     }
   }
   unused.sort((a, b) => a.router.localeCompare(b.router) || a.name.localeCompare(b.name));
 
-  const totals = zeroTotalsFull();
+  const totals = zeroTotals();
   for (const r of results) {
     for (const s of DRIFT_STATUSES) totals[s] += r.totals[s];
   }
@@ -453,7 +681,7 @@ export function renderDriftTable(report: DriftReport): string {
   );
   if (report.idFormatMismatchSuspected) {
     lines.push('');
-    lines.push('CẢNH BÁO: id-format-mismatch-suspected — router có catalog nhưng 0 model của app khớp.');
+    lines.push('CẢNH BÁO: id-format-mismatch-suspected — router có danh mục (availableModels) > 0 nhưng 0 tham chiếu của app khớp.');
     lines.push('Có thể do định dạng model id khác nhau (có/không tiền tố provider).');
     for (const ex of report.mismatchExamples) {
       lines.push(`  ví dụ: appId=${ex.appId} routerId=${ex.routerId}`);
@@ -463,7 +691,8 @@ export function renderDriftTable(report: DriftReport): string {
     lines.push('');
     lines.push('UNUSED (20 đầu):');
     for (const u of report.unused.slice(0, 20)) {
-      lines.push(`  ${u.router}  ${u.kind}  ${u.provider}/${u.name}`);
+      const comboTag = u.inCombo ? ' (inCombo)' : '';
+      lines.push(`  ${u.router}  ${u.kind}  ${u.provider}/${u.name}${comboTag}`);
     }
   }
   return lines.join('\n');
