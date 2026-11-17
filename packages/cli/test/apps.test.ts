@@ -206,3 +206,98 @@ describe('apps inspect command', () => {
     }
   });
 });
+
+// ---------------------------------------------------------------------------
+// F1: sửa lỗi nghi vấn từ C5
+// ---------------------------------------------------------------------------
+
+describe('F1.1 routerRef theo model đang dùng (không quét toàn bộ providers)', () => {
+  it('DSH: routerRef lấy từ provider của agent-default-model, không phải provider đầu tiên trong danh sách', async () => {
+    // activeProvider = '9router' (khớp router), nhưng danh sách providers cũng chứa 'omniroute'.
+    // Code cũ quét toàn bộ providers có thể trả 'omniroute'; code mới phải trả '9router' (theo active).
+    const content = `- id: agent-default-model
+  name: "@example/dsh-agent-default-model"
+  config:
+    provider: 9router
+    model: 9Router-Coder-1
+- id: llm-pi-ai
+  name: "@example/dsh-llm-pi-ai"
+  config:
+    providers:
+      "omniroute":
+        baseURL: https://example.invalid/v1
+        models:
+          - id: OmniRoute-Dev
+      "9router":
+        baseURL: https://example.invalid/v1
+        models:
+          - id: 9Router-Coder-1
+`;
+
+    const file = tmpFile('f11-dsh-routerref.yml', content);
+    const result = await dshAdapter.inspect({ configPath: file });
+
+    expect(result.routerRef).toBe('9router');
+    expect(result.activeModel).toBe('9router/9Router-Coder-1');
+    expect(result.warnings.some((w) => w.includes('app trỏ tới router 9router'))).toBe(true);
+  });
+
+  it('DSH: provider active không khớp router tên nào ⇒ routerRef = UNKNOWN (không gán nhầm omniroute)', async () => {
+    const content = `- id: agent-default-model
+  name: "@example/dsh-agent-default-model"
+  config:
+    provider: nine-router-vision
+    model: 9Router-Coder-1
+- id: llm-pi-ai
+  name: "@example/dsh-llm-pi-ai"
+  config:
+    providers:
+      "omniroute":
+        baseURL: https://example.invalid/v1
+        models:
+          - id: OmniRoute-Dev
+`;
+
+    const file = tmpFile('f11-dsh-unknown.yml', content);
+    const result = await dshAdapter.inspect({ configPath: file });
+
+    expect(result.routerRef).toBe('UNKNOWN');
+    expect(result.activeModel).toBe('nine-router-vision/9Router-Coder-1');
+  });
+});
+
+describe('F1.2 certainty = B khi activeModel không khớp provider+model trong danh sách', () => {
+  it('Hermes: activeModel không tồn tại trong model.models ⇒ certainty B + warning active-model-unresolved', async () => {
+    const content = `model:
+  provider: 9router
+  default: 9Router-X
+  models:
+    - id: 9Router-Coder-1
+      name: 9Router Coder 1
+`;
+
+    const file = tmpFile('f12-hermes-unresolved.yml', content);
+    const result = await hermesAdapter.inspect({ configPath: file });
+
+    expect(result.activeModel).toBe('9router/9Router-X');
+    expect(result.certainty).toBe('B');
+    expect(result.warnings.some((w) => w === 'active-model-unresolved')).toBe(true);
+  });
+
+  it('Hermes: activeModel khớp provider+model ⇒ certainty A', async () => {
+    const content = `model:
+  provider: 9router
+  default: 9Router-Coder-1
+  models:
+    - id: 9Router-Coder-1
+      name: 9Router Coder 1
+`;
+
+    const file = tmpFile('f12-hermes-resolved.yml', content);
+    const result = await hermesAdapter.inspect({ configPath: file });
+
+    expect(result.activeModel).toBe('9router/9Router-Coder-1');
+    expect(result.certainty).toBe('A');
+  });
+});
+
