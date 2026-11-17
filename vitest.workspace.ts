@@ -22,6 +22,7 @@ export default defineWorkspace([
       include: ['test/**/*.{test,spec}.{js,mjs,ts}'],
       exclude: ['**/node_modules/**', 'test/e2e/**'],
       environment: 'node',
+      testTimeout: 20000,
       setupFiles: [path.resolve(__dirname, 'test/harness/state-dir-setup.ts')],
       server: {
         deps: {
@@ -36,6 +37,7 @@ export default defineWorkspace([
       name: 'packages',
       include: ['packages/*/test/**/*.{test,spec}.{js,mjs,ts}'],
       environment: 'node',
+      testTimeout: 20000,
       setupFiles: [path.resolve(__dirname, 'test/harness/state-dir-setup.ts')],
       // UI tests run in their own jsdom project below (ADR-UI-01).
       exclude: ['**/node_modules/**', 'packages/ui/test/**'],

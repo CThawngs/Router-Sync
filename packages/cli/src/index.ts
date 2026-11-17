@@ -72,6 +72,35 @@ import { installConfiguredRouterDbPaths } from './config/loader.js';
 // Enforce Node.js >= 22.0.0 on startup (Condition A7 / AT-100)
 enforceNodeVersion();
 
+/**
+ * C12 M2: Emit performance metrics on stderr when ROUTERSYNC_PERF=1.
+ */
+export function installPerfHook(): void {
+  if (process.env.ROUTERSYNC_PERF !== '1') return;
+  const t0 = process.hrtime.bigint();
+  const cpu0 = process.cpuUsage();
+  process.on('exit', () => {
+    try {
+      const elapsedMs = Number(process.hrtime.bigint() - t0) / 1_000_000;
+      const cpu = process.cpuUsage(cpu0);
+      const mem = process.memoryUsage();
+      const MB = 1024 * 1024;
+      const payload = {
+        pid: process.pid,
+        durationMs: Math.round(elapsedMs * 10) / 10,
+        cpuUserMs: Math.round(cpu.user / 1000),
+        cpuSystemMs: Math.round(cpu.system / 1000),
+        rssMB: Math.round(mem.rss / MB),
+        heapUsedMB: Math.round(mem.heapUsed / MB),
+      };
+      process.stderr.write(`[routersync-perf] ${JSON.stringify(payload)}\n`);
+    } catch {
+      // Do not crash on exit
+    }
+  });
+}
+installPerfHook();
+
 /** Version string taken from the package manifest so it never drifts. */
 function readPackageVersion(): string {
   try {

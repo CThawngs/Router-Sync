@@ -542,9 +542,10 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
       }
 
       requests += 1;
+      const tickTimeoutMs = process.env.ROUTERSYNC_LOW_RESOURCE === '1' ? 8_000 : 12_000;
       const outcome = await fetchModelList(t, {
         ...(options.fetchFn ? { fetchFn: options.fetchFn } : {}),
-        timeoutMs: 12_000,
+        timeoutMs: tickTimeoutMs,
         retryDelaysMs: [],
         serverEtag: prev?.serverEtag ?? null,
       });
