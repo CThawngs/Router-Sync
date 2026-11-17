@@ -105,7 +105,7 @@ in `.nvmrc`, so `corepack enable pnpm` picks the right one.
 node --version          # must be >= v22.12.0
 corepack enable pnpm    # or: npm install -g pnpm@10
 git clone https://github.com/CThawngs/Router-Sync.git
-cd routersync
+cd Router-Sync
 pnpm install --frozen-lockfile
 pnpm build
 New-Item -ItemType Directory -Force "$env:APPDATA\routersync" | Out-Null
@@ -120,7 +120,7 @@ node packages/cli/dist/index.js scan     # first read-only command
 node --version          # must be >= v22.12.0
 corepack enable pnpm    # or: npm install -g pnpm@10
 git clone https://github.com/CThawngs/Router-Sync.git
-cd routersync
+cd Router-Sync
 pnpm install --frozen-lockfile
 pnpm build
 mkdir -p ~/.config/routersync && cp ranking.example.yaml ~/.config/routersync/ranking.yaml
@@ -134,7 +134,7 @@ node packages/cli/dist/index.js scan     # first read-only command
 node --version          # must be >= v22.12.0
 corepack enable pnpm    # or: npm install -g pnpm@10
 git clone https://github.com/CThawngs/Router-Sync.git
-cd routersync
+cd Router-Sync
 pnpm install --frozen-lockfile
 pnpm build
 mkdir -p ~/.config/routersync && cp ranking.example.yaml ~/.config/routersync/ranking.yaml
@@ -372,7 +372,7 @@ trong `.nvmrc`, nên `corepack enable pnpm` sẽ chọn đúng phiên bản.
 node --version          # phải là >= v22.12.0
 corepack enable pnpm    # hoặc: npm install -g pnpm@10
 git clone https://github.com/CThawngs/Router-Sync.git
-cd routersync
+cd Router-Sync
 pnpm install --frozen-lockfile
 pnpm build
 New-Item -ItemType Directory -Force "$env:APPDATA\routersync" | Out-Null
@@ -387,7 +387,7 @@ node packages/cli/dist/index.js scan     # lệnh chỉ đọc đầu tiên
 node --version          # phải là >= v22.12.0
 corepack enable pnpm    # hoặc: npm install -g pnpm@10
 git clone https://github.com/CThawngs/Router-Sync.git
-cd routersync
+cd Router-Sync
 pnpm install --frozen-lockfile
 pnpm build
 mkdir -p ~/.config/routersync && cp ranking.example.yaml ~/.config/routersync/ranking.yaml
@@ -401,7 +401,7 @@ node packages/cli/dist/index.js scan     # lệnh chỉ đọc đầu tiên
 node --version          # phải là >= v22.12.0
 corepack enable pnpm    # hoặc: npm install -g pnpm@10
 git clone https://github.com/CThawngs/Router-Sync.git
-cd routersync
+cd Router-Sync
 pnpm install --frozen-lockfile
 pnpm build
 mkdir -p ~/.config/routersync && cp ranking.example.yaml ~/.config/routersync/ranking.yaml

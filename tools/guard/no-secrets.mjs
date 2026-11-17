@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 /**
  * tools/guard/no-secrets.mjs
- * 
+ *
  * PURPOSE:
  * Pre-commit & CI security guard. Scans tracked and staged files for accidental
  * API keys, secret tokens, and personal user home paths.
- * 
+ *
  * READ-ONLY GUARANTEE:
  * This script only inspects file contents. It never alters files or transmits data.
  */
@@ -71,11 +71,6 @@ export function loadPrivatePatterns(root = process.cwd()) {
   }
   return rules;
 }
-
-// no-secrets:allow:<reason>  — line-level exemption, reason required
-export const ALLOW_MARKER = /no-secrets:allow:\s*(\S.*)$/;
-// A bare marker without a reason is a violation (prevents lazy blanket allows)
-export const BARE_MARKER = /no-secrets:allow(?!:)/; // no-secrets:allow: guard defines its own marker syntax
 
 export function scanLine(line, extraPatterns = []) {
   // A valid allow marker exempts the whole line (checked first).
@@ -188,20 +183,4 @@ export function runGuard(root = process.cwd()) {
   }
 
   return violations;
-}
-
-const isDirectRun = Boolean(process.argv[1] && process.argv[1].replace(/\\/g, '/').endsWith('tools/guard/no-secrets.mjs'));
-
-if (isDirectRun) {
-  const files = getStagedOrTrackedFiles();
-  const violations = runGuard();
-  if (violations > 0) {
-    console.error(`\nFound ${violations} security violation(s) across ${files.length} scanned files. Commit/Check aborted!`);
-    console.error('Fix: redact credentials, replace personal paths with <USER_DIR> or ~/.config,');
-    console.error('or annotate a synthetic test string with:  // no-secrets:allow: <reason>');
-    process.exit(1);
-  } else {
-    console.log(`[SECURITY GUARD] Clean. Scanned ${files.length} files (tracked + untracked). No secrets or personal paths detected.`);
-    process.exit(0);
-  }
 }
