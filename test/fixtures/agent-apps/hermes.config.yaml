@@ -1,0 +1,20 @@
+model:
+  provider: 9router
+  default: 9Router-Coder-1
+  base_url: https://example.invalid/v1
+  context_length: 200000
+  models:
+    - id: 9Router-Coder-1
+      name: 9Router Coder 1
+    - id: 9Router-Agent-1
+      name: 9Router Agent 1
+custom_providers:
+  - name: example-direct
+    base_url: https://example.invalid/direct
+    api_key: <KEY>
+    model: example-model
+    models:
+      - id: example-model
+        name: Example Model
+agent:
+  max_turns: 20

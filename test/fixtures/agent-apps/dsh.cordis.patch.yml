@@ -1,0 +1,27 @@
+- id: agent-default-model
+  name: "@example/dsh-agent-default-model"
+  config:
+    provider: 9router
+    model: 9Router-Coder-1
+- id: llm-pi-ai
+  name: "@example/dsh-llm-pi-ai"
+  config:
+    providers:
+      "9router":
+        displayName: Router
+        apiKeyEnv: EXAMPLE_ROUTER_KEY
+        baseURL: https://example.invalid/v1
+        models:
+          - id: 9Router-Coder-1
+            name: 9Router Coder 1
+          - id: 9Router-Agent-1
+            name: 9Router Agent 1
+      "9router-backup":
+        apiKeyEnv: EXAMPLE_ROUTER_KEY_BACKUP
+        baseURL: https://example.invalid/v1
+        models:
+          - id: 9Router-Dev
+- id: llm-deepseek
+  name: "@example/dsh-llm-deepseek-api-key"
+  config:
+    models: []
