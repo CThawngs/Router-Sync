@@ -118,17 +118,39 @@ function providerKind(id: string, baseUrl: string | undefined): AgentAppProvider
   return 'unknown';
 }
 
-function firstRouterRef(providers: AgentAppProvider[], extra: Array<string | undefined>): AgentAppRouterRef {
-  for (const value of [...providers.map((p) => p.id), ...extra]) {
-    const ref = detectRouter(value);
+/** Router tham chiếu theo model đang dùng (provider + baseURL của entry active), không quét toàn bộ providers. */
+function activeRouterRef(
+  activeProvider: string | undefined,
+  activeBaseUrl: string | undefined
+): AgentAppRouterRef {
+  if (activeProvider) {
+    const ref = detectRouter(activeProvider);
     if (ref !== 'UNKNOWN') return ref;
+  }
+  if (activeBaseUrl) {
+    return detectRouter(activeBaseUrl);
   }
   return 'UNKNOWN';
 }
 
-function certaintyOf(models: AgentAppModel[], activeModel: string): AgentAppCertainty {
+/** activeModel (`provider/id`) có khớp một provider + model trong danh sách của app không? */
+function activeModelResolves(models: AgentAppModel[], activeModel: string): boolean {
+  if (activeModel === 'UNKNOWN') return false;
+  const slash = activeModel.indexOf('/');
+  const provider = slash === -1 ? activeModel : activeModel.slice(0, slash);
+  const id = slash === -1 ? '' : activeModel.slice(slash + 1);
+  return models.some((m) => m.provider === provider && m.id === id);
+}
+
+function certaintyOf(
+  models: AgentAppModel[],
+  activeModel: string,
+  resolveCheck: boolean
+): AgentAppCertainty {
   if (models.length === 0) return 'C';
-  return activeModel === 'UNKNOWN' ? 'B' : 'A';
+  if (activeModel === 'UNKNOWN') return 'B';
+  if (!resolveCheck) return 'B';
+  return 'A';
 }
 
 function baseInspection(app: string, configPath: string): Pick<AgentAppInspection, 'app' | 'configPath' | 'readOnly'> {
@@ -202,8 +224,17 @@ export const hermesAdapter: AgentAppAdapter = {
     const activeModel = activeRaw ? (providerId ? `${providerId}/${activeRaw}` : activeRaw) : 'UNKNOWN';
     if (!activeRaw) warnings.push('thiếu model.default — model đang dùng = UNKNOWN');
 
-    const routerRef = firstRouterRef(providers, [baseUrl]);
+    const routerRef = activeRouterRef(providerId, baseUrl);
     if (routerRef !== 'UNKNOWN') warnings.push(`app trỏ tới router ${routerRef}`);
+
+    const resolved = activeModelResolves(models, activeModel);
+    let certainty: AgentAppCertainty;
+    if (models.length === 0) certainty = 'C';
+    else if (activeModel === 'UNKNOWN') certainty = 'B';
+    else if (!resolved) {
+      certainty = 'B';
+      warnings.push('active-model-unresolved');
+    } else certainty = 'A';
 
     return {
       ...baseInspection('hermes', configPath),
@@ -212,7 +243,7 @@ export const hermesAdapter: AgentAppAdapter = {
       models,
       activeModel,
       routerRef,
-      certainty: certaintyOf(models, activeModel),
+      certainty,
       warnings,
     };
   },
@@ -327,8 +358,17 @@ export const dshAdapter: AgentAppAdapter = {
       });
     }
 
-    const routerRef = firstRouterRef(providers, [activeProvider]);
+    const routerRef = activeRouterRef(activeProvider, undefined);
     if (routerRef !== 'UNKNOWN') warnings.push(`app trỏ tới router ${routerRef}`);
+
+    const resolved = activeModelResolves(models, activeModel);
+    let certainty: AgentAppCertainty;
+    if (models.length === 0) certainty = 'C';
+    else if (activeModel === 'UNKNOWN') certainty = 'B';
+    else if (!resolved) {
+      certainty = 'B';
+      warnings.push('active-model-unresolved');
+    } else certainty = 'A';
 
     return {
       ...baseInspection('dsh', configPath),
@@ -337,7 +377,7 @@ export const dshAdapter: AgentAppAdapter = {
       models,
       activeModel,
       routerRef,
-      certainty: certaintyOf(models, activeModel),
+      certainty,
       warnings,
     };
   },
@@ -384,8 +424,25 @@ export const opencodeAdapter: AgentAppAdapter = {
     const activeModel = activeRaw ?? 'UNKNOWN';
     if (!activeRaw) warnings.push('không có trường model cấp 1 — model đang dùng = UNKNOWN');
 
-    const routerRef = firstRouterRef(providers, [activeRaw]);
+    // activeRaw dạng 'provider/id'; tách provider phần đầu để xác định routerRef.
+    const activeRawStr = activeRaw ?? '';
+    const slash = activeRawStr.indexOf('/');
+    const activeProvider = slash === -1 ? activeRawStr : activeRawStr.slice(0, slash);
+    const providerMap = asRecord(doc['provider']) ?? {};
+    const activeProviderRec = activeProvider ? asRecord(providerMap[activeProvider]) : undefined;
+    const activeBaseUrl = activeProviderRec ? str(asRecord(activeProviderRec['options'])?.['baseURL']) : undefined;
+
+    const routerRef = activeRouterRef(activeProvider, activeBaseUrl);
     if (routerRef !== 'UNKNOWN') warnings.push(`app trỏ tới router ${routerRef}`);
+
+    const resolved = activeModelResolves(models, activeModel);
+    let certainty: AgentAppCertainty;
+    if (models.length === 0) certainty = 'C';
+    else if (activeModel === 'UNKNOWN') certainty = 'B';
+    else if (!resolved) {
+      certainty = 'B';
+      warnings.push('active-model-unresolved');
+    } else certainty = 'A';
 
     return {
       ...baseInspection('opencode', configPath),
@@ -394,7 +451,7 @@ export const opencodeAdapter: AgentAppAdapter = {
       models,
       activeModel,
       routerRef,
-      certainty: certaintyOf(models, activeModel),
+      certainty,
       warnings,
     };
   },

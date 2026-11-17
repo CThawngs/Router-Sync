@@ -66,6 +66,7 @@ import {
   runAgentsUpdateCommand,
 } from './commands/agents.js';
 import { runAppsInspectCommand } from './commands/apps.js';
+import { runAppsDriftCommand } from './commands/drift.js';
 import { installConfiguredRouterDbPaths } from './config/loader.js';
 
 // Enforce Node.js >= 22.0.0 on startup (Condition A7 / AT-100)
@@ -927,6 +928,24 @@ export function createCliProgram(): Command {
     .action(async (opts: { app?: string; home?: string; config?: string; json?: boolean }) => {
       await runAppsInspectCommand({
         app: opts.app,
+        home: opts.home,
+        config: opts.config,
+        json: opts.json,
+      });
+    });
+
+  appsCmd
+    .command('drift')
+    .description('Đối chiếu model app agent với trạng thái router (chỉ đọc)')
+    .option('--app <app>', 'Target app (hermes, dsh, opencode)')
+    .option('--router <router>', 'Router để đối chiếu (9router, omniroute)')
+    .option('--home <dir>', 'Custom user home directory')
+    .option('-c, --config <path>', 'routersync.yaml hoặc config app (single app only)')
+    .option('--json', 'Output results in JSON format')
+    .action(async (opts: { app?: string; router?: string; home?: string; config?: string; json?: boolean }) => {
+      await runAppsDriftCommand({
+        app: opts.app,
+        router: opts.router,
         home: opts.home,
         config: opts.config,
         json: opts.json,
