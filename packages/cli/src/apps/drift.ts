@@ -108,6 +108,15 @@ export function zeroTotals(): Record<DriftStatus, number> {
   return { OK: 0, DISABLED: 0, MISSING: 0, UNKNOWN: 0, 'NOT-ROUTED': 0 };
 }
 
+/** Tính tổng các trạng thái từ danh sách entries (chỉ dùng để kiểm tra mutation). */
+export function computeTotalsFromEntries(entries: DriftEntry[]): Record<DriftStatus, number> {
+  const totals: Record<DriftStatus, number> = zeroTotals();
+  for (const e of entries) {
+    totals[e.status] = (totals[e.status] || 0) + 1;
+  }
+  return totals;
+}
+
 /** Ánh xạ provider của app sang router. Mỗi provider chỉ thuộc TỐI ĐA 1 router. */
 export function providerToRouter(
   providerId: string,

@@ -24,6 +24,7 @@ import {
   ProviderRedactor,
   checkIdFormatMismatch,
   zeroTotals,
+  computeTotalsFromEntries,
 } from '../src/apps/drift.js';
 
 const provider = (id: string): AgentAppProvider => ({ id, kind: 'router' as const, baseUrlPresent: false, keyPresent: false });
@@ -339,5 +340,21 @@ describe('driftKindOf', () => {
     expect(driftKindOf('rs-coder', comboNames, aliasNames)).toBe('combo');
     expect(driftKindOf('auto/coding', comboNames, aliasNames)).toBe('alias');
     expect(driftKindOf('9Router-Coder-1', comboNames, aliasNames)).toBe('model');
+  });
+});
+
+// Mutation test H0: tổng các trạng thái phải bằng tổng số model app liệt kê
+// Đột biến: bỏ "+ 1" trong `computeTotalsFromEntries` nên test này phải ĐỎ.
+describe('totals assertion mutation', () => {
+  it('tổng các trạng thái bằng tổng số model app liệt kê', () => {
+    const entries = [
+      { app: 'hermes', router: '9router', name: '9router/A', modelId: 'A', provider: '9router', kind: 'model', status: 'OK', reason: 'ok', inCombo: false },
+      { app: 'hermes', router: '9router', name: '9router/Z', modelId: 'Z', provider: '9router', kind: 'model', status: 'MISSING', reason: 'missing', inCombo: false },
+      { app: 'dsh', router: 'omniroute', name: 'omniroute/X', modelId: 'X', provider: 'omniroute', kind: 'model', status: 'OK', reason: 'ok', inCombo: false },
+    ];
+
+    const totals = computeTotalsFromEntries(entries);
+    const totalStatusModels = Object.values(totals).reduce((a: number, b: number) => a + b, 0);
+    expect(totalStatusModels).toBe(3);
   });
 });

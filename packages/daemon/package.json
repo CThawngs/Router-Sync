@@ -1,6 +1,6 @@
 {
   "name": "@routersync/daemon",
-  "version": "0.0.1-prealpha",
+  "version": "0.1.0",
   "description": "RouterSync read-only background daemon (S1 slice)",
   "license": "MIT",
   "author": "CThawngs",

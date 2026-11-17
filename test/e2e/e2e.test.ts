@@ -296,7 +296,7 @@ afterAll(async () => {
 describe('E2E - the installed package works end to end', () => {
   it('prints version and help from the installed CLI', () => {
     const version = cli(['--version']);
-    expect(version.stdout + version.stderr).toMatch(/0\.0\.1-prealpha/);
+    expect(version.stdout + version.stderr).toMatch(/0\.1\.0/);
 
     const help = cli(['--help']);
     expect(help.stdout).toMatch(/scan/);

@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.0] - 2026-11-17
+
+First release candidate. Read-only surface is stable.
+
+### Added
+- **`routersync apps inspect`:** read-only view of provider/model configuration for Hermes Agent, DSH Desktop, OpenCode. No write flag by design.
+- **`routersync apps drift`:** read-only drift detection between app agent model lists and router state (OK/DISABLED/MISSING/UNKNOWN/NOT-ROUTED). EXPERIMENTAL: OmniRoute read-back not yet verified; combo names not yet traced.
+- **Agent app inspection contract:** `AgentAppInspection` type in `@routersync/adapter-sdk` with certainty tiers (A/B/C), boolean-only secret exposure (`baseUrlPresent`/`keyPresent`), and error codes (`ENOENT`/`PARSE`/`TOO_LARGE`/`UNSUPPORTED`).
+- **Adapter for Hermes Agent, DSH Desktop, OpenCode:** synthetic fixtures (`<KEY>`, `https://example.invalid`), 21 contract tests including fake-key leak protection.
+- **BOM handling:** UTF-8 BOM stripped before JSON/YAML/TOML parse (fixes Cursor `mcp.json` parse error).
+
+### Changed
+- All package versions: `0.0.1-prealpha` → `0.1.0`.
+
 ## [0.0.1-prealpha] - 2026-11-13
 
 The first published shape of RouterSync. Pre-alpha: the read-only surface is
