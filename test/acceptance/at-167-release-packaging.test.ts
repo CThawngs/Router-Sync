@@ -29,7 +29,7 @@ describe('AT-167: Release Packaging & Final Completion (v0.1.0-prealpha)', () =>
       env: { ...process.env, ROUTERSYNC_NODE_CHECK: 'skip' },
     });
     expect(output.trim()).toBe(cliPkg.version);
-    expect(output.trim()).toBe('0.0.1-prealpha');
+    expect(output.trim()).toBe('0.1.0');
   });
 
   it('validates MCP server binary entrypoint and executable shebang', () => {
