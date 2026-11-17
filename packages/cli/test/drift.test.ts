@@ -269,18 +269,18 @@ describe('shouldRedactProvider + ProviderRedactor', () => {
   it('provider không có trong cả hai ⇒ bị redact', () => {
     const pub = new Set(['9router']);
     const local = new Set<string>();
-    expect(shouldRedactProvider('xkiro', pub, local)).toBe(true);
-    expect(shouldRedactProvider('tokenharbor', pub, local)).toBe(true);
+    expect(shouldRedactProvider('acme-gateway', pub, local)).toBe(true);
+    expect(shouldRedactProvider('beta-gateway', pub, local)).toBe(true);
   });
 
   it('ProviderRedactor gán số thứ tự duy nhất', () => {
     const redactor = new ProviderRedactor();
-    const r1 = redactor.redact('xkiro');
-    const r2 = redactor.redact('tokenharbor');
-    const r3 = redactor.redact('xkiro'); // cùng provider ⇒ cùng mã
+    const r1 = redactor.redact('acme-gateway');
+    const r2 = redactor.redact('beta-gateway');
+    const r3 = redactor.redact('acme-gateway'); // cùng provider ⇒ cùng mã
     expect(r1).toBe('<private-provider-1>');
     expect(r2).toBe('<private-provider-2>');
-    expect(r3).toBe(r1); // xkiro lại được mã cũ
+    expect(r3).toBe(r1); // acme-gateway lại được mã cũ
   });
 });
 
