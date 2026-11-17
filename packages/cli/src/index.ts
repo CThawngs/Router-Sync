@@ -65,6 +65,7 @@ import {
   runAgentsRollbackCommand,
   runAgentsUpdateCommand,
 } from './commands/agents.js';
+import { runAppsInspectCommand } from './commands/apps.js';
 import { installConfiguredRouterDbPaths } from './config/loader.js';
 
 // Enforce Node.js >= 22.0.0 on startup (Condition A7 / AT-100)
@@ -910,6 +911,27 @@ export function createCliProgram(): Command {
         });
       }
     );
+
+  // apps command group — read-only agent app inspection (no write flag)
+  const appsCmd = program
+    .command('apps')
+    .description('Inspect agent app configuration (read-only)');
+
+  appsCmd
+    .command('inspect')
+    .description('Read provider/model configuration of supported agent apps')
+    .option('--app <app>', 'Target app (hermes, dsh, opencode)')
+    .option('--home <dir>', 'Custom user home directory')
+    .option('-c, --config <path>', 'Explicit config file (single app only)')
+    .option('--json', 'Output results in JSON format')
+    .action(async (opts: { app?: string; home?: string; config?: string; json?: boolean }) => {
+      await runAppsInspectCommand({
+        app: opts.app,
+        home: opts.home,
+        config: opts.config,
+        json: opts.json,
+      });
+    });
 
   // agents command group (Agent Configuration Management / Condition AGENT-WRITE-01)
   const agentsCmd = program

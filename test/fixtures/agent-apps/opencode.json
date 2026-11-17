@@ -1,0 +1,26 @@
+{
+  "$schema": "https://example.invalid/opencode.schema.json",
+  "provider": {
+    "9router": {
+      "npm": "@example/provider",
+      "name": "Router",
+      "options": {
+        "baseURL": "https://example.invalid/v1",
+        "apiKey": "<KEY>",
+        "timeout": 600000
+      },
+      "models": {
+        "9Router-Coder-1": { "name": "9Router Coder 1" },
+        "9Router-Agent-1": { "name": "9Router Agent 1" }
+      }
+    },
+    "example-provider": {
+      "options": {
+        "baseURL": "https://example.invalid/direct"
+      },
+      "models": {
+        "example-model": { "name": "Example Model" }
+      }
+    }
+  }
+}
