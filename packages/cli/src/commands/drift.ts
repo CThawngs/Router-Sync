@@ -1,12 +1,13 @@
 /**
  * packages/cli/src/commands/drift.ts
  *
- * `routersync apps drift` ΓÇö ─æß╗æi chiß║┐u model trong app agent vß╗¢i trß║íng th├íi router
- * (chß╗ë ─æß╗ìc, kh├┤ng ghi).
+ * `routersync apps drift` — đối chiếu model trong app agent với trạng thái router
+ * (chỉ đọc, không ghi).
  */
 
 import * as os from 'node:os';
-import type { AgentAppInspection } from '@routersync/adapter-sdk';
+import type { AgentAppInspection, AgentAppRouterRef } from '@routersync/adapter-sdk';
+import type { DriftStatus, DriftResult, DriftEntry } from '../apps/drift.js';
 import type { RouterConfig } from '../config/schema.js';
 import {
   loadConfigFile,
@@ -21,11 +22,19 @@ import {
 import {
   buildRouterView,
   buildDriftReport,
-  classifyAppDrift,
+  classifyModelDrift,
   DRIFT_STATUSES,
   inspectAppDrift,
+  loadLocalProviderAllowlist,
+  getPublicProviderRegistry,
+  ProviderRedactor,
+  providerToRouter,
+  shouldRedactProvider,
+  stripProviderPrefix,
+  zeroTotals,
+  computeTotalsFromEntries,
   renderDriftTable,
-  type DriftResult,
+  type DriftReport,
   type RouterDriftView,
 } from '../apps/drift.js';
 
@@ -35,17 +44,16 @@ export interface AppsDriftOptions {
   json?: boolean | undefined;
   home?: string | undefined;
   config?: string | undefined;
+  redact?: boolean | undefined;
 }
 
 async function loadRouterViews(options: AppsDriftOptions): Promise<RouterDriftView[]> {
-  // preAction hook ─æ├ú gß╗ìi installConfiguredRouterDbPaths; tß║úi config ─æß╗â biß║┐t danh s├ích routers.
   const configPath = resolveConfigFilePath(options.config);
   let routers: RouterConfig[] = [];
   try {
     const { config } = loadConfigFile(configPath);
     routers = config.routers;
   } catch {
-    // Kh├┤ng c├│ config hß╗úp lß╗ç ΓçÆ kh├┤ng ─æß╗ìc ─æ╞░ß╗úc router, trß║ú view rß╗ùng (tß║Ñt cß║ú UNKNOWN handled ß╗ƒ caller).
     return [];
   }
 
@@ -55,11 +63,11 @@ async function loadRouterViews(options: AppsDriftOptions): Promise<RouterDriftVi
     if (wanted && router.adapter !== wanted) continue;
     try {
       const adapter = createAdapterForRouter(router);
-      const [catalog, combos] = await Promise.all([adapter.readCatalog(), adapter.readCombos()]);
-      views.push(buildRouterView(router.adapter, catalog, combos));
+      const combos = await adapter.readCombos();
+      const view = await buildRouterView(router.adapter, combos);
+      views.push(view);
     } catch {
-      // Router kh├┤ng ─æß╗ìc ─æ╞░ß╗úc ΓçÆ b├ío UNKNOWN cho c├íc entry cß╗ºa router n├áy (xß╗¡ l├╜ ß╗ƒ caller qua view rß╗ùng).
-      views.push({ router: router.adapter, catalogIds: new Set(), comboNames: new Set(), aliasNames: new Set() });
+      views.push({ router: router.adapter, state: undefined, error: 'không đọc được router', comboNames: new Set(), aliasNames: new Set(), availableIds: new Set(), disabledIds: new Set(), comboIds: new Set() });
     }
   }
   return views;
@@ -79,63 +87,265 @@ async function inspectSelectedApps(options: AppsDriftOptions): Promise<AgentAppI
       });
       inspections.push(inspection);
     } catch {
-      // App kh├┤ng ─æß╗ìc ─æ╞░ß╗úc ΓçÆ bß╗Å qua (kh├┤ng c├│ model ─æß╗â ─æß╗æi chiß║┐u).
+      // App không đọc được ⇒ bỏ qua.
     }
   }
   return inspections;
 }
 
 export async function runAppsDriftCommand(options: AppsDriftOptions = {}): Promise<void> {
+  const redact = options.redact !== false; // mặc định bật
   const views = await loadRouterViews(options);
   const inspections = await inspectSelectedApps(options);
 
-  const results: Array<{ app: string; result: DriftResult }> = [];
+  const publicRegistry = getPublicProviderRegistry();
+  const localAllowlist = loadLocalProviderAllowlist();
+  const redactor = new ProviderRedactor();
+
+  // Thu thập tất cả model của app (để kiểm tra tổng kết sau này)
+  const allAppModels: Array<{ app: string; provider: string; modelId: string; routerRef: AgentAppRouterRef }> = [];
   for (const inspection of inspections) {
-    for (const view of views) {
-      results.push({
+    for (const model of inspection.models) {
+      const routerRef = providerToRouter(model.provider);
+      allAppModels.push({
         app: inspection.app,
-        result: classifyAppDrift(inspection.app, inspection, view),
+        provider: model.provider,
+        modelId: stripProviderPrefix(`${model.provider}/${model.id}`),
+        routerRef,
       });
     }
   }
 
-  // Nß║┐u kh├┤ng c├│ router view n├áo (config thiß║┐u/lß╗ùi), ─æ├ính gi├í UNKNOWN cho mß╗ìi model router.
+  // Nhóm model theo (app, router) pair
+  // Model có routerRef = 'UNKNOWN' (provider trực tiếp) ⇒ NOT-ROUTED
+  const notRoutedByApp: Map<string, Array<{ provider: string; modelId: string }>> = new Map();
+  const routedByAppRouter: Map<string, Map<string, Array<{ provider: string; modelId: string }>>> = new Map();
+
+  for (const m of allAppModels) {
+    if (m.routerRef === 'UNKNOWN') {
+      let arr = notRoutedByApp.get(m.app);
+      if (!arr) {
+        arr = [];
+        notRoutedByApp.set(m.app, arr);
+      }
+      arr.push({ provider: m.provider, modelId: m.modelId });
+    } else {
+      let byRouter = routedByAppRouter.get(m.app);
+      if (!byRouter) {
+        byRouter = new Map();
+        routedByAppRouter.set(m.app, byRouter);
+      }
+      let arr = byRouter.get(m.routerRef);
+      if (!arr) {
+        arr = [];
+        byRouter.set(m.routerRef, arr);
+      }
+      arr.push({ provider: m.provider, modelId: m.modelId });
+    }
+  }
+
+  const results: Array<{ app: string; result: DriftResult }> = [];
+
+  // Xử lý từng (app, router) pair
+  for (const [app, byRouter] of routedByAppRouter) {
+    for (const [routerRef, models] of byRouter) {
+      const view = views.find(v => v.router === routerRef);
+      if (!view) continue;
+
+      const entries: DriftEntry[] = [];
+      const totals: Record<DriftStatus, number> = { OK: 0, DISABLED: 0, MISSING: 0, UNKNOWN: 0, 'NOT-ROUTED': 0 };
+
+      for (const m of models) {
+        const provider = shouldRedactProvider(m.provider, publicRegistry, localAllowlist)
+          ? redactor.redact(m.provider)
+          : m.provider;
+
+        const classified = classifyModelDrift(`${m.provider}/${m.modelId}`, m.provider, view);
+        const entry: DriftEntry = {
+          app,
+          router: view.router,
+          name: classified.entry.name,
+          modelId: classified.entry.modelId,
+          provider,
+          kind: classified.entry.kind,
+          status: classified.entry.status,
+          reason: classified.entry.reason,
+          inCombo: classified.entry.inCombo,
+        };
+        entries.push(entry);
+      }
+
+      // Tính tổng từ các entries (thay vì tăng dần mỗi entry)
+      Object.assign(totals, computeTotalsFromEntries(entries));
+
+      if (entries.length > 0) {
+        results.push({
+          app,
+          result: {
+            app,
+            router: routerRef,
+            entries,
+            totals: totals as Record<DriftStatus, number>,
+          },
+        });
+      }
+    }
+  }
+
+  // Thêm NOT-ROUTED entries cho provider trực tiếp
+  if (notRoutedByApp.size > 0) {
+    for (const [app, models] of notRoutedByApp) {
+      const entries: DriftEntry[] = [];
+      const totals: Record<DriftStatus, number> = { OK: 0, DISABLED: 0, MISSING: 0, UNKNOWN: 0, 'NOT-ROUTED': 0 };
+
+      // Gộp tất cả NOT-ROUTED theo provider
+      const notRoutedByProvider: Map<string, { count: number; modelIds: string[] }> = new Map();
+      for (const m of models) {
+        let entry = notRoutedByProvider.get(m.provider);
+        if (!entry) {
+          entry = { count: 0, modelIds: [] };
+          notRoutedByProvider.set(m.provider, entry);
+        }
+        entry.count++;
+        entry.modelIds.push(m.modelId);
+      }
+
+      // Tạo một entry tổng hợp cho mỗi provider NOT-ROUTED
+      for (const [provider, info] of notRoutedByProvider) {
+        const redactedProvider = shouldRedactProvider(provider, publicRegistry, localAllowlist)
+          ? redactor.redact(provider)
+          : provider;
+
+        // Chỉ hiển thị 3 model ID đầu tiên làm ví dụ
+        const exampleIds = info.modelIds.slice(0, 3);
+        const exampleNames = exampleIds.map(id => `${provider}/${id}`).join(', ');
+        const more = info.count > 3 ? ` +${info.count - 3} models` : '';
+
+        entries.push({
+          app,
+          router: 'UNKNOWN',
+          name: `${redactedProvider}/${exampleNames}${more}`,
+          modelId: exampleIds[0] ?? '',
+          provider: redactedProvider,
+          kind: 'NOT-ROUTED',
+          status: 'NOT-ROUTED',
+          reason: 'provider trực tiếp, không qua router',
+          inCombo: false,
+        });
+        totals['NOT-ROUTED'] += info.count;
+      }
+
+      if (entries.length > 0) {
+        results.push({
+          app,
+          result: {
+            app,
+            router: 'UNKNOWN',
+            entries,
+            totals: totals as Record<DriftStatus, number>,
+          },
+        });
+      }
+    }
+  }
+
+  // Nếu không có router view nào, đánh giá UNKNOWN cho mọi model router
   if (views.length === 0) {
     for (const inspection of inspections) {
-      for (const adapter of AGENT_APP_ADAPTERS) {
-        if (adapter.app !== inspection.app) continue;
-        const entries = inspection.models.map((m) => ({
-          app: inspection.app,
-          router: 'UNKNOWN',
-          name: `${m.provider}/${m.id}`,
-          modelId: m.id,
-          kind: 'model' as const,
-          status: 'UNKNOWN' as const,
-          reason: 'kh├┤ng ─æß╗ìc ─æ╞░ß╗úc router',
-        }));
+      const entries: DriftEntry[] = [];
+      const totals: Record<DriftStatus, number> = { OK: 0, DISABLED: 0, MISSING: 0, UNKNOWN: 0, 'NOT-ROUTED': 0 };
+      for (const model of inspection.models) {
+        const routerRef = providerToRouter(model.provider);
+        if (routerRef === 'UNKNOWN') {
+          entries.push({
+            app: inspection.app,
+            router: 'UNKNOWN',
+            name: `${model.provider}/${model.id}`,
+            modelId: stripProviderPrefix(`${model.provider}/${model.id}`),
+            provider: model.provider,
+            kind: 'NOT-ROUTED',
+            status: 'NOT-ROUTED',
+            reason: 'provider trực tiếp, không qua router',
+            inCombo: false,
+          });
+          totals['NOT-ROUTED']++;
+        } else {
+          entries.push({
+            app: inspection.app,
+            router: routerRef,
+            name: `${model.provider}/${model.id}`,
+            modelId: stripProviderPrefix(`${model.provider}/${model.id}`),
+            provider: model.provider,
+            kind: 'model',
+            status: 'UNKNOWN',
+            reason: 'không đọc được router',
+            inCombo: false,
+          });
+          totals.UNKNOWN++;
+        }
+      }
+      if (entries.length > 0) {
         results.push({
           app: inspection.app,
           result: {
             app: inspection.app,
             router: 'UNKNOWN',
             entries,
-            totals: { OK: 0, DISABLED: 0, MISSING: 0, UNKNOWN: entries.length, 'NOT-ROUTED': 0 },
+            totals: totals as Record<DriftStatus, number>,
           },
         });
       }
-      break;
+    }
+  }
+
+  // Kiểm tra tổng kết: tổng các trạng thái phải bằng tổng số model app liệt kê
+  let totalAppModels = allAppModels.length;
+  const reportTotals: Record<DriftStatus, number> = { OK: 0, DISABLED: 0, MISSING: 0, UNKNOWN: 0, 'NOT-ROUTED': 0 };
+  for (const r of results) {
+    for (const s of DRIFT_STATUSES) reportTotals[s] += r.result.totals[s];
+  }
+  const assertionPass = totalAppModels === Object.values(reportTotals).reduce((a: number, b: number) => a + b, 0);
+
+  // Thu thập tập provider đang kết nối (được app tham chiếu và map tới router)
+  const connectedProviders = new Set<string>();
+  for (const m of allAppModels) {
+    if (m.routerRef !== 'UNKNOWN') {
+      connectedProviders.add(m.provider);
     }
   }
 
   const report = buildDriftReport(
     results.map((x) => x.result),
-    views
+    views,
+    redactor,
+    publicRegistry,
+    localAllowlist,
+    connectedProviders
   );
 
   if (options.json) {
-    process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
+    const totalStatusModels = Object.values(reportTotals).reduce((a: number, b: number) => a + b, 0);
+    const jsonOut = {
+      ...report,
+      assertion: { totalAppModels, totalStatusModels, pass: assertionPass },
+    };
+    process.stdout.write(`${JSON.stringify(jsonOut, null, 2)}\n`);
     return;
   }
 
+  // In biểu ngữ EXPERIMENTAL trên tất cả các dòng đầu ra
+  process.stdout.write(
+    `EXPERIMENTAL: kết quả chưa đáng tin (OmniRoute chưa đọc được combo; tên combo chưa tra).\n` +
+    `Không nhắc nó như tính năng ổn định.\n`
+  );
+
   process.stdout.write(`${renderDriftTable(report)}\n`);
+
+  // In thông tin assertion (không gây fail nếu không pass, chỉ cảnh báo)
+  if (!assertionPass) {
+    const totalStatusModels = Object.values(reportTotals).reduce((a: number, b: number) => a + b, 0);
+    process.stderr.write(
+      `CẢNH BÁO: Tổng số trạng thái (${totalStatusModels}) ≠ tổng số model app (${totalAppModels}). Có thể có model bị bỏ qua.\n`
+    );
+  }
 }
