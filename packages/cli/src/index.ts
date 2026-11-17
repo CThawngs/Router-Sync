@@ -941,13 +941,16 @@ export function createCliProgram(): Command {
     .option('--router <router>', 'Router để đối chiếu (9router, omniroute)')
     .option('--home <dir>', 'Custom user home directory')
     .option('-c, --config <path>', 'routersync.yaml hoặc config app (single app only)')
+    .option('--redact', 'Che tên provider không public (mặc định bật khi ghi tệp)')
+    .option('--no-redact', 'Tắt che tên provider')
     .option('--json', 'Output results in JSON format')
-    .action(async (opts: { app?: string; router?: string; home?: string; config?: string; json?: boolean }) => {
+    .action(async (opts: { app?: string; router?: string; home?: string; config?: string; redact?: boolean; json?: boolean }) => {
       await runAppsDriftCommand({
         app: opts.app,
         router: opts.router,
         home: opts.home,
         config: opts.config,
+        redact: opts.redact,
         json: opts.json,
       });
     });
