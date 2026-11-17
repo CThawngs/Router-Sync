@@ -23,6 +23,7 @@ import {
   type RouterDriftView,
   ProviderRedactor,
   checkIdFormatMismatch,
+  zeroTotals,
 } from '../src/apps/drift.js';
 
 const provider = (id: string): AgentAppProvider => ({ id, kind: 'router' as const, baseUrlPresent: false, keyPresent: false });
@@ -69,6 +70,9 @@ const viewFromState = (router: string, state: any): RouterDriftView => ({
   error: undefined,
   comboNames: new Set<string>(),
   aliasNames: new Set<string>(),
+  availableIds: new Set([...state.availableModels].flatMap(id => [id, ...(id.includes('/') ? [id.slice(id.indexOf('/') + 1)] : [])])),
+  disabledIds: new Set([...state.disabledModels].flatMap(id => [id, ...(id.includes('/') ? [id.slice(id.indexOf('/') + 1)] : [])])),
+  comboIds: new Set([...state.comboModels].flatMap(id => [id, ...(id.includes('/') ? [id.slice(id.indexOf('/') + 1)] : [])])),
 });
 
 const inspection = (app: string, models: AgentAppModel[], providers: AgentAppProvider[]) => ({
@@ -148,8 +152,8 @@ describe('classifyModelDrift', () => {
     expect(result.entry.status).toBe('UNKNOWN');
   });
 
-  it('NOT-ROUTED khi không đọc được router (state undefined)', () => {
-    const view: RouterDriftView = { router: '9router', state: undefined, error: 'db locked', comboNames: new Set(), aliasNames: new Set() };
+  it('UNKNOWN khi không đọc được router (state undefined)', () => {
+    const view: RouterDriftView = { router: '9router', state: undefined, error: 'db locked', comboNames: new Set(), aliasNames: new Set(), availableIds: new Set(), disabledIds: new Set(), comboIds: new Set() };
     const result = classifyModelDrift('9router/9Router-Coder-1', '9router', view);
     expect(result.entry.status).toBe('UNKNOWN');
     expect(result.entry.reason).toContain('không đọc được router');
@@ -180,20 +184,26 @@ describe('buildRouterView', () => {
 });
 
 describe('buildDriftReport', () => {
-  it('tính tổng và UNUSED', () => {
+  it('tính tổng và UNUSED (chỉ provider đã kết nối)', () => {
     const view9: RouterDriftView = {
       router: '9router',
-      state: mockState([], [], ['A', 'B', 'C']),
+      state: mockState([], [], ['9router/A', '9router/B', '9router/C']),
       error: undefined,
       comboNames: new Set(['rs-coder']),
       aliasNames: new Set(),
+      availableIds: new Set(['9router/A', 'A', '9router/B', 'B', '9router/C', 'C']),
+      disabledIds: new Set(),
+      comboIds: new Set(['rs-coder']),
     };
     const viewOmni: RouterDriftView = {
       router: 'omniroute',
-      state: mockState([], [], ['X']),
+      state: mockState([], [], ['omniroute/X']),
       error: undefined,
       comboNames: new Set(),
       aliasNames: new Set(),
+      availableIds: new Set(['omniroute/X', 'X']),
+      disabledIds: new Set(),
+      comboIds: new Set(),
     };
 
     // Tạo results thủ công
@@ -201,8 +211,8 @@ describe('buildDriftReport', () => {
       app: 'hermes',
       router: '9router',
       entries: [
-        { app: 'hermes', router: '9router', name: '9router/A', modelId: 'A', provider: '9router', kind: 'model', status: 'OK', reason: 'ok' },
-        { app: 'hermes', router: '9router', name: '9router/Z', modelId: 'Z', provider: '9router', kind: 'model', status: 'MISSING', reason: 'missing' },
+        { app: 'hermes', router: '9router', name: '9router/A', modelId: 'A', provider: '9router', kind: 'model', status: 'OK', reason: 'ok', inCombo: false },
+        { app: 'hermes', router: '9router', name: '9router/Z', modelId: 'Z', provider: '9router', kind: 'model', status: 'MISSING', reason: 'missing', inCombo: false },
       ],
       totals: { OK: 1, DISABLED: 0, MISSING: 1, UNKNOWN: 0, 'NOT-ROUTED': 0 },
     };
@@ -210,19 +220,22 @@ describe('buildDriftReport', () => {
       app: 'dsh',
       router: 'omniroute',
       entries: [
-        { app: 'dsh', router: 'omniroute', name: 'omniroute/X', modelId: 'X', provider: 'omniroute', kind: 'model', status: 'OK', reason: 'ok' },
+        { app: 'dsh', router: 'omniroute', name: 'omniroute/X', modelId: 'X', provider: 'omniroute', kind: 'model', status: 'OK', reason: 'ok', inCombo: false },
       ],
       totals: { OK: 1, DISABLED: 0, MISSING: 0, UNKNOWN: 0, 'NOT-ROUTED': 0 },
     };
 
-    const report = buildDriftReport([r1, r2], [view9, viewOmni], new ProviderRedactor(), new Set(), new Set());
+    // Chỉ 9router là provider đã kết nối (app hermes tham chiếu)
+    const connectedProviders = new Set(['9router']);
+    const report = buildDriftReport([r1, r2], [view9, viewOmni], new ProviderRedactor(), new Set(), new Set(), connectedProviders);
     expect(report.totals.OK).toBe(2);
     expect(report.totals.MISSING).toBe(1);
-    // B, C không được dùng bởi bất kỳ app nào ⇒ UNUSED
+    // B, C trong availableModels của 9router nhưng không được app tham chiếu ⇒ UNUSED
     const unusedNames = report.unused.map((u) => u.name);
     expect(unusedNames).toContain('B');
     expect(unusedNames).toContain('C');
     expect(unusedNames).not.toContain('A');
+    // X từ omniroute không phải connected provider ⇒ không trong UNUSED
     expect(unusedNames).not.toContain('X');
   });
 });
@@ -276,7 +289,7 @@ describe('checkIdFormatMismatch', () => {
       app: 'hermes',
       router: '9router',
       entries: [
-        { app: 'hermes', router: '9router', name: '9router/A', modelId: 'A', provider: '9router', kind: 'model', status: 'OK', reason: 'ok' },
+        { app: 'hermes', router: '9router', name: '9router/A', modelId: 'A', provider: '9router', kind: 'model', status: 'OK', reason: 'ok', inCombo: false },
       ],
       totals: { OK: 1, DISABLED: 0, MISSING: 0, UNKNOWN: 0, 'NOT-ROUTED': 0 },
     };
@@ -286,17 +299,20 @@ describe('checkIdFormatMismatch', () => {
       error: undefined,
       comboNames: new Set(),
       aliasNames: new Set(),
+      availableIds: new Set(['A']),
+      disabledIds: new Set(),
+      comboIds: new Set(),
     };
     const result = checkIdFormatMismatch([r1], [view]);
     expect(result.suspected).toBe(false);
   });
 
-  it('suspected khi catalog > 0 nhưng 0 khớp', () => {
+  it('suspected khi availableModels > 0 nhưng 0 khớp', () => {
     const r1: import('../src/apps/drift.js').DriftResult = {
       app: 'hermes',
       router: '9router',
       entries: [
-        { app: 'hermes', router: '9router', name: '9router/Z', modelId: 'Z', provider: '9router', kind: 'model', status: 'MISSING', reason: 'missing' },
+        { app: 'hermes', router: '9router', name: '9router/Z', modelId: 'Z', provider: '9router', kind: 'model', status: 'MISSING', reason: 'missing', inCombo: false },
       ],
       totals: { OK: 0, DISABLED: 0, MISSING: 1, UNKNOWN: 0, 'NOT-ROUTED': 0 },
     };
@@ -306,6 +322,9 @@ describe('checkIdFormatMismatch', () => {
       error: undefined,
       comboNames: new Set(),
       aliasNames: new Set(),
+      availableIds: new Set(['A', 'B']),
+      disabledIds: new Set(),
+      comboIds: new Set(),
     };
     const result = checkIdFormatMismatch([r1], [view]);
     expect(result.suspected).toBe(true);
