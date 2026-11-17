@@ -1,6 +1,6 @@
 {
   "name": "@routersync/adapter-omniroute",
-  "version": "0.0.1-prealpha",
+  "version": "0.1.0",
   "description": "Tier 3 SQLite and Health Adapter for OmniRoute",
   "license": "MIT",
   "author": "CThawngs",

@@ -1,6 +1,6 @@
 {
   "name": "@routersync/adapter-sdk",
-  "version": "0.0.1-prealpha",
+  "version": "0.1.0",
   "description": "Standardized contracts and interfaces for RouterSync adapters",
   "license": "MIT",
   "author": "CThawngs",

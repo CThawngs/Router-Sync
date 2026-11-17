@@ -1,6 +1,6 @@
 {
   "name": "@routersync/sources",
-  "version": "0.0.1-prealpha",
+  "version": "0.1.0",
   "description": "Public catalog sources (OpenRouter, LiteLLM) for RouterSync",
   "license": "MIT",
   "author": "CThawngs",

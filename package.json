@@ -1,6 +1,6 @@
 {
   "name": "routersync",
-  "version": "0.0.1-prealpha",
+  "version": "0.1.0",
   "description": "Keeps model lists and combos in sync across LLM routers, agent tools, and providers",
   "license": "MIT",
   "author": "CThawngs",

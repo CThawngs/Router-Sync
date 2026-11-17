@@ -13,7 +13,7 @@
 > providers. Local-first, human-approved, zero inference tokens.
 
 > [!WARNING]
-> **Pre-alpha (`0.0.1-prealpha`).** The read-only surface is the stable part:
+> **`0.1.0`.** The read-only surface is the stable part:
 > scanning, planning, ranking preview, verification and the daemon. Every
 > write command refuses to run without an interactive TTY and the confirmation
 > word it prints in `--help`, so a pipe or a CI job cannot approve a write.

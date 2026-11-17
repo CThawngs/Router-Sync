@@ -1,6 +1,6 @@
 {
   "name": "@routersync/core",
-  "version": "0.0.1-prealpha",
+  "version": "0.1.0",
   "description": "Core domain logic, planner, invariants, and safe applier for RouterSync",
   "license": "MIT",
   "author": "CThawngs",

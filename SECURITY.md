@@ -4,9 +4,9 @@
 
 | Version | Supported |
 |---|---|
-| Pre-alpha / Phase 0 | :x: None yet |
+| `0.1.0` | :white_check_mark: Read-only surface (scan, drift, inspect). Write commands require interactive confirmation. |
 
-RouterSync is currently in pre-alpha discovery (Phase 0). No production release exists yet.
+RouterSync is currently in pre-release (Phase 0). The read-only surface is stable in `0.1.0`.
 
 ---
 

@@ -32,6 +32,7 @@ import {
   shouldRedactProvider,
   stripProviderPrefix,
   zeroTotals,
+  computeTotalsFromEntries,
   renderDriftTable,
   type DriftReport,
   type RouterDriftView,
@@ -172,8 +173,10 @@ export async function runAppsDriftCommand(options: AppsDriftOptions = {}): Promi
           inCombo: classified.entry.inCombo,
         };
         entries.push(entry);
-        totals[entry.status] = (totals[entry.status] || 0) + 1;
       }
+
+      // Tính tổng từ các entries (thay vì tăng dần mỗi entry)
+      Object.assign(totals, computeTotalsFromEntries(entries));
 
       if (entries.length > 0) {
         results.push({
@@ -329,6 +332,12 @@ export async function runAppsDriftCommand(options: AppsDriftOptions = {}): Promi
     process.stdout.write(`${JSON.stringify(jsonOut, null, 2)}\n`);
     return;
   }
+
+  // In biểu ngữ EXPERIMENTAL trên tất cả các dòng đầu ra
+  process.stdout.write(
+    `EXPERIMENTAL: kết quả chưa đáng tin (OmniRoute chưa đọc được combo; tên combo chưa tra).\n` +
+    `Không nhắc nó như tính năng ổn định.\n`
+  );
 
   process.stdout.write(`${renderDriftTable(report)}\n`);
 
