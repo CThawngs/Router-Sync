@@ -61,6 +61,11 @@ function str(value: unknown): string | undefined {
   return trimmed ? trimmed : undefined;
 }
 
+/** Loại bỏ BOM (Byte Order Mark) UTF-8 nếu có ở đầu nội dung tệp. */
+function stripBom(text: string): string {
+  return text.startsWith('\uFEFF') ? text.slice(1) : text;
+}
+
 /** Reads a config file with a hard size cap. Only the size crosses the boundary. */
 function readText(file: string, maxBytes: number): string {
   let stat: fs.Stats;
@@ -75,7 +80,7 @@ function readText(file: string, maxBytes: number): string {
   if (stat.size > maxBytes) {
     throw new AgentAppInspectError('TOO_LARGE', `tệp ${stat.size} B vượt giới hạn ${maxBytes} B`);
   }
-  return fs.readFileSync(file, 'utf8');
+  return stripBom(fs.readFileSync(file, 'utf8'));
 }
 
 function parseJsonObject(text: string): Rec {
@@ -104,7 +109,8 @@ function parseYamlDoc(text: string): unknown {
   }
 }
 
-function detectRouter(value: string | undefined): AgentAppRouterRef {
+/** Phát hiện router từ tên provider hoặc baseURL. */
+export function detectRouter(value: string | undefined): AgentAppRouterRef {
   if (!value) return 'UNKNOWN';
   const lower = value.toLowerCase();
   if (lower.includes('9router') || lower.includes('9-router')) return '9router';
