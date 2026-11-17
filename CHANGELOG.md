@@ -90,6 +90,11 @@ the stable part.
 
 > Note: `0.1.0` will be the first public npm release, planned for Phase 5. All current work is pre-alpha internal development.
 
+### C11 — Doctor tier labels and guard provider registry
+- **Changed:** `routersync doctor` now labels tier A explicitly as "A (models referenced by combos)" and adds `basis: combo-members` to each router in `--json`. This count is the number of models referenced by combos, not the number of enabled models.
+- **Added:** 9Router diagnostics include `available` from `readRouterModelState` labelled "available in router"; OmniRoute reports `available: UNKNOWN (reader not implemented)` instead of a misleading zero.
+- **Added:** both security guards read the owner's local provider registry and treat non-public names as forbidden patterns with word-boundary matching; public provider codes in `registry/providers.yaml` and the 9Router model snapshot are excluded.
+
 ### UI-0 — Local Web UI Slice (ADR-UI-01, ACCEPTED 2026-10-15)
 - **New private package `@routersync/ui`:** React 18.3.1 + Vite 5.4.11 + TypeScript strict, pure-CSS design tokens (`src/styles/tokens.css`), self-hosted fonts (`@fontsource/plus-jakarta-sans`, `@fontsource/jetbrains-mono` — no CDN), strict CSP in `index.html` (`default-src 'self'`, no Google Fonts). Isolated vertical slice per ADR-UI-01: no Node built-ins, no Core/Adapter cross-imports; all data flows through the `ApiClient` interface (`MockApi` deterministic in-memory default with the `DỮ LIỆU MẪU` chip; `HttpApi` scaffold targeting `127.0.0.1` for the P3b daemon).
 - **Overview screen (concept v5):** light/dark/auto themes via CSS variables, VI/EN i18n with dictionary-key switching, Simple/Detail view modes, emergency-pause banner, agent drawer, first-run checklist state, metric tiles and pipeline view with dashed styling for stale/unverified data.

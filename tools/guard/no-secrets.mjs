@@ -13,6 +13,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { execSync } from 'node:child_process';
+import { loadLocalProviderNames, buildProviderPatterns } from './local-provider-names.mjs';
 
 /**
  * Public patterns only: generic credential shapes, personal home paths and
@@ -134,10 +135,19 @@ export function getStagedOrTrackedFiles(root = process.cwd()) {
   return files;
 }
 
+/** Mẫu dùng chung cho runGuard và test: thêm tên cổng riêng từ registry cục bộ. */
+export function buildGuardPatterns(root = process.cwd()) {
+  const localProviderNames = loadLocalProviderNames(root);
+  return [
+    ...loadPrivatePatterns(root),
+    ...buildProviderPatterns(localProviderNames),
+  ];
+}
+
 export function runGuard(root = process.cwd()) {
   let violations = 0;
   const files = getStagedOrTrackedFiles(root);
-  const privatePatterns = loadPrivatePatterns(root);
+  const privatePatterns = buildGuardPatterns(root);
 
   for (const relPath of files) {
     const normalized = relPath.replace(/\\/g, '/');

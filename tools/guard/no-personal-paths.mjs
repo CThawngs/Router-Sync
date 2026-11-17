@@ -16,6 +16,7 @@ import path from 'node:path';
 import os from 'node:os';
 import { execSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { loadLocalProviderNames, buildProviderPatterns } from './local-provider-names.mjs';
 
 // Allowed placeholders:
 // <USER_DIR>, <REPO_ROOT>, ~, %APPDATA%, YOUR_USER, tester, someone, runner
@@ -100,6 +101,11 @@ export function buildPatterns(options = {}) {
       name: `Current OS Hostname (${hostname})`,
       regex: new RegExp(`\\b${escaped}\\b`, 'i'),
     });
+  }
+
+  // Tên cổng riêng từ registry cục bộ; bỏ qua mã công khai đã có trong repo.
+  if (options.includeLocalProviders !== false) {
+    patterns.push(...buildProviderPatterns(loadLocalProviderNames(options.root ?? process.cwd())));
   }
 
   return patterns;

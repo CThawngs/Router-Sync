@@ -63,6 +63,10 @@ export interface RouterDiagnostic {
     C: number;
     total: number;
   } | undefined;
+  /** Nguồn của con số tiers.A: số model được combo tham chiếu, không phải số model đang bật. */
+  basis?: 'combo-members' | undefined;
+  /** Số model đang bật theo readRouterModelState; chuỗi khi reader chưa hỗ trợ. */
+  available?: number | string | undefined;
 }
 
 export interface AppDiagnostic {
@@ -381,12 +385,16 @@ export async function runDoctorCommand(options: DoctorCommandOptions = {}): Prom
               }
               tierA = comboModels.size;
               if (r.adapter === '9router') {
-                const disabled = db.prepare("SELECT value FROM kv WHERE scope = 'disabledModels'").all() as Array<{ value: string }>;
-                for (const d of disabled) {
-                  try {
-                    const parsed = JSON.parse(d.value);
-                    if (Array.isArray(parsed)) tierB += parsed.length;
-                  } catch {}
+                try {
+                  const disabled = db.prepare("SELECT value FROM kv WHERE scope = 'disabledModels'").all() as Array<{ value: string }>;
+                  for (const d of disabled) {
+                    try {
+                      const parsed = JSON.parse(d.value);
+                      if (Array.isArray(parsed)) tierB += parsed.length;
+                    } catch {}
+                  }
+                } catch {
+                  // Bảng kv không có trong bản sao tối giản: vẫn giữ tiers.A từ combos.
                 }
               } else {
                 // OmniRoute has no verified Tier B in SQLite (model_capabilities is an internal capability mapping table with 11k+ rows, not Tier B; models outside combos are UNKNOWN).
@@ -395,7 +403,23 @@ export async function runDoctorCommand(options: DoctorCommandOptions = {}): Prom
               tiers = { A: tierA, B: tierB, C: 0, total: tierA + tierB };
             } catch {}
           } catch { readable = false; } finally { db.close(); }
-          return { routerId: r.id, adapter: r.adapter, dbPath, found, readable, ...(tiers ? { tiers } : {}) };
+          const basis = tiers ? ('combo-members' as const) : undefined;
+          let available: number | string | undefined;
+          if (tiers) {
+            if (r.adapter === '9router') {
+              try {
+                available = readRouterModelState(r.adapter).availableModels.size;
+              } catch {
+                available = 'UNKNOWN';
+              }
+            } else {
+              available = 'UNKNOWN (reader not implemented)';
+            }
+          }
+          return {
+            routerId: r.id, adapter: r.adapter, dbPath, found, readable,
+            ...(tiers ? { tiers, basis, available } : {}),
+          };
         }
       } catch { dbPath = null; }
       return { routerId: r.id, adapter: r.adapter, dbPath, found, readable };
@@ -521,6 +545,19 @@ export async function runDoctorCommand(options: DoctorCommandOptions = {}): Prom
       } else {
         outLines.push(`  - [${k.routerId}] (${k.adapter}): chưa cấu hình (chế độ giảm cấp chỉ-db)`);
       }
+    }
+    outLines.push(`------------------------------------------------------`);
+    outLines.push(`Tầng model theo router (chỉ đọc):`);
+    for (const r of routers) {
+      if (!r.tiers) {
+        outLines.push(`  - [${r.routerId}] (${r.adapter}): không đọc được tiers`);
+        continue;
+      }
+      const label = `A (models referenced by combos)=${r.tiers.A}`;
+      const available = typeof r.available === 'number'
+        ? `${r.available} (available in router)`
+        : String(r.available);
+      outLines.push(`  - [${r.routerId}] (${r.adapter}): ${label}; basis=${r.basis}; available=${available}`);
     }
     outLines.push(`------------------------------------------------------`);
     if (circularWarnings.length === 0 && validationWarnings.length === 0) {

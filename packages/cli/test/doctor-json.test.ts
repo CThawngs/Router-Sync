@@ -13,6 +13,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as os from 'node:os';
 import { runDoctorCommand } from '../src/commands/doctor.js';
+import { openBetterSqlite3 } from '@routersync/core';
 
 async function captureJsonReport(opts: { json?: boolean; configPath?: string }): Promise<any> {
   const logs: string[] = [];
@@ -110,6 +111,48 @@ describe('K8.3: routersync doctor --json', async () => {
     const customConfig = path.resolve('/custom/path/to/config.yaml');
     const report = await captureJsonReport({ configPath: customConfig });
     expect(report.configPath).toBe(customConfig);
+  });
+
+  it('labels tier A as combo members and reports available models', async () => {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'rs-doctor-basis-'));
+    const dbPath = path.join(tmp, 'nine.sqlite');
+    const db = openBetterSqlite3(dbPath, {});
+    db.exec('CREATE TABLE combos (id TEXT PRIMARY KEY, name TEXT, models TEXT)');
+    db.exec(`INSERT INTO combos (id, name, models) VALUES ('c1', 'Coder', '["gemini/gemini-3.8-flash"]')`);
+    db.close();
+    const configPath = path.join(tmp, 'config.yaml');
+    fs.writeFileSync(configPath, [
+      'version: 1',
+      'routers:',
+      '  - id: nine',
+      '    adapter: 9router',
+      '    baseUrl: http://localhost:30128',
+      'policy:',
+      '  mode: manual',
+      '',
+    ].join('\n'), 'utf8');
+    const previousConfig = process.env['ROUTERSYNC_CONFIG'];
+    const previousDb = process.env['ROUTERSYNC_9ROUTER_DB'];
+    process.env['ROUTERSYNC_CONFIG'] = configPath;
+    process.env['ROUTERSYNC_9ROUTER_DB'] = dbPath;
+    try {
+      const report = await captureJsonReport({});
+      const nine = report.routers.find((r: any) => r.adapter === '9router');
+      expect(nine).toBeDefined();
+      expect(nine.basis).toBe('combo-members');
+      expect(nine.tiers.A).toBe(1);
+      expect(typeof nine.available).toBe('number');
+      const text = await captureTextReport({});
+      expect(text).toContain('A (models referenced by combos)=1');
+      expect(text).toContain('basis=combo-members');
+      expect(text).toContain('available in router');
+    } finally {
+      if (previousConfig === undefined) delete process.env['ROUTERSYNC_CONFIG'];
+      else process.env['ROUTERSYNC_CONFIG'] = previousConfig;
+      if (previousDb === undefined) delete process.env['ROUTERSYNC_9ROUTER_DB'];
+      else process.env['ROUTERSYNC_9ROUTER_DB'] = previousDb;
+      fs.rmSync(tmp, { recursive: true, force: true });
+    }
   });
 
   it('reads sync-last.json from ROUTERSYNC_SYNC_STATE_DIR override', async () => {
