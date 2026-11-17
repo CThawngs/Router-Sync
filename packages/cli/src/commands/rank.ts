@@ -797,6 +797,21 @@ export async function runRankCommand(options: RankCommandOptions): Promise<Combo
   }
 
   if (options.json) {
+    if (process.env.ROUTERSYNC_LOW_RESOURCE === '1') {
+      const summary = allResults.map((r) => ({
+        routerId: r.routerId,
+        comboName: r.comboName,
+        originalCount: r.originalCount,
+        retainedCount: r.retainedCount,
+        droppedCount: r.droppedCount,
+        positionChangesCount: r.positionChangesCount,
+        lostProviders: r.lostProviders,
+        top5After: r.top15After.slice(0, 5),
+        coverageAfter: r.coverageAfter,
+      }));
+      console.log(JSON.stringify(summary, null, 2));
+      return allResults;
+    }
     console.log(JSON.stringify(allResults, null, 2));
     return allResults;
   }

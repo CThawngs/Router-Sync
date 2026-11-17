@@ -38,7 +38,9 @@ export async function scanAll(
   const hostCache = new Map<string, string[]>();
   const reqTimes: Array<{ view: string; prefix: string; at: string }> = [];
   const metaCache = new Map<string, { status: number; incomplete: boolean; pages: number; bytes?: number | undefined; rawCount?: number | undefined; error?: string | undefined; errorClass?: string | undefined; at?: string | undefined }>();
-  const concurrency = 4;
+  const lowResource = process.env.ROUTERSYNC_LOW_RESOURCE === '1';
+  const concurrency = lowResource ? 1 : 4;
+  const effectiveTimeoutMs = lowResource ? Math.min(timeoutMs, 10000) : timeoutMs;
   let cursor = 0;
   const workers = Array.from({ length: Math.min(concurrency, jobs.length) }, async () => {
     for (;;) {
@@ -59,7 +61,7 @@ export async function scanAll(
         }
         continue;
       }
-      const outcome = await fetchModelList(job.target, { timeoutMs });
+      const outcome = await fetchModelList(job.target, { timeoutMs: effectiveTimeoutMs });
       const at = new Date().toISOString();
       const key = `${job.view.name}:${job.target.prefix}`;
       const meta = { status: outcome.status, incomplete: !!outcome.incomplete, pages: outcome.pages ?? 1, bytes: outcome.bytes, rawCount: outcome.rawCount, error: outcome.error, errorClass: outcome.errorClass, at };
