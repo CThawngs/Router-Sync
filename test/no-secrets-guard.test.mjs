@@ -3,7 +3,9 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { execSync } from 'node:child_process';
-import { scanLine, FORBIDDEN_PATTERNS, loadPrivatePatterns, getStagedOrTrackedFiles, runGuard } from '../tools/guard/no-secrets.mjs';
+import { scanLine, FORBIDDEN_PATTERNS, loadPrivatePatterns, getStagedOrTrackedFiles, runGuard, buildGuardPatterns } from '../tools/guard/no-secrets.mjs';
+import { loadLocalProviderNames, buildProviderPatterns } from '../tools/guard/local-provider-names.mjs';
+import { buildPatterns as buildPathPatterns } from '../tools/guard/no-personal-paths.mjs';
 
 describe('tools/guard/no-secrets.mjs - Security Guard & Personal Path Tests (R7B-4)', () => {
   it('catches forward-slash Windows personal path', () => {
@@ -133,5 +135,61 @@ describe('tools/guard/no-secrets.mjs - Security Guard & Personal Path Tests (R7B
     } finally {
       fs.rmSync(tmp, { recursive: true, force: true });
     }
+  });
+});
+
+describe('local provider registryNames are forbidden but public codes are not', () => {
+  function withFakeRegistry(fn) {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'rs-guard-registry-'));
+    const localDir = path.join(tmp, '.routersync');
+    fs.mkdirSync(localDir, { recursive: true });
+    const registry = path.join(localDir, 'providers.local.yaml');
+    fs.writeFileSync(
+      registry,
+      'version: 1\nproviders:\n  fake-private-gateway: https://example.invalid/v1\n  aihm: https://example.invalid/v2\n',
+      'utf8'
+    );
+    const previous = process.env['ROUTERSYNC_PROVIDERS_LOCAL'];
+    process.env['ROUTERSYNC_PROVIDERS_LOCAL'] = registry;
+    try {
+      fn(tmp, registry);
+    } finally {
+      if (previous === undefined) delete process.env['ROUTERSYNC_PROVIDERS_LOCAL'];
+      else process.env['ROUTERSYNC_PROVIDERS_LOCAL'] = previous;
+      fs.rmSync(tmp, { recursive: true, force: true });
+    }
+  }
+
+  it('reads only non-public names from a fake local registry', () => {
+    withFakeRegistry((tmp) => {
+      const names = loadLocalProviderNames(tmp);
+      expect(names).toContain('fake-private-gateway');
+      expect(names).not.toContain('aihm');
+    });
+  });
+
+  it('catches a fake private name and skips a public code', () => {
+    withFakeRegistry((tmp) => {
+      const patterns = buildProviderPatterns(loadLocalProviderNames(tmp));
+      expect(scanLine('route via fake-private-gateway now', patterns).ok).toBe(false);
+      expect(scanLine('route via aihm/gpt-oss', patterns).ok).toBe(true);
+    });
+  });
+
+  it('no-secrets and no-personal-paths both include registry names in their patterns', () => {
+    withFakeRegistry(() => {
+      const secretPatterns = buildGuardPatterns();
+      expect(scanLine('FAKE-PRIVATE-GATEWAY/model', secretPatterns).ok).toBe(false);
+      expect(scanLine('aihm/model', secretPatterns).ok).toBe(true);
+      const pathPatterns = buildPathPatterns({ hostname: 'localhost', username: 'tester' });
+      expect(scanLine('FAKE-PRIVATE-GATEWAY/model', pathPatterns).ok).toBe(false);
+      expect(scanLine('aihm/model', pathPatterns).ok).toBe(true);
+    });
+  });
+
+  it('matches by word boundary, not substring', () => {
+    const patterns = buildProviderPatterns(['mb', 'bai']);
+    expect(scanLine('combos and baidu are fine', patterns).ok).toBe(true);
+    expect(scanLine('mb/config', patterns).ok).toBe(false);
   });
 });
