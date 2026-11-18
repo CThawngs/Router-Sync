@@ -16,6 +16,7 @@ import { execSync } from 'node:child_process';
 import { resolveRouterKey, locateRouterDb, openBetterSqlite3, readRouterModelState } from '@routersync/core';
 import { loadConfigFile, getDefaultConfigPath, resolveRouterDbPath } from '../config/loader.js';
 import type { RouterConfig, RouterSyncConfig } from '../config/schema.js';
+import { isLowResource, lowResourceReason } from '../low-resource.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -108,6 +109,9 @@ export interface DoctorReport {
   authKeys?: RouterKeyDiagnostic[];
   recommendations: string[];
   timestamp: string;
+  /** C14 (e): low-resource status and the reason it was activated. */
+  lowResource: boolean;
+  lowResourceReason: string | null;
 }
 
 export async function runDoctorCommand(options: DoctorCommandOptions = {}): Promise<DoctorReport> {
@@ -525,6 +529,8 @@ export async function runDoctorCommand(options: DoctorCommandOptions = {}): Prom
     authKeys,
     recommendations,
     timestamp,
+    lowResource: isLowResource(),
+    lowResourceReason: lowResourceReason() ?? null,
   };
 
   if (options.json) {

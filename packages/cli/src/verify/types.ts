@@ -134,4 +134,6 @@ export interface VerifyPhaseSummary {
   proposals: NewCandidateProposal[];
   absentStableCandidates: string[];
   accounting: VerifyAccounting;
+  /** C14 (b): true when the 60 s deadline fired before verification finished. */
+  incomplete?: boolean;
 }

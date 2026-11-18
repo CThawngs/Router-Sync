@@ -23,6 +23,9 @@ export interface VerifyCommandOptions {
   configPath?: string | undefined;
   stateDir?: string | undefined;
   json?: boolean | undefined;
+  full?: boolean | undefined;
+  out?: string | undefined;
+  deadlineMs?: number | undefined;
   mock3Layer?: boolean | undefined;
   mock3layer?: boolean | undefined;
   fetchFn?: typeof globalThis.fetch | undefined;
@@ -261,10 +264,55 @@ export async function runVerifyCommand(options: VerifyCommandOptions = {}): Prom
     };
   }
 
-  const summary = await runVerifyPhase(verifyOptions);
+  const deadlineMs = options.deadlineMs ?? 60_000;
+  let timedOut = false;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const deadline = new Promise<null>((resolve) => {
+    timer = setTimeout(() => {
+      timedOut = true;
+      resolve(null);
+    }, deadlineMs);
+  });
+  const phase = runVerifyPhase(verifyOptions);
+  // Prevent an unhandled rejection if the deadline wins the race.
+  phase.catch(() => {});
+
+  const raced = await Promise.race([phase, deadline]);
+  if (timer) clearTimeout(timer);
+
+  let summary: VerifyPhaseSummary;
+  if (raced === null) {
+    summary = {
+      timestamp: new Date().toISOString(),
+      modelsVerified: 0,
+      labels: {} as VerifyPhaseSummary['labels'],
+      records: [],
+      proposals: [],
+      absentStableCandidates: [],
+      accounting: { requests: 0, paidRequests: 0, tokens: 0, llmCalls: 0 },
+      incomplete: true,
+    };
+  } else {
+    summary = raced;
+    if (timedOut) summary.incomplete = true;
+  }
 
   if (options.json) {
-    console.log(JSON.stringify(summary, null, 2));
+    const payload = options.full === true
+      ? summary
+      : {
+          timestamp: summary.timestamp,
+          modelsVerified: summary.modelsVerified,
+          labels: summary.labels,
+          accounting: summary.accounting,
+          recordsCount: summary.records.length,
+          proposalsCount: summary.proposals.length,
+          absentStableCount: summary.absentStableCandidates.length,
+          incomplete: summary.incomplete === true,
+        };
+    const text = JSON.stringify(payload, null, 2);
+    if (options.out) fs.writeFileSync(options.out, text + '\n', 'utf8');
+    else console.log(text);
   }
 
   return summary;

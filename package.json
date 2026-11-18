@@ -20,11 +20,10 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit && pnpm -r typecheck",
-    "typecheck:fast": "tsc --noEmit",
+    "typecheck:changed": "node tools/agent/typecheck-changed.mjs",
     "lint": "node tools/guard/no-secrets.mjs && node tools/guard/no-personal-paths.mjs",
     "guard:paths": "node tools/guard/no-personal-paths.mjs",
     "test": "vitest run --project root-tools --project packages",
-    "test:quick": "vitest run --project root-tools --project packages --poolOptions.threads.maxThreads=2 --poolOptions.threads.minThreads=1",
     "test:slow": "vitest run --project ui",
     "e2e": "vitest run --project e2e",
     "verify:release": "pnpm typecheck && pnpm lint && pnpm build && pnpm test && pnpm e2e",

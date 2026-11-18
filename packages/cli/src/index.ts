@@ -51,6 +51,7 @@ import {
   runSyncStatusCommand,
 } from './commands/sync/index.js';
 import { runRankCommand } from './commands/rank.js';
+import { installWatchdog } from './watchdog.js';
 import { runHealthCommand } from './commands/health.js';
 import { runSimCommand } from './commands/sim.js';
 import { runStorageInspectCommand } from './commands/storage.js';
@@ -73,7 +74,9 @@ import { installConfiguredRouterDbPaths } from './config/loader.js';
 enforceNodeVersion();
 
 /**
- * C12 M2: Emit performance metrics on stderr when ROUTERSYNC_PERF=1.
+ * C13: Emit performance metrics on stderr when ROUTERSYNC_PERF=1.
+ * Uses process.resourceUsage().maxRSS (peak RSS) instead of memoryUsage().rss
+ * (snapshot at exit). maxRSS unit: bytes on Windows, KB on Linux/macOS.
  */
 export function installPerfHook(): void {
   if (process.env.ROUTERSYNC_PERF !== '1') return;
@@ -83,15 +86,23 @@ export function installPerfHook(): void {
     try {
       const elapsedMs = Number(process.hrtime.bigint() - t0) / 1_000_000;
       const cpu = process.cpuUsage(cpu0);
-      const mem = process.memoryUsage();
+      const ru = process.resourceUsage();
       const MB = 1024 * 1024;
+      // maxRSS: bytes on Windows, KB on Linux/macOS
+      const maxRssRaw = ru.maxRSS;
+      const maxRssBytes =
+        maxRssRaw === 0
+          ? process.memoryUsage().rss // fallback: maxRSS not yet flushed by OS
+          : process.platform === 'win32'
+            ? maxRssRaw
+            : maxRssRaw * 1024;
       const payload = {
         pid: process.pid,
         durationMs: Math.round(elapsedMs * 10) / 10,
         cpuUserMs: Math.round(cpu.user / 1000),
         cpuSystemMs: Math.round(cpu.system / 1000),
-        rssMB: Math.round(mem.rss / MB),
-        heapUsedMB: Math.round(mem.heapUsed / MB),
+        maxRssMB: Math.round(maxRssBytes / MB),
+        heapUsedMB: Math.round(process.memoryUsage().heapUsed / MB),
       };
       process.stderr.write(`[routersync-perf] ${JSON.stringify(payload)}\n`);
     } catch {
@@ -478,13 +489,19 @@ export function createCliProgram(): Command {
     .option('--state-dir <dir>', 'Custom state directory')
     .option('--mock-3layer', 'Run verification against 3-layer mock sources (6 canonical test cases)')
     .option('--json', 'Output verify summary in JSON format')
+    .option('--full', 'Output full verify JSON (default: compact summary ≤ 100 KB)')
+    .option('--out <file>', 'Write JSON output to file instead of stdout')
+    .option('--deadline-ms <ms>', 'Verify deadline in milliseconds (default: 60000)')
     .action(
-      async (opts: { config?: string; stateDir?: string; mock3layer?: boolean; mock3Layer?: boolean; json?: boolean }) => {
+      async (opts: { config?: string; stateDir?: string; mock3layer?: boolean; mock3Layer?: boolean; json?: boolean; full?: boolean; out?: string; deadlineMs?: string }) => {
         await (await import('./commands/verify.js')).runVerifyCommand({
           configPath: opts.config,
           stateDir: opts.stateDir,
           mock3Layer: opts.mock3layer || opts.mock3Layer,
           json: opts.json,
+          full: opts.full,
+          out: opts.out,
+          deadlineMs: opts.deadlineMs ? Number(opts.deadlineMs) : undefined,
         });
       }
     );
@@ -740,7 +757,9 @@ export function createCliProgram(): Command {
     .option('--apply', 'Apply ranked step ordering to routers (requires confirmation)')
     .option('--scan-gap-ms <ms>', 'Wait gap between scans in milliseconds (default: 60000)')
     .option('--scan', 'Optional scan trigger')
-    .option('--json', 'Output result in JSON format')
+    .option('--json', 'Output result in JSON format (compact summary ≤ 100 KB by default)')
+    .option('--full', 'Output full JSON result (may be large; use with --json)')
+    .option('--out <file>', 'Write JSON output to file instead of stdout')
     .option('--write-outputs', 'Write CLASSIFY.txt, UNRATED.txt, and RANK-PREVIEW.txt to disk')
     .option('--output-dir <dir>', 'Directory to write output files')
     .action(
@@ -752,6 +771,8 @@ export function createCliProgram(): Command {
         scanGapMs?: string;
         scan?: boolean;
         json?: boolean;
+        full?: boolean;
+        out?: string;
         writeOutputs?: boolean;
         outputDir?: string;
       }) => {
@@ -1163,8 +1184,12 @@ function isDirectExecution(): boolean {
 }
 
 if (isDirectExecution()) {
-  createCliProgram().parseAsync(process.argv).catch((err: unknown) => {
-    console.error(`[routersync] Error: ${err instanceof Error ? err.message : String(err)}`);
-    process.exit(1);
-  });
+  const clearWatchdog = installWatchdog(process.argv);
+  createCliProgram()
+    .parseAsync(process.argv)
+    .catch((err: unknown) => {
+      console.error(`[routersync] Error: ${err instanceof Error ? err.message : String(err)}`);
+      process.exit(1);
+    })
+    .finally(() => clearWatchdog());
 }

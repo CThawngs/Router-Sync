@@ -15,6 +15,7 @@ import { loadConfigFile } from '../config/loader.js';
 import { buildViews } from './sync/sync-plan.js';
 import { generatePlansForConfig, isPlanSuspect } from './plan.js';
 import { loadProfile } from '../profile/manager.js';
+import { applyLowResourcePriority } from '../low-resource.js';
 import * as path from 'node:path';
 import * as os from 'node:os';
 
@@ -99,6 +100,8 @@ export async function buildDaemonPlan(configPath?: string): Promise<Array<{ rout
 }
 
 export async function runDaemonCommand(options: DaemonCommandOptions): Promise<void> {
+  // C14 (d): lower OS priority on low-resource machines before starting.
+  applyLowResourcePriority();
   if (options.config) {
     process.env['ROUTERSYNC_CONFIG'] = options.config;
   }
