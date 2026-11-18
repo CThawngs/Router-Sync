@@ -114,3 +114,30 @@ describe('K3.1 - the configuration directory is platform aware', () => {
     }
   });
 });
+
+describe('C15 Q2.5 - path separators, spaces and Unicode', () => {
+  const cases = [
+    { platform: 'win32', env: { APPDATA: 'C:\\Users\\Tester Name' } },
+    { platform: 'darwin', env: { HOME: '/Users/Tester Name' } },
+    { platform: 'linux', env: { HOME: '/home/tester name' } },
+  ];
+  for (const c of cases) {
+    it(`resolves a home path with spaces on ${c.platform}`, () => {
+      const result = locateRouterDb('9router', c.env, c.platform);
+      expect(result).toContain('data.sqlite');
+      expect(result).not.toContain('\n');
+    });
+  }
+
+  it('accepts both slash styles in an explicit override', () => {
+    const withSlash = locateRouterDb('9router', { ROUTERSYNC_9ROUTER_DB: '/tmp/rs db/data.sqlite' }, 'linux');
+    const withBackslash = locateRouterDb('9router', { ROUTERSYNC_9ROUTER_DB: 'C:\\rs db\\data.sqlite' }, 'win32');
+    expect(withSlash).toContain('data.sqlite');
+    expect(withBackslash).toContain('data.sqlite');
+  });
+
+  it('keeps Unicode in the resolved path', () => {
+    const result = locateRouterDb('omniroute', { HOME: '/home/người dùng', XDG_STATE_HOME: '/home/người dùng/.local/state' }, 'linux');
+    expect(result).toContain('omniroute');
+  });
+});

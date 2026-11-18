@@ -102,6 +102,16 @@ first row, not to `tick --mode`.
   read back → `routersync undo` if needed.
 - Low-resource machines: run `pnpm test` (workspace config already limits 2 forks) and `pnpm typecheck:changed`; set `ROUTERSYNC_LOW_RESOURCE=1` to limit concurrency and network timeouts.
 
+### LIGHT-DEV (local agent rule)
+
+Run `node tools/agent/preflight.mjs` first. If available RAM is below 1.5 GiB,
+the machine is in `LIGHT-DEV` mode. In that mode:
+
+- Allowed: `pnpm lint`, `pnpm typecheck:changed`, `pnpm test:changed`.
+- Forbidden: `pnpm test`, `pnpm e2e`, bare `vitest run`, `pnpm test:slow`.
+- The full suite is the responsibility of the PR CI, not the local machine.
+- `pnpm test:changed` keeps the workspace fork limit (max 2 forks).
+
 ## 7. Troubleshooting
 
 | Symptom | Cause | What to do |

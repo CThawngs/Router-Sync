@@ -15,10 +15,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        os: [ubuntu-latest, ubuntu-24.04-arm, macos-latest, windows-latest, windows-11-arm]
         node: [22, 24]
+    continue-on-error: ${{ matrix.os == 'windows-11-arm' }}
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 30
+    timeout-minutes: 40
     steps:
       - name: Checkout code
         uses: actions/checkout@v4.2.2
@@ -50,32 +51,118 @@ jobs:
       - name: End-to-end
         run: pnpm e2e
 
+      - name: Memory report (both APIs)
+        run: node tools/ci/mem-report.mjs
+
+      - name: Prepare offline sample state
+        shell: bash
+        run: |
+          node tools/ci/make-sample-state.mjs "${RUNNER_TEMP}/rs-sample"
+          cat "${RUNNER_TEMP}/rs-sample/sample.env" >> "$GITHUB_ENV"
+
+      - name: Product smoke with perf budgets
+        shell: bash
+        run: |
+          set -e
+          mkdir -p "${RUNNER_TEMP}/rs-perf"
+          for item in "doctor:doctor" "plan:plan" "verify:verify" "scan:scan" "rank-json:rank --json"; do
+            name="${item%%:*}"
+            args="${item#*:}"
+            ROUTERSYNC_PERF=1 node packages/cli/dist/index.js $args \
+              > "${RUNNER_TEMP}/rs-perf/${name}.out" 2> "${RUNNER_TEMP}/rs-perf/${name}.err"
+            node tools/ci/check-perf.mjs "${RUNNER_TEMP}/rs-perf/${name}.err" "$name"
+          done
+
       - name: Emit schedule artifacts (no install)
         run: node tools/ci/emit-schedule-artifacts.mjs "${{ runner.temp }}/schedule-artifacts"
 
-      - name: Lint systemd units (ubuntu)
+      - name: Check low-priority keys in schedule artifacts
+        shell: bash
+        run: |
+          set -e
+          d="${RUNNER_TEMP}/schedule-artifacts"
+          grep -q '<Priority>7</Priority>' "$d/routersync-task.xml"
+          grep -q '<MultipleInstancesPolicy>IgnoreNew</MultipleInstancesPolicy>' "$d/routersync-task.xml"
+          grep -q '<ExecutionTimeLimit>PT30M</ExecutionTimeLimit>' "$d/routersync-task.xml"
+          grep -q 'Nice=10' "$d/routersync-daemon.service"
+          grep -q 'IOSchedulingClass=idle' "$d/routersync-daemon.service"
+          grep -q 'CPUWeight=20' "$d/routersync-daemon.service"
+          grep -q 'MemoryHigh=512M' "$d/routersync-daemon.service"
+          grep -q '<key>ProcessType</key><string>Background</string>' "$d/com.routersync.daemon.plist"
+          grep -q '<key>LowPriorityIO</key><true/>' "$d/com.routersync.daemon.plist"
+          echo "SCHEDULE PRIORITY KEYS OK"
+
+      - name: Lint systemd units (Linux)
         if: runner.os == 'Linux'
         run: |
-          # systemd-analyze verify needs the ExecStart binary to exist; node and index.js do.
           cd "${{ runner.temp }}/schedule-artifacts"
           systemd-analyze verify --user ./routersync-daemon.service ./routersync-daemon.timer
+
+      - name: Validate Windows task XML with schtasks (create then delete)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $xml = Join-Path $env:RUNNER_TEMP 'schedule-artifacts/routersync-task.xml'
+          $name = 'RouterSyncC15Smoke'
+          schtasks /create /tn $name /xml $xml /f
+          schtasks /delete /tn $name /f
 
       - name: Lint launchd plist (macOS)
         if: runner.os == 'macOS'
         run: plutil -lint "${{ runner.temp }}/schedule-artifacts/com.routersync.daemon.plist"
 
-      - name: Parse Task Scheduler XML (Windows)
-        if: runner.os == 'Windows'
-        shell: pwsh
+  footprint:
+    name: footprint (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4.2.2
+      - uses: pnpm/action-setup@v4.0.0
+      - uses: actions/setup-node@v4.1.0
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - name: Pack, install, measure
+        run: node tools/ci/footprint.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: footprint-${{ matrix.os }}
+          path: footprint.json
+
+  weak-linux:
+    name: weak-linux (node ${{ matrix.node }})
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [22, 24]
+    runs-on: ubuntu-latest
+    container:
+      image: node:${{ matrix.node }}-slim
+      options: --memory=1g --memory-swap=1g --cpus=1
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4.2.2
+      - run: corepack enable pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - name: Prepare sample state
+        run: node tools/ci/make-sample-state.mjs /tmp/rs-sample
+      - name: Product smoke under 1 GiB
+        shell: bash
         run: |
-          $f = Join-Path $env:RUNNER_TEMP 'schedule-artifacts/routersync-task.xml'
-          $bytes = [IO.File]::ReadAllBytes($f)
-          if ($bytes[0] -ne 0xFF -or $bytes[1] -ne 0xFE) { throw 'missing UTF-16 LE BOM' }
-          $xml = New-Object System.Xml.XmlDocument
-          $xml.Load($f)
-          $cmd = $xml.Task.Actions.Exec.Command
-          if (-not [IO.Path]::IsPathRooted($cmd)) { throw "Command is not absolute: $cmd" }
-          Write-Host "XML OK, Command=$cmd"
+          set -e
+          source /tmp/rs-sample/sample.env
+          for args in "doctor" "plan" "verify" "scan" "rank --json"; do
+            echo "SMOKE $args"
+            ROUTERSYNC_PERF=1 node packages/cli/dist/index.js $args > /tmp/out.txt 2> /tmp/err.txt
+            cat /tmp/err.txt | grep '\[routersync-perf\]' || true
+          done
 
   ui:
     name: ui (${{ matrix.os }})
@@ -88,22 +175,17 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4.2.2
-
       - name: Setup pnpm
         uses: pnpm/action-setup@v4.0.0
-
       - name: Setup Node.js
         uses: actions/setup-node@v4.1.0
         with:
           node-version: 24
           cache: pnpm
-
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-
       - name: Build
         run: pnpm build
-
       - name: UI tests
         run: pnpm --filter @routersync/ui test
 
@@ -118,21 +200,16 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4.2.2
-
       - name: Setup pnpm
         uses: pnpm/action-setup@v4.0.0
-
       - name: Setup Node.js
         uses: actions/setup-node@v4.1.0
         with:
           node-version: 24
           cache: pnpm
-
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-
       - name: Build
         run: pnpm build
-
       - name: Slow tests
         run: pnpm test:slow
