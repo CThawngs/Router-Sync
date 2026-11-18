@@ -4,8 +4,45 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { openBetterSqlite3 } from '@routersync/core';
 import { runRankCommand } from '../src/commands/rank.js';
+import { isLowResource, _resetLowResourceCache } from '../src/low-resource.js';
 
-describe('C12 M4: ROUTERSYNC_LOW_RESOURCE', () => {
+describe('C13: isLowResource() module', () => {
+  const origEnv = { ...process.env };
+
+  afterEach(() => {
+    process.env = { ...origEnv };
+    _resetLowResourceCache();
+  });
+
+  it('returns true when ROUTERSYNC_LOW_RESOURCE=1', () => {
+    process.env['ROUTERSYNC_LOW_RESOURCE'] = '1';
+    expect(isLowResource()).toBe(true);
+  });
+
+  it('returns false when ROUTERSYNC_LOW_RESOURCE=0', () => {
+    process.env['ROUTERSYNC_LOW_RESOURCE'] = '0';
+    expect(isLowResource()).toBe(false);
+  });
+
+  it('caches result — second call returns same value without re-evaluating', () => {
+    process.env['ROUTERSYNC_LOW_RESOURCE'] = '1';
+    const r1 = isLowResource();
+    // Change env after first call — cached value wins
+    process.env['ROUTERSYNC_LOW_RESOURCE'] = '0';
+    const r2 = isLowResource();
+    expect(r1).toBe(r2);
+  });
+
+  it('_resetLowResourceCache clears cache', () => {
+    process.env['ROUTERSYNC_LOW_RESOURCE'] = '1';
+    expect(isLowResource()).toBe(true);
+    _resetLowResourceCache();
+    process.env['ROUTERSYNC_LOW_RESOURCE'] = '0';
+    expect(isLowResource()).toBe(false);
+  });
+});
+
+describe('C13: rank --json compact/full output', () => {
   let tmpDir: string;
   let db9: string;
   let dbOmni: string;
@@ -30,13 +67,14 @@ describe('C12 M4: ROUTERSYNC_LOW_RESOURCE', () => {
 
   afterEach(() => {
     process.env = { ...origEnv };
+    _resetLowResourceCache();
     try {
       fs.rmSync(tmpDir, { recursive: true, force: true });
     } catch {}
   });
 
-  it('produces compact summary <= 100 KB under ROUTERSYNC_LOW_RESOURCE=1', async () => {
-    process.env['ROUTERSYNC_LOW_RESOURCE'] = '1';
+  it('json: true produces compact summary <= 100 KB (default, regardless of LOW_RESOURCE)', async () => {
+    delete process.env['ROUTERSYNC_LOW_RESOURCE'];
 
     const logs: string[] = [];
     const spy = vi.spyOn(console, 'log').mockImplementation((msg: unknown) => {
@@ -48,21 +86,19 @@ describe('C12 M4: ROUTERSYNC_LOW_RESOURCE', () => {
       expect(logs.length).toBeGreaterThan(0);
       const jsonOutput = logs.join('\n');
 
-      // Must be valid JSON
       const parsed = JSON.parse(jsonOutput);
       expect(Array.isArray(parsed)).toBe(true);
       expect(parsed.length).toBeGreaterThan(0);
 
-      // Verify compact summary schema
+      // Compact summary schema
       const first = parsed[0];
       expect(first).toHaveProperty('routerId');
       expect(first).toHaveProperty('comboName');
       expect(first).toHaveProperty('originalCount');
       expect(first).toHaveProperty('retainedCount');
       expect(first).toHaveProperty('top5After');
-      expect(first).not.toHaveProperty('top15After'); // truncated from 15 to 5 in summary
+      expect(first).not.toHaveProperty('top15After'); // compact: truncated to 5
 
-      // Must be <= 100 KB
       const bytes = Buffer.byteLength(jsonOutput, 'utf8');
       expect(bytes).toBeLessThanOrEqual(100 * 1024);
     } finally {
@@ -70,7 +106,7 @@ describe('C12 M4: ROUTERSYNC_LOW_RESOURCE', () => {
     }
   });
 
-  it('outputs full result when ROUTERSYNC_LOW_RESOURCE is not set', async () => {
+  it('json: true, full: true produces full result with top15After', async () => {
     delete process.env['ROUTERSYNC_LOW_RESOURCE'];
 
     const logs: string[] = [];
@@ -79,7 +115,7 @@ describe('C12 M4: ROUTERSYNC_LOW_RESOURCE', () => {
     });
 
     try {
-      await runRankCommand({ router: 'all', json: true });
+      await runRankCommand({ router: 'all', json: true, full: true });
       expect(logs.length).toBeGreaterThan(0);
       const jsonOutput = logs.join('\n');
       const parsed = JSON.parse(jsonOutput);

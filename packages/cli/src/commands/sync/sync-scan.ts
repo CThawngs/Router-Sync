@@ -9,6 +9,7 @@ import { createHash } from 'node:crypto';
 import { fetchModelList, canonicalPrefix, type ProviderTarget } from '../../sync/providers.js';
 import type { RouterView } from './sync-plan.js';
 import type { ProviderLive } from '../../sync/plan.js';
+import { isLowResource } from '../../low-resource.js';
 
 export type ScanMeta = Map<string, { status: number; incomplete: boolean; pages: number; bytes?: number | undefined; rawCount?: number | undefined; error?: string | undefined; errorClass?: string | undefined; at?: string | undefined }>;
 
@@ -38,7 +39,7 @@ export async function scanAll(
   const hostCache = new Map<string, string[]>();
   const reqTimes: Array<{ view: string; prefix: string; at: string }> = [];
   const metaCache = new Map<string, { status: number; incomplete: boolean; pages: number; bytes?: number | undefined; rawCount?: number | undefined; error?: string | undefined; errorClass?: string | undefined; at?: string | undefined }>();
-  const lowResource = process.env.ROUTERSYNC_LOW_RESOURCE === '1';
+  const lowResource = isLowResource();
   const concurrency = lowResource ? 1 : 4;
   const effectiveTimeoutMs = lowResource ? Math.min(timeoutMs, 10000) : timeoutMs;
   let cursor = 0;

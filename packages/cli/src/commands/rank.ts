@@ -24,6 +24,7 @@ import { confirm, writeLastApplied, writeLastSync, type LastSyncRecord } from '.
 import { loadRankingConfig } from '../rank/config.js';
 import { rankComboModels, isComboExcluded } from '../rank/ranker.js';
 import type { ComboRankResult, RankingConfig } from '../rank/types.js';
+import { isLowResource } from '../low-resource.js';
 import {
   readComboModels,
   readCombosWithDetails,
@@ -40,6 +41,7 @@ export interface RankCommandOptions {
   router?: string | undefined;
   config?: string | undefined;
   json?: boolean | undefined;
+  full?: boolean | undefined;
   dryRun?: boolean | undefined;
   apply?: boolean | undefined;
   scanGapMs?: number | undefined;
@@ -797,7 +799,9 @@ export async function runRankCommand(options: RankCommandOptions): Promise<Combo
   }
 
   if (options.json) {
-    if (process.env.ROUTERSYNC_LOW_RESOURCE === '1') {
+    // Default: compact summary ≤ 100 KB (--full for complete output)
+    const wantFull = options.full === true;
+    if (!wantFull) {
       const summary = allResults.map((r) => ({
         routerId: r.routerId,
         comboName: r.comboName,

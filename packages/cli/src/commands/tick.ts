@@ -25,6 +25,7 @@ import { runL2Scan } from '../verify/l2-scanner.js';
 import { runL3Scan } from '../verify/l3-scanner.js';
 import { loadRankingConfig } from '../rank/config.js';
 import { isBlacklisted } from '../rank/filters.js';
+import { isLowResource } from '../low-resource.js';
 import { providerHasSingleModelGet } from '../verify/gateways.js';
 
 export type AutonomyMode = 'observe' | 'propose';
@@ -542,7 +543,7 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
       }
 
       requests += 1;
-      const tickTimeoutMs = process.env.ROUTERSYNC_LOW_RESOURCE === '1' ? 8_000 : 12_000;
+      const tickTimeoutMs = isLowResource() ? 8_000 : 12_000;
       const outcome = await fetchModelList(t, {
         ...(options.fetchFn ? { fetchFn: options.fetchFn } : {}),
         timeoutMs: tickTimeoutMs,

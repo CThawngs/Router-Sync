@@ -251,6 +251,7 @@ use samples live in [`examples/schedule/`](examples/schedule/):
 
 | Document | Content |
 |---|---|
+| [`docs/low-resource.md`](docs/low-resource.md) | Low-resource mode, env vars, and tips |
 | [`docs/SETUP.md`](docs/SETUP.md) | First-time setup |
 | [`docs/WORKFLOW.md`](docs/WORKFLOW.md) / [`docs/WORKFLOW.vi.md`](docs/WORKFLOW.vi.md) | The daily workflow |
 | [`docs/ROADMAP.md`](docs/ROADMAP.md) | What is planned and what is known to be missing |

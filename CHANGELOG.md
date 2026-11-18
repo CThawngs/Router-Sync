@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] — C13
+
+### Added
+- **`isLowResource()` module** (`packages/cli/src/low-resource.ts`): single source of truth for
+  low-resource mode detection. Auto-detects via totalRAM ≤ 8 GiB, cores ≤ 4, or freeMem < 2 GiB;
+  override with `ROUTERSYNC_LOW_RESOURCE=1/0`. Caches result per process.
+- **`rank --full` flag**: `rank --json` now always outputs a compact summary (≤ 100 KB) by default;
+  pass `--full` to get the complete result for all callers (removes low-resource-only gate).
+- **`docs/low-resource.md`**: documentation for low-resource mode, env vars, and tips.
+- **`tools/agent/typecheck-changed.mjs`**: fast typecheck script that only checks packages with
+  files changed relative to `origin/main`.
+
+### Changed
+- **Perf hook (`installPerfHook`)**: replaced `memoryUsage().rss` with `process.resourceUsage().maxRSS`
+  (peak RSS). Field renamed `rssMB` → `maxRssMB`. Falls back to `memoryUsage().rss` when maxRSS = 0
+  (short-lived processes). Platform normalization: bytes on Windows, KB × 1024 on Linux/macOS.
+- **`ROUTERSYNC_LOW_RESOURCE` env reads**: 3 direct `process.env` reads in `rank.ts`, `sync-scan.ts`,
+  `tick.ts` replaced with `isLowResource()` calls.
+- **`vitest.workspace.ts`**: test pool changed from threads to forks (`pool: 'forks'`), capped at
+  `maxForks=2` on local dev machines (CI unaffected). Override with `RS_TEST_WORKERS`.
+- **`test:quick` script**: removed stale `--poolOptions.threads.*` flags (now handled by workspace config).
+- **`typecheck:fast`** → **`typecheck:changed`**: replaced with the new changed-only script.
+
+### Fixed
+- Low-resource mode no longer gated only on `ROUTERSYNC_LOW_RESOURCE=1`; auto-detection now active.
+
 ## [0.1.0] - 2026-11-17
 
 First release candidate. Read-only surface is stable.

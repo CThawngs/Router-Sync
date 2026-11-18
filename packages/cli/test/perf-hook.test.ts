@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 const here = path.dirname(fileURLToPath(import.meta.url));
 const cliEntry = path.resolve(here, '../dist/index.js');
 
-describe('C12 M2: ROUTERSYNC_PERF hook', () => {
+describe('C13: ROUTERSYNC_PERF hook (maxRSS)', () => {
   it('does not emit perf JSON when ROUTERSYNC_PERF is unset', () => {
     const res = spawnSync(process.execPath, [cliEntry, '--version'], {
       encoding: 'utf8',
@@ -16,7 +16,7 @@ describe('C12 M2: ROUTERSYNC_PERF hook', () => {
     expect(res.stderr).not.toContain('[routersync-perf]');
   });
 
-  it('emits valid perf JSON on stderr when ROUTERSYNC_PERF=1', () => {
+  it('emits valid perf JSON with maxRssMB on stderr when ROUTERSYNC_PERF=1', () => {
     const res = spawnSync(process.execPath, [cliEntry, '--version'], {
       encoding: 'utf8',
       env: { ...process.env, ROUTERSYNC_PERF: '1' },
@@ -31,8 +31,12 @@ describe('C12 M2: ROUTERSYNC_PERF hook', () => {
     expect(parsed.durationMs).toBeGreaterThan(0);
     expect(typeof parsed.cpuUserMs).toBe('number');
     expect(typeof parsed.cpuSystemMs).toBe('number');
-    expect(typeof parsed.rssMB).toBe('number');
-    expect(parsed.rssMB).toBeGreaterThan(0);
+    // C13: maxRssMB replaces rssMB (uses process.resourceUsage().maxRSS)
+    expect(typeof parsed.maxRssMB).toBe('number');
+    // maxRssMB can be 0 for very short-lived processes (< 1 MB)
+    expect(parsed.maxRssMB).toBeGreaterThanOrEqual(0);
+    // rssMB must NOT be present (mutation guard)
+    expect(parsed.rssMB).toBeUndefined();
     expect(typeof parsed.heapUsedMB).toBe('number');
   });
 });
