@@ -79,18 +79,7 @@ jobs:
       - name: Check low-priority keys in schedule artifacts
         shell: bash
         run: |
-          set -e
-          d="${RUNNER_TEMP}/schedule-artifacts"
-          grep -q '<Priority>7</Priority>' "$d/routersync-task.xml"
-          grep -q '<MultipleInstancesPolicy>IgnoreNew</MultipleInstancesPolicy>' "$d/routersync-task.xml"
-          grep -q '<ExecutionTimeLimit>PT30M</ExecutionTimeLimit>' "$d/routersync-task.xml"
-          grep -q 'Nice=10' "$d/routersync-daemon.service"
-          grep -q 'IOSchedulingClass=idle' "$d/routersync-daemon.service"
-          grep -q 'CPUWeight=20' "$d/routersync-daemon.service"
-          grep -q 'MemoryHigh=512M' "$d/routersync-daemon.service"
-          grep -q '<key>ProcessType</key><string>Background</string>' "$d/com.routersync.daemon.plist"
-          grep -q '<key>LowPriorityIO</key><true/>' "$d/com.routersync.daemon.plist"
-          echo "SCHEDULE PRIORITY KEYS OK"
+          node tools/ci/check-schedule-keys.mjs "${RUNNER_TEMP}/schedule-artifacts"
 
       - name: Lint systemd units (Linux)
         if: runner.os == 'Linux'
@@ -157,7 +146,9 @@ jobs:
         shell: bash
         run: |
           set -e
+          set -a
           source /tmp/rs-sample/sample.env
+          set +a
           for args in "doctor" "plan" "verify" "scan" "rank --json"; do
             echo "SMOKE $args"
             if ROUTERSYNC_PERF=1 node packages/cli/dist/index.js $args > /tmp/out.txt 2> /tmp/err.txt; then

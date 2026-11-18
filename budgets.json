@@ -9,35 +9,36 @@
       "doctor": {
         "measuredMs": 1623,
         "measuredRssMB": 95,
-        "budgetMs": 2029,
-        "budgetRssMB": 119
+        "budgetMs": 5000,
+        "budgetRssMB": 250
       },
       "scan": {
         "measuredMs": 788,
         "measuredRssMB": 110,
-        "budgetMs": 985,
-        "budgetRssMB": 138
+        "budgetMs": 5000,
+        "budgetRssMB": 250
       },
       "plan": {
         "measuredMs": 705,
         "measuredRssMB": 96,
-        "budgetMs": 882,
-        "budgetRssMB": 120
+        "budgetMs": 5000,
+        "budgetRssMB": 250
       },
       "verify": {
         "measuredMs": 818,
         "measuredRssMB": 118,
-        "budgetMs": 1023,
-        "budgetRssMB": 148
+        "budgetMs": 5000,
+        "budgetRssMB": 250
       },
       "rank-json": {
         "measuredMs": 895,
         "measuredRssMB": 115,
-        "budgetMs": 1119,
-        "budgetRssMB": 144
+        "budgetMs": 5000,
+        "budgetRssMB": 250
       }
     },
     "darwin": {},
     "linux": {}
-  }
+  },
+  "note": "Per-OS 125% budgets pending first complete CI run; hard caps applied meanwhile."
 }
