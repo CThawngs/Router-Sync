@@ -1,25 +1,31 @@
 /**
  * packages/cli/src/watchdog.ts
  *
- * C14 (a): CLI-wide watchdog. Exits with code 124 after WATCHDOG_MS.
- * The long-running `daemon` command is exempt.
+ * C15 Q1.1: watchdog follows the command classification.
  */
 
-export const WATCHDOG_MS = 120_000;
+import { classifyCommand, watchdogDelayMs, type CommandClass } from './command-classification.js';
 
-/** Commands that are allowed to run indefinitely. */
-export function isWatchdogExempt(argv: string[]): boolean {
-  return argv[2] === 'daemon';
+/** Exposed for tests / diagnostics. */
+export function watchdogClass(argv: string[]): CommandClass {
+  return classifyCommand(argv);
 }
 
 /**
- * Install the watchdog. Returns a cleanup function that must be called when
- * the command finishes. The timer is unref'd so it never keeps the process alive.
+ * Install the watchdog. Returns a cleanup function.
+ * - long-running: never watched
+ * - interactive: watched only when stdin is NOT a TTY
+ * - short: always watched
+ * ROUTERSYNC_WATCHDOG_MS=0 disables all watches.
  */
-export function installWatchdog(argv: string[], ms: number = WATCHDOG_MS): () => void {
-  if (isWatchdogExempt(argv)) return () => {};
+export function installWatchdog(argv: string[], ms: number = watchdogDelayMs()): () => void {
+  if (ms === 0) return () => {};
+  const cls = classifyCommand(argv);
+  if (cls === 'long-running') return () => {};
+  if (cls === 'interactive' && process.stdin.isTTY === true) return () => {};
+
   const timer = setTimeout(() => {
-    process.stderr.write('[routersync] watchdog: timeout, exit 124\n');
+    process.stderr.write(`[routersync] watchdog: timeout (${cls} command), exit 124\n`);
     process.exit(124);
   }, ms);
   timer.unref?.();
