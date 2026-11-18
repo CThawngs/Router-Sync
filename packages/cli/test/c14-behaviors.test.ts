@@ -4,7 +4,8 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { isWatchdogExempt, WATCHDOG_MS } from '../src/watchdog.js';
+import { watchdogClass } from '../src/watchdog.js';
+import { COMMAND_CLASSES } from '../src/command-classification.js';
 import { runVerifyCommand } from '../src/commands/verify.js';
 import { runRankCommand } from '../src/commands/rank.js';
 import { openBetterSqlite3 } from '@routersync/core';
@@ -13,22 +14,21 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const cliEntry = path.resolve(here, '../dist/index.js');
 const watchdogUrl = pathToFileURL(path.resolve(here, '../dist/watchdog.js')).href;
 
-describe('C14 (a): watchdog', () => {
+describe('C15 Q1.1: watchdog classification', () => {
   let tmp: string;
-  beforeEach(() => { tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'rs-c14-wd-')); });
+  beforeEach(() => { tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'rs-c15-wd-')); });
   afterEach(() => { fs.rmSync(tmp, { recursive: true, force: true }); });
 
-  it('exempts daemon only', () => {
-    expect(isWatchdogExempt(['node', 'cli', 'daemon'])).toBe(true);
-    expect(isWatchdogExempt(['node', 'cli', 'doctor'])).toBe(false);
-    expect(isWatchdogExempt(['node', 'cli'])).toBe(false);
+  it('classifies long-running and interactive commands', () => {
+    expect(watchdogClass(['node', 'cli', 'daemon'])).toBe('long-running');
+    expect(watchdogClass(['node', 'cli', 'mcp'])).toBe('long-running');
+    expect(watchdogClass(['node', 'cli', 'track', 'watch'])).toBe('long-running');
+    expect(watchdogClass(['node', 'cli', 'apply'])).toBe('interactive');
+    expect(watchdogClass(['node', 'cli', 'rank', '--apply'])).toBe('interactive');
+    expect(watchdogClass(['node', 'cli', 'doctor', '--json'])).toBe('short');
   });
 
-  it('default watchdog is 120 s', () => {
-    expect(WATCHDOG_MS).toBe(120_000);
-  });
-
-  it('exits 124 when a non-exempt command exceeds the deadline', () => {
+  it('exits 124 for a short command past the deadline', () => {
     const f = path.join(tmp, 'wd.mjs');
     fs.writeFileSync(f, [
       `import { installWatchdog } from ${JSON.stringify(watchdogUrl)};`,
@@ -37,19 +37,32 @@ describe('C14 (a): watchdog', () => {
     ].join('\n'));
     const res = spawnSync(process.execPath, [f], { encoding: 'utf8', timeout: 5000 });
     expect(res.status).toBe(124);
-    expect(res.stderr).toContain('watchdog: timeout, exit 124');
+    expect(res.stderr).toContain('watchdog: timeout');
   });
 
-  it('does not fire for daemon even past the deadline', () => {
+  it('never fires for a long-running command', () => {
     const f = path.join(tmp, 'wd.mjs');
     fs.writeFileSync(f, [
       `import { installWatchdog } from ${JSON.stringify(watchdogUrl)};`,
-      `installWatchdog(['node','x','daemon'], 60);`,
+      `installWatchdog(['node','x','mcp'], 60);`,
       `setTimeout(() => { process.stdout.write('ok'); }, 200);`,
     ].join('\n'));
     const res = spawnSync(process.execPath, [f], { encoding: 'utf8', timeout: 5000 });
     expect(res.status).toBe(0);
     expect(res.stdout).toContain('ok');
+  });
+
+  it('classifies EVERY registered commander command', async () => {
+    const { createCliProgram } = await import('../src/index.js');
+    const program = createCliProgram();
+    const missing: string[] = [];
+    function walk(cmd: { name(): string; commands?: unknown[] }, prefix: string): void {
+      const full = prefix ? `${prefix} ${cmd.name()}` : cmd.name();
+      if (!(full in COMMAND_CLASSES)) missing.push(full);
+      for (const sub of cmd.commands ?? []) walk(sub as typeof cmd, full);
+    }
+    for (const cmd of program.commands ?? []) walk(cmd as never, '');
+    expect(missing).toEqual([]);
   });
 });
 

@@ -73,10 +73,14 @@ import { installConfiguredRouterDbPaths } from './config/loader.js';
 // Enforce Node.js >= 22.0.0 on startup (Condition A7 / AT-100)
 enforceNodeVersion();
 
+/** C15 Q1.2: maxRSS is kilobytes on all platforms; convert to MB. */
+export function maxRssKbToMb(maxRssKb: number): number {
+  return Math.round(maxRssKb / 1024);
+}
+
 /**
- * C13: Emit performance metrics on stderr when ROUTERSYNC_PERF=1.
- * Uses process.resourceUsage().maxRSS (peak RSS) instead of memoryUsage().rss
- * (snapshot at exit). maxRSS unit: bytes on Windows, KB on Linux/macOS.
+ * C15 Q1.2: Emit performance metrics on stderr when ROUTERSYNC_PERF=1.
+ * process.resourceUsage().maxRSS is reported in KILOBYTES on every platform.
  */
 export function installPerfHook(): void {
   if (process.env.ROUTERSYNC_PERF !== '1') return;
@@ -87,22 +91,13 @@ export function installPerfHook(): void {
       const elapsedMs = Number(process.hrtime.bigint() - t0) / 1_000_000;
       const cpu = process.cpuUsage(cpu0);
       const ru = process.resourceUsage();
-      const MB = 1024 * 1024;
-      // maxRSS: bytes on Windows, KB on Linux/macOS
-      const maxRssRaw = ru.maxRSS;
-      const maxRssBytes =
-        maxRssRaw === 0
-          ? process.memoryUsage().rss // fallback: maxRSS not yet flushed by OS
-          : process.platform === 'win32'
-            ? maxRssRaw
-            : maxRssRaw * 1024;
       const payload = {
         pid: process.pid,
         durationMs: Math.round(elapsedMs * 10) / 10,
         cpuUserMs: Math.round(cpu.user / 1000),
         cpuSystemMs: Math.round(cpu.system / 1000),
-        maxRssMB: Math.round(maxRssBytes / MB),
-        heapUsedMB: Math.round(process.memoryUsage().heapUsed / MB),
+        maxRssMB: maxRssKbToMb(ru.maxRSS),
+        heapUsedMB: Math.round(process.memoryUsage().heapUsed / (1024 * 1024)),
       };
       process.stderr.write(`[routersync-perf] ${JSON.stringify(payload)}\n`);
     } catch {
