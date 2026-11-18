@@ -54,6 +54,21 @@ routersync verify --json --full --out verify-output.json
 
 Without `--out`, JSON goes to stdout.
 
+## Local agent mode (LIGHT-DEV)
+
+Run `node tools/agent/preflight.mjs` before starting agent work. It prints
+available RAM, core count, and whether the repo is inside a cloud-synced folder.
+When available RAM < 1.5 GiB, use `LIGHT-DEV`:
+
+```sh
+pnpm lint
+pnpm typecheck:changed
+pnpm test:changed          # vitest run --changed origin/main, fork cap kept
+```
+
+Do **not** run `pnpm test`, `pnpm e2e`, bare `vitest run`, or `pnpm test:slow`
+locally in LIGHT-DEV. The full suite runs in PR CI.
+
 ## Tips for low-memory machines
 
 - **Keep the repo outside cloud-synced folders** (OneDrive, Dropbox). Sync software causes extra I/O during builds and tests, which can push free RAM below the 2 GiB threshold.
