@@ -160,8 +160,14 @@ jobs:
           source /tmp/rs-sample/sample.env
           for args in "doctor" "plan" "verify" "scan" "rank --json"; do
             echo "SMOKE $args"
-            ROUTERSYNC_PERF=1 node packages/cli/dist/index.js $args > /tmp/out.txt 2> /tmp/err.txt
-            cat /tmp/err.txt | grep '\[routersync-perf\]' || true
+            if ROUTERSYNC_PERF=1 node packages/cli/dist/index.js $args > /tmp/out.txt 2> /tmp/err.txt; then
+              grep '\[routersync-perf\]' /tmp/err.txt || true
+            else
+              echo "SMOKE FAILED: $args"
+              echo "--- stdout ---"; cat /tmp/out.txt
+              echo "--- stderr ---"; cat /tmp/err.txt
+              exit 1
+            fi
           done
 
   ui:

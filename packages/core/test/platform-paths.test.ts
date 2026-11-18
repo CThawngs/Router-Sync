@@ -87,7 +87,7 @@ describe('K3.1 / J1 - the router database path is platform aware', () => {
 
   it('OmniRoute uses its home directory and can be overridden', () => {
     const env = { ROUTERSYNC_OMNIROUTE_DB: '/tmp/custom-omni.sqlite' };
-    expect(locateRouterDb('omniroute', env, 'linux')).toContain('custom-omni.sqlite');
+    expect(locateRouterDb('omniroute', env, 'linux')).toContain('custom-omni.sqlite'); // no-secrets:allow: synthetic Unicode test path
   });
 });
 
@@ -117,9 +117,9 @@ describe('K3.1 - the configuration directory is platform aware', () => {
 
 describe('C15 Q2.5 - path separators, spaces and Unicode', () => {
   const cases = [
-    { platform: 'win32', env: { APPDATA: 'C:\\Users\\Tester Name' } },
+    { platform: 'win32', env: { APPDATA: 'C:\\Users\\Tester Name' } }, // no-secrets:allow: synthetic test path
     { platform: 'darwin', env: { HOME: '/Users/Tester Name' } },
-    { platform: 'linux', env: { HOME: '/home/tester name' } },
+    { platform: 'linux', env: { HOME: '/home/tester name' } }, // no-secrets:allow: synthetic test path
   ];
   for (const c of cases) {
     it(`resolves a home path with spaces on ${c.platform}`, () => {
@@ -137,7 +137,7 @@ describe('C15 Q2.5 - path separators, spaces and Unicode', () => {
   });
 
   it('keeps Unicode in the resolved path', () => {
-    const result = locateRouterDb('omniroute', { HOME: '/home/người dùng', XDG_STATE_HOME: '/home/người dùng/.local/state' }, 'linux');
+    const result = locateRouterDb('omniroute', { HOME: '/home/người dùng', XDG_STATE_HOME: '/home/người dùng/.local/state' }, 'linux'); // no-secrets:allow: synthetic Unicode test path
     expect(result).toContain('omniroute');
   });
 });

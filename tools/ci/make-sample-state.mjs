@@ -42,9 +42,11 @@ dO.prepare("INSERT INTO combos VALUES (?, ?, ?, ?, ?, ?, ?)").run(
 );
 dO.close();
 
+const stateDir = path.join(dir, 'state');
+fs.mkdirSync(stateDir, { recursive: true });
 fs.writeFileSync(path.join(dir, 'sample.env'), [
   `ROUTERSYNC_9ROUTER_DB=${nine}`,
   `ROUTERSYNC_OMNIROUTE_DB=${omni}`,
-  `ROUTERSYNC_STATE_DIR=${path.join(dir, 'state')}`,
+  `ROUTERSYNC_STATE_DIR=${stateDir}`,
 ].join('\n') + '\n');
 console.log(`sample state written to ${dir}`);
