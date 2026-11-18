@@ -86,6 +86,8 @@ export const COMMAND_CLASSES: Record<string, CommandClass> = {
   'agents apply': 'interactive',
   'agents rollback': 'interactive',
   'agents update': 'interactive',
+  combos: 'short',
+  'combos stale': 'short',
 };
 
 /** Classify argv (process.argv.slice(2)). Unknown commands default to short. */
