@@ -26,6 +26,7 @@ import { runL3Scan } from '../verify/l3-scanner.js';
 import { loadRankingConfig } from '../rank/config.js';
 import { isBlacklisted } from '../rank/filters.js';
 import { isLowResource } from '../low-resource.js';
+import { applyLowResourcePriority } from '../low-resource.js';
 import { providerHasSingleModelGet } from '../verify/gateways.js';
 
 export type AutonomyMode = 'observe' | 'propose';
@@ -372,6 +373,8 @@ export function resolveModelTier(
 }
 
 export async function runTickCommand(options: TickCommandOptions = {}): Promise<TickRunSummary> {
+  // C14 (d): lower our OS priority on resource-constrained machines.
+  applyLowResourcePriority();
   // A8: Only observe and propose in v0.1 (auto-safe removed)
   // C4n/N6: an unknown --mode is REFUSED, not silently treated as 'propose'.
   // C4o/O5 & C4p/P3: Validate options at top of function before touching disk or acquiring lock.

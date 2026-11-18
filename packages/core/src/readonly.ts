@@ -57,6 +57,8 @@ export function openReadOnlyDb(dbPath: string, options?: OpenReadOnlyDbOptions):
 
   try {
     db.pragma(`busy_timeout = ${timeoutMs}`);
+    // C14: strict read-only guard at the SQLite layer.
+    db.pragma('query_only = ON');
   } catch {
     // If pragma fails on specialized read-only mounts, proceed
   }

@@ -69,3 +69,19 @@ export function _resetLowResourceCache(): void {
   _cached = undefined;
   _reason = undefined;
 }
+
+/**
+ * C14: Lower the OS priority of the current process when low-resource mode is
+ * active. Best-effort: unsupported platforms / missing permissions are ignored.
+ * Returns true when the priority was actually lowered.
+ */
+export function applyLowResourcePriority(): boolean {
+  if (!isLowResource()) return false;
+  try {
+    const low = (os.constants?.priority?.PRIORITY_LOW ?? 5) as number;
+    os.setPriority(process.pid, low);
+    return true;
+  } catch {
+    return false;
+  }
+}

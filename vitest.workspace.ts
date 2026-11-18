@@ -14,13 +14,6 @@ const alias = {
   '@routersync/daemon': path.resolve(__dirname, 'packages/daemon/src/index.ts'),
 };
 
-// N1: Limit concurrent test workers on local dev machines.
-// In CI (CI=true) vitest manages its own concurrency.
-// RS_TEST_WORKERS overrides. Default local cap: 2 forks.
-const isCI = process.env['CI'] === 'true' || process.env['CI'] === '1';
-const localMaxForks = Number(process.env['RS_TEST_WORKERS'] ?? 2);
-const forkPool = isCI ? undefined : { forks: { maxForks: localMaxForks, minForks: 1 } };
-
 export default defineWorkspace([
   {
     resolve: { alias },
@@ -31,8 +24,6 @@ export default defineWorkspace([
       environment: 'node',
       testTimeout: 20000,
       setupFiles: [path.resolve(__dirname, 'test/harness/state-dir-setup.ts')],
-      pool: 'forks',
-      poolOptions: forkPool,
       server: {
         deps: {
           external: ['node:sqlite'],
@@ -50,8 +41,6 @@ export default defineWorkspace([
       setupFiles: [path.resolve(__dirname, 'test/harness/state-dir-setup.ts')],
       // UI tests run in their own jsdom project below (ADR-UI-01).
       exclude: ['**/node_modules/**', 'packages/ui/test/**'],
-      pool: 'forks',
-      poolOptions: forkPool,
       server: {
         deps: {
           external: ['node:sqlite'],
@@ -80,7 +69,7 @@ export default defineWorkspace([
     test: {
       // End-to-end: packs the packages, installs them with npm into a temp
       // project and drives the installed binaries. Slow, so it is NOT part of
-      // `pnpm test`; run it with `pnpm e2e`.\n      name: 'e2e',
+      // `pnpm test`; run it with `pnpm e2e`.
       name: 'e2e',
       include: ['test/e2e/**/*.{test,spec}.{js,mjs,ts}'],
       environment: 'node',

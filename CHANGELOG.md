@@ -25,7 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `tick.ts` replaced with `isLowResource()` calls.
 - **`vitest.workspace.ts`**: test pool changed from threads to forks (`pool: 'forks'`), capped at
   `maxForks=2` on local dev machines (CI unaffected). Override with `RS_TEST_WORKERS`.
-- **`test:quick` script**: removed stale `--poolOptions.threads.*` flags (now handled by workspace config).
+- **`test:quick` removed**: it was identical to `test` (which already uses the workspace fork limit of 2). Run `pnpm test`.
 - **`typecheck:fast`** → **`typecheck:changed`**: replaced with the new changed-only script.
 
 ### Fixed

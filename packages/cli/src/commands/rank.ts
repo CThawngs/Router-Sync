@@ -42,6 +42,7 @@ export interface RankCommandOptions {
   config?: string | undefined;
   json?: boolean | undefined;
   full?: boolean | undefined;
+  out?: string | undefined;
   dryRun?: boolean | undefined;
   apply?: boolean | undefined;
   scanGapMs?: number | undefined;
@@ -801,22 +802,22 @@ export async function runRankCommand(options: RankCommandOptions): Promise<Combo
   if (options.json) {
     // Default: compact summary ≤ 100 KB (--full for complete output)
     const wantFull = options.full === true;
-    if (!wantFull) {
-      const summary = allResults.map((r) => ({
-        routerId: r.routerId,
-        comboName: r.comboName,
-        originalCount: r.originalCount,
-        retainedCount: r.retainedCount,
-        droppedCount: r.droppedCount,
-        positionChangesCount: r.positionChangesCount,
-        lostProviders: r.lostProviders,
-        top5After: r.top15After.slice(0, 5),
-        coverageAfter: r.coverageAfter,
-      }));
-      console.log(JSON.stringify(summary, null, 2));
-      return allResults;
-    }
-    console.log(JSON.stringify(allResults, null, 2));
+    const payload = wantFull
+      ? allResults
+      : allResults.map((r) => ({
+          routerId: r.routerId,
+          comboName: r.comboName,
+          originalCount: r.originalCount,
+          retainedCount: r.retainedCount,
+          droppedCount: r.droppedCount,
+          positionChangesCount: r.positionChangesCount,
+          lostProviders: r.lostProviders,
+          top5After: r.top15After.slice(0, 5),
+          coverageAfter: r.coverageAfter,
+        }));
+    const text = JSON.stringify(payload, null, 2);
+    if (options.out) fs.writeFileSync(options.out, text + '\n', 'utf8');
+    else console.log(text);
     return allResults;
   }
 

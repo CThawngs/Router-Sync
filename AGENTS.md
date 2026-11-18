@@ -100,7 +100,7 @@ first row, not to `tick --mode`.
   evidence via `research submit` per schema.
 - Write flow: show plan → user types the confirmation word in their terminal →
   read back → `routersync undo` if needed.
-- Low-resource machines: use `pnpm test:quick` and `pnpm typecheck:fast`; set `ROUTERSYNC_LOW_RESOURCE=1` to limit concurrency and network timeouts.
+- Low-resource machines: run `pnpm test` (workspace config already limits 2 forks) and `pnpm typecheck:changed`; set `ROUTERSYNC_LOW_RESOURCE=1` to limit concurrency and network timeouts.
 
 ## 7. Troubleshooting
 
@@ -117,7 +117,7 @@ first row, not to `tick --mode`.
 | `tick` lock held | Previous tick still running | Wait for the lock to release; do not force-delete |
 | `SHRINK-GUARD-BLOCKED` repeats | Provider catalog shrank > threshold | Review official provider model list to confirm genuine removals vs provider outage; if genuine, a human operator (not an agent) may reset the baseline by removing that provider's entry from `tick-catalog.json` or adjust `--max-shrink-ratio` |
 | No ranking policy file | `ranking.yaml` missing | Copy `ranking.example.yaml` to the policy path |
-| Slow machine / high RAM use | Low free memory or OneDrive I/O | Run `pnpm test:quick` and `pnpm typecheck:fast`; set `ROUTERSYNC_LOW_RESOURCE=1` |
+| Slow machine / high RAM use | Low free memory or OneDrive I/O | Run `pnpm test` (workspace config already limits 2 forks) and `pnpm typecheck:changed`; set `ROUTERSYNC_LOW_RESOURCE=1` |
 
 ## 8. Update procedure
 

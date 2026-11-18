@@ -406,6 +406,10 @@ export const openBetterSqlite3: OpenSqliteDriver = (
   }
   const busyTimeout = options.busyTimeoutMs ?? 5000;
   db.pragma(`busy_timeout = ${busyTimeout}`, { simple: true });
+  // C14: read-only connections must reject writes at the SQLite layer too.
+  if (options.readOnly === true) {
+    db.pragma('query_only = ON', { simple: true });
+  }
 
   return new BetterSqlite3Driver(db);
 };
