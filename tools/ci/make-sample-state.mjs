@@ -48,5 +48,20 @@ fs.writeFileSync(path.join(dir, 'sample.env'), [
   `ROUTERSYNC_9ROUTER_DB=${nine}`,
   `ROUTERSYNC_OMNIROUTE_DB=${omni}`,
   `ROUTERSYNC_STATE_DIR=${stateDir}`,
+  `ROUTERSYNC_CONFIG=${path.join(dir, 'routersync.yaml')}`,
+].join('\n') + '\n');
+fs.writeFileSync(path.join(dir, 'routersync.yaml'), [
+  'version: 1',
+  'policy:',
+  '  mode: manual',
+  'routers:',
+  '  - id: omniroute',
+  '    adapter: omniroute',
+  "    baseUrl: 'http://127.0.0.1:9'",
+  `    path: '${omni.replace(/\\/g, '/')}'`,
+  '  - id: 9router',
+  '    adapter: 9router',
+  "    baseUrl: 'http://127.0.0.1:9'",
+  `    path: '${nine.replace(/\\/g, '/')}'`,
 ].join('\n') + '\n');
 console.log(`sample state written to ${dir}`);
