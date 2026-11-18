@@ -7,38 +7,100 @@
   "os": {
     "win32": {
       "doctor": {
-        "measuredMs": 1623,
-        "measuredRssMB": 95,
-        "budgetMs": 5000,
-        "budgetRssMB": 250
+        "measuredMs": 572.1,
+        "measuredRssMB": 74,
+        "budgetMs": 715,
+        "budgetRssMB": 92
       },
       "scan": {
-        "measuredMs": 788,
-        "measuredRssMB": 110,
-        "budgetMs": 5000,
-        "budgetRssMB": 250
+        "measuredMs": 62.3,
+        "measuredRssMB": 75,
+        "budgetMs": 77,
+        "budgetRssMB": 93
       },
       "plan": {
-        "measuredMs": 705,
-        "measuredRssMB": 96,
-        "budgetMs": 5000,
-        "budgetRssMB": 250
+        "measuredMs": 63.5,
+        "measuredRssMB": 75,
+        "budgetMs": 79,
+        "budgetRssMB": 93
       },
       "verify": {
-        "measuredMs": 818,
-        "measuredRssMB": 118,
-        "budgetMs": 5000,
-        "budgetRssMB": 250
+        "measuredMs": 2289.3,
+        "measuredRssMB": 132,
+        "budgetMs": 2861,
+        "budgetRssMB": 165
       },
       "rank-json": {
-        "measuredMs": 895,
-        "measuredRssMB": 115,
-        "budgetMs": 5000,
-        "budgetRssMB": 250
+        "measuredMs": 47.6,
+        "measuredRssMB": 75,
+        "budgetMs": 59,
+        "budgetRssMB": 93
       }
     },
-    "darwin": {},
-    "linux": {}
+    "darwin": {
+      "doctor": {
+        "measuredMs": 305.9,
+        "measuredRssMB": 91,
+        "budgetMs": 382,
+        "budgetRssMB": 113
+      },
+      "plan": {
+        "measuredMs": 28.6,
+        "measuredRssMB": 89,
+        "budgetMs": 35,
+        "budgetRssMB": 111
+      },
+      "verify": {
+        "measuredMs": 2584.6,
+        "measuredRssMB": 190,
+        "budgetMs": 3230,
+        "budgetRssMB": 237
+      },
+      "scan": {
+        "measuredMs": 35.1,
+        "measuredRssMB": 91,
+        "budgetMs": 43,
+        "budgetRssMB": 113
+      },
+      "rank-json": {
+        "measuredMs": 31.2,
+        "measuredRssMB": 89,
+        "budgetMs": 39,
+        "budgetRssMB": 111
+      }
+    },
+    "linux": {
+      "doctor": {
+        "measuredMs": 275.9,
+        "measuredRssMB": 95,
+        "budgetMs": 344,
+        "budgetRssMB": 118
+      },
+      "plan": {
+        "measuredMs": 38.1,
+        "measuredRssMB": 94,
+        "budgetMs": 47,
+        "budgetRssMB": 117
+      },
+      "verify": {
+        "measuredMs": 2439.8,
+        "measuredRssMB": 182,
+        "budgetMs": 3049,
+        "budgetRssMB": 227
+      },
+      "scan": {
+        "measuredMs": 40.9,
+        "measuredRssMB": 95,
+        "budgetMs": 51,
+        "budgetRssMB": 118
+      },
+      "rank-json": {
+        "measuredMs": 34.6,
+        "measuredRssMB": 94,
+        "budgetMs": 43,
+        "budgetRssMB": 117
+      }
+    }
   },
-  "note": "Per-OS 125% budgets pending first complete CI run; hard caps applied meanwhile."
+  "note": "Per-OS budgets = 125% of first complete CI run (44302288644)."
 }
