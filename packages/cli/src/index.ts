@@ -476,6 +476,21 @@ export function createCliProgram(): Command {
       }
     );
 
+  // combos command group (C15 Q4)
+  const combosCmd = program.command('combos').description('Read-only combo diagnostics');
+
+  combosCmd
+    .command('stale')
+    .description('List combo steps unknown-to-snapshot per router (read-only, no upstream claims)')
+    .option('--router <router>', 'Target router: 9router | omniroute | all', 'all')
+    .option('--json', 'Output result in JSON format')
+    .action(async (opts: { router?: string; json?: boolean }) => {
+      await (await import('./commands/combos-stale.js')).runCombosStaleCommand({
+        router: opts.router,
+        json: opts.json,
+      });
+    });
+
   // verify command (Round C4b F3b: multi-layer verification & accounting)
   program
     .command('verify')
