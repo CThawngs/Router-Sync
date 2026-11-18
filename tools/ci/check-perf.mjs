@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // CI helper: check one command's perf line against budgets.json.
 // Usage: node tools/ci/check-perf.mjs <stderr-file> <command-name>
+// Missing per-OS budget is a FAIL unless RS_BUDGET_BOOTSTRAP=1.
 import fs from 'node:fs';
 
 const [, , file, name] = process.argv;
@@ -12,9 +13,14 @@ if (matches.length === 0) { console.error(`NO PERF LINE: ${name}`); process.exit
 const perf = JSON.parse(matches[matches.length - 1][1]);
 const budgets = JSON.parse(fs.readFileSync('budgets.json', 'utf8'));
 const perOs = budgets.os[process.platform]?.[name];
-const limitMs = perOs?.budgetMs ?? budgets.hardCaps.maxMs;
-const limitRss = perOs?.budgetRssMB ?? budgets.hardCaps.maxRssMB;
 
+if (!perOs && process.env['RS_BUDGET_BOOTSTRAP'] !== '1') {
+  console.error(`BUDGET MISSING ${name} (${process.platform}): no os[platform][command] entry`);
+  process.exit(1);
+}
+
+const limitMs = perOs?.budgetMs ?? budgets.floors?.ms ?? 1000;
+const limitRss = perOs?.budgetRssMB ?? budgets.floors?.mb ?? 40;
 const problems = [];
 if (!(perf.durationMs <= limitMs)) problems.push(`durationMs ${perf.durationMs} > ${limitMs}`);
 if (!(perf.maxRssMB <= limitRss)) problems.push(`maxRssMB ${perf.maxRssMB} > ${limitRss}`);

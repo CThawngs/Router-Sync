@@ -10,12 +10,16 @@ import path from 'node:path';
 import { availableMemoryBytes } from '../../packages/cli/dist/low-resource.js';
 
 const CLOUD_MARKERS = ['onedrive', 'dropbox', 'icloud', 'google drive', 'synology drive', 'megasync'];
+const MiB = 1024 * 1024;
 const GiB = 1024 ** 3;
 const cwd = process.cwd();
 const lower = cwd.toLowerCase();
 const cloud = CLOUD_MARKERS.some((m) => lower.includes(m));
 
-const avail = availableMemoryBytes();
+const fake = process.env['RS_FAKE_AVAILABLE_MB'];
+const avail = fake !== undefined && Number.isFinite(Number(fake))
+  ? Number(fake) * MiB
+  : availableMemoryBytes();
 console.log(`available RAM: ${(avail / GiB).toFixed(2)} GiB`);
 console.log(`cores: ${os.availableParallelism?.() ?? os.cpus().length}`);
 console.log(`cloud-sync folder: ${cloud ? 'CÓ' : 'KHÔNG'}`);
