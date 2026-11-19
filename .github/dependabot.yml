@@ -1,0 +1,55 @@
+version: 2
+updates:
+  # RouterSync has a single pnpm workspace lockfile at the repository root.
+  # Weekly version updates keep the dependency set current; Dependabot security
+  # updates are handled separately by GitHub and are not grouped.
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "04:00"
+      timezone: Asia/Ho_Chi_Minh
+    open-pull-requests-limit: 10
+    versioning-strategy: increase
+    labels:
+      - dependencies
+    groups:
+      dev-tooling:
+        patterns:
+          - vite
+          - vitest
+          - "@vitest/*"
+          - "@vitejs/*"
+          - typescript
+          - esbuild
+          - tinypool
+        update-types:
+          - minor
+          - patch
+      runtime:
+        patterns:
+          - zod
+          - hono
+          - "@hono/*"
+          - "@modelcontextprotocol/*"
+          - express
+          - body-parser
+          - qs
+          - fast-uri
+        update-types:
+          - minor
+          - patch
+
+  # Keep GitHub Actions themselves patched.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "04:00"
+      timezone: Asia/Ho_Chi_Minh
+    open-pull-requests-limit: 5
+    labels:
+      - dependencies
+      - ci

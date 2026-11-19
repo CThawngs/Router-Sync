@@ -101,7 +101,7 @@ const NineRouterSettingsRowSchema = z.object({
 // other combo's strategy, so the daemon and the adapter could disagree.
 const NineRouterStrategyEntrySchema = z.unknown();
 
-const NineRouterComboStrategiesSchema = z.record(NineRouterStrategyEntrySchema).default({});
+const NineRouterComboStrategiesSchema = z.record(z.string(), NineRouterStrategyEntrySchema).default({});
 
 // --------------------------------------------------------------------------
 // Read-back level type

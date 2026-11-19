@@ -80,7 +80,7 @@ export async function generatePlansForConfig(configPath?: string): Promise<{
       adapter: router.adapter,
       plan,
       totalSteps: currentCombos.reduce((n: number, c) => n + c.models.length, 0),
-      keepSteps: currentCombos.reduce((n: number, c) => n + c.models.length, 0) + plan.additions.reduce((n: number, a) => n + a.models.length, 0) - plan.deletions.length,
+      keepSteps: currentCombos.reduce((n: number, c) => n + c.models.length, 0) + plan.additions.reduce((n: number, a: { models: unknown[] }) => n + a.models.length, 0) - plan.deletions.length,
     });
   }
 

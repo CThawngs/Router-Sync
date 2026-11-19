@@ -43,7 +43,7 @@ export const ComboDefinitionSchema = z.object({
   sortOrder: z.number().int().optional(),
   updatedAt: z.string().optional(),
   systemMessage: z.string().optional(),
-  rawData: z.record(z.unknown()).optional(),
+  rawData: z.record(z.string(), z.unknown()).optional(),
 });
 
 export const SnapshotSchema = z.object({
@@ -51,7 +51,7 @@ export const SnapshotSchema = z.object({
   target: z.string().min(1),
   timestamp: z.string().min(1),
   combos: z.array(ComboDefinitionSchema),
-  metadata: z.record(z.unknown()).optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
   backupFilePath: z.string().optional(),
 });
 
@@ -62,7 +62,7 @@ export const PlanSchema = z.object({
   additions: z.array(ComboDefinitionSchema),
   modifications: z.array(ComboDefinitionSchema),
   deletions: z.array(z.string()),
-  reasons: z.record(z.string()),
+  reasons: z.record(z.string(), z.string()),
   snapshotId: z.string().optional(),
 });
 
@@ -111,7 +111,7 @@ export type ComboRule = z.infer<typeof ComboRuleSchema>;
 // --- Model Tier Architecture (3-Tier Universe: R3) ---
 
 export const ModelTierSchema = z.enum(['A', 'B', 'C', 'UNKNOWN']);
-export type ModelTier = z.infer<typeof ModelTierSchema>;
+export type ModelTier = 'A' | 'B' | 'C' | 'UNKNOWN';
 
 export const PlanActionTypeSchema = z.enum([
   'REMOVE_MODEL',
@@ -127,9 +127,9 @@ export const TieredModelEntrySchema = z.object({
   tier: ModelTierSchema,
   inCombo: z.boolean().default(false),
   reason: z.string().optional(),
-  capabilities: z.record(z.union([z.boolean(), z.number(), z.string()])).optional(),
+  capabilities: z.record(z.string(), z.union([z.boolean(), z.number(), z.string()])).optional(),
   source: z.string().optional(),
-  metadata: z.record(z.unknown()).optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
 });
 export type TieredModelEntry = z.infer<typeof TieredModelEntrySchema>;
 

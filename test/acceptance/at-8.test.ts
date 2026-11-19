@@ -89,12 +89,12 @@ describe('Acceptance Test AT-8: Adopt Guard & Unmanaged Combo Safety (Condition 
 
     // 5. Verify Plan properties before applying:
     // 5.1 manualUntouched must NOT appear anywhere in the plan
-    expect(plan.additions.some((a) => a.id === manualUntouched.id)).toBe(false);
-    expect(plan.modifications.some((m) => m.id === manualUntouched.id)).toBe(false);
+    expect(plan.additions.some((a: { id: string }) => a.id === manualUntouched.id)).toBe(false);
+    expect(plan.modifications.some((m: { id: string }) => m.id === manualUntouched.id)).toBe(false);
     expect(plan.deletions).not.toContain(manualUntouched.id);
 
     // 5.2 adoptedGuarded must be modified to prune dead model while preserving order
-    const adoptedMod = plan.modifications.find((m) => m.id === adoptedGuarded.id);
+    const adoptedMod = plan.modifications.find((m: { id: string }) => m.id === adoptedGuarded.id);
     expect(adoptedMod).toBeDefined();
     // Dead model 'dead/provider/zombie' is pruned
     expect(adoptedMod?.models).toEqual(['provider-a/model-1', 'provider-b/model-2']);
@@ -104,7 +104,7 @@ describe('Acceptance Test AT-8: Adopt Guard & Unmanaged Combo Safety (Condition 
     expect(plan.deletions).not.toContain(adoptedGuarded.id);
 
     // 5.3 managedCombo is updated with rules
-    const managedMod = plan.modifications.find((m) => m.id === managedCombo.id);
+    const managedMod = plan.modifications.find((m: { id: string }) => m.id === managedCombo.id);
     expect(managedMod).toBeDefined();
     expect(managedMod?.models).toContain('provider-c/model-3');
 

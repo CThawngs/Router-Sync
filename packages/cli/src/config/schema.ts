@@ -46,12 +46,17 @@ export const RouterConfigSchema = z.object({
 
 export const SourcesConfigSchema = z
   .object({
-    providers: z.object({ enabled: z.boolean().default(true) }).default({}),
+    providers: z.object({ enabled: z.boolean().default(true) }).default({ enabled: true }),
     aggregators: z.array(z.string()).default(['openrouter', 'litellm']),
     community_registry: z.boolean().default(true),
-    news_signals: z.object({ enabled: z.boolean().default(false) }).default({}),
+    news_signals: z.object({ enabled: z.boolean().default(false) }).default({ enabled: false }),
   })
-  .default({});
+  .default({
+    providers: { enabled: true },
+    aggregators: ['openrouter', 'litellm'],
+    community_registry: true,
+    news_signals: { enabled: false },
+  });
 
 export const PolicyConfigSchema = z
   .object({
@@ -61,16 +66,24 @@ export const PolicyConfigSchema = z
         sync: z.string().default('every 1h'),
         health: z.string().default('every 2m'),
       })
-      .default({}),
+      .default({ sync: 'every 1h', health: 'every 2m' }),
     quarantine: z
       .object({
         consecutive_failures: z.number().default(3),
         not_found_confirmations: z.number().default(2),
         recheck_after: z.string().default('30m'),
       })
-      .default({}),
+      .default({
+        consecutive_failures: 3,
+        not_found_confirmations: 2,
+        recheck_after: '30m',
+      }),
   })
-  .default({});
+  .default({
+    mode: 'manual',
+    schedule: { sync: 'every 1h', health: 'every 2m' },
+    quarantine: { consecutive_failures: 3, not_found_confirmations: 2, recheck_after: '30m' },
+  });
 
 export const AutoMaintainSpecSchema = z.object({
   enabled: z.boolean().default(false),
@@ -91,7 +104,7 @@ export const ComboSpecSchema = z.object({
       freeOnly: z.boolean().default(false),
       jsonSchema: z.enum(['required', 'preferred', 'optional']).optional(),
     })
-    .default({}),
+    .default({ freeOnly: false }),
   pin: z.array(z.string()).default([]),
   exclude: z.array(z.string()).default([]),
   autoMaintain: z.union([z.boolean(), AutoMaintainSpecSchema]).default(false),

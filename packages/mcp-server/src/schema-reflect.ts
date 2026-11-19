@@ -13,14 +13,18 @@
  */
 
 interface ZodDefLike {
+  /** Zod 3 uses typeName; Zod 4 uses type. */
   typeName?: string;
   type?: string;
-  shape?: () => Record<string, unknown>;
+  /** Zod 3 exposes a shape factory; Zod 4 exposes the shape object. */
+  shape?: (() => Record<string, unknown>) | Record<string, unknown>;
   values?: readonly string[];
+  entries?: Record<string, unknown> | readonly string[];
   innerType?: unknown;
   element?: unknown;
   valueType?: unknown;
-  defaultValue?: () => unknown;
+  /** Zod 3 stores a factory; Zod 4 stores the value. */
+  defaultValue?: (() => unknown) | unknown;
   options?: unknown[];
   schema?: unknown;
 }
@@ -47,29 +51,41 @@ export function describeZod(schema: unknown, depth = 0): ReflectedField {
   if (!def) return { type: 'unknown' };
   if (depth > 5) return { type: 'truncated' };
 
-  switch (def.typeName) {
+  const kind = def.typeName ?? def.type;
+  const enumValues = def.values ?? (Array.isArray(def.entries) ? def.entries : def.entries ? Object.keys(def.entries) : undefined);
+
+  switch (kind) {
     case 'ZodString':
+    case 'string':
       return { type: 'string' };
     case 'ZodNumber':
+    case 'number':
       return { type: 'number' };
     case 'ZodBoolean':
+    case 'boolean':
       return { type: 'boolean' };
     case 'ZodUnknown':
     case 'ZodAny':
+    case 'unknown':
       return { type: 'unknown' };
     case 'ZodLiteral':
-      return { type: 'literal', enum: def.values };
+    case 'literal':
+      return { type: 'literal', enum: enumValues };
     case 'ZodEnum':
-      return { type: 'string', enum: def.values };
+    case 'enum':
+      return { type: 'string', enum: enumValues };
     case 'ZodArray':
+    case 'array':
       return { type: 'array', items: describeZod(def.type ?? def.element, depth + 1) };
     case 'ZodRecord':
+    case 'record':
       return {
         type: 'object',
         additionalProperties: def.valueType ? describeZod(def.valueType, depth + 1) : true,
       };
-    case 'ZodObject': {
-      const shape = def.shape ? def.shape() : {};
+    case 'ZodObject':
+    case 'object': {
+      const shape = typeof def.shape === 'function' ? def.shape() : (def.shape ?? {});
       const properties: Record<string, ReflectedField> = {};
       for (const [key, value] of Object.entries(shape)) {
         properties[key] = describeZod(value, depth + 1);
@@ -77,23 +93,30 @@ export function describeZod(schema: unknown, depth = 0): ReflectedField {
       return { type: 'object', properties };
     }
     case 'ZodOptional':
-    case 'ZodNullable': {
+    case 'ZodNullable':
+    case 'optional':
+    case 'nullable': {
       const inner = describeZod(def.innerType, depth + 1);
       return { ...inner, optional: true };
     }
-    case 'ZodDefault': {
+    case 'ZodDefault':
+    case 'default': {
       const inner = describeZod(def.innerType, depth + 1);
-      return { ...inner, default: def.defaultValue ? def.defaultValue() : undefined };
+      const rawDefault = def.defaultValue;
+      const value = typeof rawDefault === 'function' ? (rawDefault as () => unknown)() : rawDefault;
+      return { ...inner, default: value };
     }
     case 'ZodUnion':
+    case 'union':
       return {
         type: 'union',
         anyOf: (def.options ?? []).map((option) => describeZod(option, depth + 1)),
       };
     case 'ZodEffects':
+    case 'pipe':
       return describeZod(def.schema, depth + 1);
     default:
-      return { type: def.typeName ?? 'unknown' };
+      return { type: kind ?? 'unknown' };
   }
 }
 
