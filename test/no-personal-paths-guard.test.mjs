@@ -71,11 +71,23 @@ describe('tools/guard/no-personal-paths.mjs - Personal Path Guard Tests (X3)', (
     expect(scanLine('c:/Users/someone/project', patterns).ok).toBe(true); // no-secrets:allow: synthetic test line
   });
 
-  it('exempts line with allow marker', () => {
-    const line = 'const p = "C:\\\\Users\\\\realuser\\\\path"; // no-secrets:allow: test verification'; // no-secrets:allow: test verification
+  it('C19 W0: allow marker does NOT exempt a real-looking user path', () => {
+    const line = 'const p = "C:\\\\Users\\\\realuser\\\\path"; // no-secrets:allow: test verification';
     const res = scanLine(line, patterns);
-    expect(res.ok).toBe(true);
-    expect(res.allowed).toBe(true);
+    expect(res.ok).toBe(false);
+    expect(res.violation).toMatch(/Windows User Path/);
+  });
+
+  it('C19 W0: allow marker does NOT exempt the current OS username', () => {
+    const line = 'const p = "foo/fakeuser99/bar"; // no-secrets:allow: test verification';
+    const res = scanLine(line, patterns);
+    expect(res.ok).toBe(false);
+    expect(res.violation).toMatch(/Current OS Username/);
+  });
+
+  it('C19 W0: fixed fake user paths are allowed', () => {
+    expect(scanLine('const p = "C:\\\\Users\\\\alice\\\\Documents";', patterns).ok).toBe(true);
+    expect(scanLine('const p = "/home/bob/app";', patterns).ok).toBe(true);
   });
 
   it('loads owner-specific rules from private-patterns.local.json', () => {

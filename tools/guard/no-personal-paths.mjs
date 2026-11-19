@@ -20,7 +20,9 @@ import { loadLocalProviderNames, buildProviderPatterns } from './local-provider-
 
 // Allowed placeholders:
 // <USER_DIR>, <REPO_ROOT>, ~, %APPDATA%, YOUR_USER, tester, someone, runner
-const ALLOWED_TEST_USERS = '(?:<USER_DIR>|<REPO_ROOT>|YOUR_USER|tester|someone|runner|runneradmin|circleci|appveyor|root)';
+// C19 W0: fake user names (alice, bob, user, example, test) are allowed so tests can
+// carry a fixed synthetic path; a real machine name is never allowed.
+const ALLOWED_TEST_USERS = '(?:<USER_DIR>|<REPO_ROOT>|YOUR_USER|alice|bob|user|example|test|mock|tester|someone|runner|runneradmin|circleci|appveyor|root)';
 
 export const PRIVATE_PATTERNS_FILE = 'tools/guard/private-patterns.local.json';
 
@@ -65,7 +67,7 @@ export function buildPatterns(options = {}) {
     },
     {
       name: 'OneDrive Personal Path',
-      regex: /[A-Za-z]:[\\/]+[^< \n\r\t"']*OneDrive[\\/]+(?:Documents|Desktop|Projects)/gi,
+      regex: /[A-Za-z]:[\\/]+Users[\\/]+[^\\/\s"']+[\\/]+OneDrive[\\/]+(?:Documents|Desktop|Projects)/gi,
     },
     {
       name: 'AppData Roaming Personal Path',
@@ -113,7 +115,20 @@ export function buildPatterns(options = {}) {
 
 export const ALLOW_MARKER = /(?:no-personal-paths|no-secrets):allow:\s*(\S.*)$/;
 
+// C19 W0: an allow marker must never exempt a real machine path, user, host, or
+// private provider name. Only non-identifying matches (e.g. an email shape) may be allowed.
+export const NEVER_ALLOW_RULES =
+  /^(Windows User Path|POSIX User Path|OneDrive Personal Path|AppData Roaming Personal Path|Current OS Username|Current OS Hostname|Private provider)/;
+
 export function scanLine(line, patterns = buildPatterns()) {
+  // A hard hit is checked first, so a trailing allow marker cannot hide it.
+  for (const rule of patterns) {
+    if (!NEVER_ALLOW_RULES.test(rule.name)) continue;
+    rule.regex.lastIndex = 0;
+    if (rule.regex.test(line)) {
+      return { ok: false, violation: rule.name };
+    }
+  }
   if (ALLOW_MARKER.test(line)) {
     return { ok: true, allowed: true };
   }

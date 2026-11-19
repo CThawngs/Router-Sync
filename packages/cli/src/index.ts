@@ -15,27 +15,23 @@ import { runPlanCommand } from './commands/plan.js';
 import { runApplyCommand } from './commands/apply.js';
 import { runRollbackCommand } from './commands/rollback.js';
 import { runStatusCommand } from './commands/status.js';
-import { runDoctorCommand } from './commands/doctor.js';
-import { runMcpInstallCommand } from './commands/mcp-install.js';
+// (doctor.js imported dynamically at the doctor handler — V6-1)
+import { runMcpInstallCommand } from './commands/mcp-install.js'; // mcp selftest stays eager (doctor-adjacent, small)
+// runMcpServeHttpCommand is imported dynamically at its handler — V6-1
+
 import { runResearchCommand } from './commands/research.js';
 import { runConfirmAbsentCommand } from './commands/confirm-absent.js';
 import { runDiffCommand } from './commands/diff.js';
 import {
-  runMcpServeHttpCommand,
   runMcpPairCommand,
   runMcpRevokeCommand,
   runMcpListCommand,
 } from './commands/mcp-http.js';
-import { runDaemonCommand, runDaemonPauseCommand, runDaemonResumeCommand } from './commands/daemon.js';
+// daemon.js imported dynamically at handlers — V6-1 (daemon, pause, resume); daemon-log stays eager
 import { runDaemonLogExport } from './commands/daemon-log.js';
-import { runScheduleCommand } from './commands/schedule.js';
-import { runTickCommand } from './commands/tick.js';
-import {
-  runTrackOnceCommand,
-  runTrackWatchCommand,
-  runTrackStatusCommand,
-  runTrackAutostartCommand,
-} from './commands/track.js';
+// schedule.js imported dynamically at handler — V6-1
+// tick.js imported dynamically at handler — V6-3
+// track.js imported dynamically at handlers — V6-1
 import {
   runMaintainPlanCommand,
   runMaintainApplyCommand,
@@ -53,11 +49,11 @@ import {
 import { runRankCommand } from './commands/rank.js';
 import { installWatchdog } from './watchdog.js';
 import { runHealthCommand } from './commands/health.js';
-import { runSimCommand } from './commands/sim.js';
-import { runStorageInspectCommand } from './commands/storage.js';
-import { runDiscoverCommand } from './commands/discover.js';
-import { runAutopilotPlanCommand } from './commands/autopilot.js';
-import { runProfileCommand } from './commands/profile.js';
+// sim.js imported dynamically at handler — V6-3
+// storage.js imported dynamically at handler — V6-3
+// discover.js imported dynamically at handler — V6-3
+// autopilot.js imported dynamically at handler — V6-3
+// profile.js imported dynamically at handlers — V6-3
 import { runExportLiteLLMCommand } from './commands/export.js';
 import {
   runAgentsDiscoverCommand,
@@ -219,7 +215,7 @@ export function createCliProgram(): Command {
     .option('--json', 'Output result in JSON format')
     .option('--out <file>', 'Write report text to file (UTF-8)')
     .action(async (opts: { configPath?: string; hermes?: string; dsh?: string; json?: boolean; out?: string }) => {
-      await runDoctorCommand({
+      await (await import('./commands/doctor.js')).runDoctorCommand({
         configPath: opts.configPath,
         hermesConfigPath: opts.hermes,
         dshConfigPath: opts.dsh,
@@ -257,7 +253,7 @@ export function createCliProgram(): Command {
     .description('Start loopback HTTP MCP server on 127.0.0.1')
     .option('-p, --port <port>', 'Port to bind to (default: 3128)', '3128')
     .action(async (opts: { port?: string }) => {
-      await runMcpServeHttpCommand({ port: opts.port });
+      await (await import('./commands/mcp-http.js')).runMcpServeHttpCommand({ port: opts.port });
     });
 
   mcpCmd
@@ -384,21 +380,21 @@ export function createCliProgram(): Command {
     .option('--once', 'Run one scan tick then exit (no port, no scheduler loop)')
     .option('--json', 'Output startup result in JSON format')
     .action(async (opts: { port?: string; config?: string; profile?: string; interval?: string; mode?: string; once?: boolean; json?: boolean }) => {
-      await runDaemonCommand(opts);
+      await (await import('./commands/daemon.js')).runDaemonCommand(opts);
     });
 
   daemonCmd
     .command('pause')
     .description('Pause daemon scheduler (file-backed)')
     .action(async () => {
-      await runDaemonPauseCommand();
+      await (await import('./commands/daemon.js')).runDaemonPauseCommand();
     });
 
   daemonCmd
     .command('resume')
     .description('Resume daemon scheduler')
     .action(async () => {
-      await runDaemonResumeCommand();
+      await (await import('./commands/daemon.js')).runDaemonResumeCommand();
     });
 
   const daemonLogCmd = daemonCmd
@@ -437,7 +433,7 @@ export function createCliProgram(): Command {
         webhookUrl?: string;
         json?: boolean;
       }) => {
-        await runTickCommand({
+        await (await import('./commands/tick.js')).runTickCommand({
           configPath: opts.config,
           mode: opts.mode,
           graceCycles: opts.graceCycles,
@@ -472,7 +468,7 @@ export function createCliProgram(): Command {
           json?: boolean;
         }
       ) => {
-        await runScheduleCommand({ action, ...opts });
+        await (await import('./commands/schedule.js')).runScheduleCommand({ action, ...opts });
       }
     );
 
@@ -540,7 +536,7 @@ export function createCliProgram(): Command {
     .option('--enrich', 'Enrich model metadata (pricing, free status) via zero-token GET')
     .option('--json', 'Output scan result in JSON format')
     .action(async (opts: { providersFile?: string; discover?: boolean; router?: string; plan?: boolean; enrich?: boolean; json?: boolean }) => {
-      await runTrackOnceCommand(opts);
+      await (await import('./commands/track.js')).runTrackOnceCommand(opts);
     });
 
   trackCmd
@@ -551,7 +547,7 @@ export function createCliProgram(): Command {
     .option('--max-runs <count>', 'Maximum number of scan iterations')
     .option('--json', 'Output each scan result in single-line JSON format')
     .action(async (opts: { providersFile?: string; intervalSec?: string; maxRuns?: string; json?: boolean }) => {
-      await runTrackWatchCommand(opts);
+      await (await import('./commands/track.js')).runTrackWatchCommand(opts);
     });
 
   trackCmd
@@ -560,15 +556,15 @@ export function createCliProgram(): Command {
     .option('--providers-file <path>', 'Path to providers JSON configuration file')
     .option('--json', 'Output status in JSON format')
     .action(async (opts: { providersFile?: string; json?: boolean }) => {
-      await runTrackStatusCommand(opts);
+      await (await import('./commands/track.js')).runTrackStatusCommand(opts);
     });
 
   trackCmd
     .command('autostart')
     .description('Print or setup system autostart configuration for model tracker daemon')
     .option('--print', 'Print autostart service configuration instructions without modifying system')
-    .action((opts: { print?: boolean }) => {
-      runTrackAutostartCommand(opts);
+    .action(async (opts: { print?: boolean }) => {
+      await (await import('./commands/track.js')).runTrackAutostartCommand(opts);
     });
 
   // maintain command group (Model Auto-Maintenance / Condition D26)
@@ -834,7 +830,7 @@ export function createCliProgram(): Command {
       const simOpts: { days?: number; out?: string } = {};
       if (opts.days !== undefined) simOpts.days = Number(opts.days);
       if (opts.out !== undefined) simOpts.out = opts.out;
-      await runSimCommand(simOpts);
+      await (await import('./commands/sim.js')).runSimCommand(simOpts);
     });
 
   // storage command (B1: read-only storage inspection on a copy)
@@ -851,7 +847,7 @@ export function createCliProgram(): Command {
       const stOpts: { router?: string; out?: string } = {};
       if (opts.router !== undefined) stOpts.router = opts.router;
       if (opts.out !== undefined) stOpts.out = opts.out;
-      await runStorageInspectCommand(stOpts);
+      await (await import('./commands/storage.js')).runStorageInspectCommand(stOpts);
     });
 
   // discover command (Round 61: read-only model discovery)
@@ -866,7 +862,7 @@ export function createCliProgram(): Command {
       if (opts.json !== undefined) discoverOpts.json = opts.json;
       if (opts.out !== undefined) discoverOpts.out = opts.out;
       if (opts.full !== undefined) discoverOpts.full = opts.full;
-      await runDiscoverCommand(discoverOpts);
+      await (await import('./commands/discover.js')).runDiscoverCommand(discoverOpts);
     });
 
   // autopilot command group (Round 61: propose-only auto-maintenance plan)
@@ -885,7 +881,7 @@ export function createCliProgram(): Command {
       if (opts.json !== undefined) autoOpts.json = opts.json;
       if (opts.out !== undefined) autoOpts.out = opts.out;
       if (opts.keepHead !== undefined) autoOpts.keepHead = Number(opts.keepHead);
-      await runAutopilotPlanCommand(autoOpts);
+      await (await import('./commands/autopilot.js')).runAutopilotPlanCommand(autoOpts);
     });
 
   // profile command group (Round 59: User Profile, P1-P3 General, C1-C5 Combo Rules)
@@ -909,7 +905,7 @@ export function createCliProgram(): Command {
         cost?: string;
         strategy?: string;
       }) => {
-        await runProfileCommand({ subcommand: 'init', ...opts });
+        await (await import('./commands/profile.js')).runProfileCommand({ subcommand: 'init', ...opts });
       }
     );
 
@@ -919,7 +915,7 @@ export function createCliProgram(): Command {
     .option('-p, --path <path>', 'Custom profile file path')
     .option('--json', 'Output in JSON format')
     .action(async (opts: { path?: string; json?: boolean }) => {
-      await runProfileCommand({ subcommand: 'show', ...opts });
+      await (await import('./commands/profile.js')).runProfileCommand({ subcommand: 'show', ...opts });
     });
 
   profileCmd
@@ -928,7 +924,7 @@ export function createCliProgram(): Command {
     .option('-p, --path <path>', 'Custom profile file path')
     .option('--json', 'Output in JSON format')
     .action(async (opts: { path?: string; json?: boolean }) => {
-      await runProfileCommand({ subcommand: 'export', ...opts });
+      await (await import('./commands/profile.js')).runProfileCommand({ subcommand: 'export', ...opts });
     });
 
   profileCmd
@@ -936,11 +932,11 @@ export function createCliProgram(): Command {
     .description('Show W2 profile interview questions (12, Vietnamese)')
     .option('-p, --path <path>', 'Custom profile file path')
     .action(async (opts: { path?: string }) => {
-      await runProfileCommand({ subcommand: 'interview', ...opts });
+      await (await import('./commands/profile.js')).runProfileCommand({ subcommand: 'interview', ...opts });
     });
 
   profileCmd.action(async () => {
-    await runProfileCommand({ subcommand: 'show' });
+    await (await import('./commands/profile.js')).runProfileCommand({ subcommand: 'show' });
   });
 
   const exportCmd = program
