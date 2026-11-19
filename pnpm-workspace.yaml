@@ -15,3 +15,17 @@ overrides:
   qs: 6.17.1
   fast-uri: 3.1.9
 
+# Dependabot resolves against a minimum release age. Newly published patched
+# versions must be exempt so its updater can install this lockfile.
+minimumReleaseAgeExclude:
+  - hono
+  - '@hono/node-server'
+  - body-parser
+  - qs
+  - fast-uri
+  - vitest
+  - vite
+  - zod
+  - esbuild
+  - tinypool
+
