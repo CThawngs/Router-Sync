@@ -40,7 +40,7 @@
   "dependencies": {
     "@routersync/adapter-sdk": "workspace:*",
     "better-sqlite3": "13.0.3",
-    "zod": "^3.23.8"
+    "zod": "^4.6.6"
   },
   "devDependencies": {
     "@types/better-sqlite3": "9.6.0"

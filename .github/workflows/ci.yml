@@ -126,6 +126,20 @@ jobs:
         if: runner.os == 'macOS'
         run: plutil -lint "${{ runner.temp }}/schedule-artifacts/com.routersync.daemon.plist"
 
+  security-audit:
+    name: security audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4.2.2
+      - uses: pnpm/action-setup@v4.0.0
+      - uses: actions/setup-node@v4.1.0
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Audit dependency tree
+        run: pnpm audit --audit-level=moderate
   footprint:
     name: footprint (${{ matrix.os }})
     strategy:

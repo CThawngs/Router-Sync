@@ -31,7 +31,12 @@ export const userProfileSchema = z.object({
   version: z.literal(1).default(1),
   name: z.string().default('default-profile'),
   updatedAt: z.string().default(() => new Date().toISOString()),
-  general: generalPreferencesSchema.default({}),
+  general: generalPreferencesSchema.default({
+    workload: 'coding',
+    costPreference: 'free-only',
+    preferredProviders: ['gemini', 'groq', 'nvidia', 'oc', 'sambanova'],
+    excludedProviders: [],
+  }),
   combos: z.array(comboProfileRuleSchema).default([
     {
       targetCombo: 'all',
@@ -72,10 +77,10 @@ export const ProfileSchema = z.object({
   preferredProviders: z.array(z.string()).default([]),
   dislikedProviders: z.array(z.string()).default([]),
   favorites: z.array(z.string()).default([]),
-  keepHead: z.number({ required_error: 'keepHead: phải là số nguyên ≥ 0' }).int('keepHead: phải là số nguyên ≥ 0').min(0, 'keepHead: phải là số nguyên ≥ 0').default(0),
+  keepHead: z.number({ error: 'keepHead: phải là số nguyên ≥ 0' }).int('keepHead: phải là số nguyên ≥ 0').min(0, 'keepHead: phải là số nguyên ≥ 0').default(0),
   allowList: z.array(z.string()).default([]),
   denyList: z.array(z.string()).default([]),
-  automationLevel: z.enum(['observe', 'propose', 'auto-safe'], { errorMap: () => ({ message: 'automationLevel: phải là một trong observe, propose, auto-safe' }) }).default('observe'),
+  automationLevel: z.enum(['observe', 'propose', 'auto-safe'], { error: () => ({ message: 'automationLevel: phải là một trong observe, propose, auto-safe' }) }).default('observe'),
   quotaLimit: z.union([z.number(), z.string()]).default(0),
   scanCycle: z.enum(['hourly', 'daily', 'weekly', 'manual']).default('daily'),
   timezone: z
