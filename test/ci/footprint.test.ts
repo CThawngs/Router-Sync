@@ -59,7 +59,7 @@ describe('C17 T4: footprint scenarios', () => {
       executablePath: '/opt/node/bin/node',
       nodePrefix: '/opt/node',
       pathApi: path.posix,
-      exists: (candidate) => candidate === expected,
+      exists: (candidate: string) => candidate === expected,
     });
 
     expect(resolved).toBe(expected);
