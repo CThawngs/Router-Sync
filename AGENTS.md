@@ -118,6 +118,27 @@ self-contained and can run before `pnpm build`. If available RAM is below
   asking. Report the exit code `3` instead.
 - `pnpm test:changed` keeps the workspace fork limit (max 2 forks). It is not a
   wall-clock-speed guarantee: a shared-module change can select most tests.
+- Heavy work must go through the wrapped script names (`pnpm test`,
+  `pnpm test:branch`, `pnpm build`, `pnpm typecheck`). Calling
+  `pnpm exec vitest run` for a whole project while free RAM is under the gate
+  threshold bypasses the gate and is a violation, even when it happens to pass.
+  If the gate answers `3`, report it and stop; do not re-run the command another
+  way and do not run it in the background.
+- The test runner also caps itself: `vitest.config.ts` reads the same
+  `availableMemoryBytes()` as the gate and limits workers when free RAM is low.
+  `RS_TEST_WORKERS=<n>` forces a worker count and `RS_TEST_WORKERS=off` removes
+  the cap; both exist for measurement, not for everyday work.
+
+### Comparing against `origin/main`
+
+Never create a `git worktree` and junction its `node_modules` to the main
+checkout. Removing such a worktree damaged the shared `.pnpm` store during C19.
+To build or test another revision:
+
+- `git clone --depth 1 <repo> <scratch>` (or `git archive <ref> | tar -x -C <scratch>`)
+  into a scratch directory outside the repo, then run
+  `pnpm install --frozen-lockfile` there; or
+- compare with `git diff` and reason from the source instead of building.
 
 ## 7. Troubleshooting
 

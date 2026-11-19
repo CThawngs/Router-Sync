@@ -4,9 +4,12 @@
 //   Exit 3 = bị chặn (RAM thấp), Exit 2 = lệnh không hợp lệ, Exit N = mã lệnh thật.
 // RS_FORCE_HEAVY=1 hoặc CI=true: bỏ qua cổng (CI luôn đặt CI=true).
 import { spawnSync } from 'node:child_process';
-import os from 'node:os';
+import { existsSync } from 'node:fs';
+import path from 'node:path';
+import { MIN_FREE_BYTES, availableMemoryBytes, parseVmStat } from './low-resource.mjs';
 
-export const MIN_FREE_BYTES = 1.5 * 1024 ** 3;
+// Re-exported so existing tests and the CLI keep importing from heavy.mjs.
+export { MIN_FREE_BYTES, availableMemoryBytes, parseVmStat };
 
 // Mỗi mục là danh sách bước; mỗi bước là mảng tham số cho pnpm.
 // Không dùng toán tử shell (&&, ;, |) — mỗi bước chạy riêng.
@@ -19,48 +22,33 @@ export const HEAVY_REAL = {
   'pnpm e2e': [['exec', 'vitest', 'run', '--project', 'e2e']],
 };
 
-/**
- * C15 Q1.3 / C19 W1: parse `vm_stat` into available bytes.
- * os.freemem() undercounts on macOS (it ignores inactive/speculative/purgeable
- * pages), so the gate must use the same formula as packages/cli/src/low-resource.ts.
- */
-export function parseVmStat(text) {
-  const match = text.match(/page size of\s+(\d+)\s+bytes/i);
-  if (!match) return null;
-
-  const pageSize = Number(match[1]);
-  if (!Number.isFinite(pageSize) || pageSize <= 0) return null;
-
-  let pages = 0;
-  let found = false;
-  for (const key of ['Pages free', 'Pages inactive', 'Pages speculative', 'Pages purgeable']) {
-    const line = text.split(/\r?\n/).find((candidate) => candidate.trim().startsWith(`${key}:`));
-    if (!line) continue;
-
-    const value = line.split(':')[1]?.replace(/[^\d]/g, '');
-    if (value) {
-      pages += Number(value);
-      found = true;
-    }
-  }
-  return found ? pages * pageSize : null;
-}
-
-/** Available memory in bytes. Linux/Windows: os.freemem(); macOS: vm_stat. */
-export function availableMemoryBytes() {
-  if (process.platform !== 'darwin') return os.freemem();
-
-  const r = spawnSync('vm_stat', [], { encoding: 'utf8', timeout: 1000 });
-  if (r.status === 0 && typeof r.stdout === 'string') {
-    const parsed = parseVmStat(r.stdout);
-    if (parsed !== null) return parsed;
-  }
-  return os.freemem();
-}
-
 export function decideHeavy(freeBytes = availableMemoryBytes(), force = false) {
   if (force) return false;
   return freeBytes < MIN_FREE_BYTES;
+}
+
+/**
+ * C20 X2.4: build the pnpm invocation without a shell.
+ *
+ * `spawnSync(cmd, args, { shell: true })` prints DEP0190 on Node 24 because the
+ * arguments are concatenated into one shell string. Two non-shell options work:
+ *   - `node <pnpm.cjs> ...` when the shim's CommonJS entry is installed
+ *   - `cmd.exe /c pnpm.cmd ...` otherwise (a cmd shim is not an executable)
+ * The command name stays `pnpm` in the gate message either way.
+ */
+export function resolvePnpmInvocation(args) {
+  const npmRoot = process.env.APPDATA ? path.join(process.env.APPDATA, 'npm') : '';
+  const candidates = [
+    path.join(npmRoot, 'node_modules', 'pnpm', 'bin', 'pnpm.cjs'),
+    path.join(npmRoot, 'node_modules', 'pnpm', 'bin', 'pnpm.mjs'),
+  ];
+  for (const entry of candidates) {
+    if (existsSync(entry)) return { command: process.execPath, args: [entry, ...args], label: 'pnpm.cjs' };
+  }
+  if (process.platform === 'win32') {
+    return { command: 'cmd.exe', args: ['/d', '/s', '/c', 'pnpm.cmd', ...args], label: 'cmd/pnpm.cmd' };
+  }
+  return { command: 'pnpm', args, label: 'pnpm' };
 }
 
 function main() {
@@ -82,11 +70,11 @@ function main() {
   }
 
   for (const step of steps) {
-    const r = spawnSync('pnpm', step, {
-      stdio: 'inherit',
-      // Windows cần shell để chạy pnpm.cmd; các bước không chứa toán tử shell.
-      shell: process.platform === 'win32',
-    });
+    // C20 X2.4: spawnSync(cmd, args, { shell: true }) prints DEP0190 on Node 24
+    // because the arguments are concatenated into one shell string. Resolve the
+    // pnpm shim once and run it without a shell instead.
+    const invocation = resolvePnpmInvocation(step);
+    const r = spawnSync(invocation.command, invocation.args, { stdio: 'inherit' });
     if (r.error) process.exit(1);
     if (r.status !== 0) process.exit(r.status ?? 1);
   }

@@ -82,6 +82,19 @@ export function installPerfHook(): void {
   if (process.env.ROUTERSYNC_PERF !== '1') return;
   const t0 = process.hrtime.bigint();
   const cpu0 = process.cpuUsage();
+
+  // C20 X1: verify talks to providers, so wall time mixes network latency with
+  // CPU work. Count outbound calls (the CLI uses global fetch) so a budget can
+  // separate the two. The wrapper only exists when ROUTERSYNC_PERF=1.
+  let fetchCount = 0;
+  const originalFetch = globalThis.fetch;
+  if (typeof originalFetch === 'function') {
+    globalThis.fetch = ((input: Parameters<typeof originalFetch>[0], init?: Parameters<typeof originalFetch>[1]) => {
+      fetchCount += 1;
+      return originalFetch(input, init);
+    }) as typeof originalFetch;
+  }
+
   process.on('exit', () => {
     try {
       const elapsedMs = Number(process.hrtime.bigint() - t0) / 1_000_000;
@@ -92,8 +105,10 @@ export function installPerfHook(): void {
         durationMs: Math.round(elapsedMs * 10) / 10,
         cpuUserMs: Math.round(cpu.user / 1000),
         cpuSystemMs: Math.round(cpu.system / 1000),
+        cpuTotalMs: Math.round((cpu.user + cpu.system) / 1000),
         maxRssMB: maxRssKbToMb(ru.maxRSS),
         heapUsedMB: Math.round(process.memoryUsage().heapUsed / (1024 * 1024)),
+        fetchCount,
       };
       process.stderr.write(`[routersync-perf] ${JSON.stringify(payload)}\n`);
     } catch {

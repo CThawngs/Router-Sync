@@ -1,4 +1,4 @@
-# `combos stale` — evidence rules (C19)
+# `combos stale` — evidence rules
 
 `routersync combos stale` is read-only. It answers one question: for each step in
 a combo, did the router itself show any evidence that the model is available?
@@ -10,7 +10,7 @@ a combo, did the router itself show any evidence that the model is available?
 - `snapshot`: the provider registry shipped with RouterSync.
 - The report prints `source=<value>` as its first line when the evidence is
   readable, and always carries `source` and `diagnostics.availabilitySource` in
-  JSON.
+  JSON, including under `--json`.
 
 `DEFAULT_AVAILABILITY_SOURCE` (tier classification) stays `snapshot` because
 tier parity is defined against the 9Router provider page. Staleness deliberately
@@ -22,7 +22,7 @@ does not reuse it: a combo must not be able to validate its own members.
 |---|---|
 | `PRESENT` | Exact step found in available models. |
 | `PRESENT-NORMALIZED` | Found after dropping a `models/` prefix. |
-| `DISABLED` | The router marks the model disabled. |
+| `DISABLED` | The router marks the model disabled (`disabledModels` for 9Router). |
 | `ABSENT` | The provider carried availability evidence, but this model was not in it. |
 | `UNVERIFIABLE` | The provider carried no availability evidence at all (e.g. a custom provider with no connection evidence). |
 
@@ -41,11 +41,23 @@ Never delete a model because it is `ABSENT` or `UNVERIFIABLE`.
 
 ## Known limitations
 
-- **G4** — the 9Router reader only understands the `combos`/`kv`/
-  `providerConnections` schema it was written against; a new table or a renamed
-  column shows up as `UNVERIFIABLE`, not as a migration error.
-- **G5** — OmniRoute has no availability reader yet. It is reported in
-  `omittedRouters`, never as `ABSENT` rows.
-- **G7** — provider aliases are expanded on read, so a report can contain both
-  `google/...` and `gemini/...` spellings of the same step. Counts are per row,
-  not per model.
+The labels below are the ones introduced by the C18 audit. C19 briefly re-used
+G4/G5/G7 for different findings; that re-use is reverted here and the mapping is
+recorded so old notes stay readable.
+
+| Label | Meaning (C18 audit) | Status |
+|---|---|---|
+| G4 | The `DISABLED` group never fired even though the router held 54 `disabledModels` entries. | Closed in C20: `DISABLED` is implemented and covered by a test. |
+| G5 | With no network the staleness step silently degrades to `ABSENT`. | Open. |
+| G7 | 4 OmniRoute rows were dropped from the report. | Open. |
+| G8 | A provider with no availability evidence is reported as `UNVERIFIABLE`, not `ABSENT`. | Closed in C19. |
+| G9 | An unreadable router database exits non-zero with `UNKNOWN` instead of an empty report. | Closed in C19. |
+| G10 | Alias expansion can report the same model twice (`google/...` and `gemini/...`). | Open. |
+
+### C19 → C20 label mapping
+
+| C19 label | C20 label | Note |
+|---|---|---|
+| G4 (9Router reader schema) | G11 | Unrelated to the C18 G4; renumbered to free the original. |
+| G5 (OmniRoute reader absent) | G7 | Same finding as the C18 G7 family; merged. |
+| G7 (alias expansion) | G10 | Unrelated to the C18 G7; renumbered. |

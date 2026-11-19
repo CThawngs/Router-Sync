@@ -35,5 +35,9 @@ describe('C15 Q1.2: ROUTERSYNC_PERF maxRSS unit', () => {
     expect(parsed.maxRssMB).toBeGreaterThan(0);
     expect(parsed.rssMB).toBeUndefined();
     expect(typeof parsed.heapUsedMB).toBe('number');
+    // C20 X1: CPU time and outbound-call count travel with the wall clock so a
+    // network-bound command can be budgeted on CPU instead of latency.
+    expect(typeof parsed.cpuTotalMs).toBe('number');
+    expect(typeof parsed.fetchCount).toBe('number');
   });
 });
