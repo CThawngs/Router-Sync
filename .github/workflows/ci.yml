@@ -64,13 +64,10 @@ jobs:
           cat "${RUNNER_TEMP}/rs-sample/sample.env" >> "$GITHUB_ENV"
 
       - name: Product smoke with perf budgets
-        uses: nick-fields/retry@v4
-        with:
-          timeout_minutes: 40
-          retry_wait_seconds: 15
-          max_attempts: 3
-          command: |
-            set -e
+        shell: bash
+        run: |
+          set -e
+          run_smoke() {
             mkdir -p "${RUNNER_TEMP}/rs-perf"
             for item in "doctor:doctor" "plan:plan" "verify:verify" "scan:scan" "rank-json:rank --json"; do
               name="${item%%:*}"
@@ -79,6 +76,14 @@ jobs:
                 > "${RUNNER_TEMP}/rs-perf/${name}.out" 2> "${RUNNER_TEMP}/rs-perf/${name}.err"
               node tools/ci/check-perf.mjs "${RUNNER_TEMP}/rs-perf/${name}.err" "$name"
             done
+          }
+          ok=0
+          for attempt in 1 2 3; do
+            if run_smoke; then ok=1; break; fi
+            if [ "$attempt" -eq 3 ]; then break; fi
+            sleep 15
+          done
+          [ "$ok" -eq 1 ]
 
       - name: Emit schedule artifacts (no install)
         run: node tools/ci/emit-schedule-artifacts.mjs "${{ runner.temp }}/schedule-artifacts"
