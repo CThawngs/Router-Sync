@@ -16,6 +16,15 @@ const RUNNER_ARCH = Object.freeze({
   'windows-11-arm': 'arm64',
 });
 
+function countBy(items, key) {
+  const counts = {};
+  for (const item of items) {
+    const value = key(item);
+    counts[value] = (counts[value] ?? 0) + 1;
+  }
+  return counts;
+}
+
 function parseBudgetLines(logText, runId) {
   const samples = [];
   for (const line of logText.split(/\r?\n/)) {
@@ -155,6 +164,8 @@ for (const run of args.runs) {
   if (!run.logPath) {
     throw new Error(`Budget source run ${run.id} is missing its captured log`);
   }
+  // event, branch, conclusion, createdAt and headSha are required by parseArgs
+  // above; a source that omits any of them never reaches this loop.
   if (run.conclusion === 'cancelled') {
     throw new Error(
       `Budget source run ${run.id} was cancelled; a cancelled run has incomplete jobs and cannot contribute samples`
@@ -177,8 +188,21 @@ if (new Set(orderedRuns.map((run) => run.headSha)).size !== orderedRuns.length) 
 const existingBudgets = fs.existsSync(args.output)
   ? JSON.parse(fs.readFileSync(args.output, 'utf8'))
   : {};
+
+// Describe the sources honestly. An earlier version claimed "verified successful
+// main-branch CI runs" while the sample set included pull_request runs and
+// failures; the label is now derived from the actual provenance.
+const provenance = {
+  total: args.runs.length,
+  byEvent: countBy(args.runs, (run) => run.event),
+  byBranch: countBy(args.runs, (run) => run.branch),
+  byConclusion: countBy(args.runs, (run) => run.conclusion),
+  failed: args.runs.filter((run) => run.conclusion !== 'success').length,
+};
+
 const budgets = {
-  generatedFrom: 'gh run view --log; verified successful main-branch CI runs',
+  generatedFrom: `gh run view --log; ${provenance.total} CI runs (${provenance.byEvent.push ?? 0} push, ${provenance.byEvent.pull_request ?? 0} pull_request); ${provenance.failed} with a non-success conclusion`,
+  provenance,
   formula: 'budget = max(ceil(1.25 * median), ceil(1.1 * maxObserved), floor)',
   formulaDetails: {
     durationMs: 'max(ceil(1.25 * medianMs), ceil(1.1 * maxObservedMs), floors.ms)',

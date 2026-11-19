@@ -49,6 +49,43 @@ describe('C17 T2: CI budget derivation', () => {
     ]);
   });
 
+  it('rejects provenance that does not say where a run came from', () => {
+    const temporaryDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'rs-budget-source-'));
+    try {
+      fs.writeFileSync(
+        path.join(temporaryDirectory, 'run.log'),
+        'verify (ubuntu-latest, node 24)\tBUDGET OK\tBUDGET OK doctor (linux): 100 ms / 50 MB\n'
+      );
+      const result = spawnSync(
+        process.execPath,
+        [
+          path.resolve('tools/ci/build-budgets.mjs'),
+          '--run',
+          '123=run.log',
+          // event, branch and conclusion deliberately incomplete: only a sha and a date.
+          '--source',
+          '123=,,success,2026-11-19T00:00:00Z,aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+          '--run',
+          '124=run.log',
+          '--source',
+          '124=push,main,success,2026-11-18T00:00:00Z,bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+          '--run',
+          '125=run.log',
+          '--source',
+          '125=push,main,success,2026-11-17T00:00:00Z,cccccccccccccccccccccccccccccccccccccccc',
+          '--out',
+          'budgets.json',
+        ],
+        { cwd: temporaryDirectory, encoding: 'utf8' }
+      );
+
+      expect(result.status).not.toBe(0);
+      expect(result.stderr).toContain('Expected --source');
+    } finally {
+      fs.rmSync(temporaryDirectory, { recursive: true, force: true });
+    }
+  });
+
   it('rejects budgets built from fewer than ten observations', () => {
     const temporaryDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'rs-budget-source-'));
     try {

@@ -67,38 +67,29 @@ jobs:
           cat "${RUNNER_TEMP}/rs-sample/sample.env" >> "$GITHUB_ENV"
 
       - name: Product smoke with perf budgets
-        shell: bash
-        run: |
-          set -e
-          run_smoke() {
-            mkdir -p "${RUNNER_TEMP}/rs-perf"
-            for item in "doctor:doctor" "plan:plan" "verify:verify" "scan:scan" "rank-json:rank --json"; do
-              name="${item%%:*}"
-              args="${item#*:}"
-              ROUTERSYNC_PERF=1 node packages/cli/dist/index.js $args \
-                > "${RUNNER_TEMP}/rs-perf/${name}.out" 2> "${RUNNER_TEMP}/rs-perf/${name}.err"
-              node tools/ci/check-perf.mjs "${RUNNER_TEMP}/rs-perf/${name}.err" "$name"
-            done
-          }
-          # One retry only. A smoke run is a timing sample, so a second sample
-          # separates a cold runner from a real budget violation. Three attempts
-          # would hide a genuine regression behind a lucky run.
-          if ! run_smoke; then
-            echo "RETRY: product smoke failed once; retrying once"
-            run_smoke
-          fi
+        # The smoke lives in tools/ci/run-smoke.mjs so every command is attempted
+        # and any budget breach sets the exit code. A bash function called from
+        # `if ! run_smoke; then` runs with `set -e` disabled, which swallowed
+        # failures in the middle of the loop (C20 X0).
+        run: node tools/ci/run-smoke.mjs
 
       - name: Emit schedule artifacts (no install)
         run: node tools/ci/emit-schedule-artifacts.mjs "${{ runner.temp }}/schedule-artifacts"
 
-      - name: Report masked failure
+      - name: Report failure
         if: failure()
         shell: bash
         run: |
           # The windows-11-arm job keeps continue-on-error so it cannot block a
           # merge, but a masked red is still a data point: record it so the red
-          # rate is countable instead of invisible.
-          line="MASKED-FAILURE os=${{ matrix.os }} node=${{ matrix.node }} masked=${{ matrix.os == 'windows-11-arm' }}"
+          # rate is countable instead of invisible. Only that job is "masked";
+          # every other job is a plain failure and must not be labelled MASKED.
+          if [ "${{ matrix.os }}" = "windows-11-arm" ]; then
+            kind="MASKED-FAILURE"
+          else
+            kind="FAILURE"
+          fi
+          line="$kind os=${{ matrix.os }} node=${{ matrix.node }}"
           echo "$line" >> "$GITHUB_STEP_SUMMARY"
           echo "$line"
 
