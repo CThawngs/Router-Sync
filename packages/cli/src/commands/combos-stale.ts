@@ -10,9 +10,10 @@
  */
 
 import { readRouterModelState, type RouterModelState } from '@routersync/core';
+import type { OfficialConclusion } from './stale-official.js';
 
 export type StaleStatus = 'PRESENT' | 'PRESENT-NORMALIZED' | 'DISABLED' | 'ABSENT' | 'UNVERIFIABLE';
-export type StaleSource = 'direct' | 'snapshot';
+export type StaleSource = 'direct' | 'snapshot' | 'official';
 
 export interface StaleModelRow {
   router: string;
@@ -36,6 +37,20 @@ export interface StaleReport {
 
 /** The one default for availability evidence; doctor/plan/combos all use `direct`. */
 export const DEFAULT_STALE_SOURCE: StaleSource = 'direct';
+
+/** C21 Y3: rows classified from official upstream catalogs, kept beside the report. */
+export interface OfficialRow {
+  router: string;
+  step: string;
+  provider: string;
+  conclusion: OfficialConclusion;
+  sourceUrl: string | null;
+  checkedAt: string;
+}
+
+export interface StaleReport {
+  official?: OfficialRow[];
+}
 
 function normalizeId(id: string): string {
   return id.startsWith('models/') ? id.slice('models/'.length) : id;
@@ -141,6 +156,7 @@ export function buildStaleReport(
 }
 
 export function parseStaleSource(value: string): StaleSource {
+  if (value === 'official') return 'official';
   if (value === 'direct' || value === 'snapshot') return value;
   throw new Error(`Invalid source "${value}"; expected direct or snapshot`);
 }
@@ -178,18 +194,55 @@ export async function runCombosStaleCommand(options: CombosStaleOptions = {}): P
   const requestedRouters = target === 'all' ? ['9router', 'omniroute'] : [target];
   const routers = requestedRouters.filter((router) => router === '9router');
   const omittedRouters = requestedRouters.filter((router) => router !== '9router');
+  const effectiveSource = source === 'official' ? 'direct' : source;
   const states = new Map<string, RouterModelState>();
   for (const router of routers) {
     states.set(
       router,
       await readRouterModelState(router, {
         env: options.env ?? process.env,
-        availabilitySource: source,
+        availabilitySource: effectiveSource,
         excludeComboModelsFromAvailability: true,
       })
     );
   }
-  const report = buildStaleReport(routers, states, source, omittedRouters);
+  const report = buildStaleReport(routers, states, effectiveSource, omittedRouters);
+  if (source === 'official') {
+    const { checkOfficial, resolveOfficialSource } = await import('./stale-official.js');
+    const rows: OfficialRow[] = [];
+    const cache = new Map<string, Awaited<ReturnType<typeof checkOfficial>>>();
+    for (const row of report.rows) {
+      if (row.status !== 'ABSENT' && row.status !== 'UNVERIFIABLE') continue;
+      const slash = row.step.indexOf('/');
+      if (slash <= 0) continue;
+      const provider = row.step.slice(0, slash);
+      const modelId = row.step.slice(slash + 1);
+      if (!resolveOfficialSource(provider)) {
+        const empty = await checkOfficial(provider, modelId);
+        cache.set(provider, empty);
+        rows.push({
+          router: row.router,
+          step: row.step,
+          provider,
+          conclusion: 'NO-OFFICIAL-SOURCE',
+          sourceUrl: null,
+          checkedAt: empty.checkedAt,
+        });
+        continue;
+      }
+      const hit = cache.get(provider) ?? (await checkOfficial(provider, modelId));
+      if (hit.conclusion !== 'NO-OFFICIAL-SOURCE' && hit.source) cache.set(provider, hit);
+      rows.push({
+        router: row.router,
+        step: row.step,
+        provider,
+        conclusion: hit.conclusion,
+        sourceUrl: hit.source?.url ?? null,
+        checkedAt: hit.checkedAt,
+      });
+    }
+    report.official = rows;
+  }
   if (report.status === 'UNKNOWN') {
     // Non-zero so a script cannot mistake unreadable evidence for "all absent".
     process.exitCode = 1;
