@@ -115,6 +115,15 @@ self-contained and can run before `pnpm build`. If available RAM is below
 - `pnpm test:changed` keeps the workspace fork limit (max 2 forks). It is not a
   wall-clock-speed guarantee: a shared-module change can select most tests.
 
+## 6. Pre-push workflow
+
+- Before every `git push`: run `node tools/agent/preflight.mjs` and the
+  relevant changed-scope checks (`pnpm typecheck:changed`, `pnpm test:changed`,
+  `pnpm lint`). Full `pnpm test`/`pnpm e2e` stay on CI.
+- If a push to a branch with an open PR is not fully green, open it as a
+  draft PR (or convert existing) until CI is green, then ask a human to flip
+  to ready.
+
 ## 7. Troubleshooting
 
 | Symptom | Cause | What to do |

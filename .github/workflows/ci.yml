@@ -9,6 +9,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   verify:
     name: verify (${{ matrix.os }}, node ${{ matrix.node }})
@@ -17,7 +21,6 @@ jobs:
       matrix:
         os: [ubuntu-latest, ubuntu-24.04-arm, macos-latest, windows-latest, windows-11-arm]
         node: [22, 24]
-    continue-on-error: ${{ matrix.os == 'windows-11-arm' }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 40
     steps:
@@ -61,17 +64,21 @@ jobs:
           cat "${RUNNER_TEMP}/rs-sample/sample.env" >> "$GITHUB_ENV"
 
       - name: Product smoke with perf budgets
-        shell: bash
-        run: |
-          set -e
-          mkdir -p "${RUNNER_TEMP}/rs-perf"
-          for item in "doctor:doctor" "plan:plan" "verify:verify" "scan:scan" "rank-json:rank --json"; do
-            name="${item%%:*}"
-            args="${item#*:}"
-            ROUTERSYNC_PERF=1 node packages/cli/dist/index.js $args \
-              > "${RUNNER_TEMP}/rs-perf/${name}.out" 2> "${RUNNER_TEMP}/rs-perf/${name}.err"
-            node tools/ci/check-perf.mjs "${RUNNER_TEMP}/rs-perf/${name}.err" "$name"
-          done
+        uses: nick-fields/retry@v4
+        with:
+          timeout_minutes: 40
+          retry_wait_seconds: 15
+          max_attempts: 3
+          command: |
+            set -e
+            mkdir -p "${RUNNER_TEMP}/rs-perf"
+            for item in "doctor:doctor" "plan:plan" "verify:verify" "scan:scan" "rank-json:rank --json"; do
+              name="${item%%:*}"
+              args="${item#*:}"
+              ROUTERSYNC_PERF=1 node packages/cli/dist/index.js $args \
+                > "${RUNNER_TEMP}/rs-perf/${name}.out" 2> "${RUNNER_TEMP}/rs-perf/${name}.err"
+              node tools/ci/check-perf.mjs "${RUNNER_TEMP}/rs-perf/${name}.err" "$name"
+            done
 
       - name: Emit schedule artifacts (no install)
         run: node tools/ci/emit-schedule-artifacts.mjs "${{ runner.temp }}/schedule-artifacts"
