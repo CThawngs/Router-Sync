@@ -10,13 +10,90 @@
     "mb": 40
   },
   "sampleRuns": [
+    "44477669867",
+    "44476943577",
+    "44473743971",
+    "44461096037",
+    "44459910287",
+    "44453653572",
+    "44452341960",
     "44328241893",
+    "44319590132",
     "44310611988",
-    "44303173142"
+    "44309187439",
+    "44307492047",
+    "44306115093",
+    "44303173142",
+    "44302288644",
+    "44299640069",
+    "44297272360"
   ],
   "sourceRuns": [
     {
       "order": 1,
+      "runId": "44477669867",
+      "event": "pull_request",
+      "branch": "c18-dev-loop",
+      "conclusion": "failure",
+      "createdAt": "2026-11-19T07:11:16Z",
+      "headSha": "5717fb963e97672373a8531c0bfc98b3df3f6191"
+    },
+    {
+      "order": 2,
+      "runId": "44476943577",
+      "event": "pull_request",
+      "branch": "c18-dev-loop",
+      "conclusion": "failure",
+      "createdAt": "2026-11-19T07:05:31Z",
+      "headSha": "2d1cf0fe304bf10304b276372153ca297b4bc4c5"
+    },
+    {
+      "order": 3,
+      "runId": "44473743971",
+      "event": "pull_request",
+      "branch": "c18-dev-loop",
+      "conclusion": "failure",
+      "createdAt": "2026-11-19T06:39:19Z",
+      "headSha": "b763f61b5619bdd465cbc1783074be4bca46b2d1"
+    },
+    {
+      "order": 4,
+      "runId": "44461096037",
+      "event": "pull_request",
+      "branch": "ci-main-fixes",
+      "conclusion": "success",
+      "createdAt": "2026-11-19T04:50:53Z",
+      "headSha": "83f6e32d8bd4af6b60ef7876152c936b0d7178e4"
+    },
+    {
+      "order": 5,
+      "runId": "44459910287",
+      "event": "pull_request",
+      "branch": "ci-main-fixes",
+      "conclusion": "failure",
+      "createdAt": "2026-11-19T04:40:17Z",
+      "headSha": "2f9918f30a105bd769a69f71547086618285803b"
+    },
+    {
+      "order": 6,
+      "runId": "44453653572",
+      "event": "push",
+      "branch": "main",
+      "conclusion": "success",
+      "createdAt": "2026-11-19T03:45:31Z",
+      "headSha": "add0510de90d80bf83ee03e3bc2413284fc4ebdb"
+    },
+    {
+      "order": 7,
+      "runId": "44452341960",
+      "event": "pull_request",
+      "branch": "fix/c17-honest-measurement",
+      "conclusion": "success",
+      "createdAt": "2026-11-19T03:34:09Z",
+      "headSha": "a2106e514818739a94ca7b3f352124ef6ed72106"
+    },
+    {
+      "order": 8,
       "runId": "44328241893",
       "event": "push",
       "branch": "main",
@@ -25,7 +102,16 @@
       "headSha": "6c357d95653b6e1a2146c67c07ce0f70eb6928ed"
     },
     {
-      "order": 2,
+      "order": 9,
+      "runId": "44319590132",
+      "event": "pull_request",
+      "branch": "fix/c16-ci-budget-honesty",
+      "conclusion": "success",
+      "createdAt": "2026-11-18T14:00:37Z",
+      "headSha": "194e4cc7f9b4f8dd9f6ce768d84636b58091edae"
+    },
+    {
+      "order": 10,
       "runId": "44310611988",
       "event": "push",
       "branch": "main",
@@ -34,308 +120,377 @@
       "headSha": "4b3f4f53bd4b400763a648fd06c5d477ce7e803e"
     },
     {
-      "order": 3,
+      "order": 11,
+      "runId": "44309187439",
+      "event": "pull_request",
+      "branch": "feat/c15-q4-stale",
+      "conclusion": "success",
+      "createdAt": "2026-11-18T12:59:28Z",
+      "headSha": "491492d3ea51ffcab3b84ec75a6f13e8de581919"
+    },
+    {
+      "order": 12,
+      "runId": "44307492047",
+      "event": "pull_request",
+      "branch": "feat/c15-q4-stale",
+      "conclusion": "failure",
+      "createdAt": "2026-11-18T12:48:48Z",
+      "headSha": "b09fea1b42350b1dc78b2b79b80e36ff97c4a5a6"
+    },
+    {
+      "order": 13,
+      "runId": "44306115093",
+      "event": "pull_request",
+      "branch": "feat/c15-q4-stale",
+      "conclusion": "failure",
+      "createdAt": "2026-11-18T12:40:09Z",
+      "headSha": "174a588b7124869eae09d17ddaeeb0c5ee9bfdcc"
+    },
+    {
+      "order": 14,
       "runId": "44303173142",
       "event": "push",
       "branch": "main",
       "conclusion": "success",
       "createdAt": "2026-11-18T12:21:40Z",
       "headSha": "053363b620153d2d8bbaea325f8926cf00645362"
+    },
+    {
+      "order": 15,
+      "runId": "44302288644",
+      "event": "pull_request",
+      "branch": "feat/c15-q2-q3",
+      "conclusion": "success",
+      "createdAt": "2026-11-18T12:16:05Z",
+      "headSha": "45e5ccdfd9dfe21cfb0558263725c0019ab066da"
+    },
+    {
+      "order": 16,
+      "runId": "44299640069",
+      "event": "pull_request",
+      "branch": "feat/c15-q2-q3",
+      "conclusion": "failure",
+      "createdAt": "2026-11-18T11:59:20Z",
+      "headSha": "5235424cbc099c9466e103850b20f6bcc357f8fb"
+    },
+    {
+      "order": 17,
+      "runId": "44297272360",
+      "event": "pull_request",
+      "branch": "feat/c15-q2-q3",
+      "conclusion": "failure",
+      "createdAt": "2026-11-18T11:43:32Z",
+      "headSha": "c68c674786e902f5bf61f5486c720195d1e7b854"
     }
   ],
   "os": {
     "linux": {
       "doctor": {
-        "samples": 12,
-        "medianMs": 279.15,
-        "maxObservedMs": 326.5,
+        "samples": 60,
+        "medianMs": 276.2,
+        "maxObservedMs": 344.7,
         "budgetMs": 1000,
-        "medianRssMB": 92,
+        "medianRssMB": 91,
         "maxObservedRssMB": 96,
-        "budgetRssMB": 115,
+        "budgetRssMB": 114,
+        "failedObservations": 0,
         "samplesByRunner": [
           {
             "runner": "ubuntu-24.04-arm",
             "arch": "arm64",
-            "count": 6
+            "count": 30
           },
           {
             "runner": "ubuntu-latest",
             "arch": "x64",
-            "count": 6
+            "count": 30
           }
         ]
       },
       "plan": {
-        "samples": 12,
-        "medianMs": 33.099999999999994,
-        "maxObservedMs": 40.4,
+        "samples": 56,
+        "medianMs": 32.8,
+        "maxObservedMs": 44.5,
         "budgetMs": 1000,
-        "medianRssMB": 91.5,
-        "maxObservedRssMB": 95,
-        "budgetRssMB": 115,
+        "medianRssMB": 91,
+        "maxObservedRssMB": 96,
+        "budgetRssMB": 114,
+        "failedObservations": 0,
         "samplesByRunner": [
           {
             "runner": "ubuntu-24.04-arm",
             "arch": "arm64",
-            "count": 6
+            "count": 28
           },
           {
             "runner": "ubuntu-latest",
             "arch": "x64",
-            "count": 6
+            "count": 28
           }
         ]
       },
       "rank-json": {
-        "samples": 12,
-        "medianMs": 28.150000000000002,
-        "maxObservedMs": 37.4,
+        "samples": 56,
+        "medianMs": 25.75,
+        "maxObservedMs": 37.9,
         "budgetMs": 1000,
         "medianRssMB": 90,
         "maxObservedRssMB": 94,
         "budgetRssMB": 113,
+        "failedObservations": 0,
         "samplesByRunner": [
           {
             "runner": "ubuntu-24.04-arm",
             "arch": "arm64",
-            "count": 6
+            "count": 28
           },
           {
             "runner": "ubuntu-latest",
             "arch": "x64",
-            "count": 6
+            "count": 28
           }
         ]
       },
       "scan": {
-        "samples": 12,
-        "medianMs": 38.35,
-        "maxObservedMs": 43.1,
+        "samples": 56,
+        "medianMs": 37.4,
+        "maxObservedMs": 47.8,
         "budgetMs": 1000,
         "medianRssMB": 92,
-        "maxObservedRssMB": 95,
+        "maxObservedRssMB": 96,
         "budgetRssMB": 115,
+        "failedObservations": 0,
         "samplesByRunner": [
           {
             "runner": "ubuntu-24.04-arm",
             "arch": "arm64",
-            "count": 6
+            "count": 28
           },
           {
             "runner": "ubuntu-latest",
             "arch": "x64",
-            "count": 6
+            "count": 28
           }
         ]
       },
       "verify": {
-        "samples": 12,
-        "medianMs": 2111.75,
-        "maxObservedMs": 2477.1,
-        "budgetMs": 2725,
-        "medianRssMB": 171.5,
-        "maxObservedRssMB": 184,
-        "budgetRssMB": 215,
+        "samples": 56,
+        "medianMs": 1956.75,
+        "maxObservedMs": 2631.8,
+        "budgetMs": 2895,
+        "medianRssMB": 171,
+        "maxObservedRssMB": 185,
+        "budgetRssMB": 214,
+        "failedObservations": 0,
         "samplesByRunner": [
           {
             "runner": "ubuntu-24.04-arm",
             "arch": "arm64",
-            "count": 6
+            "count": 28
           },
           {
             "runner": "ubuntu-latest",
             "arch": "x64",
-            "count": 6
+            "count": 28
           }
         ]
       }
     },
     "darwin": {
       "doctor": {
-        "samples": 6,
-        "medianMs": 293.65,
+        "samples": 30,
+        "medianMs": 305.85,
         "maxObservedMs": 1609.1,
         "budgetMs": 1771,
-        "medianRssMB": 86,
+        "medianRssMB": 84.5,
         "maxObservedRssMB": 92,
-        "budgetRssMB": 108,
+        "budgetRssMB": 106,
+        "failedObservations": 2,
         "samplesByRunner": [
           {
             "runner": "macos-latest",
             "arch": "arm64",
-            "count": 6
+            "count": 30
           }
         ]
       },
       "plan": {
-        "samples": 6,
-        "medianMs": 21.85,
+        "samples": 26,
+        "medianMs": 23.549999999999997,
         "maxObservedMs": 93.7,
         "budgetMs": 1000,
-        "medianRssMB": 85.5,
-        "maxObservedRssMB": 90,
-        "budgetRssMB": 107,
+        "medianRssMB": 84,
+        "maxObservedRssMB": 91,
+        "budgetRssMB": 105,
+        "failedObservations": 0,
         "samplesByRunner": [
           {
             "runner": "macos-latest",
             "arch": "arm64",
-            "count": 6
+            "count": 26
           }
         ]
       },
       "rank-json": {
-        "samples": 6,
-        "medianMs": 23.8,
+        "samples": 26,
+        "medianMs": 22.15,
         "maxObservedMs": 167.3,
         "budgetMs": 1000,
-        "medianRssMB": 85,
+        "medianRssMB": 83.5,
         "maxObservedRssMB": 89,
-        "budgetRssMB": 107,
+        "budgetRssMB": 105,
+        "failedObservations": 0,
         "samplesByRunner": [
           {
             "runner": "macos-latest",
             "arch": "arm64",
-            "count": 6
+            "count": 26
           }
         ]
       },
       "scan": {
-        "samples": 6,
-        "medianMs": 30.450000000000003,
+        "samples": 26,
+        "medianMs": 30.7,
         "maxObservedMs": 203.4,
         "budgetMs": 1000,
-        "medianRssMB": 85.5,
-        "maxObservedRssMB": 91,
-        "budgetRssMB": 107,
+        "medianRssMB": 84.5,
+        "maxObservedRssMB": 92,
+        "budgetRssMB": 106,
+        "failedObservations": 0,
         "samplesByRunner": [
           {
             "runner": "macos-latest",
             "arch": "arm64",
-            "count": 6
+            "count": 26
           }
         ]
       },
       "verify": {
-        "samples": 6,
-        "medianMs": 2466.55,
-        "maxObservedMs": 3047.7,
-        "budgetMs": 3353,
-        "medianRssMB": 185,
+        "samples": 26,
+        "medianMs": 2384.55,
+        "maxObservedMs": 4148.6,
+        "budgetMs": 4564,
+        "medianRssMB": 181.5,
         "maxObservedRssMB": 190,
-        "budgetRssMB": 232,
+        "budgetRssMB": 227,
+        "failedObservations": 0,
         "samplesByRunner": [
           {
             "runner": "macos-latest",
             "arch": "arm64",
-            "count": 6
+            "count": 26
           }
         ]
       }
     },
     "win32": {
       "doctor": {
-        "samples": 12,
-        "medianMs": 458.95,
-        "maxObservedMs": 499.5,
+        "samples": 64,
+        "medianMs": 456.5,
+        "maxObservedMs": 572.1,
         "budgetMs": 1000,
-        "medianRssMB": 71,
+        "medianRssMB": 69.5,
         "maxObservedRssMB": 75,
-        "budgetRssMB": 89,
+        "budgetRssMB": 87,
+        "failedObservations": 0,
         "samplesByRunner": [
           {
             "runner": "windows-11-arm",
             "arch": "arm64",
-            "count": 6
+            "count": 32
           },
           {
             "runner": "windows-latest",
             "arch": "x64",
-            "count": 6
+            "count": 32
           }
         ]
       },
       "plan": {
-        "samples": 12,
-        "medianMs": 45.3,
-        "maxObservedMs": 51.2,
+        "samples": 60,
+        "medianMs": 44.150000000000006,
+        "maxObservedMs": 68.5,
         "budgetMs": 1000,
-        "medianRssMB": 70.5,
+        "medianRssMB": 68.5,
         "maxObservedRssMB": 76,
-        "budgetRssMB": 89,
+        "budgetRssMB": 86,
+        "failedObservations": 0,
         "samplesByRunner": [
           {
             "runner": "windows-11-arm",
             "arch": "arm64",
-            "count": 6
+            "count": 30
           },
           {
             "runner": "windows-latest",
             "arch": "x64",
-            "count": 6
+            "count": 30
           }
         ]
       },
       "rank-json": {
-        "samples": 12,
-        "medianMs": 41.45,
+        "samples": 55,
+        "medianMs": 40.9,
         "maxObservedMs": 51.9,
         "budgetMs": 1000,
-        "medianRssMB": 70,
+        "medianRssMB": 69,
         "maxObservedRssMB": 75,
-        "budgetRssMB": 88,
+        "budgetRssMB": 87,
+        "failedObservations": 0,
         "samplesByRunner": [
           {
             "runner": "windows-11-arm",
             "arch": "arm64",
-            "count": 6
+            "count": 28
           },
           {
             "runner": "windows-latest",
             "arch": "x64",
-            "count": 6
+            "count": 27
           }
         ]
       },
       "scan": {
-        "samples": 12,
-        "medianMs": 52.150000000000006,
-        "maxObservedMs": 60,
+        "samples": 55,
+        "medianMs": 52.5,
+        "maxObservedMs": 67.1,
         "budgetMs": 1000,
-        "medianRssMB": 70.5,
+        "medianRssMB": 70,
         "maxObservedRssMB": 75,
-        "budgetRssMB": 89,
+        "budgetRssMB": 88,
+        "failedObservations": 0,
         "samplesByRunner": [
           {
             "runner": "windows-11-arm",
             "arch": "arm64",
-            "count": 6
+            "count": 28
           },
           {
             "runner": "windows-latest",
             "arch": "x64",
-            "count": 6
+            "count": 27
           }
         ]
       },
       "verify": {
-        "samples": 12,
-        "medianMs": 2321.8,
-        "maxObservedMs": 2471.9,
-        "budgetMs": 2903,
-        "medianRssMB": 125,
-        "maxObservedRssMB": 134,
-        "budgetRssMB": 157,
+        "samples": 60,
+        "medianMs": 2058.3,
+        "maxObservedMs": 6951.4,
+        "budgetMs": 7647,
+        "medianRssMB": 129,
+        "maxObservedRssMB": 135,
+        "budgetRssMB": 162,
+        "failedObservations": 5,
         "samplesByRunner": [
           {
             "runner": "windows-11-arm",
             "arch": "arm64",
-            "count": 6
+            "count": 30
           },
           {
             "runner": "windows-latest",
             "arch": "x64",
-            "count": 6
+            "count": 30
           }
         ]
       }

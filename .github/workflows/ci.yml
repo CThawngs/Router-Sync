@@ -9,6 +9,12 @@ on:
 permissions:
   contents: read
 
+# Cancel superseded runs only for pull requests. A push to main is the record
+# of a merged commit, so it must always finish.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   verify:
     name: verify (${{ matrix.os }}, node ${{ matrix.node }})
@@ -64,17 +70,37 @@ jobs:
         shell: bash
         run: |
           set -e
-          mkdir -p "${RUNNER_TEMP}/rs-perf"
-          for item in "doctor:doctor" "plan:plan" "verify:verify" "scan:scan" "rank-json:rank --json"; do
-            name="${item%%:*}"
-            args="${item#*:}"
-            ROUTERSYNC_PERF=1 node packages/cli/dist/index.js $args \
-              > "${RUNNER_TEMP}/rs-perf/${name}.out" 2> "${RUNNER_TEMP}/rs-perf/${name}.err"
-            node tools/ci/check-perf.mjs "${RUNNER_TEMP}/rs-perf/${name}.err" "$name"
-          done
+          run_smoke() {
+            mkdir -p "${RUNNER_TEMP}/rs-perf"
+            for item in "doctor:doctor" "plan:plan" "verify:verify" "scan:scan" "rank-json:rank --json"; do
+              name="${item%%:*}"
+              args="${item#*:}"
+              ROUTERSYNC_PERF=1 node packages/cli/dist/index.js $args \
+                > "${RUNNER_TEMP}/rs-perf/${name}.out" 2> "${RUNNER_TEMP}/rs-perf/${name}.err"
+              node tools/ci/check-perf.mjs "${RUNNER_TEMP}/rs-perf/${name}.err" "$name"
+            done
+          }
+          # One retry only. A smoke run is a timing sample, so a second sample
+          # separates a cold runner from a real budget violation. Three attempts
+          # would hide a genuine regression behind a lucky run.
+          if ! run_smoke; then
+            echo "RETRY: product smoke failed once; retrying once"
+            run_smoke
+          fi
 
       - name: Emit schedule artifacts (no install)
         run: node tools/ci/emit-schedule-artifacts.mjs "${{ runner.temp }}/schedule-artifacts"
+
+      - name: Report masked failure
+        if: failure()
+        shell: bash
+        run: |
+          # The windows-11-arm job keeps continue-on-error so it cannot block a
+          # merge, but a masked red is still a data point: record it so the red
+          # rate is countable instead of invisible.
+          line="MASKED-FAILURE os=${{ matrix.os }} node=${{ matrix.node }} masked=${{ matrix.os == 'windows-11-arm' }}"
+          echo "$line" >> "$GITHUB_STEP_SUMMARY"
+          echo "$line"
 
       - name: Check low-priority keys in schedule artifacts
         shell: bash
