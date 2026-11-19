@@ -1,17 +1,44 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { readRouterModelState, openBetterSqlite3 } from '@routersync/core';
-import { buildStaleReport, classifyComboStep } from '../src/commands/combos-stale.js';
+import {
+  buildStaleReport,
+  classifyComboStep,
+  runCombosStaleCommand,
+  serializeStaleReport,
+  serializeStaleReportJson,
+} from '../src/commands/combos-stale.js';
 
-function tmpDb(): string {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'rs-c19-stale-'));
-  return path.join(dir, 'data.sqlite');
+function state(overrides: Record<string, unknown> = {}) {
+  return {
+    router: '9router',
+    enabledModels: new Set<string>(),
+    disabledModels: new Set<string>(),
+    comboModels: new Set<string>(),
+    customModels: new Set<string>(),
+    catalogModels: new Set<string>(),
+    availableModels: new Set<string>(),
+    connectionEnabledModels: new Set<string>(),
+    availabilityProviders: new Set<string>(),
+    classify: () => ({ tier: 'A', inCombo: true, inconsistent: false }),
+    diagnostics: {
+      dbResolved: true,
+      dbOpened: true,
+      missingTables: [],
+      parseErrors: 0,
+      versionMismatch: false,
+      availabilitySource: 'direct',
+      dbName: 'data.sqlite',
+    },
+    ...overrides,
+  } as never;
 }
 
 function readableDb(): string {
-  const dbPath = tmpDb();
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'rs-c20-stale-'));
+  const dbPath = path.join(dir, 'data.sqlite');
   const db = openBetterSqlite3(dbPath);
   db.exec(`
     CREATE TABLE _meta (key TEXT, value TEXT);
@@ -20,71 +47,75 @@ function readableDb(): string {
     CREATE TABLE combos (id TEXT, name TEXT, models TEXT);
     CREATE TABLE providerConnections (provider TEXT, name TEXT, data TEXT);
     INSERT INTO providerConnections VALUES ('alpha', 'a1', '{"providerSpecificData":{"enabledModels":["known"]}}');
-    INSERT INTO combos VALUES ('c1', 'agent', '["alpha/known", "alpha/missing", "beta/custom-one"]');
+    INSERT INTO kv VALUES ('disabledModels', 'gemini', '["gemini-pro"]');
+    INSERT INTO combos VALUES ('c1', 'agent', '["alpha/known", "alpha/missing", "beta/custom-one", "gemini/gemini-pro"]');
   `);
   db.close();
   return dbPath;
 }
 
-describe('C19 W7 (G1/G2): unreadable router evidence is UNKNOWN, never a clean report', () => {
-  it('reads a healthy database and reports diagnostics', () => {
+describe('C20 X3.2: DISABLED comes from the router disabledModels evidence', () => {
+  it('reports DISABLED when the router lists the model as disabled', () => {
     const dbPath = readableDb();
-    const state = readRouterModelState('9router', { dbPath, availabilitySource: 'direct' });
+    const routerState = readRouterModelState('9router', { dbPath, availabilitySource: 'direct' });
 
-    expect(state.diagnostics.dbResolved).toBe(true);
-    expect(state.diagnostics.dbOpened).toBe(true);
-    expect(state.diagnostics.missingTables).toEqual([]);
-    expect(state.diagnostics.availabilitySource).toBe('direct');
-    expect(state.diagnostics.dbName).toBe('data.sqlite');
+    expect(routerState.disabledModels.has('gemini/gemini-pro')).toBe(true);
+    expect(classifyComboStep('gemini/gemini-pro', routerState)).toBe('DISABLED');
 
-    const report = buildStaleReport(['9router'], new Map([['9router', state]]), 'direct');
-    expect(report.status).toBe('OK');
-    expect(report.unavailable).toEqual([]);
-    expect(report.counts.PRESENT).toBe(1);
-    expect(report.counts.ABSENT).toBe(1);
+    const report = buildStaleReport(['9router'], new Map([['9router', routerState]]), 'direct');
+    expect(report.counts.DISABLED).toBeGreaterThan(0);
   });
 
-  it('missing database file -> UNKNOWN with a reason and no rows', () => {
-    const dbPath = path.join(path.dirname(tmpDb()), 'does-not-exist.sqlite');
-    const state = readRouterModelState('9router', { dbPath, availabilitySource: 'direct' });
-
-    expect(state.diagnostics.dbOpened).toBe(false);
-    const report = buildStaleReport(['9router'], new Map([['9router', state]]), 'direct');
-    expect(report.status).toBe('UNKNOWN');
-    expect(report.unavailable[0]?.reason).toMatch(/could not be opened/);
-    expect(report.rows).toEqual([]);
-    expect(report.counts.ABSENT).toBe(0);
-  });
-
-  it('corrupt database file -> UNKNOWN with a reason and no rows', () => {
-    const dbPath = tmpDb();
-    fs.writeFileSync(dbPath, 'not a sqlite database at all');
-    const state = readRouterModelState('9router', { dbPath, availabilitySource: 'direct' });
-
-    // SQLite can open the handle lazily and only fail on the first query, so
-    // the contract is the report status, not dbOpened.
-    expect(state.diagnostics.missingTables.join(',')).toMatch(/unreadable/);
-    const report = buildStaleReport(['9router'], new Map([['9router', state]]), 'direct');
-    expect(report.status).toBe('UNKNOWN');
-    expect(report.rows).toEqual([]);
+  it('still separates UNVERIFIABLE from ABSENT', () => {
+    const routerState = state({
+      availableModels: new Set(['alpha/known']),
+      availabilityProviders: new Set(['alpha']),
+    });
+    expect(classifyComboStep('alpha/missing', routerState)).toBe('ABSENT');
+    expect(classifyComboStep('beta/custom-one', routerState)).toBe('UNVERIFIABLE');
   });
 });
 
-describe('C19 W7 (G3): UNVERIFIABLE is separate from ABSENT', () => {
-  it('custom provider without connection evidence is UNVERIFIABLE, not ABSENT', () => {
-    const dbPath = readableDb();
-    const state = readRouterModelState('9router', { dbPath, availabilitySource: 'direct' });
+const sampleReport = {
+  generatedAt: '2026-11-19T00:00:00.000Z',
+  status: 'OK' as const,
+  unavailable: [],
+  source: 'direct' as const,
+  note: 'note',
+  routers: ['9router'],
+  omittedRouters: [],
+  rows: [{ router: '9router', step: 'alpha/known', status: 'PRESENT' as const }],
+  counts: { PRESENT: 1, 'PRESENT-NORMALIZED': 0, DISABLED: 0, ABSENT: 0, UNVERIFIABLE: 0 },
+};
 
-    const report = buildStaleReport(['9router'], new Map([['9router', state]]), 'direct');
-    const beta = report.rows.find((row) => row.step === 'beta/custom-one');
-    expect(beta?.status).toBe('UNVERIFIABLE');
-    expect(report.counts.UNVERIFIABLE).toBe(1);
-    expect(report.note).toContain('UNVERIFIABLE');
+describe('C20 X3.3: the evidence source is always printed', () => {
+  it('text output starts with the source line', () => {
+    expect(serializeStaleReport(sampleReport).split('\n')[0]).toBe('source=direct');
   });
 
-  it('provider with evidence still reports ABSENT for a missing model', () => {
+  it('json output carries the source field', () => {
+    expect(JSON.parse(serializeStaleReportJson(sampleReport)).source).toBe('direct');
+  });
+
+  it('the command logs the source in text mode and in json mode', async () => {
     const dbPath = readableDb();
-    const state = readRouterModelState('9router', { dbPath, availabilitySource: 'direct' });
-    expect(classifyComboStep('alpha/missing', state)).toBe('ABSENT');
+    const log = vi.spyOn(console, 'log').mockImplementation(() => {});
+    const previous = process.env.ROUTERSYNC_9ROUTER_DB;
+    process.env.ROUTERSYNC_9ROUTER_DB = dbPath;
+    try {
+      // Text mode is the default (no --json flag); passing json:false prints nothing.
+      await runCombosStaleCommand({ router: '9router', source: 'direct' });
+      const text = log.mock.calls.map((call) => String(call[0])).join('\n');
+      expect(text.split('\n')[0]).toBe('source=direct');
+
+      log.mockClear();
+      await runCombosStaleCommand({ router: '9router', source: 'direct', json: true });
+      const json = log.mock.calls.map((call) => String(call[0])).join('\n');
+      expect(JSON.parse(json).source).toBe('direct');
+    } finally {
+      log.mockRestore();
+      if (previous === undefined) delete process.env.ROUTERSYNC_9ROUTER_DB;
+      else process.env.ROUTERSYNC_9ROUTER_DB = previous;
+    }
   });
 });

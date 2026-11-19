@@ -8,6 +8,20 @@ import { fileURLToPath } from 'node:url';
 const isCI = process.env['CI'] === 'true' || process.env['CI'] === '1';
 const localMaxForks = Number(process.env['RS_TEST_WORKERS'] ?? 2);
 
+// C20 X2: the RAM gate in tools/agent/heavy.mjs only protects a command when the
+// agent uses the wrapped script name, so the test pool can cap itself here too.
+//
+// Measured on the owner's machine (C20, record `c20-x2-abba-workers2`, 4 ABBA
+// samples per arm, `vitest run --project packages`): 2 workers took a median
+// 116.8 s against 63.7 s uncapped, i.e. 1.83x slower, and per-arm peak RSS was
+// not sampled. X2.2 keeps a cap only when free RAM drops clearly AND wall time
+// stays within 1.5x, so the automatic RAM cap is NOT enabled by default.
+// Enforcement stays with the gate, which already blocks heavy commands below its
+// threshold. `RS_TEST_WORKERS=<n>` forces a worker count for experiments.
+const forcedWorkers = Number(process.env['RS_TEST_WORKERS'] ?? 0);
+const capped = forcedWorkers > 0;
+const maxWorkers = capped ? forcedWorkers : 0;
+
 const dirname = path.dirname(fileURLToPath(import.meta.url));
 const alias = {
   '@routersync/adapter-sdk': path.resolve(dirname, 'packages/adapter-sdk/src/index.ts'),
@@ -28,7 +42,8 @@ export default defineConfig({
     hookTimeout: 30000,
     testTimeout: 30000,
     pool: 'forks',
-    ...(isCI ? {} : { poolOptions: { forks: { maxForks: localMaxForks, minForks: 1 } } }),
+    ...(capped ? { maxWorkers, minWorkers: 1 } : {}),
+    ...(!isCI && !capped ? { poolOptions: { forks: { maxForks: localMaxForks, minForks: 1 } } } : {}),
     projects: [
       {
         resolve: { alias },

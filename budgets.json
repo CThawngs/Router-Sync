@@ -1,5 +1,5 @@
 {
-  "generatedFrom": "gh run view --log; verified successful main-branch CI runs",
+  "generatedFrom": "gh run view --log; 17 CI runs (4 push, 13 pull_request); 8 with a non-success conclusion",
   "formula": "budget = max(ceil(1.25 * median), ceil(1.1 * maxObserved), floor)",
   "formulaDetails": {
     "durationMs": "max(ceil(1.25 * medianMs), ceil(1.1 * maxObservedMs), floors.ms)",
@@ -524,5 +524,26 @@
         "maxBytes": 61221239
       }
     }
+  },
+  "provenance": {
+    "total": 17,
+    "byEvent": {
+      "pull_request": 13,
+      "push": 4
+    },
+    "byBranch": {
+      "c18-dev-loop": 3,
+      "ci-main-fixes": 2,
+      "main": 4,
+      "fix/c17-honest-measurement": 1,
+      "fix/c16-ci-budget-honesty": 1,
+      "feat/c15-q4-stale": 3,
+      "feat/c15-q2-q3": 3
+    },
+    "byConclusion": {
+      "failure": 8,
+      "success": 9
+    },
+    "failed": 8
   }
 }
