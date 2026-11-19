@@ -18,6 +18,15 @@ const DARWIN_VERIFY_SAMPLES = [
 ];
 
 describe('C17 T2: CI budget derivation', () => {
+  it('keeps the footprint configuration in budgets.json', () => {
+    const budgets = JSON.parse(fs.readFileSync(path.resolve('budgets.json'), 'utf8'));
+    expect(budgets.footprint).toBeDefined();
+    expect(budgets.footprint.unit).toBe('bytes');
+    for (const scenario of ['cli-only', 'cli-mcp-server', 'all']) {
+      expect(budgets.footprint.scenarios[scenario].maxBytes).toBeGreaterThan(0);
+    }
+  });
+
   it('uses the standard median for an even number of samples', () => {
     expect(median([1, 2, 3, 4])).toBe(2.5);
   });

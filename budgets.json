@@ -495,5 +495,34 @@
         ]
       }
     }
+  },
+  "footprint": {
+    "unit": "bytes",
+    "primaryScenario": "cli-only",
+    "method": "ceil(1.10 * maximum observed clean-install bytes)",
+    "observedBaseline": {
+      "cli-only": {
+        "win32": 35225899
+      },
+      "cli-mcp-server": {
+        "win32": 46682723
+      },
+      "all": {
+        "darwin": 55655671,
+        "linux": 55655671,
+        "win32": 55655671
+      }
+    },
+    "scenarios": {
+      "cli-only": {
+        "maxBytes": 38748489
+      },
+      "cli-mcp-server": {
+        "maxBytes": 51350996
+      },
+      "all": {
+        "maxBytes": 61221239
+      }
+    }
   }
 }
