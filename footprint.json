@@ -1,9 +1,61 @@
 {
-  "generatedAt": "2026-11-18T11:25:41.278Z",
+  "generatedAt": "2026-11-19T03:09:07.983Z",
   "platform": "win32",
-  "packages": 9,
-  "installedBytes": 55617940,
-  "installedFiles": 5064,
-  "installMs": 15214,
-  "nodeGyp": false
+  "unit": "bytes",
+  "primaryScenario": "cli-only",
+  "packages": 7,
+  "installedBytes": 35229573,
+  "installedFiles": 1551,
+  "installMs": 8348,
+  "nodeGyp": false,
+  "scenarios": {
+    "cli-only": {
+      "packageNames": [
+        "@routersync/adapter-9router",
+        "@routersync/adapter-omniroute",
+        "@routersync/adapter-sdk",
+        "@routersync/cli",
+        "@routersync/core",
+        "@routersync/daemon",
+        "@routersync/sources"
+      ],
+      "installedBytes": 35229573,
+      "installedFiles": 1551,
+      "installMs": 8348,
+      "nodeGyp": false
+    },
+    "cli-mcp-server": {
+      "packageNames": [
+        "@routersync/adapter-9router",
+        "@routersync/adapter-omniroute",
+        "@routersync/adapter-sdk",
+        "@routersync/cli",
+        "@routersync/core",
+        "@routersync/daemon",
+        "@routersync/mcp-server",
+        "@routersync/sources"
+      ],
+      "installedBytes": 46677287,
+      "installedFiles": 4383,
+      "installMs": 13896,
+      "nodeGyp": false
+    },
+    "all": {
+      "packageNames": [
+        "@routersync/adapter-9router",
+        "@routersync/adapter-omniroute",
+        "@routersync/adapter-sdk",
+        "@routersync/cli",
+        "@routersync/core",
+        "@routersync/daemon",
+        "@routersync/mcp-server",
+        "@routersync/sources",
+        "@routersync/ui"
+      ],
+      "installedBytes": 55620672,
+      "installedFiles": 5044,
+      "installMs": 12852,
+      "nodeGyp": false
+    }
+  }
 }

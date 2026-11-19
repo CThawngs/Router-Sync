@@ -58,7 +58,10 @@ Without `--out`, JSON goes to stdout.
 
 Run `node tools/agent/preflight.mjs` before starting agent work. It prints
 available RAM, core count, and whether the repo is inside a cloud-synced folder.
-When available RAM < 1.5 GiB, use `LIGHT-DEV`:
+The script is **advisory only**: it reports `FULL` or `LIGHT-DEV` and exits 0;
+it does not block commands or enforce the policy below. It is self-contained
+and can run before `pnpm build`. The local-agent rule is enforced by following
+the documented command list. When available RAM < 1.5 GiB, use `LIGHT-DEV`:
 
 ```sh
 pnpm lint
@@ -68,6 +71,34 @@ pnpm test:changed          # vitest run --changed origin/main, fork cap kept
 
 Do **not** run `pnpm test`, `pnpm e2e`, bare `vitest run`, or `pnpm test:slow`
 locally in LIGHT-DEV. The full suite runs in PR CI.
+
+`pnpm test:changed` is memory-bounded by the workspace fork limit, but it is not
+guaranteed to finish faster than the full suite. Vitest's changed-file graph can
+select most of the workspace after a shared-module change; measure the command
+instead of treating its name as a performance promise.
+
+## Cold-start measurement (C17)
+
+C17 measured a fresh Node.js process for each layer on Windows x64, Node.js
+24.18.0, in a cloud-synced repository with 884 MiB free RAM at start. Each
+layer used two batches of 10 samples with a three-minute idle interval between
+batches. Every `verify` sample used a fresh state directory.
+
+| Layer | Samples | p50 | p95 | max |
+|---|---:|---:|---:|---:|
+| Node.js runtime | 20 | 49.1 ms | 66.2 ms | 92.4 ms |
+| Core import | 20 | 134.5 ms | 192.0 ms | 192.8 ms |
+| CLI import | 20 | 481.2 ms | 559.1 ms | 628.6 ms |
+| CLI dispatch | 20 | 489.7 ms | 543.5 ms | 563.2 ms |
+| Mock verify | 20 | 528.1 ms | 579.6 ms | 619.0 ms |
+
+The fixed startup cost is dominated by loading the CLI module graph: the paired
+median increment over core import was 350.3 ms. The three-minute idle interval
+produced only small batch-2 p50 differences (between -15.6 and +3.9 ms), not a
+material warm-up penalty. A separate C16 request-bearing `verify` run took about 10.2 s
+while using only about 546 ms of CPU and reporting two requests; the offline
+run reported zero requests and took about 315 ms. The observed long outlier was
+therefore network/I/O variance, not module-import cold start.
 
 ## Tips for low-memory machines
 

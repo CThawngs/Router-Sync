@@ -4,13 +4,15 @@
  * C15 Q4: read-only `routersync combos stale --json`.
  * Statuses are per router, from real router state:
  *   PRESENT | PRESENT-NORMALIZED | DISABLED | ABSENT
- * `ABSENT` here means "unknown-to-snapshot" relative to the shipped router
- * catalog — it is NOT an upstream provider deprecation claim.
+ * The default `direct` source uses model availability read from the router
+ * database. `snapshot` explicitly uses the provider registry shipped with
+ * RouterSync. ABSENT is never an upstream provider deprecation claim.
  */
 
 import { readRouterModelState, type RouterModelState } from '@routersync/core';
 
 export type StaleStatus = 'PRESENT' | 'PRESENT-NORMALIZED' | 'DISABLED' | 'ABSENT';
+export type StaleSource = 'direct' | 'snapshot';
 
 export interface StaleModelRow {
   router: string;
@@ -20,8 +22,10 @@ export interface StaleModelRow {
 
 export interface StaleReport {
   generatedAt: string;
+  source: StaleSource;
   note: string;
   routers: string[];
+  omittedRouters: string[];
   rows: StaleModelRow[];
   counts: Record<StaleStatus, number>;
 }
@@ -47,7 +51,12 @@ export function classifyComboStep(step: string, state: RouterModelState): StaleS
 }
 
 /** Build the report for a list of router names. */
-export function buildStaleReport(routers: readonly string[], states: Map<string, RouterModelState>): StaleReport {
+export function buildStaleReport(
+  routers: readonly string[],
+  states: Map<string, RouterModelState>,
+  source: StaleSource = 'direct',
+  omittedRouters: readonly string[] = []
+): StaleReport {
   const rows: StaleModelRow[] = [];
   const counts: Record<StaleStatus, number> = {
     PRESENT: 0,
@@ -66,29 +75,74 @@ export function buildStaleReport(routers: readonly string[], states: Map<string,
     }
   }
 
+  const sourceNote =
+    source === 'snapshot'
+      ? 'ABSENT means unknown-to-snapshot relative to the shipped router catalog, not an upstream provider classification.'
+      : 'ABSENT means not found in directly available router state, not an upstream provider classification.';
+  const omittedNote =
+    omittedRouters.length > 0
+      ? ` Omitted routers without an availability reader: ${omittedRouters.join(', ')}.`
+      : '';
+
   return {
     generatedAt: new Date().toISOString(),
-    note: 'ABSENT means unknown-to-snapshot relative to the shipped router catalog, not an upstream provider classification.',
+    source,
+    note: `${sourceNote}${omittedNote}`,
     routers: [...routers],
+    omittedRouters: [...omittedRouters],
     rows,
     counts,
   };
 }
 
+export function parseStaleSource(value: string): StaleSource {
+  if (value === 'direct' || value === 'snapshot') return value;
+  throw new Error(`Invalid source "${value}"; expected direct or snapshot`);
+}
+
+/** Human-facing output keeps the evidence source as the first line. */
+export function serializeStaleReport(report: StaleReport): string {
+  return `source=${report.source}\n${JSON.stringify(report, null, 2)}`;
+}
+
+/** Strict JSON output for callers that parse stdout as one JSON document. */
+export function serializeStaleReportJson(report: StaleReport): string {
+  return JSON.stringify(report, null, 2);
+}
+
 export interface CombosStaleOptions {
   router?: string | undefined;
+  source?: StaleSource | undefined;
   json?: boolean | undefined;
   env?: NodeJS.ProcessEnv | undefined;
 }
 
 export async function runCombosStaleCommand(options: CombosStaleOptions = {}): Promise<StaleReport> {
   const target = (options.router ?? 'all').toLowerCase();
-  const routers = target === 'all' ? ['9router', 'omniroute'] : [target];
+  if (target !== 'all' && target !== '9router' && target !== 'omniroute') {
+    throw new Error(`Invalid router "${target}"; expected all, 9router, or omniroute`);
+  }
+
+  const source = options.source ?? 'direct';
+  const requestedRouters = target === 'all' ? ['9router', 'omniroute'] : [target];
+  const routers = requestedRouters.filter((router) => router === '9router');
+  const omittedRouters = requestedRouters.filter((router) => router !== '9router');
   const states = new Map<string, RouterModelState>();
   for (const router of routers) {
-    states.set(router, await readRouterModelState(router, { env: options.env ?? process.env }));
+    states.set(
+      router,
+      await readRouterModelState(router, {
+        env: options.env ?? process.env,
+        availabilitySource: source,
+        excludeComboModelsFromAvailability: true,
+      })
+    );
   }
-  const report = buildStaleReport(routers, states);
-  if (options.json !== false) console.log(JSON.stringify(report, null, 2));
+  const report = buildStaleReport(routers, states, source, omittedRouters);
+  if (options.json === true) {
+    console.log(serializeStaleReportJson(report));
+  } else if (options.json !== false) {
+    console.log(serializeStaleReport(report));
+  }
   return report;
 }

@@ -37,6 +37,25 @@ export function getProviderAliases(provider: string): string[] {
   return [norm, ...aliases];
 }
 
+function getEquivalentProviderPrefixes(
+  provider: string,
+  registryAliases: Readonly<Record<string, string>>,
+): string[] {
+  const prefixes = new Set(getProviderAliases(provider));
+
+  const mappedAlias = registryAliases[provider.trim().toLowerCase()];
+  if (mappedAlias) {
+    for (const alias of getProviderAliases(mappedAlias)) prefixes.add(alias);
+  }
+
+  for (const [providerId, alias] of Object.entries(registryAliases)) {
+    if (alias.trim().toLowerCase() !== provider.trim().toLowerCase()) continue;
+    for (const candidate of getProviderAliases(providerId)) prefixes.add(candidate);
+  }
+
+  return [...prefixes];
+}
+
 export interface RouterModelStateOptions {
   dbPath?: string | undefined;
   catalogPath?: string | undefined;
@@ -57,6 +76,18 @@ export interface RouterModelStateOptions {
    * Defaults to the map shipped with this package.
    */
   providerAliases?: Record<string, string> | undefined;
+  /**
+   * Evidence source used to build the 9Router available-model list.
+   * `direct` uses only evidence read from the router database. `snapshot`
+   * also uses the provider registry shipped with this package.
+   */
+  availabilitySource?: 'direct' | 'snapshot' | undefined;
+  /**
+   * Exclude combo references from snapshot availability evidence. This is used
+   * by stale-reference diagnostics so the record under test cannot validate
+   * itself. Other callers keep the existing tier-classification behavior.
+   */
+  excludeComboModelsFromAvailability?: boolean | undefined;
 }
 
 export interface RouterModelState {
@@ -127,6 +158,8 @@ export function readRouterModelState(
   // Opt-in: treat a model that only appears in the router catalog as active.
   // Default is false, so a catalog-only model stays Tier B (suggested).
   const catalogImpliesEnabled = Boolean(options.catalogImpliesEnabled);
+  const availabilitySource = options.availabilitySource ?? 'snapshot';
+  const registryAliases = options.providerAliases ?? NINE_ROUTER_PROVIDER_ALIASES;
 
   let appVersion = options.appVersion;
   let versionMismatch = false;
@@ -287,7 +320,7 @@ export function readRouterModelState(
                   for (const m of arr) {
                     if (typeof m === 'string') {
                       const normId = m.startsWith('models/') ? m.slice('models/'.length) : m;
-                      for (const alias of getProviderAliases(r.key)) {
+                      for (const alias of getEquivalentProviderPrefixes(r.key, registryAliases)) {
                         disabledModels.add(`${alias}/${m}`);
                         disabledModels.add(`${alias}/${normId}`);
                       }
@@ -381,23 +414,40 @@ export function readRouterModelState(
         }
       }
 
-      // Compute the 9Router "available models" set, mirroring the provider
-      // detail page of the 9Router UI:
-      //   available = (built-in provider registry + router custom models
-      //               + router model aliases) - disabled
-      //
-      // The built-in registry is product data shipped with this package
-      // (domain/9router-provider-models.ts). When it is unavailable, or when
-      // appVersion does not match 0.5.119 (and options.providerModels was not explicitly passed),
-      // fall back to the connection `enabledModels` signal plus custom models, so
-      // behaviour stays sane.
+      // Compute the 9Router "available models" set from an explicit evidence
+      // source. `direct` contains only model availability read from the router
+      // database. `snapshot` mirrors the provider page by adding the provider
+      // registry shipped with this package.
       const registryModels = options.providerModels ?? NINE_ROUTER_PROVIDER_MODELS;
-      const registryAliases = options.providerAliases ?? NINE_ROUTER_PROVIDER_ALIASES;
       const registryHasProviders = Object.keys(registryModels).length > 0;
       const useBuiltInRegistry =
         registryHasProviders && (!versionMismatch || options.providerModels !== undefined);
+      const providerPrefixes = new Set<string>();
+      for (const provider of Object.keys(registryModels)) {
+        for (const alias of getProviderAliases(provider)) providerPrefixes.add(alias);
+      }
+      for (const [provider, alias] of Object.entries(registryAliases)) {
+        for (const candidate of getProviderAliases(provider)) providerPrefixes.add(candidate);
+        for (const candidate of getProviderAliases(alias)) providerPrefixes.add(candidate);
+      }
 
-      if (useBuiltInRegistry) {
+      if (availabilitySource === 'direct') {
+        // providerConnections.enabledModels is live router evidence. Combo
+        // references are deliberately excluded because they are the records
+        // being checked for staleness.
+        for (const model of enabledModels) {
+          const slashIndex = model.indexOf('/');
+          if (slashIndex <= 0) {
+            availableModels.add(model);
+            continue;
+          }
+          const provider = model.slice(0, slashIndex);
+          const modelId = model.slice(slashIndex + 1);
+          for (const prefix of getEquivalentProviderPrefixes(provider, registryAliases)) {
+            availableModels.add(`${prefix}/${modelId}`);
+          }
+        }
+      } else if (useBuiltInRegistry) {
         for (const [alias, ids] of Object.entries(registryModels)) {
           for (const id of ids) {
             for (const a of getProviderAliases(alias)) {
@@ -419,15 +469,10 @@ export function readRouterModelState(
         }
 
         // For custom providers not vendored into the built-in registry:
-        // their available models are driven by connection enabledModels and comboModels.
-        const builtInProviders = new Set<string>();
-        for (const k of Object.keys(registryModels)) {
-          for (const a of getProviderAliases(k)) builtInProviders.add(a);
-        }
-        for (const [k, alias] of Object.entries(registryAliases)) {
-          for (const a of getProviderAliases(k)) builtInProviders.add(a);
-          for (const a of getProviderAliases(alias)) builtInProviders.add(a);
-        }
+        // their available models are normally driven by connection
+        // enabledModels and comboModels. Stale-reference diagnostics can opt
+        // out of comboModels so the record under test cannot validate itself.
+        const builtInProviders = providerPrefixes;
 
         for (const m of enabledModels) {
           const slashIdx = m.indexOf('/');
@@ -435,10 +480,12 @@ export function readRouterModelState(
             availableModels.add(m);
           }
         }
-        for (const m of comboModels) {
-          const slashIdx = m.indexOf('/');
-          if (slashIdx > 0 && !builtInProviders.has(m.slice(0, slashIdx))) {
-            availableModels.add(m);
+        if (!options.excludeComboModelsFromAvailability) {
+          for (const m of comboModels) {
+            const slashIdx = m.indexOf('/');
+            if (slashIdx > 0 && !builtInProviders.has(m.slice(0, slashIdx))) {
+              availableModels.add(m);
+            }
           }
         }
       } else {
@@ -455,9 +502,22 @@ export function readRouterModelState(
         availableModels.add(m);
       }
 
-      // A disabled model is not available, whatever else lists it.
+      // A disabled model is not available, whatever else lists it. Disabled
+      // keys can use the provider id while availability uses the UI alias, so
+      // compare equivalent prefixes instead of exact full strings.
       for (const m of [...availableModels]) {
-        if (disabledModels.has(m)) {
+        const slashIndex = m.indexOf('/');
+        const provider = slashIndex > 0 ? m.slice(0, slashIndex) : '';
+        const modelId = slashIndex > 0 ? m.slice(slashIndex + 1) : m;
+        const equivalentProviders = provider
+          ? getEquivalentProviderPrefixes(provider, registryAliases)
+          : [];
+        const isDisabled = equivalentProviders.some(
+          (alias) =>
+            disabledModels.has(`${alias}/${modelId}`) ||
+            disabledModels.has(`${alias}/models/${modelId.replace(/^models\//, '')}`)
+        );
+        if (isDisabled) {
           availableModels.delete(m);
         }
       }
@@ -501,7 +561,7 @@ export function readRouterModelState(
     classify(provider: string, modelId: string): ModelTierClassification {
       const cleanProv = provider.trim().toLowerCase();
       const normId = modelId.startsWith('models/') ? modelId.slice('models/'.length) : modelId;
-      const aliases = getProviderAliases(cleanProv);
+      const aliases = getEquivalentProviderPrefixes(cleanProv, registryAliases);
 
       const inCombo = aliases.some(
         (a) => comboModels.has(`${a}/${modelId}`) || comboModels.has(`${a}/${normId}`)
