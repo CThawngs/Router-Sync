@@ -100,17 +100,20 @@ first row, not to `tick --mode`.
   evidence via `research submit` per schema.
 - Write flow: show plan → user types the confirmation word in their terminal →
   read back → `routersync undo` if needed.
-- Low-resource machines: run `pnpm test` (workspace config already limits 2 forks) and `pnpm typecheck:changed`; set `ROUTERSYNC_LOW_RESOURCE=1` to limit concurrency and network timeouts.
+- Low-resource machines: follow the LIGHT-DEV command list below; set `ROUTERSYNC_LOW_RESOURCE=1` to limit concurrency and network timeouts when the product itself needs the override.
 
 ### LIGHT-DEV (local agent rule)
 
-Run `node tools/agent/preflight.mjs` first. If available RAM is below 1.5 GiB,
-the machine is in `LIGHT-DEV` mode. In that mode:
+Run `node tools/agent/preflight.mjs` first. It reports `FULL` or `LIGHT-DEV`
+but always exits 0: it is advisory and does not block commands. The script is
+self-contained and can run before `pnpm build`. If available RAM is below
+1.5 GiB, follow `LIGHT-DEV` mode:
 
 - Allowed: `pnpm lint`, `pnpm typecheck:changed`, `pnpm test:changed`.
 - Forbidden: `pnpm test`, `pnpm e2e`, bare `vitest run`, `pnpm test:slow`.
 - The full suite is the responsibility of the PR CI, not the local machine.
-- `pnpm test:changed` keeps the workspace fork limit (max 2 forks).
+- `pnpm test:changed` keeps the workspace fork limit (max 2 forks). It is not a
+  wall-clock-speed guarantee: a shared-module change can select most tests.
 
 ## 7. Troubleshooting
 

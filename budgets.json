@@ -1,300 +1,372 @@
 {
-  "generatedFrom": "3 consecutive successful CI runs (see ci-summary.json runIds)",
-  "formula": "budget = max(ceil(1.25 * median(CI samples)), floor); floor_ms=1000, floor_mb=40",
+  "generatedFrom": "gh run view --log; verified successful main-branch CI runs",
+  "formula": "budget = max(ceil(1.25 * median), ceil(1.1 * maxObserved), floor)",
+  "formulaDetails": {
+    "durationMs": "max(ceil(1.25 * medianMs), ceil(1.1 * maxObservedMs), floors.ms)",
+    "maxRssMB": "max(ceil(1.25 * medianRssMB), ceil(1.1 * maxObservedRssMB), floors.mb)"
+  },
   "floors": {
     "ms": 1000,
     "mb": 40
   },
+  "sampleRuns": [
+    "44328241893",
+    "44310611988",
+    "44303173142"
+  ],
+  "sourceRuns": [
+    {
+      "order": 1,
+      "runId": "44328241893",
+      "event": "push",
+      "branch": "main",
+      "conclusion": "success",
+      "createdAt": "2026-11-18T14:47:58Z",
+      "headSha": "6c357d95653b6e1a2146c67c07ce0f70eb6928ed"
+    },
+    {
+      "order": 2,
+      "runId": "44310611988",
+      "event": "push",
+      "branch": "main",
+      "conclusion": "success",
+      "createdAt": "2026-11-18T13:08:00Z",
+      "headSha": "4b3f4f53bd4b400763a648fd06c5d477ce7e803e"
+    },
+    {
+      "order": 3,
+      "runId": "44303173142",
+      "event": "push",
+      "branch": "main",
+      "conclusion": "success",
+      "createdAt": "2026-11-18T12:21:40Z",
+      "headSha": "053363b620153d2d8bbaea325f8926cf00645362"
+    }
+  ],
   "os": {
     "linux": {
       "doctor": {
         "samples": 12,
-        "medianMs": 281.4,
-        "medianRssMB": 92,
+        "medianMs": 279.15,
+        "maxObservedMs": 326.5,
         "budgetMs": 1000,
+        "medianRssMB": 92,
+        "maxObservedRssMB": 96,
         "budgetRssMB": 115,
-        "verbatim": [
-          "24)\tProduct smoke with perf budgets\t2026-11-18T13:09:26.8080009Z BUDGET OK doctor (linux): 284.4 ms / 93 MB",
-          "22)\tProduct smoke with perf budgets\t2026-11-18T13:09:40.7041835Z BUDGET OK doctor (linux): 326.5 ms / 92 MB",
-          "24)\tProduct smoke with perf budgets\t2026-11-18T13:09:16.8207653Z BUDGET OK doctor (linux): 279.1 ms / 93 MB",
-          "22)\tProduct smoke with perf budgets\t2026-11-18T13:09:31.2746748Z BUDGET OK doctor (linux): 288.4 ms / 87 MB",
-          "22)\tProduct smoke with perf budgets\t2026-11-18T12:23:06.4006396Z BUDGET OK doctor (linux): 279.2 ms / 87 MB",
-          "24)\tProduct smoke with perf budgets\t2026-11-18T12:22:58.7059790Z BUDGET OK doctor (linux): 220.2 ms / 95 MB",
-          "22)\tProduct smoke with perf budgets\t2026-11-18T12:23:04.4289527Z BUDGET OK doctor (linux): 246.8 ms / 90 MB",
-          "24)\tProduct smoke with perf budgets\t2026-11-18T12:23:04.7975697Z BUDGET OK doctor (linux): 293 ms / 92 MB",
-          "24)\tProduct smoke with perf budgets\t2026-11-18T13:00:44.0721590Z BUDGET OK doctor (linux): 271.9 ms / 93 MB",
-          "22)\tProduct smoke with perf budgets\t2026-11-18T13:00:54.3981860Z BUDGET OK doctor (linux): 281.4 ms / 90 MB",
-          "24)\tProduct smoke with perf budgets\t2026-11-18T13:00:59.5432438Z BUDGET OK doctor (linux): 344.7 ms / 94 MB",
-          "22)\tProduct smoke with perf budgets\t2026-11-18T13:00:50.7172300Z BUDGET OK doctor (linux): 251.9 ms / 90 MB"
+        "samplesByRunner": [
+          {
+            "runner": "ubuntu-24.04-arm",
+            "arch": "arm64",
+            "count": 6
+          },
+          {
+            "runner": "ubuntu-latest",
+            "arch": "x64",
+            "count": 6
+          }
         ]
       },
       "plan": {
         "samples": 12,
-        "medianMs": 33.5,
-        "medianRssMB": 92,
+        "medianMs": 33.099999999999994,
+        "maxObservedMs": 40.4,
         "budgetMs": 1000,
+        "medianRssMB": 91.5,
+        "maxObservedRssMB": 95,
         "budgetRssMB": 115,
-        "verbatim": [
-          "24)\tProduct smoke with perf budgets\t2026-11-18T13:09:27.0335095Z BUDGET OK plan (linux): 24.7 ms / 93 MB",
-          "22)\tProduct smoke with perf budgets\t2026-11-18T13:09:40.9610186Z BUDGET OK plan (linux): 38.6 ms / 92 MB",
-          "24)\tProduct smoke with perf budgets\t2026-11-18T13:09:17.0594776Z BUDGET OK plan (linux): 33.5 ms / 93 MB",
-          "22)\tProduct smoke with perf budgets\t2026-11-18T13:09:31.5199986Z BUDGET OK plan (linux): 39.1 ms / 88 MB",
-          "22)\tProduct smoke with perf budgets\t2026-11-18T12:23:06.6411691Z BUDGET OK plan (linux): 38.8 ms / 88 MB",
-          "24)\tProduct smoke with perf budgets\t2026-11-18T12:22:58.8642967Z BUDGET OK plan (linux): 17.7 ms / 93 MB",
-          "22)\tProduct smoke with perf budgets\t2026-11-18T12:23:04.6249995Z BUDGET OK plan (linux): 30.7 ms / 90 MB",
-          "24)\tProduct smoke with perf budgets\t2026-11-18T12:23:05.0356753Z BUDGET OK plan (linux): 32.8 ms / 91 MB",
-          "24)\tProduct smoke with perf budgets\t2026-11-18T13:00:44.3022479Z BUDGET OK plan (linux): 31.7 ms / 93 MB",
-          "22)\tProduct smoke with perf budgets\t2026-11-18T13:00:54.6432972Z BUDGET OK plan (linux): 39.5 ms / 89 MB",
-          "24)\tProduct smoke with perf budgets\t2026-11-18T13:00:59.8074000Z BUDGET OK plan (linux): 35.6 ms / 95 MB",
-          "22)\tProduct smoke with perf budgets\t2026-11-18T13:00:50.9343128Z BUDGET OK plan (linux): 32.9 ms / 91 MB"
-        ]
-      },
-      "verify": {
-        "samples": 12,
-        "medianMs": 2068.5,
-        "medianRssMB": 181,
-        "budgetMs": 2586,
-        "budgetRssMB": 227,
-        "verbatim": [
-          "24)\tProduct smoke with perf budgets\t2026-11-18T13:09:29.5700135Z BUDGET OK verify (linux): 2320.3 ms / 183 MB",
-          "22)\tProduct smoke with perf budgets\t2026-11-18T13:09:43.6581927Z BUDGET OK verify (linux): 2477.1 ms / 162 MB",
-          "24)\tProduct smoke with perf budgets\t2026-11-18T13:09:18.9217151Z BUDGET OK verify (linux): 1645.1 ms / 182 MB",
-          "22)\tProduct smoke with perf budgets\t2026-11-18T13:09:33.7811594Z BUDGET OK verify (linux): 2050.9 ms / 156 MB",
-          "22)\tProduct smoke with perf budgets\t2026-11-18T12:23:08.7269041Z BUDGET OK verify (linux): 1873.6 ms / 159 MB",
-          "24)\tProduct smoke with perf budgets\t2026-11-18T12:23:01.1738283Z BUDGET OK verify (linux): 2155 ms / 183 MB",
-          "22)\tProduct smoke with perf budgets\t2026-11-18T12:23:06.8642769Z BUDGET OK verify (linux): 2068.5 ms / 159 MB",
-          "24)\tProduct smoke with perf budgets\t2026-11-18T12:23:07.6643795Z BUDGET OK verify (linux): 2407.9 ms / 181 MB",
-          "24)\tProduct smoke with perf budgets\t2026-11-18T13:00:46.6592878Z BUDGET OK verify (linux): 2142.6 ms / 181 MB",
-          "22)\tProduct smoke with perf budgets\t2026-11-18T13:00:56.6029728Z BUDGET OK verify (linux): 1741.5 ms / 161 MB",
-          "24)\tProduct smoke with perf budgets\t2026-11-18T13:01:01.5761609Z BUDGET OK verify (linux): 1537.5 ms / 182 MB",
-          "22)\tProduct smoke with perf budgets\t2026-11-18T13:00:52.9144736Z BUDGET OK verify (linux): 1791.1 ms / 159 MB"
-        ]
-      },
-      "scan": {
-        "samples": 12,
-        "medianMs": 39.4,
-        "medianRssMB": 92,
-        "budgetMs": 1000,
-        "budgetRssMB": 115,
-        "verbatim": [
-          "24)\tProduct smoke with perf budgets\t2026-11-18T13:09:29.8067244Z BUDGET OK scan (linux): 39.4 ms / 95 MB",
-          "22)\tProduct smoke with perf budgets\t2026-11-18T13:09:43.9224604Z BUDGET OK scan (linux): 43.1 ms / 92 MB",
-          "24)\tProduct smoke with perf budgets\t2026-11-18T13:09:19.1643754Z BUDGET OK scan (linux): 37 ms / 93 MB",
-          "22)\tProduct smoke with perf budgets\t2026-11-18T13:09:34.0282813Z BUDGET OK scan (linux): 42.7 ms / 89 MB",
-          "22)\tProduct smoke with perf budgets\t2026-11-18T12:23:08.9667550Z BUDGET OK scan (linux): 43 ms / 89 MB",
-          "24)\tProduct smoke with perf budgets\t2026-11-18T12:23:01.3513332Z BUDGET OK scan (linux): 28.1 ms / 95 MB",
-          "22)\tProduct smoke with perf budgets\t2026-11-18T12:23:07.0651263Z BUDGET OK scan (linux): 34.2 ms / 90 MB",
-          "24)\tProduct smoke with perf budgets\t2026-11-18T12:23:07.9065460Z BUDGET OK scan (linux): 37.5 ms / 92 MB",
-          "24)\tProduct smoke with perf budgets\t2026-11-18T13:00:46.8963431Z BUDGET OK scan (linux): 36.3 ms / 93 MB",
-          "22)\tProduct smoke with perf budgets\t2026-11-18T13:00:56.8545188Z BUDGET OK scan (linux): 45.4 ms / 89 MB",
-          "24)\tProduct smoke with perf budgets\t2026-11-18T13:01:01.8460788Z BUDGET OK scan (linux): 42.4 ms / 95 MB",
-          "22)\tProduct smoke with perf budgets\t2026-11-18T13:00:53.1347768Z BUDGET OK scan (linux): 37.7 ms / 91 MB"
+        "samplesByRunner": [
+          {
+            "runner": "ubuntu-24.04-arm",
+            "arch": "arm64",
+            "count": 6
+          },
+          {
+            "runner": "ubuntu-latest",
+            "arch": "x64",
+            "count": 6
+          }
         ]
       },
       "rank-json": {
         "samples": 12,
-        "medianMs": 31.5,
-        "medianRssMB": 90,
+        "medianMs": 28.150000000000002,
+        "maxObservedMs": 37.4,
         "budgetMs": 1000,
+        "medianRssMB": 90,
+        "maxObservedRssMB": 94,
         "budgetRssMB": 113,
-        "verbatim": [
-          "24)\tProduct smoke with perf budgets\t2026-11-18T13:09:30.0269102Z BUDGET OK rank-json (linux): 22.6 ms / 93 MB",
-          "22)\tProduct smoke with perf budgets\t2026-11-18T13:09:44.1793025Z BUDGET OK rank-json (linux): 37.4 ms / 90 MB",
-          "24)\tProduct smoke with perf budgets\t2026-11-18T13:09:19.3891606Z BUDGET OK rank-json (linux): 23.1 ms / 91 MB",
-          "22)\tProduct smoke with perf budgets\t2026-11-18T13:09:34.2702890Z BUDGET OK rank-json (linux): 37.1 ms / 88 MB",
-          "22)\tProduct smoke with perf budgets\t2026-11-18T12:23:09.1972932Z BUDGET OK rank-json (linux): 35 ms / 88 MB",
-          "24)\tProduct smoke with perf budgets\t2026-11-18T12:23:01.5115473Z BUDGET OK rank-json (linux): 15.9 ms / 93 MB",
-          "22)\tProduct smoke with perf budgets\t2026-11-18T12:23:07.2597254Z BUDGET OK rank-json (linux): 32.2 ms / 90 MB",
-          "24)\tProduct smoke with perf budgets\t2026-11-18T12:23:08.1367363Z BUDGET OK rank-json (linux): 23.1 ms / 89 MB",
-          "24)\tProduct smoke with perf budgets\t2026-11-18T13:00:47.1117289Z BUDGET OK rank-json (linux): 21.5 ms / 91 MB",
-          "22)\tProduct smoke with perf budgets\t2026-11-18T13:00:57.0878124Z BUDGET OK rank-json (linux): 34.9 ms / 89 MB",
-          "24)\tProduct smoke with perf budgets\t2026-11-18T13:01:02.0977107Z BUDGET OK rank-json (linux): 25.5 ms / 93 MB",
-          "22)\tProduct smoke with perf budgets\t2026-11-18T13:00:53.3482828Z BUDGET OK rank-json (linux): 31.5 ms / 89 MB"
+        "samplesByRunner": [
+          {
+            "runner": "ubuntu-24.04-arm",
+            "arch": "arm64",
+            "count": 6
+          },
+          {
+            "runner": "ubuntu-latest",
+            "arch": "x64",
+            "count": 6
+          }
+        ]
+      },
+      "scan": {
+        "samples": 12,
+        "medianMs": 38.35,
+        "maxObservedMs": 43.1,
+        "budgetMs": 1000,
+        "medianRssMB": 92,
+        "maxObservedRssMB": 95,
+        "budgetRssMB": 115,
+        "samplesByRunner": [
+          {
+            "runner": "ubuntu-24.04-arm",
+            "arch": "arm64",
+            "count": 6
+          },
+          {
+            "runner": "ubuntu-latest",
+            "arch": "x64",
+            "count": 6
+          }
+        ]
+      },
+      "verify": {
+        "samples": 12,
+        "medianMs": 2111.75,
+        "maxObservedMs": 2477.1,
+        "budgetMs": 2725,
+        "medianRssMB": 171.5,
+        "maxObservedRssMB": 184,
+        "budgetRssMB": 215,
+        "samplesByRunner": [
+          {
+            "runner": "ubuntu-24.04-arm",
+            "arch": "arm64",
+            "count": 6
+          },
+          {
+            "runner": "ubuntu-latest",
+            "arch": "x64",
+            "count": 6
+          }
         ]
       }
     },
     "darwin": {
       "doctor": {
         "samples": 6,
-        "medianMs": 315.1,
-        "medianRssMB": 91,
-        "budgetMs": 1000,
-        "budgetRssMB": 114,
-        "verbatim": [
-          "22)\tProduct smoke with perf budgets\t2026-11-18T13:14:24.5662150Z BUDGET OK doctor (darwin): 1609.1 ms / 81 MB",
-          "24)\tProduct smoke with perf budgets\t2026-11-18T13:09:44.2767060Z BUDGET OK doctor (darwin): 269.4 ms / 92 MB",
-          "24)\tProduct smoke with perf budgets\t2026-11-18T12:23:43.7342200Z BUDGET OK doctor (darwin): 315.1 ms / 91 MB",
-          "22)\tProduct smoke with perf budgets\t2026-11-18T12:23:36.5299260Z BUDGET OK doctor (darwin): 217.4 ms / 81 MB",
-          "22)\tProduct smoke with perf budgets\t2026-11-18T13:05:26.0810470Z BUDGET OK doctor (darwin): 233.6 ms / 82 MB",
-          "24)\tProduct smoke with perf budgets\t2026-11-18T13:07:00.0541220Z BUDGET OK doctor (darwin): 448.8 ms / 91 MB"
+        "medianMs": 293.65,
+        "maxObservedMs": 1609.1,
+        "budgetMs": 1771,
+        "medianRssMB": 86,
+        "maxObservedRssMB": 92,
+        "budgetRssMB": 108,
+        "samplesByRunner": [
+          {
+            "runner": "macos-latest",
+            "arch": "arm64",
+            "count": 6
+          }
         ]
       },
       "plan": {
         "samples": 6,
-        "medianMs": 23.2,
-        "medianRssMB": 89,
+        "medianMs": 21.85,
+        "maxObservedMs": 93.7,
         "budgetMs": 1000,
-        "budgetRssMB": 112,
-        "verbatim": [
-          "22)\tProduct smoke with perf budgets\t2026-11-18T13:14:25.5525380Z BUDGET OK plan (darwin): 93.7 ms / 81 MB",
-          "24)\tProduct smoke with perf budgets\t2026-11-18T13:09:44.5468000Z BUDGET OK plan (darwin): 16.4 ms / 89 MB",
-          "24)\tProduct smoke with perf budgets\t2026-11-18T12:23:44.0253420Z BUDGET OK plan (darwin): 23.2 ms / 90 MB",
-          "22)\tProduct smoke with perf budgets\t2026-11-18T12:23:36.6955260Z BUDGET OK plan (darwin): 20.5 ms / 81 MB",
-          "22)\tProduct smoke with perf budgets\t2026-11-18T13:05:26.2637820Z BUDGET OK plan (darwin): 22.5 ms / 82 MB",
-          "24)\tProduct smoke with perf budgets\t2026-11-18T13:07:00.4401640Z BUDGET OK plan (darwin): 42.5 ms / 90 MB"
-        ]
-      },
-      "verify": {
-        "samples": 6,
-        "medianMs": 2789,
-        "medianRssMB": 190,
-        "budgetMs": 3487,
-        "budgetRssMB": 238,
-        "verbatim": [
-          "22)\tProduct smoke with perf budgets\t2026-11-18T13:14:29.5659300Z BUDGET OK verify (darwin): 3047.7 ms / 180 MB",
-          "24)\tProduct smoke with perf budgets\t2026-11-18T13:09:47.1486160Z BUDGET OK verify (darwin): 2366.9 ms / 190 MB",
-          "24)\tProduct smoke with perf budgets\t2026-11-18T12:23:46.3751360Z BUDGET OK verify (darwin): 2025.5 ms / 190 MB",
-          "22)\tProduct smoke with perf budgets\t2026-11-18T12:23:39.6333860Z BUDGET OK verify (darwin): 2789 ms / 179 MB",
-          "22)\tProduct smoke with perf budgets\t2026-11-18T13:05:30.5909810Z BUDGET OK verify (darwin): 4148.6 ms / 178 MB",
-          "24)\tProduct smoke with perf budgets\t2026-11-18T13:07:02.5532150Z BUDGET OK verify (darwin): 1784.4 ms / 190 MB"
-        ]
-      },
-      "scan": {
-        "samples": 6,
-        "medianMs": 33.2,
-        "medianRssMB": 89,
-        "budgetMs": 1000,
-        "budgetRssMB": 112,
-        "verbatim": [
-          "22)\tProduct smoke with perf budgets\t2026-11-18T13:14:31.0834660Z BUDGET OK scan (darwin): 203.4 ms / 82 MB",
-          "24)\tProduct smoke with perf budgets\t2026-11-18T13:09:47.3729860Z BUDGET OK scan (darwin): 26.9 ms / 91 MB",
-          "24)\tProduct smoke with perf budgets\t2026-11-18T12:23:46.6229040Z BUDGET OK scan (darwin): 33.2 ms / 90 MB",
-          "22)\tProduct smoke with perf budgets\t2026-11-18T12:23:39.8089220Z BUDGET OK scan (darwin): 24.3 ms / 81 MB",
-          "22)\tProduct smoke with perf budgets\t2026-11-18T13:05:30.7827990Z BUDGET OK scan (darwin): 26.6 ms / 82 MB",
-          "24)\tProduct smoke with perf budgets\t2026-11-18T13:07:02.9295090Z BUDGET OK scan (darwin): 49 ms / 89 MB"
+        "medianRssMB": 85.5,
+        "maxObservedRssMB": 90,
+        "budgetRssMB": 107,
+        "samplesByRunner": [
+          {
+            "runner": "macos-latest",
+            "arch": "arm64",
+            "count": 6
+          }
         ]
       },
       "rank-json": {
         "samples": 6,
-        "medianMs": 30.8,
-        "medianRssMB": 89,
+        "medianMs": 23.8,
+        "maxObservedMs": 167.3,
         "budgetMs": 1000,
-        "budgetRssMB": 112,
-        "verbatim": [
-          "22)\tProduct smoke with perf budgets\t2026-11-18T13:14:32.6841650Z BUDGET OK rank-json (darwin): 167.3 ms / 81 MB",
-          "24)\tProduct smoke with perf budgets\t2026-11-18T13:09:47.5784510Z BUDGET OK rank-json (darwin): 16 ms / 89 MB",
-          "24)\tProduct smoke with perf budgets\t2026-11-18T12:23:46.8658850Z BUDGET OK rank-json (darwin): 37.2 ms / 89 MB",
-          "22)\tProduct smoke with perf budgets\t2026-11-18T12:23:39.9764820Z BUDGET OK rank-json (darwin): 19 ms / 81 MB",
-          "22)\tProduct smoke with perf budgets\t2026-11-18T13:05:30.9684460Z BUDGET OK rank-json (darwin): 22.3 ms / 81 MB",
-          "24)\tProduct smoke with perf budgets\t2026-11-18T13:07:03.2759030Z BUDGET OK rank-json (darwin): 30.8 ms / 89 MB"
+        "medianRssMB": 85,
+        "maxObservedRssMB": 89,
+        "budgetRssMB": 107,
+        "samplesByRunner": [
+          {
+            "runner": "macos-latest",
+            "arch": "arm64",
+            "count": 6
+          }
+        ]
+      },
+      "scan": {
+        "samples": 6,
+        "medianMs": 30.450000000000003,
+        "maxObservedMs": 203.4,
+        "budgetMs": 1000,
+        "medianRssMB": 85.5,
+        "maxObservedRssMB": 91,
+        "budgetRssMB": 107,
+        "samplesByRunner": [
+          {
+            "runner": "macos-latest",
+            "arch": "arm64",
+            "count": 6
+          }
+        ]
+      },
+      "verify": {
+        "samples": 6,
+        "medianMs": 2466.55,
+        "maxObservedMs": 3047.7,
+        "budgetMs": 3353,
+        "medianRssMB": 185,
+        "maxObservedRssMB": 190,
+        "budgetRssMB": 232,
+        "samplesByRunner": [
+          {
+            "runner": "macos-latest",
+            "arch": "arm64",
+            "count": 6
+          }
         ]
       }
     },
     "win32": {
       "doctor": {
         "samples": 12,
-        "medianMs": 462.5,
-        "medianRssMB": 74,
+        "medianMs": 458.95,
+        "maxObservedMs": 499.5,
         "budgetMs": 1000,
-        "budgetRssMB": 93,
-        "verbatim": [
-          "22)\tProduct smoke with perf budgets\t2026-11-18T13:12:13.8372741Z BUDGET OK doctor (win32): 484.4 ms / 68 MB",
-          "24)\tProduct smoke with perf budgets\t2026-11-18T13:11:15.2743940Z BUDGET OK doctor (win32): 384.8 ms / 74 MB",
-          "22)\tProduct smoke with perf budgets\t2026-11-18T13:11:48.7849161Z BUDGET OK doctor (win32): 455.4 ms / 63 MB",
-          "24)\tProduct smoke with perf budgets\t2026-11-18T13:12:07.9810588Z BUDGET OK doctor (win32): 462.5 ms / 75 MB",
-          "24)\tProduct smoke with perf budgets\t2026-11-18T12:24:29.9922835Z BUDGET OK doctor (win32): 283.9 ms / 74 MB",
-          "24)\tProduct smoke with perf budgets\t2026-11-18T12:25:35.4684204Z BUDGET OK doctor (win32): 496.6 ms / 75 MB",
-          "22)\tProduct smoke with perf budgets\t2026-11-18T12:25:41.2707084Z BUDGET OK doctor (win32): 430.7 ms / 65 MB",
-          "22)\tProduct smoke with perf budgets\t2026-11-18T12:25:56.0302359Z BUDGET OK doctor (win32): 479.3 ms / 68 MB",
-          "24)\tProduct smoke with perf budgets\t2026-11-18T13:03:09.5597753Z BUDGET OK doctor (win32): 398.1 ms / 74 MB",
-          "24)\tProduct smoke with perf budgets\t2026-11-18T13:04:24.7619791Z BUDGET OK doctor (win32): 503.7 ms / 75 MB",
-          "22)\tProduct smoke with perf budgets\t2026-11-18T13:03:00.7945399Z BUDGET OK doctor (win32): 457.6 ms / 65 MB",
-          "22)\tProduct smoke with perf budgets\t2026-11-18T13:05:20.0546885Z BUDGET OK doctor (win32): 542.3 ms / 68 MB"
+        "medianRssMB": 71,
+        "maxObservedRssMB": 75,
+        "budgetRssMB": 89,
+        "samplesByRunner": [
+          {
+            "runner": "windows-11-arm",
+            "arch": "arm64",
+            "count": 6
+          },
+          {
+            "runner": "windows-latest",
+            "arch": "x64",
+            "count": 6
+          }
         ]
       },
       "plan": {
         "samples": 12,
-        "medianMs": 47.4,
-        "medianRssMB": 73,
+        "medianMs": 45.3,
+        "maxObservedMs": 51.2,
         "budgetMs": 1000,
-        "budgetRssMB": 92,
-        "verbatim": [
-          "22)\tProduct smoke with perf budgets\t2026-11-18T13:12:14.5021019Z BUDGET OK plan (win32): 48.3 ms / 67 MB",
-          "24)\tProduct smoke with perf budgets\t2026-11-18T13:11:15.6944876Z BUDGET OK plan (win32): 43.4 ms / 73 MB",
-          "22)\tProduct smoke with perf budgets\t2026-11-18T13:11:49.2503715Z BUDGET OK plan (win32): 50.4 ms / 63 MB",
-          "24)\tProduct smoke with perf budgets\t2026-11-18T13:12:08.6027228Z BUDGET OK plan (win32): 39.3 ms / 75 MB",
-          "24)\tProduct smoke with perf budgets\t2026-11-18T12:24:30.3021417Z BUDGET OK plan (win32): 29.6 ms / 73 MB",
-          "24)\tProduct smoke with perf budgets\t2026-11-18T12:25:36.1400261Z BUDGET OK plan (win32): 45.8 ms / 75 MB",
-          "22)\tProduct smoke with perf budgets\t2026-11-18T12:25:41.7151155Z BUDGET OK plan (win32): 48.6 ms / 65 MB",
-          "22)\tProduct smoke with perf budgets\t2026-11-18T12:25:56.6890228Z BUDGET OK plan (win32): 47.4 ms / 68 MB",
-          "24)\tProduct smoke with perf budgets\t2026-11-18T13:03:09.9600789Z BUDGET OK plan (win32): 39.7 ms / 73 MB",
-          "24)\tProduct smoke with perf budgets\t2026-11-18T13:04:25.4484112Z BUDGET OK plan (win32): 42.3 ms / 75 MB",
-          "22)\tProduct smoke with perf budgets\t2026-11-18T13:03:01.3998313Z BUDGET OK plan (win32): 68.5 ms / 65 MB",
-          "22)\tProduct smoke with perf budgets\t2026-11-18T13:05:20.7968267Z BUDGET OK plan (win32): 56.8 ms / 67 MB"
-        ]
-      },
-      "verify": {
-        "samples": 12,
-        "medianMs": 2058.6,
-        "medianRssMB": 131,
-        "budgetMs": 2574,
-        "budgetRssMB": 164,
-        "verbatim": [
-          "22)\tProduct smoke with perf budgets\t2026-11-18T13:12:17.5031724Z BUDGET OK verify (win32): 2365.9 ms / 119 MB",
-          "24)\tProduct smoke with perf budgets\t2026-11-18T13:11:18.4646129Z BUDGET OK verify (win32): 2392.1 ms / 134 MB",
-          "22)\tProduct smoke with perf budgets\t2026-11-18T13:11:51.6158135Z BUDGET OK verify (win32): 1954.8 ms / 115 MB",
-          "24)\tProduct smoke with perf budgets\t2026-11-18T13:12:11.3632338Z BUDGET OK verify (win32): 2154.6 ms / 131 MB",
-          "24)\tProduct smoke with perf budgets\t2026-11-18T12:24:31.9943047Z BUDGET OK verify (win32): 1412 ms / 134 MB",
-          "24)\tProduct smoke with perf budgets\t2026-11-18T12:25:39.1415600Z BUDGET OK verify (win32): 2351.2 ms / 132 MB",
-          "22)\tProduct smoke with perf budgets\t2026-11-18T12:25:44.4159649Z BUDGET OK verify (win32): 2292.4 ms / 118 MB",
-          "22)\tProduct smoke with perf budgets\t2026-11-18T12:25:58.8871088Z BUDGET OK verify (win32): 1577.6 ms / 119 MB",
-          "24)\tProduct smoke with perf budgets\t2026-11-18T13:03:12.3802739Z BUDGET OK verify (win32): 2058.6 ms / 132 MB",
-          "24)\tProduct smoke with perf budgets\t2026-11-18T13:04:28.0987916Z BUDGET OK verify (win32): 1992.1 ms / 132 MB",
-          "22)\tProduct smoke with perf budgets\t2026-11-18T13:03:03.7124218Z BUDGET OK verify (win32): 1768.3 ms / 118 MB",
-          "22)\tProduct smoke with perf budgets\t2026-11-18T13:05:23.3882151Z BUDGET OK verify (win32): 1878.3 ms / 120 MB"
-        ]
-      },
-      "scan": {
-        "samples": 12,
-        "medianMs": 56.2,
-        "medianRssMB": 73,
-        "budgetMs": 1000,
-        "budgetRssMB": 92,
-        "verbatim": [
-          "22)\tProduct smoke with perf budgets\t2026-11-18T13:12:18.1936890Z BUDGET OK scan (win32): 60 ms / 67 MB",
-          "24)\tProduct smoke with perf budgets\t2026-11-18T13:11:18.8881915Z BUDGET OK scan (win32): 48.2 ms / 74 MB",
-          "22)\tProduct smoke with perf budgets\t2026-11-18T13:11:52.0735115Z BUDGET OK scan (win32): 57.3 ms / 63 MB",
-          "24)\tProduct smoke with perf budgets\t2026-11-18T13:12:12.0068747Z BUDGET OK scan (win32): 45.1 ms / 75 MB",
-          "24)\tProduct smoke with perf budgets\t2026-11-18T12:24:32.3081661Z BUDGET OK scan (win32): 36.5 ms / 73 MB",
-          "24)\tProduct smoke with perf budgets\t2026-11-18T12:25:40.1671093Z BUDGET OK scan (win32): 51.1 ms / 74 MB",
-          "22)\tProduct smoke with perf budgets\t2026-11-18T12:25:44.8752627Z BUDGET OK scan (win32): 56.2 ms / 65 MB",
-          "22)\tProduct smoke with perf budgets\t2026-11-18T12:25:59.5721262Z BUDGET OK scan (win32): 57.8 ms / 67 MB",
-          "24)\tProduct smoke with perf budgets\t2026-11-18T13:03:12.7790056Z BUDGET OK scan (win32): 44.1 ms / 74 MB",
-          "24)\tProduct smoke with perf budgets\t2026-11-18T13:04:29.1021637Z BUDGET OK scan (win32): 52.5 ms / 74 MB",
-          "22)\tProduct smoke with perf budgets\t2026-11-18T13:03:04.1794179Z BUDGET OK scan (win32): 57.1 ms / 65 MB",
-          "22)\tProduct smoke with perf budgets\t2026-11-18T13:05:24.2086087Z BUDGET OK scan (win32): 64 ms / 67 MB"
+        "medianRssMB": 70.5,
+        "maxObservedRssMB": 76,
+        "budgetRssMB": 89,
+        "samplesByRunner": [
+          {
+            "runner": "windows-11-arm",
+            "arch": "arm64",
+            "count": 6
+          },
+          {
+            "runner": "windows-latest",
+            "arch": "x64",
+            "count": 6
+          }
         ]
       },
       "rank-json": {
         "samples": 12,
-        "medianMs": 43.4,
-        "medianRssMB": 73,
+        "medianMs": 41.45,
+        "maxObservedMs": 51.9,
         "budgetMs": 1000,
-        "budgetRssMB": 92,
-        "verbatim": [
-          "22)\tProduct smoke with perf budgets\t2026-11-18T13:12:18.8678300Z BUDGET OK rank-json (win32): 43.4 ms / 67 MB",
-          "24)\tProduct smoke with perf budgets\t2026-11-18T13:11:19.2957525Z BUDGET OK rank-json (win32): 36.3 ms / 73 MB",
-          "22)\tProduct smoke with perf budgets\t2026-11-18T13:11:52.5297573Z BUDGET OK rank-json (win32): 47.5 ms / 62 MB",
-          "24)\tProduct smoke with perf budgets\t2026-11-18T13:12:12.6429943Z BUDGET OK rank-json (win32): 35.1 ms / 75 MB",
-          "24)\tProduct smoke with perf budgets\t2026-11-18T12:24:32.6145457Z BUDGET OK rank-json (win32): 27.9 ms / 73 MB",
-          "24)\tProduct smoke with perf budgets\t2026-11-18T12:25:40.8198943Z BUDGET OK rank-json (win32): 40.9 ms / 75 MB",
-          "22)\tProduct smoke with perf budgets\t2026-11-18T12:25:45.3238851Z BUDGET OK rank-json (win32): 45.1 ms / 65 MB",
-          "22)\tProduct smoke with perf budgets\t2026-11-18T12:26:00.2764654Z BUDGET OK rank-json (win32): 51.9 ms / 67 MB",
-          "24)\tProduct smoke with perf budgets\t2026-11-18T13:03:13.1802132Z BUDGET OK rank-json (win32): 37.2 ms / 73 MB",
-          "24)\tProduct smoke with perf budgets\t2026-11-18T13:04:29.7838151Z BUDGET OK rank-json (win32): 38.7 ms / 74 MB",
-          "22)\tProduct smoke with perf budgets\t2026-11-18T13:03:04.6270813Z BUDGET OK rank-json (win32): 45.9 ms / 65 MB",
-          "22)\tProduct smoke with perf budgets\t2026-11-18T13:05:24.9312202Z BUDGET OK rank-json (win32): 49.7 ms / 67 MB"
+        "medianRssMB": 70,
+        "maxObservedRssMB": 75,
+        "budgetRssMB": 88,
+        "samplesByRunner": [
+          {
+            "runner": "windows-11-arm",
+            "arch": "arm64",
+            "count": 6
+          },
+          {
+            "runner": "windows-latest",
+            "arch": "x64",
+            "count": 6
+          }
         ]
+      },
+      "scan": {
+        "samples": 12,
+        "medianMs": 52.150000000000006,
+        "maxObservedMs": 60,
+        "budgetMs": 1000,
+        "medianRssMB": 70.5,
+        "maxObservedRssMB": 75,
+        "budgetRssMB": 89,
+        "samplesByRunner": [
+          {
+            "runner": "windows-11-arm",
+            "arch": "arm64",
+            "count": 6
+          },
+          {
+            "runner": "windows-latest",
+            "arch": "x64",
+            "count": 6
+          }
+        ]
+      },
+      "verify": {
+        "samples": 12,
+        "medianMs": 2321.8,
+        "maxObservedMs": 2471.9,
+        "budgetMs": 2903,
+        "medianRssMB": 125,
+        "maxObservedRssMB": 134,
+        "budgetRssMB": 157,
+        "samplesByRunner": [
+          {
+            "runner": "windows-11-arm",
+            "arch": "arm64",
+            "count": 6
+          },
+          {
+            "runner": "windows-latest",
+            "arch": "x64",
+            "count": 6
+          }
+        ]
+      }
+    }
+  },
+  "footprint": {
+    "unit": "bytes",
+    "primaryScenario": "cli-only",
+    "method": "ceil(1.10 * maximum observed clean-install bytes)",
+    "observedBaseline": {
+      "cli-only": {
+        "win32": 35225899
+      },
+      "cli-mcp-server": {
+        "win32": 46682723
+      },
+      "all": {
+        "darwin": 55655671,
+        "linux": 55655671,
+        "win32": 55655671
+      }
+    },
+    "scenarios": {
+      "cli-only": {
+        "maxBytes": 38748489
+      },
+      "cli-mcp-server": {
+        "maxBytes": 51350996
+      },
+      "all": {
+        "maxBytes": 61221239
       }
     }
   }

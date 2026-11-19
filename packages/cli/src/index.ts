@@ -481,12 +481,21 @@ export function createCliProgram(): Command {
 
   combosCmd
     .command('stale')
-    .description('List combo steps unknown-to-snapshot per router (read-only, no upstream claims)')
-    .option('--router <router>', 'Target router: 9router | omniroute | all', 'all')
+    .description('List 9Router combo steps against direct or snapshot availability evidence (read-only)')
+    .option(
+      '--router <router>',
+      'Target router: 9router | omniroute | all (OmniRoute is omitted until its reader exists)',
+      'all'
+    )
+    .option('--source <source>', 'Availability evidence: direct | snapshot', 'direct')
     .option('--json', 'Output result in JSON format')
-    .action(async (opts: { router?: string; json?: boolean }) => {
-      await (await import('./commands/combos-stale.js')).runCombosStaleCommand({
+    .action(async (opts: { router?: string; source?: string; json?: boolean }) => {
+      const { parseStaleSource, runCombosStaleCommand } = await import(
+        './commands/combos-stale.js'
+      );
+      await runCombosStaleCommand({
         router: opts.router,
+        source: parseStaleSource(opts.source ?? 'direct'),
         json: opts.json,
       });
     });

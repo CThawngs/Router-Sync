@@ -37,6 +37,12 @@ const FIXTURE_REGISTRY: Record<string, readonly string[]> = {
 
 const FIXTURE_ALIASES: Record<string, string> = { provx: 'provx' };
 
+const ALIASED_FIXTURE_REGISTRY: Record<string, readonly string[]> = {
+  px: ['alpha-one'],
+};
+
+const ALIASED_FIXTURE_ALIASES: Record<string, string> = { provx: 'px' };
+
 /** Build a 9Router-shaped database in a temp dir. */
 function makeFixtureDb(dir: string): string {
   const dbPath = path.join(dir, 'router.sqlite');
@@ -46,6 +52,7 @@ function makeFixtureDb(dir: string): string {
     INSERT INTO _meta VALUES ('appVersion', '0.5.119');
     CREATE TABLE kv (scope TEXT, key TEXT, value TEXT);
     CREATE TABLE combos (id TEXT, name TEXT, models TEXT);
+    CREATE TABLE providerConnections (provider TEXT, name TEXT, data TEXT);
 
     -- disabled: one built-in model and one custom model
     INSERT INTO kv VALUES ('disabledModels', 'provx', '["epsilon-five", "eta-seven"]');
@@ -56,6 +63,9 @@ function makeFixtureDb(dir: string): string {
 
     -- model alias: the aliased model is shown by the provider page
     INSERT INTO kv VALUES ('modelAliases', 'my-iota-alias', '"provx/iota-nine"');
+
+    -- provider connection evidence read directly from the router database
+    INSERT INTO providerConnections VALUES ('provx', 'Prov X', '{"enabledModels":["direct-model"]}');
 
     -- combos: one available model, one stale reference, and (in a second
     -- combo) one model the operator disabled.
@@ -112,6 +122,120 @@ describe('9Router tier parity with the provider page (C4x)', () => {
       expect([...state.availableModels].sort()).toEqual(
         expectedAvailable.map((id) => `provx/${id}`).sort()
       );
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it('keeps direct router evidence separate from the shipped provider snapshot', () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'rs-availability-source-'));
+    try {
+      const dbPath = makeFixtureDb(tmpDir);
+      const direct = readRouterModelState('9router', {
+        dbPath,
+        providerModels: FIXTURE_REGISTRY,
+        providerAliases: FIXTURE_ALIASES,
+        availabilitySource: 'direct',
+      });
+      const snapshot = readRouterModelState('9router', {
+        dbPath,
+        providerModels: FIXTURE_REGISTRY,
+        providerAliases: FIXTURE_ALIASES,
+        availabilitySource: 'snapshot',
+      });
+
+      expect([...direct.availableModels].sort()).toEqual([
+        'provx/direct-model',
+        'provx/iota-nine',
+        'provx/theta-eight',
+      ]);
+      expect(direct.availableModels.has('provx/alpha-one')).toBe(false);
+
+      expect(snapshot.availableModels.has('provx/alpha-one')).toBe(true);
+      expect(snapshot.availableModels.has('provx/direct-model')).toBe(false);
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it('maps direct connection aliases to every equivalent provider prefix', () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'rs-availability-alias-'));
+    try {
+      const dbPath = makeFixtureDb(tmpDir);
+      const db = openBetterSqlite3(dbPath);
+      db.exec(`
+        INSERT INTO providerConnections VALUES ('px', 'Provider X', '{"enabledModels":["reverse-model","disabled-reverse"]}');
+        INSERT INTO kv VALUES ('disabledModels', 'provx', '["disabled-reverse"]');
+        INSERT INTO combos VALUES ('c1', 'aliased-disabled', '["px/disabled-reverse"]');
+      `);
+      db.close();
+
+      const state = readRouterModelState('9router', {
+        dbPath,
+        providerModels: ALIASED_FIXTURE_REGISTRY,
+        providerAliases: ALIASED_FIXTURE_ALIASES,
+        availabilitySource: 'direct',
+      });
+
+      expect(state.availableModels.has('px/direct-model')).toBe(true);
+      expect(state.availableModels.has('provx/direct-model')).toBe(true);
+      expect(state.availableModels.has('px/reverse-model')).toBe(true);
+      expect(state.availableModels.has('provx/reverse-model')).toBe(true);
+      expect(state.availableModels.has('px/disabled-reverse')).toBe(false);
+      expect(state.availableModels.has('provx/disabled-reverse')).toBe(false);
+      expect(state.disabledModels.has('px/disabled-reverse')).toBe(true);
+      expect(state.disabledModels.has('provx/disabled-reverse')).toBe(true);
+
+      const disabledByAlias = state.classify('px', 'disabled-reverse');
+      expect(disabledByAlias.tier).toBe('B');
+      expect(disabledByAlias.inCombo).toBe(true);
+      expect(disabledByAlias.inconsistent).toBe(true);
+
+      const disabledByProviderId = state.classify('provx', 'disabled-reverse');
+      expect(disabledByProviderId.tier).toBe('B');
+      expect(disabledByProviderId.inCombo).toBe(true);
+      expect(disabledByProviderId.inconsistent).toBe(true);
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it('can exclude a custom-provider combo reference from stale diagnostics', () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'rs-custom-combo-source-'));
+    try {
+      const dbPath = makeFixtureDb(tmpDir);
+      const db = openBetterSqlite3(dbPath);
+      db.exec(`
+        INSERT INTO combos VALUES ('c3', 'custom-combo', '["customx/combo-only"]');
+        INSERT INTO providerConnections VALUES ('customx', 'Custom X', '{"enabledModels":["live-model"]}');
+      `);
+      db.close();
+
+      const direct = readRouterModelState('9router', {
+        dbPath,
+        providerModels: FIXTURE_REGISTRY,
+        providerAliases: FIXTURE_ALIASES,
+        availabilitySource: 'direct',
+      });
+      const snapshot = readRouterModelState('9router', {
+        dbPath,
+        providerModels: FIXTURE_REGISTRY,
+        providerAliases: FIXTURE_ALIASES,
+        availabilitySource: 'snapshot',
+        excludeComboModelsFromAvailability: true,
+      });
+      const legacySnapshot = readRouterModelState('9router', {
+        dbPath,
+        providerModels: FIXTURE_REGISTRY,
+        providerAliases: FIXTURE_ALIASES,
+        availabilitySource: 'snapshot',
+      });
+
+      expect(direct.comboModels.has('customx/combo-only')).toBe(true);
+      expect(direct.availableModels.has('customx/combo-only')).toBe(false);
+      expect(snapshot.availableModels.has('customx/live-model')).toBe(true);
+      expect(snapshot.availableModels.has('customx/combo-only')).toBe(false);
+      expect(legacySnapshot.availableModels.has('customx/combo-only')).toBe(true);
     } finally {
       fs.rmSync(tmpDir, { recursive: true, force: true });
     }
