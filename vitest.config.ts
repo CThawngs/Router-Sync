@@ -1,7 +1,6 @@
 import { defineConfig } from 'vitest/config';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { availableMemoryBytes } from './tools/agent/low-resource.mjs';
 
 // C14 P1.6: vitest only types `maxForks` on the ROOT test config.
 // Project-level `poolOptions.forks` accepts only isolate/singleFork, so the
@@ -10,13 +9,18 @@ const isCI = process.env['CI'] === 'true' || process.env['CI'] === '1';
 const localMaxForks = Number(process.env['RS_TEST_WORKERS'] ?? 2);
 
 // C20 X2: the RAM gate in tools/agent/heavy.mjs only protects a command when the
-// agent uses the wrapped script name. `pnpm exec vitest run ...` skips it, so the
-// test runner caps itself here instead. The limit matches the gate's threshold
-// family and uses the same available-memory function (single definition).
-const LOW_MEMORY_BYTES = 3 * 1024 ** 3;
+// agent uses the wrapped script name, so the test pool can cap itself here too.
+//
+// Measured on the owner's machine (C20, record `c20-x2-abba-workers2`, 4 ABBA
+// samples per arm, `vitest run --project packages`): 2 workers took a median
+// 116.8 s against 63.7 s uncapped, i.e. 1.83x slower, and per-arm peak RSS was
+// not sampled. X2.2 keeps a cap only when free RAM drops clearly AND wall time
+// stays within 1.5x, so the automatic RAM cap is NOT enabled by default.
+// Enforcement stays with the gate, which already blocks heavy commands below its
+// threshold. `RS_TEST_WORKERS=<n>` forces a worker count for experiments.
 const forcedWorkers = Number(process.env['RS_TEST_WORKERS'] ?? 0);
-const workersFromRam = availableMemoryBytes() < LOW_MEMORY_BYTES ? 2 : 0;
-const maxWorkers = forcedWorkers > 0 ? forcedWorkers : workersFromRam;
+const capped = forcedWorkers > 0;
+const maxWorkers = capped ? forcedWorkers : 0;
 
 const dirname = path.dirname(fileURLToPath(import.meta.url));
 const alias = {
@@ -31,11 +35,6 @@ const alias = {
 
 const setup = path.resolve(dirname, 'test/harness/state-dir-setup.ts');
 const externalSqlite = { deps: { external: ['node:sqlite'] } };
-
-// `RS_TEST_WORKERS=off` disables every cap, which is how the C20 ABBA comparison
-// measures the uncapped baseline on the same machine.
-const capDisabled = String(process.env['RS_TEST_WORKERS'] ?? '').toLowerCase() === 'off';
-const capped = maxWorkers > 0 && !capDisabled;
 
 export default defineConfig({
   resolve: { alias },

@@ -124,10 +124,9 @@ self-contained and can run before `pnpm build`. If available RAM is below
   threshold bypasses the gate and is a violation, even when it happens to pass.
   If the gate answers `3`, report it and stop; do not re-run the command another
   way and do not run it in the background.
-- The test runner also caps itself: `vitest.config.ts` reads the same
-  `availableMemoryBytes()` as the gate and limits workers when free RAM is low.
-  `RS_TEST_WORKERS=<n>` forces a worker count and `RS_TEST_WORKERS=off` removes
-  the cap; both exist for measurement, not for everyday work.
+- `RS_TEST_WORKERS=<n>` forces a worker count for an experiment. There is no
+  automatic RAM cap: measured at 2 workers the suite took 1.83× longer, and the
+  gate already blocks heavy commands below its threshold.
 
 ### Comparing against `origin/main`
 
