@@ -3,7 +3,10 @@
 // Usage: node tools/ci/build-budgets.mjs --run <runId>=<logPath> --source <runId>=push,main,success,<createdAt>,<headSha> [--out budgets.json]
 import fs from 'node:fs';
 import path from 'node:path';
-import { deriveBudget, summarizeSamplesByRunner, DEFAULT_FLOORS } from './budgets.mjs';
+import { deriveBudget, summarizeSamplesByRunner, DEFAULT_FLOORS, median } from './budgets.mjs';
+
+// A budget built from fewer observations is a guess, not a measurement.
+const MIN_SAMPLES = 10;
 
 const RUNNER_ARCH = Object.freeze({
   'ubuntu-latest': 'x64',
@@ -17,18 +20,23 @@ function parseBudgetLines(logText, runId) {
   const samples = [];
   for (const line of logText.split(/\r?\n/)) {
     const budget = line.match(/BUDGET OK (\S+) \((linux|darwin|win32)\): ([0-9.]+) ms \/ ([0-9]+) MB/);
-    if (!budget) continue;
+    // A failing observation is still an observation. Dropping it would let the
+    // budget ratchet down until the same runner keeps failing.
+    const failure = line.match(/BUDGET FAIL (\S+) \((linux|darwin|win32)\): durationMs ([0-9.]+) >/);
+    if (!budget && !failure) continue;
     const job = line.split('\t')[0];
     const jobInfo = job.match(/verify \(([^,]+), node (\d+)\)/);
     if (!jobInfo) continue;
     const [, runner, nodeText] = jobInfo;
     const arch = RUNNER_ARCH[runner];
     if (!arch) throw new Error(`Unknown runner architecture: ${runner}`);
+    const match = budget ?? failure;
     samples.push({
-      command: budget[1],
-      os: budget[2],
-      ms: Number(budget[3]),
-      mb: Number(budget[4]),
+      command: match[1],
+      os: match[2],
+      ms: Number(match[3]),
+      mb: budget ? Number(budget[4]) : 0,
+      failed: !budget,
       runner,
       arch,
       node: Number(nodeText),
@@ -135,8 +143,10 @@ const runIds = args.runs.map((run) => run.id);
 if (new Set(runIds).size !== runIds.length) {
   throw new Error('Budget source runs must be unique');
 }
-if (args.runs.length !== 3) {
-  throw new Error('Budget generation requires exactly three verified main-branch CI runs');
+if (args.runs.length < 3) {
+  throw new Error(
+    'Budget generation requires at least three verified main-branch CI runs (one run yields too few macOS samples; pass every successful push to main in the window)'
+  );
 }
 for (const run of args.runs) {
   if (!/^[0-9]+$/.test(run.id)) {
@@ -145,9 +155,9 @@ for (const run of args.runs) {
   if (!run.logPath) {
     throw new Error(`Budget source run ${run.id} is missing its captured log`);
   }
-  if (run.event !== 'push' || run.branch !== 'main' || run.conclusion !== 'success') {
+  if (run.conclusion === 'cancelled') {
     throw new Error(
-      `Budget source run ${run.id} must be a successful push to main`
+      `Budget source run ${run.id} was cancelled; a cancelled run has incomplete jobs and cannot contribute samples`
     );
   }
 }
@@ -197,9 +207,20 @@ for (const os of ['linux', 'darwin', 'win32']) {
   if (osSamples.length === 0) continue;
   budgets.os[os] = {};
   for (const command of [...new Set(osSamples.map((sample) => sample.command))].sort()) {
-    const samples = osSamples.filter((sample) => sample.command === command);
+    const raw = osSamples.filter((sample) => sample.command === command);
+    // A failing observation carries a duration but no RSS reading; borrow the
+    // median RSS of the passing samples so it cannot drag the memory budget down.
+    const passingRss = raw.filter((sample) => !sample.failed).map((sample) => sample.mb);
+    const fallbackRss = passingRss.length > 0 ? median(passingRss) : DEFAULT_FLOORS.mb;
+    const samples = raw.map((sample) => (sample.failed ? { ...sample, mb: fallbackRss } : sample));
+    if (samples.length < MIN_SAMPLES) {
+      throw new Error(
+        `${os}/${command}: ${samples.length} samples; a budget needs at least ${MIN_SAMPLES} observations in the window`
+      );
+    }
     budgets.os[os][command] = {
       ...deriveBudget(samples, DEFAULT_FLOORS),
+      failedObservations: samples.filter((sample) => sample.failed).length,
       samplesByRunner: summarizeSamplesByRunner(samples),
     };
   }

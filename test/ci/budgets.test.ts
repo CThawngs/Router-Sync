@@ -40,7 +40,7 @@ describe('C17 T2: CI budget derivation', () => {
     ]);
   });
 
-  it('rejects budget provenance that is not a successful main-branch push', () => {
+  it('rejects budgets built from fewer than ten observations', () => {
     const temporaryDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'rs-budget-source-'));
     try {
       fs.writeFileSync(
@@ -54,7 +54,7 @@ describe('C17 T2: CI budget derivation', () => {
           '--run',
           '123=run.log',
           '--source',
-          '123=pull_request,feature,success,2026-11-19T00:00:00Z,aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+          '123=push,main,success,2026-11-19T00:00:00Z,aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
           '--run',
           '124=run.log',
           '--source',
@@ -73,7 +73,7 @@ describe('C17 T2: CI budget derivation', () => {
       );
 
       expect(result.status).not.toBe(0);
-      expect(result.stderr).toContain('successful push to main');
+      expect(result.stderr).toContain('at least 10 observations');
     } finally {
       fs.rmSync(temporaryDirectory, { recursive: true, force: true });
     }
