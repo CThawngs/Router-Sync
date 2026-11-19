@@ -28,7 +28,7 @@ jobs:
     timeout-minutes: 40
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4.2.2
+        uses: actions/checkout@v7.0.1
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v6.1.1
@@ -131,7 +131,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4.2.2
+      - uses: actions/checkout@v7.0.1
       - uses: pnpm/action-setup@v6.1.1
       - uses: actions/setup-node@v4.1.0
         with:
@@ -149,7 +149,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4.2.2
+      - uses: actions/checkout@v7.0.1
       - uses: pnpm/action-setup@v6.1.1
       - uses: actions/setup-node@v4.1.0
         with:
@@ -176,7 +176,7 @@ jobs:
       options: --memory=1g --memory-swap=1g --cpus=1
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4.2.2
+      - uses: actions/checkout@v7.0.1
       - run: corepack enable pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
@@ -211,7 +211,7 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4.2.2
+        uses: actions/checkout@v7.0.1
       - name: Setup pnpm
         uses: pnpm/action-setup@v6.1.1
       - name: Setup Node.js
@@ -236,7 +236,7 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4.2.2
+        uses: actions/checkout@v7.0.1
       - name: Setup pnpm
         uses: pnpm/action-setup@v6.1.1
       - name: Setup Node.js
