@@ -11,7 +11,7 @@
 
 import { readRouterModelState, type RouterModelState } from '@routersync/core';
 
-export type StaleStatus = 'PRESENT' | 'PRESENT-NORMALIZED' | 'DISABLED' | 'ABSENT';
+export type StaleStatus = 'PRESENT' | 'PRESENT-NORMALIZED' | 'DISABLED' | 'ABSENT' | 'UNVERIFIABLE';
 export type StaleSource = 'direct' | 'snapshot';
 
 export interface StaleModelRow {
@@ -22,6 +22,10 @@ export interface StaleModelRow {
 
 export interface StaleReport {
   generatedAt: string;
+  /** OK when every requested router was readable; UNKNOWN when at least one was not. */
+  status: 'OK' | 'UNKNOWN';
+  /** Routers whose evidence could not be read, with a short reason. */
+  unavailable: Array<{ router: string; reason: string }>;
   source: StaleSource;
   note: string;
   routers: string[];
@@ -30,8 +34,33 @@ export interface StaleReport {
   counts: Record<StaleStatus, number>;
 }
 
+/** The one default for availability evidence; doctor/plan/combos all use `direct`. */
+export const DEFAULT_STALE_SOURCE: StaleSource = 'direct';
+
 function normalizeId(id: string): string {
   return id.startsWith('models/') ? id.slice('models/'.length) : id;
+}
+
+function providersWithEvidence(state: RouterModelState): Set<string> {
+  if (state.availabilityProviders) return state.availabilityProviders;
+  const prefixes = new Set<string>();
+  for (const model of state.availableModels) {
+    const slash = model.indexOf('/');
+    if (slash > 0) prefixes.add(model.slice(0, slash));
+  }
+  return prefixes;
+}
+
+/** Why the router state cannot be classified, or null when it is readable. */
+export function unreadableReason(state: RouterModelState): string | null {
+  const d = state.diagnostics;
+  if (!d) return null;
+  if (!d.dbResolved) return 'database path not resolved';
+  if (!d.dbOpened) return `database could not be opened (${d.dbName ?? 'unknown file'})`;
+  if (d.missingTables.length > 0) {
+    return `table(s) missing: ${d.missingTables.join(', ')} (${d.dbName ?? 'unknown file'})`;
+  }
+  return null;
 }
 
 /** Classify one combo step against a router state (pure, testable). */
@@ -47,6 +76,9 @@ export function classifyComboStep(step: string, state: RouterModelState): StaleS
   if (state.availableModels.has(direct)) return 'PRESENT';
   if (state.availableModels.has(normalized)) return 'PRESENT-NORMALIZED';
   if (state.disabledModels.has(direct) || state.disabledModels.has(normalized)) return 'DISABLED';
+  // A provider with no availability evidence at all is not "absent"; it is
+  // unverifiable, and must never be used as a removal argument.
+  if (!providersWithEvidence(state).has(prefix)) return 'UNVERIFIABLE';
   return 'ABSENT';
 }
 
@@ -63,11 +95,18 @@ export function buildStaleReport(
     'PRESENT-NORMALIZED': 0,
     DISABLED: 0,
     ABSENT: 0,
+    UNVERIFIABLE: 0,
   };
+  const unavailable: Array<{ router: string; reason: string }> = [];
 
   for (const router of routers) {
     const state = states.get(router);
     if (!state) continue;
+    const reason = unreadableReason(state);
+    if (reason) {
+      unavailable.push({ router, reason });
+      continue;
+    }
     for (const step of [...state.comboModels].sort()) {
       const status = classifyComboStep(step, state);
       rows.push({ router, step, status });
@@ -77,17 +116,23 @@ export function buildStaleReport(
 
   const sourceNote =
     source === 'snapshot'
-      ? 'ABSENT means unknown-to-snapshot relative to the shipped router catalog, not an upstream provider classification.'
-      : 'ABSENT means not found in directly available router state, not an upstream provider classification.';
+      ? 'ABSENT means unknown-to-snapshot relative to the shipped router catalog, not an upstream provider classification. UNVERIFIABLE means the provider carried no availability evidence.'
+      : 'ABSENT means not found in directly available router state, not an upstream provider classification. UNVERIFIABLE means the provider carried no availability evidence.';
   const omittedNote =
     omittedRouters.length > 0
       ? ` Omitted routers without an availability reader: ${omittedRouters.join(', ')}.`
       : '';
+  const unavailableNote =
+    unavailable.length > 0
+      ? ` Router evidence unreadable: ${unavailable.map((u) => `${u.router} (${u.reason})`).join('; ')}. No status is claimed for those rows.`
+      : '';
 
   return {
     generatedAt: new Date().toISOString(),
+    status: unavailable.length > 0 ? 'UNKNOWN' : 'OK',
+    unavailable,
     source,
-    note: `${sourceNote}${omittedNote}`,
+    note: `${sourceNote}${omittedNote}${unavailableNote}`,
     routers: [...routers],
     omittedRouters: [...omittedRouters],
     rows,
@@ -102,6 +147,12 @@ export function parseStaleSource(value: string): StaleSource {
 
 /** Human-facing output keeps the evidence source as the first line. */
 export function serializeStaleReport(report: StaleReport): string {
+  // When evidence is unreadable, the reason is the first line so a human sees it
+  // before any counts that would look like mass model loss.
+  if (report.status === 'UNKNOWN') {
+    const reasons = report.unavailable.map((u) => `${u.router}: ${u.reason}`).join('; ');
+    return `UNKNOWN: ${reasons}\nsource=${report.source}\n${JSON.stringify(report, null, 2)}`;
+  }
   return `source=${report.source}\n${JSON.stringify(report, null, 2)}`;
 }
 
@@ -123,7 +174,7 @@ export async function runCombosStaleCommand(options: CombosStaleOptions = {}): P
     throw new Error(`Invalid router "${target}"; expected all, 9router, or omniroute`);
   }
 
-  const source = options.source ?? 'direct';
+  const source = options.source ?? DEFAULT_STALE_SOURCE;
   const requestedRouters = target === 'all' ? ['9router', 'omniroute'] : [target];
   const routers = requestedRouters.filter((router) => router === '9router');
   const omittedRouters = requestedRouters.filter((router) => router !== '9router');
@@ -139,6 +190,10 @@ export async function runCombosStaleCommand(options: CombosStaleOptions = {}): P
     );
   }
   const report = buildStaleReport(routers, states, source, omittedRouters);
+  if (report.status === 'UNKNOWN') {
+    // Non-zero so a script cannot mistake unreadable evidence for "all absent".
+    process.exitCode = 1;
+  }
   if (options.json === true) {
     console.log(serializeStaleReportJson(report));
   } else if (options.json !== false) {

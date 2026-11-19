@@ -25,6 +25,15 @@ export interface ModelTierClassification {
   reason?: string;
 }
 
+/**
+ * C19 W7 (G3): the single default for tier classification. It stays `snapshot`
+ * because tier parity with the 9Router provider page is defined against the
+ * shipped registry (see packages/core/test/model-tiers-ui-parity.test.ts).
+ * Staleness diagnostics deliberately do not use this constant: `combos stale`
+ * uses `direct` (DEFAULT_STALE_SOURCE) so a combo cannot validate itself.
+ */
+export const DEFAULT_AVAILABILITY_SOURCE: 'direct' | 'snapshot' = 'snapshot';
+
 export const PROVIDER_ALIASES: Record<string, string[]> = {
   google: ['gemini'],
   gemini: ['google'],
@@ -90,6 +99,23 @@ export interface RouterModelStateOptions {
   excludeComboModelsFromAvailability?: boolean | undefined;
 }
 
+export interface RouterModelDiagnostics {
+  /** True when a database path was resolved (configured or auto-located). */
+  dbResolved: boolean;
+  /** True when the database file opened read-only. */
+  dbOpened: boolean;
+  /** Table names the reader expected and did not find. */
+  missingTables: string[];
+  /** Count of values that failed to parse (combo lists, kv rows, catalog). */
+  parseErrors: number;
+  /** True when the router app version differs from the shipped snapshot. */
+  versionMismatch: boolean;
+  /** Evidence source used for the available-model set. */
+  availabilitySource: 'direct' | 'snapshot';
+  /** Basename only; never a full personal path. */
+  dbName?: string | undefined;
+}
+
 export interface RouterModelState {
   router: string;
   appVersion?: string | undefined;
@@ -111,6 +137,9 @@ export interface RouterModelState {
    * as Tier B with a matching reason.
    */
   connectionEnabledModels: Set<string>;
+  /** Provider prefixes that actually carried availability evidence. */
+  availabilityProviders: Set<string>;
+  diagnostics: RouterModelDiagnostics;
   classify(provider: string, modelId: string): ModelTierClassification;
 }
 
@@ -158,7 +187,7 @@ export function readRouterModelState(
   // Opt-in: treat a model that only appears in the router catalog as active.
   // Default is false, so a catalog-only model stays Tier B (suggested).
   const catalogImpliesEnabled = Boolean(options.catalogImpliesEnabled);
-  const availabilitySource = options.availabilitySource ?? 'snapshot';
+  const availabilitySource = options.availabilitySource ?? DEFAULT_AVAILABILITY_SOURCE;
   const registryAliases = options.providerAliases ?? NINE_ROUTER_PROVIDER_ALIASES;
 
   let appVersion = options.appVersion;
@@ -167,6 +196,9 @@ export function readRouterModelState(
   let db: SqliteDriver | undefined = options.db;
   let shouldCloseDb = false;
   let resolvedDbPath = options.dbPath;
+  const missingTables: string[] = [];
+  let parseErrors = 0;
+  const evidenceProviders = new Set<string>();
 
   try {
     if (!db) {
@@ -212,7 +244,9 @@ export function readRouterModelState(
     if (db) {
       try {
         const tableCheck = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='combos'").get();
-        if (tableCheck) {
+        if (!tableCheck) {
+          missingTables.push('combos');
+        } else {
           const rows = db.prepare('SELECT * FROM combos').all() as Array<Record<string, unknown>>;
           for (const row of rows) {
             const rawModels = (row['models'] ?? row['data']) as string | undefined;
@@ -243,15 +277,17 @@ export function readRouterModelState(
                   }
                 }
               } catch {
-                // ignore parse failure
+                parseErrors += 1;
               }
             }
           }
         }
       } catch {
-        // ignore combo read error
+          // A database that opens but cannot answer the combos query is still
+          // unreadable evidence, not "no combos".
+          missingTables.push('combos (unreadable)');
+        }
       }
-    }
 
     // 2. Specific logic for 9Router
     if (is9Router) {
@@ -445,6 +481,7 @@ export function readRouterModelState(
           const modelId = model.slice(slashIndex + 1);
           for (const prefix of getEquivalentProviderPrefixes(provider, registryAliases)) {
             availableModels.add(`${prefix}/${modelId}`);
+            evidenceProviders.add(prefix);
           }
         }
       } else if (useBuiltInRegistry) {
@@ -452,6 +489,7 @@ export function readRouterModelState(
           for (const id of ids) {
             for (const a of getProviderAliases(alias)) {
               availableModels.add(`${a}/${id}`);
+              evidenceProviders.add(a);
             }
           }
         }
@@ -464,6 +502,7 @@ export function readRouterModelState(
           for (const id of ids) {
             for (const a of getProviderAliases(providerId)) {
               availableModels.add(`${a}/${id}`);
+              evidenceProviders.add(a);
             }
           }
         }
@@ -478,6 +517,7 @@ export function readRouterModelState(
           const slashIdx = m.indexOf('/');
           if (slashIdx > 0 && !builtInProviders.has(m.slice(0, slashIdx))) {
             availableModels.add(m);
+            evidenceProviders.add(m.slice(0, slashIdx));
           }
         }
         if (!options.excludeComboModelsFromAvailability) {
@@ -558,6 +598,16 @@ export function readRouterModelState(
     catalogModels,
     availableModels,
     connectionEnabledModels,
+    availabilityProviders: evidenceProviders,
+    diagnostics: {
+      dbResolved: Boolean(resolvedDbPath),
+      dbOpened: db !== undefined,
+      missingTables,
+      parseErrors,
+      versionMismatch,
+      availabilitySource,
+      dbName: resolvedDbPath ? path.basename(resolvedDbPath) : undefined,
+    },
     classify(provider: string, modelId: string): ModelTierClassification {
       const cleanProv = provider.trim().toLowerCase();
       const normId = modelId.startsWith('models/') ? modelId.slice('models/'.length) : modelId;

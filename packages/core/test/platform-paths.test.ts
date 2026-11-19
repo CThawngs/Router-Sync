@@ -137,7 +137,7 @@ describe('C15 Q2.5 - path separators, spaces and Unicode', () => {
   });
 
   it('keeps Unicode in the resolved path', () => {
-    const result = locateRouterDb('omniroute', { HOME: '/home/người dùng', XDG_STATE_HOME: '/home/người dùng/.local/state' }, 'linux'); // no-secrets:allow: synthetic Unicode test path
+    const result = locateRouterDb('omniroute', { HOME: '/home/用户数据', XDG_STATE_HOME: '/home/用户数据/.local/state' }, 'linux'); // no-secrets:allow: synthetic Unicode test path
     expect(result).toContain('omniroute');
   });
 });

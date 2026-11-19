@@ -112,6 +112,10 @@ self-contained and can run before `pnpm build`. If available RAM is below
 - Allowed: `pnpm lint`, `pnpm typecheck:changed`, `pnpm test:changed`.
 - Forbidden: `pnpm test`, `pnpm e2e`, bare `vitest run`, `pnpm test:slow`.
 - The full suite is the responsibility of the PR CI, not the local machine.
+- Agents must not set `RS_FORCE_HEAVY=1` (or `CI=true`) to get past the gate on the
+  owner's weak machine. Those bypasses exist for CI and for the owner to use
+  knowingly; an agent that bypasses the gate is taking the owner's RAM without
+  asking. Report the exit code `3` instead.
 - `pnpm test:changed` keeps the workspace fork limit (max 2 forks). It is not a
   wall-clock-speed guarantee: a shared-module change can select most tests.
 

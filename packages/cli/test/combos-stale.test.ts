@@ -44,7 +44,7 @@ describe('C15 Q4: combos stale statuses', () => {
 
   it('reports counts that match rows', () => {
     const s = state({
-      availableModels: new Set(['gemini/gemini-2.5-flash']),
+      availableModels: new Set(['gemini/gemini-2.5-flash', 'groq/llama-3.1-8b']),
       comboModels: new Set(['gemini/gemini-2.5-flash', 'groq/unknown']),
     });
     const report = buildStaleReport(['9router'], new Map([['9router', s]]));
