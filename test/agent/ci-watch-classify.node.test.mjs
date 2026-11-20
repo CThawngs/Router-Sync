@@ -46,13 +46,13 @@ describe('C24 A1: summarize classifies by the failed step, not the whole run log
 
   test('a red Run Tests step is code even when the log mentions ETIMEDOUT', () => {
     const jobs = [{ id: 1, name: 'verify (ubuntu-latest, node 22)', conclusion: 'failure', continue_on_error: false, steps: [{ name: 'Run Tests', conclusion: 'failure' }] }];
-    const out = summarize(jobs, { 1: mixedLog }, 'failure');
+    const out = summarize(jobs, { 1: mixedLog });
     assert.equal(out[0].kind, 'code');
     assert.equal(exitCodeFor(out), 11);
   });
 
   test('a cancelled job with no steps is infra', () => {
-    const out = summarize([cancelledJob], { 11: '' }, 'failure');
+    const out = summarize([cancelledJob], { 11: '' });
     assert.equal(out[0].kind, 'infra');
     assert.equal(out[0].evidence, 'no steps ran (capacity or runner loss)');
     assert.equal(exitCodeFor(out), 10);
@@ -60,14 +60,14 @@ describe('C24 A1: summarize classifies by the failed step, not the whole run log
 
   test('continue-on-error jobs are masked, not counted as code', () => {
     const arm = { id: 12, name: 'verify (windows-11-arm, node 22)', conclusion: 'failure', continue_on_error: true, steps: [{ name: 'Run Tests', conclusion: 'failure' }] };
-    const out = summarize([arm], { 12: `${GITHUB_LOG_HEADER}AssertionError: boom` }, 'failure');
+    const out = summarize([arm], { 12: `${GITHUB_LOG_HEADER}AssertionError: boom` });
     assert.equal(out[0].kind, 'masked');
     assert.equal(exitCodeFor(out), 0);
   });
 
   test('an infra signature on a non-test step is infra', () => {
     const jobs = [{ id: 13, name: 'Install dependencies', conclusion: 'failure', steps: [{ name: 'Install dependencies', conclusion: 'failure' }] }];
-    const out = summarize(jobs, { 13: 'Failed to restore: Cache service responded with 400' }, 'failure');
+    const out = summarize(jobs, { 13: 'Failed to restore: Cache service responded with 400' });
     assert.equal(out[0].kind, 'infra');
     assert.equal(exitCodeFor(out), 10);
   });
@@ -75,5 +75,40 @@ describe('C24 A1: summarize classifies by the failed step, not the whole run log
   test('failedStepNames picks the steps that actually failed', () => {
     assert.deepEqual(failedStepNames({ steps: [{ name: 'A', conclusion: 'success' }, { name: 'B', conclusion: 'failure' }] }), ['B']);
     assert.deepEqual(failedStepNames({ steps: [{ name: 'A', conclusion: 'skipped' }] }), []);
+  });
+});
+
+describe('C25 B0: masked is unconditional, unknown when there is no job log', () => {
+  const ARM24 = { id: 22, name: 'verify (windows-11-arm, node 24)', conclusion: 'failure', continue_on_error: true, steps: [{ name: 'Run Tests', conclusion: 'failure' }] };
+  const OTHER = { id: 23, name: 'verify (ubuntu-latest, node 22)', conclusion: 'failure', continue_on_error: false, steps: [{ name: 'Run Tests', conclusion: 'failure' }] };
+  const NOSTEPS_CANCELLED = { id: 24, name: 'verify (macos-latest, node 22)', conclusion: 'cancelled', steps: [] };
+  const NO_LOG_JOB = { id: 25, name: 'verify (ubuntu-latest, node 22)', conclusion: 'failure', continue_on_error: false, steps: [] };
+
+  test('(a) run success + ARM job failure with continue_on_error → exit 0, ARM masked', () => {
+    const out = summarize([ARM24], { 22: 'AssertionError: boom' }, 'success');
+    assert.equal(out[0].kind, 'masked');
+    assert.equal(exitCodeFor(out), 0);
+  });
+
+  test('(b) run failure + ARM red + other code red → exit 11, ARM still masked', () => {
+    const out = summarize([ARM24, OTHER], { 22: 'AssertionError: boom', 23: 'AssertionError: boom2' }, 'failure');
+    const arm = out.find((r) => r.job.includes('windows-11-arm'));
+    const other = out.find((r) => r.job.includes('ubuntu'));
+    assert.equal(arm.kind, 'masked');
+    assert.equal(other.kind, 'code');
+    assert.equal(exitCodeFor(out), 11);
+  });
+
+  test('(c) job cancelled with no steps ran → infra', () => {
+    const out = summarize([NOSTEPS_CANCELLED], {});
+    assert.equal(out[0].kind, 'infra');
+    assert.equal(out[0].evidence, 'no steps ran (capacity or runner loss)');
+  });
+
+  test('job with no log and no continue_on_error → unknown, exit 12', () => {
+    const out = summarize([NO_LOG_JOB], {});
+    assert.equal(out[0].kind, 'unknown');
+    assert.equal(out[0].evidence, 'no job log');
+    assert.equal(exitCodeFor(out), 12);
   });
 });

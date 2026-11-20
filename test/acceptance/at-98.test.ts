@@ -306,9 +306,13 @@ describe('Acceptance Test AT-98: Serving-Path Read-Back & Stale Cache Detection'
     };
 
     const res = await adapter.applyPlan(plan);
-    expect(res.success).toBe(false);
-    expect(res.staleDetected).toBe(true);
-    expect(res.error).toMatch(/unmatched-combo-id-999/);
+    // C25 P1.2: the ARM node 24 leg reported success=true here in several runs.
+    // Keep the assertion unchanged; attach a diagnostic so the next red exposes
+    // which read-back level actually ran and which fixture ids were compared.
+    const diagnostic = `AT-98 read-back: level=${res.readBackLevel} stale=${res.staleDetected} error=${res.error} degraded=${res.degradedReason} fixtureIds=${JSON.stringify((fixtureData['combos'] ?? []).map((c: { id?: string }) => c.id))}`;
+    expect(res.success, diagnostic).toBe(false);
+    expect(res.staleDetected, diagnostic).toBe(true);
+    expect(res.error, diagnostic).toMatch(/unmatched-combo-id-999/);
 
     // Rollback
     const rolledBack = await adapter.rollback(snapshot);

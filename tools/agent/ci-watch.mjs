@@ -8,7 +8,7 @@
  *   0  green
  *   10 only infrastructure failures (rerun the failed jobs once)
  *   11 at least one code failure (fix it; do not rerun)
- *   12 timed out waiting, or no run found
+ *   12 timed out waiting, no run found, or an unknown failure (no job log)
  *
  * The tool never reruns a run and never merges.
  */
@@ -130,14 +130,6 @@ function runJobs(runId) {
   return JSON.parse(gh(['api', `/repos/{owner}/{repo}/actions/runs/${runId}/jobs`, '-X', 'GET', '-f', 'per_page=100'])).jobs ?? [];
 }
 
-function failedStepLog(runId, attempt) {
-  try {
-    return gh(['run', 'view', String(runId), '--attempt', String(attempt ?? 1), '--log-failed']);
-  } catch {
-    return '';
-  }
-}
-
 function jobLog(runId, jobId) {
   try {
     return gh(['run', 'view', String(runId), '--job', String(jobId), '--log']);
@@ -146,26 +138,40 @@ function jobLog(runId, jobId) {
   }
 }
 
-export function summarize(jobs, logs, runConclusion) {
+// The GitHub jobs API does not return the workflow's job-level
+// `continue-on-error` flag, so the masked set is matched by the expanded job
+// name: `.github/workflows/ci.yml` sets `continue-on-error:
+// ${{ matrix.os == 'windows-11-arm' }}` on the `verify` job.
+const MASKED_JOB_NAME_RE = /^verify \(windows-11-arm, node \d+\)$/;
+
+function isMasked(job) {
+  return Boolean(job.continue_on_error) || MASKED_JOB_NAME_RE.test(job.name ?? '');
+}
+
+export function summarize(jobs, logs) {
   return jobs.map((job) => {
     if (job.conclusion === 'success' || job.conclusion === 'skipped') {
       return { job: job.name, conclusion: job.conclusion, kind: job.conclusion === 'success' ? 'ok' : 'skipped', evidence: null };
     }
     const log = logs[job.id] ?? logs[job.database_id] ?? '';
+    const stepName = failedStepNames(job)[0] ?? stepNameFromLog(log);
     let kind;
     let evidence;
-    let stepName = failedStepNames(job)[0] ?? stepNameFromLog(log);
     if (job.conclusion === 'cancelled' && noStepsRan(job)) {
       // A capacity or runner-loss cancel: the job never executed, that is infra.
       kind = 'infra';
       evidence = 'no steps ran (capacity or runner loss)';
+    } else if (log === '' && !job.continue_on_error) {
+      // No log of this exact job: the failure cannot be classified as code or infra.
+      kind = 'unknown';
+      evidence = 'no job log';
     } else {
       kind = classifyStep(stepName, log);
       if (kind === 'infra') evidence = classifyLog(log);
     }
     // continue-on-error jobs (windows-11-arm) do not fail the run: they are
-    // reported as masked, not as code.
-    if (job.continue_on_error && runConclusion !== 'success') kind = 'masked';
+    // reported as masked, not as code, whatever the run conclusion.
+    if (isMasked(job)) kind = 'masked';
     return {
       job: job.name,
       conclusion: job.conclusion,
@@ -177,6 +183,7 @@ export function summarize(jobs, logs, runConclusion) {
 }
 
 export function exitCodeFor(results) {
+  if (results.some((r) => r.kind === 'unknown')) return 12;
   const failed = results.filter((r) => r.kind === 'code' || r.kind === 'infra');
   if (failed.some((r) => r.kind === 'code')) return 11;
   return failed.length > 0 ? 10 : 0;
@@ -208,11 +215,11 @@ export async function watch(options = {}) {
   const logs = {};
   for (const job of jobs) {
     if (job.conclusion === 'failure' || job.conclusion === 'cancelled') {
-      logs[job.id] = jobLog(run.id, job.id) || failedStepLog(run.id, run.run_attempt);
+      logs[job.id] = jobLog(run.id, job.id);
     }
   }
 
-  const results = summarize(jobs, logs, run.conclusion);
+  const results = summarize(jobs, logs);
   const code = exitCodeFor(results);
   const infra = results.filter((r) => r.kind === 'infra');
   const masked = results.filter((r) => r.kind === 'masked');
