@@ -42,8 +42,7 @@ export default defineConfig({
     hookTimeout: 30000,
     testTimeout: 30000,
     pool: 'forks',
-    ...(capped ? { maxWorkers, minWorkers: 1 } : {}),
-    ...(!isCI && !capped ? { poolOptions: { forks: { maxForks: localMaxForks, minForks: 1 } } } : {}),
+    ...(capped ? { maxWorkers, minWorkers: 1 } : isCI ? {} : { maxWorkers: localMaxForks, minWorkers: 1 }),
     projects: [
       {
         resolve: { alias },

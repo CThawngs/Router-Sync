@@ -15,6 +15,7 @@ export { MIN_FREE_BYTES, availableMemoryBytes, parseVmStat };
 // Không dùng toán tử shell (&&, ;, |) — mỗi bước chạy riêng.
 export const HEAVY_REAL = {
   'pnpm test': [['exec', 'vitest', 'run', '--project', 'root-tools', '--project', 'packages']],
+  'pnpm test:related': [['exec', 'node', 'tools/ci/related-tests.mjs']],
   'pnpm test:branch': [['exec', 'vitest', 'run', '--changed', 'origin/main']],
   'pnpm test:slow': [['exec', 'vitest', 'run', '--project', 'ui']],
   'pnpm typecheck': [['exec', 'tsc', '--noEmit'], ['-r', 'typecheck']],

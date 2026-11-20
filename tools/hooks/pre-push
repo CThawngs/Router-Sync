@@ -1,10 +1,7 @@
 #!/usr/bin/env bash
-# C22 Z3: pre-push gate. Runs the repo's own checks so a push does not become a
-# red CI run for something a local command would have caught.
-#
-# The RAM gate can answer 3 (free memory below the threshold). In that case the
-# heavy part (test:changed) is skipped and the hook says so loudly, because the
-# alternative — forcing the suite through — takes the owner's machine down.
+# C23 V3: pre-push gate. Same four checks as before, but the test step now picks
+# tests by branch diff (`pnpm test:related`) through the RAM gate, so a committed
+# change is still covered. A RAM block (exit 3) warns and leaves the suite to CI.
 set -u
 
 echo "[prepush] lint"
@@ -19,14 +16,14 @@ if ! pnpm typecheck:changed; then
   exit 1
 fi
 
-echo "[prepush] test:changed"
-pnpm test:changed
+echo "[prepush] test:related"
+pnpm test:related
 test_status=$?
 if [ "$test_status" -eq 3 ]; then
-  echo "[prepush] WARN RAM gate blocked the tests (exit 3)." >&2
+  echo "[prepush] WARN RAM gate blocked the related tests (exit 3)." >&2
   echo "[prepush] WARN CI will run the full suite; expect a higher chance of red." >&2
 elif [ "$test_status" -ne 0 ]; then
-  echo "[prepush] FAIL test:changed (exit $test_status)" >&2
+  echo "[prepush] FAIL test:related (exit $test_status)" >&2
   exit "$test_status"
 fi
 
