@@ -88,10 +88,11 @@ describe('Acceptance Test AT-98: Serving-Path Read-Back & Stale Cache Detection'
   });
 
   it('OmniRoute: detects STALE when API serving-path returns old cache, fails with stale error', async () => {
-    // C23 V1: deterministic. The mock always answers 200 with an empty list and
-    // the admin key is passed explicitly, so the read-back path is always the
-    // 'full' branch. `readBackTtlWaitMs: 1` lets one poll iteration run even if
-    // the clock ticks between the loop condition and the request.
+    // C26 D2.4: deterministic. The mock always answers 200 with an empty list
+    // and the admin key is passed explicitly, so the read-back path is always
+    // the 'full' branch. Use a 100 ms TTL wait: with 1 ms the clock could tick
+    // between the loop condition and the request on the ARM runner, resulting
+    // in readBackLevel='db-only (degraded)' in 1/50 flake-hunt iterations.
     const mockStaleFetch = async () =>
       new Response(JSON.stringify([]), {
         status: 200,
@@ -102,7 +103,7 @@ describe('Acceptance Test AT-98: Serving-Path Read-Back & Stale Cache Detection'
       dbPath: tmpOmniPath,
       apiKey: 'test-token',
       adminApiKey: 'test-admin-token',
-      readBackTtlWaitMs: 1,
+      readBackTtlWaitMs: 100,
       fetchFn: mockStaleFetch as unknown as typeof fetch,
     });
 
