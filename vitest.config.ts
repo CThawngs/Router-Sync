@@ -48,6 +48,10 @@ export default defineConfig({
         resolve: { alias },
         test: {
           name: 'root-tools',
+          // C27 E0: hookTimeout was unset, so projects ran the vitest default
+          // of 10000 ms and the `Hook timed out` failures recurred. Keep the
+          // previously configured value for both projects.
+          hookTimeout: 30000,
           include: ['test/**/*.{test,spec}.{js,mjs,ts}'],
           // node:test suites run under `node --test`; vitest cannot host them.
           exclude: ['**/node_modules/**', 'test/e2e/**', '**/*.node.test.mjs'],
@@ -61,6 +65,8 @@ export default defineConfig({
         resolve: { alias },
         test: {
           name: 'packages',
+          // C27 E0: same fix as root-tools — effective 10000 -> 30000.
+          hookTimeout: 30000,
           include: ['packages/*/test/**/*.{test,spec}.{js,mjs,ts}'],
           environment: 'node',
           testTimeout: 20000,
