@@ -77,6 +77,36 @@ export function failedStepNames(job) {
   return (job.steps ?? []).filter((s) => s.conclusion === 'failure').map((s) => s.name);
 }
 
+/** Error markers that anchor "the real error" inside a failed step's log. */
+const FAILURE_MARKERS = ['Hook timed out', 'AssertionError', 'FAIL', '##[error]', 'Error:'];
+
+/**
+ * Context of the failing step itself: the step names from `job.steps`, plus up
+ * to 20 masked lines around the first error marker. Returns '' when no marker
+ * is found (e.g. the job died between steps).
+ */
+export function failingStepContext(log, job) {
+  const stepNames = failedStepNames(job);
+  const lines = (log ?? '').split('\n').map((l) => l.replace(/\[[0-9;]*m/g, ''));
+  let idx = -1;
+  // The most specific markers win over generic `Error:` (the log often starts
+  // with unrelated `Error:` lines, e.g. the security-violation print).
+  for (const marker of FAILURE_MARKERS) {
+    const i = lines.findIndex((l) => l.includes(marker));
+    if (i >= 0) { idx = i; break; }
+  }
+  let context = '';
+  if (idx >= 0) {
+    context = lines
+      .slice(Math.max(0, idx - 5), idx + 15)
+      .map((l) => l.trim())
+      .filter(Boolean)
+      .slice(0, 20)
+      .join('\n');
+  }
+  return { stepNames, context };
+}
+
 /** Extract the step name from the first column of a gh log line: job\tstep\ttimestamp. */
 export function stepNameFromLog(text) {
   const line = (text ?? '').split('\n')[0] ?? '';
@@ -172,11 +202,14 @@ export function summarize(jobs, logs) {
     // continue-on-error jobs (windows-11-arm) do not fail the run: they are
     // reported as masked, not as code, whatever the run conclusion.
     if (isMasked(job)) kind = 'masked';
+    const stepContext = failingStepContext(log, job);
     return {
       job: job.name,
       conclusion: job.conclusion,
       kind,
       evidence,
+      stepNames: stepContext.stepNames,
+      context: stepContext.context,
       tail: maskText(log.split('\n').slice(-10).join('\n')),
     };
   });
@@ -242,8 +275,10 @@ export async function watch(options = {}) {
     log('');
     log(`CODE: ${failed.map((r) => r.job).join(', ')}`);
     const first = failed[0];
-    if (first.tail) log(`--- tail ${first.job} ---`);
-    if (first.tail) log(first.tail);
+    for (const s of first.stepNames ?? []) log(`  failStep=${s}`);
+    if (first.context) log(`--- context ${first.job} ---`);
+    if (first.context) log(maskText(first.context));
+    if (!first.context && first.tail) { log(`--- tail ${first.job} ---`); log(first.tail); }
   }
   return code;
 }
