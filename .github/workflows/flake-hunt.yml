@@ -1,0 +1,64 @@
+name: Flake Hunt (manual)
+
+# C26 D2.3: manual-only reproduction of the ARM-node-24 at-98 flake.
+# Not part of the required CI job set; no continue-on-error anywhere.
+
+on:
+  workflow_dispatch:
+    inputs:
+      iterations:
+        description: 'Number of times to run test/acceptance/at-98.test.ts per OS'
+        required: false
+        default: '50'
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  flake-hunt:
+    name: flake-hunt (${{ matrix.os }}, node ${{ matrix.node }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-11-arm, ubuntu-latest]
+        node: [24]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7.0.1
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6.1.1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5.0.0
+        with:
+          node-version: ${{ matrix.node }}
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Repeat at-98 and collect red diagnostics
+        shell: bash
+        env:
+          ITERATIONS: ${{ inputs.iterations }}
+        run: |
+          set +e
+          red=0
+          for i in $(seq 1 "$ITERATIONS"); do
+            echo "=== iteration $i / $ITERATIONS ==="
+            output=$(pnpm exec vitest run --project root-tools test/acceptance/at-98.test.ts 2>&1)
+            status=$?
+            echo "$output"
+            if [ "$status" -ne 0 ]; then
+              red=$((red + 1))
+              echo "FLAKE-HUNT RED iteration=$i status=$status"
+              echo "$output" | grep -E 'readBackLevel|staleDetected|AssertionError|read-back' | head -20
+            fi
+          done
+          echo "FLAKE-HUNT SUMMARY os=${{ matrix.os }} node=${{ matrix.node }} iterations=$ITERATIONS red=$red"
+          if [ "$red" -gt 0 ]; then exit 1; fi
+          exit 0
