@@ -36,8 +36,9 @@
     "ui:build": "pnpm --filter @routersync/ui build",
     "ui:test": "pnpm --filter @routersync/ui test",
     "ui:preview": "pnpm --filter @routersync/ui preview",
-    "prepush": "pnpm lint && pnpm typecheck:changed && pnpm test:changed && node tools/ci/validate-workflows.mjs",
-    "hooks:install": "node tools/ci/install-hooks.mjs"
+    "prepush": "pnpm lint && pnpm typecheck:changed && node tools/agent/heavy.mjs -- pnpm test:related && node tools/ci/validate-workflows.mjs",
+    "hooks:install": "node tools/ci/install-hooks.mjs",
+    "test:related": "node tools/agent/heavy.mjs -- pnpm test:related"
   },
   "packageManager": "pnpm@10.20.0",
   "devDependencies": {

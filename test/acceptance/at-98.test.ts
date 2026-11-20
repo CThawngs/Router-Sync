@@ -88,7 +88,10 @@ describe('Acceptance Test AT-98: Serving-Path Read-Back & Stale Cache Detection'
   });
 
   it('OmniRoute: detects STALE when API serving-path returns old cache, fails with stale error', async () => {
-    // Mock API that continues returning empty array (simulating stale cache)
+    // C23 V1: deterministic. The mock always answers 200 with an empty list and
+    // the admin key is passed explicitly, so the read-back path is always the
+    // 'full' branch. `readBackTtlWaitMs: 1` lets one poll iteration run even if
+    // the clock ticks between the loop condition and the request.
     const mockStaleFetch = async () =>
       new Response(JSON.stringify([]), {
         status: 200,
@@ -98,7 +101,8 @@ describe('Acceptance Test AT-98: Serving-Path Read-Back & Stale Cache Detection'
     const adapter = new OmniRouteAdapter({
       dbPath: tmpOmniPath,
       apiKey: 'test-token',
-      readBackTtlWaitMs: 0, // Instant for unit test
+      adminApiKey: 'test-admin-token',
+      readBackTtlWaitMs: 1,
       fetchFn: mockStaleFetch as unknown as typeof fetch,
     });
 

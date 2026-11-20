@@ -51,6 +51,27 @@ export function classifyLog(text) {
   return null;
 }
 
+/** Steps whose failures are, by default, code failures. */
+const TEST_STEP_RE = /(Run Tests|End-to-end|Product smoke|Slow tests|UI tests|Memory report)/i;
+/** Markers that prove a test actually failed on an assertion. */
+const TEST_FAILURE_RE = /(AssertionError|\bFAIL\s|Test Files[^\n]*failed|Tests[^\n]*failed|\[31m\[1m\[7m FAIL)/i;
+
+/**
+ * Classify a failed step.
+ *
+ * C23 V3: RouterTest prints network-flavoured text on purpose (the
+ * UPSTREAM-UNREACHABLE and verify tests), so a blanket "ECONNRESET in the log"
+ * rule would call a red test an infrastructure problem and invite a rerun. A
+ * test step with assertion evidence is a code failure, whatever else it printed.
+ */
+export function classifyStep(stepName, log) {
+  const text = log ?? '';
+  const isTestStep = TEST_STEP_RE.test(stepName ?? '');
+  const hasTestFailure = TEST_FAILURE_RE.test(text);
+  if (isTestStep) return hasTestFailure ? 'code' : classifyLog(text) ? 'infra' : 'code';
+  return classifyLog(text) ? 'infra' : 'code';
+}
+
 export function classifyJob(name, conclusion, log) {
   if (conclusion === 'success') return { job: name, conclusion, kind: 'ok', evidence: null };
   if (conclusion === 'skipped') return { job: name, conclusion, kind: 'skipped', evidence: null };
