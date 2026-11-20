@@ -1,18 +1,15 @@
 #!/usr/bin/env node
 /**
- * C23 V4: first-attempt CI success rate over a window.
+ * C25 B2: first-attempt CI success rate over a fixed window.
  *
- * Usage: node tools/agent/ci-stats.mjs [--days 14] [--since Iso] [--paginate]
+ * Usage: node tools/agent/ci-stats.mjs [--since ISO] [--paginate]
  *
- * Read-only. Reports two numbers, because they answer different questions:
- *   - push runs on main   ("is a merged commit safe?")
- *   - every commit        ("does the branch work cause red runs and mail?")
- * Dependabot update runs (event == "dynamic") are separated out.
- * Red runs are classified as code or infra from the attempt-1 failed log, using
- * the same step-aware rule as ci-watch.
+ * Read-only. Reports separate numbers for our commits, Dependabot updates,
+ * pending runs and red-run classification. The pure rules live in
+ * `ci-stats-core.mjs` and are covered by `test/agent/ci-stats.node.test.mjs`.
  */
 import { execFileSync } from 'node:child_process';
-import { classifyStep } from './ci-watch.mjs';
+import { computeStats } from './ci-stats-core.mjs';
 
 const gh = (args) =>
   execFileSync('gh', args, { encoding: 'utf8', maxBuffer: 128 * 1024 * 1024, shell: process.platform === 'win32' });
@@ -22,8 +19,8 @@ const opt = (name, fallback) => {
   const i = args.indexOf(`--${name}`);
   return i >= 0 ? args[i + 1] : fallback;
 };
-const days = Number(opt('days', '14'));
-const since = opt('since', new Date(Date.now() - days * 86400000).toISOString());
+const since = opt('since', '2026-11-17T00:00:00Z'); // fixed window (C22)
+const sinceC20 = '2026-11-19T00:00:00Z'; // from C20 (d8233ba) onward
 const paginate = args.includes('--paginate');
 
 function allRuns() {
@@ -39,62 +36,29 @@ function allRuns() {
   return out;
 }
 
-const runs = allRuns().filter((r) => Date.parse(r.created_at) >= Date.parse(since));
-
-// Newest run per commit is the "first attempt" signal.
-const perSha = new Map();
-for (const r of runs) {
-  const key = r.head_sha;
-  if (!perSha.has(key)) perSha.set(key, r);
-}
-
-const rows = [...perSha.values()].map((r) => ({
-  id: r.id,
-  sha: r.head_sha.slice(0, 7),
-  branch: r.head_branch,
-  event: r.event,
-  attempt: r.run_attempt,
-  conclusion: r.conclusion,
-  name: r.name,
-}));
-
-const ours = rows.filter((r) => r.event !== 'dynamic');
-const dependabot = rows.filter((r) => r.event === 'dynamic');
-const pushes = ours.filter((r) => r.event === 'push');
-const greenFirst = ours.filter((r) => r.attempt === 1 && r.conclusion === 'success');
-const greenFirstPush = pushes.filter((r) => r.attempt === 1 && r.conclusion === 'success');
-
-// Classify red runs (bounded, to keep the tool quick).
-const red = ours.filter((r) => ['failure', 'cancelled', 'timed_out'].includes(r.conclusion));
-const classified = { code: 0, infra: 0, unknown: 0 };
-const lines = [];
-for (const r of red.slice(0, 40)) {
-  let log = '';
+const runs = allRuns();
+const evidence = {};
+for (const run of runs) {
+  if (!['failure', 'cancelled', 'timed_out'].includes(run.conclusion)) continue;
   try {
-    log = gh(['run', 'view', r.id, '--attempt', '1', '--log-failed']);
+    evidence[run.id] = gh(['run', 'view', String(run.id), '--attempt', '1', '--log-failed']);
   } catch {
-    classified.unknown += 1;
-    lines.push(`red run ${r.id} sha=${r.sha} branch=${r.branch} event=${r.event} conclusion=${r.conclusion} kind=unknown (log fetch failed)`);
-    continue;
+    evidence[run.id] = '';
   }
-  const clean = log.replace(/\u001b\[[0-9;]*m/g, '');
-  const step = (clean.split('\n')[0] ?? '').split('\t').slice(1, -1).join(' ');
-  const kind = (() => {
-    if (r.conclusion === 'cancelled' && clean.trim() === '') return 'infra';
-    return classifyStep(step, clean);
-  })();
-  let evidence = step.trim() || '';
-  if (kind === 'infra') evidence = (evidence || 'no steps ran') + ' (cancelled, capacity or runner loss)';
-  classified[kind] += 1;
-  lines.push(`red run ${r.id} sha=${r.sha} branch=${r.branch} event=${r.event} conclusion=${r.conclusion} kind=${kind} evidence=${evidence}`);
 }
 
-console.log(`window since ${since.slice(0, 10)}: runs=${runs.length} uniqueSha=${rows.length}`);
-console.log(`push on main green first attempt: ${greenFirstPush.length}/${pushes.length}`);
-console.log(`all non-dependabot commits green first attempt: ${greenFirst.length}/${ours.length} (${Math.round((100 * greenFirst.length) / Math.max(1, ours.length))}%, this-round ≈ 52% target)`);
-console.log(`commits needing attempt>1: ${ours.filter((r) => r.attempt > 1).length}`);
-console.log(`dependabot update runs: ${dependabot.length}`);
-console.log(`red runs (non-dependabot): ${red.length} -> code=${classified.code} infra=${classified.infra} unknown=${classified.unknown}`);
-for (const line of lines) console.log(line);
-console.log('\nsha | branch | event | attempt | conclusion');
-for (const r of rows) console.log(`${r.sha} | ${r.branch} | ${r.event} | ${r.attempt} | ${r.conclusion}`);
+const stats = computeStats(runs, { since, sinceC20, evidence });
+
+console.log(`window since ${since.slice(0, 10)}: runs=${stats.runs} uniqueSha=${stats.uniqueSha}`);
+console.log(`push on main (CI workflow) green first attempt: ${stats.pushGreen}/${stats.pushTotal}`);
+if (stats.missingCIPush.length > 0) {
+  console.log(`no CI push run for commit(s): ${stats.missingCIPush.join(', ')}`);
+}
+console.log(`our commits green first attempt: ${stats.greenFirst}/${stats.uniqueSha} (${Math.round((100 * stats.greenFirst) / Math.max(1, stats.uniqueSha))}%)`);
+console.log(`pending runs (conclusion=null, excluded from sample): ${stats.pending}`);
+console.log(`dependabot update runs (separated): ${stats.dependabot}`);
+console.log(`red runs (ours): classified code=${stats.classified.code} infra=${stats.classified.infra} unknown=${stats.classified.unknown}`);
+if (stats.sinceC20Stats) {
+  console.log(`from C20 (d8233ba) since ${sinceC20.slice(0, 10)}: green=${stats.sinceC20Stats.greenFirst}/${stats.sinceC20Stats.commits}`);
+}
+for (const line of stats.redLines) console.log(line);
