@@ -1,0 +1,38 @@
+window since 2026-11-17: runs=125 uniqueSha=80
+push on main (CI workflow) green first attempt: 21/25
+our commits green first attempt: 43/80 (54%)
+pending runs (conclusion=null, excluded from sample): 0
+dependabot update runs (separated): 44
+red runs (ours): classified code=12 infra=2 unknown=17
+from C20 (d8233ba) since 2026-11-19: green=22/32
+red run 44550581392 sha=96c1547 branch=fix/c20-smoke-budget-truth event=pull_request conclusion=failure kind=code evidence=Run Tests
+red run 44505928291 sha=8363c5b branch=main event=push conclusion=failure kind=unknown evidence=UNKNOWN STEP
+red run 44489508106 sha=e7349c0 branch=ci-c19-budget-truth event=pull_request conclusion=failure kind=unknown evidence=UNKNOWN STEP
+red run 44477669867 sha=5717fb9 branch=c18-dev-loop event=pull_request conclusion=failure kind=code evidence=Product smoke with perf budgets
+red run 44476943577 sha=2d1cf0f branch=c18-dev-loop event=pull_request conclusion=failure kind=code evidence=Typecheck
+red run 44473743971 sha=b763f61 branch=c18-dev-loop event=pull_request conclusion=failure kind=unknown evidence=UNKNOWN STEP
+red run 44459910287 sha=2f9918f branch=ci-main-fixes event=pull_request conclusion=failure kind=code evidence=Product smoke with perf budgets
+red run 44451261077 sha=640dc1a branch=fix/c17-honest-measurement event=pull_request conclusion=failure kind=code evidence=Typecheck
+red run 44307492047 sha=b09fea1 branch=feat/c15-q4-stale event=pull_request conclusion=failure kind=code evidence=Product smoke with perf budgets
+red run 44306115093 sha=174a588 branch=feat/c15-q4-stale event=pull_request conclusion=failure kind=code evidence=Product smoke with perf budgets
+red run 44304344459 sha=8dddae3 branch=feat/c15-q4-stale event=pull_request conclusion=failure kind=code evidence=Run Tests
+red run 44303476138 sha=5ba8093 branch=feat/c15-q4-stale event=pull_request conclusion=failure kind=unknown evidence=UNKNOWN STEP
+red run 44299640069 sha=5235424 branch=feat/c15-q2-q3 event=pull_request conclusion=failure kind=code evidence=Check low-priority keys in schedule artifacts
+red run 44297272360 sha=c68c674 branch=feat/c15-q2-q3 event=pull_request conclusion=failure kind=code evidence=Product smoke under 1 GiB
+red run 44294930936 sha=d7c79ef branch=feat/c15-q2-q3 event=pull_request conclusion=failure kind=code evidence=Product smoke under 1 GiB
+red run 44215522637 sha=b760ac7 branch=feat/c13-light-mode-fix event=pull_request conclusion=failure kind=unknown evidence=UNKNOWN STEP
+red run 44142540329 sha=6f8163b branch=main event=push conclusion=failure kind=infra evidence=no steps ran (capacity or runner loss)
+red run 44133730276 sha=a2aca43 branch=feat/c10-privacy-readme event=pull_request conclusion=failure kind=code evidence=Build
+red run 44131710704 sha=d0dc819 branch=feat/c10-privacy-readme event=pull_request conclusion=failure kind=unknown evidence=UNKNOWN STEP
+red run 44127217529 sha=2e66835 branch=feat/c10-privacy-readme event=pull_request conclusion=failure kind=unknown evidence=UNKNOWN STEP
+red run 44126775719 sha=125de47 branch=feat/c10-privacy-readme event=pull_request conclusion=failure kind=unknown evidence=UNKNOWN STEP
+red run 44124982548 sha=7d70478 branch=feat/c10-privacy-readme event=pull_request conclusion=failure kind=unknown evidence=UNKNOWN STEP
+red run 44123359686 sha=a7c8b8b branch=feat/c10-privacy-readme event=pull_request conclusion=failure kind=unknown evidence=UNKNOWN STEP
+red run 44122700205 sha=7dc90ca branch=feat/c10-privacy-readme event=pull_request conclusion=failure kind=unknown evidence=UNKNOWN STEP
+red run 44120719201 sha=c30e4dd branch=feat/c10-privacy-readme event=pull_request conclusion=failure kind=unknown evidence=UNKNOWN STEP
+red run 44118888046 sha=c790331 branch=feat/c10-privacy-readme event=pull_request conclusion=failure kind=unknown evidence=UNKNOWN STEP
+red run 44118057285 sha=845b574 branch=feat/c10-privacy-readme event=pull_request conclusion=failure kind=unknown evidence=UNKNOWN STEP
+red run 44116291396 sha=4b494bd branch=feat/c10-privacy-readme event=pull_request conclusion=failure kind=unknown evidence=UNKNOWN STEP
+red run 44114609584 sha=d9892c3 branch=feat/c10-privacy-readme event=pull_request conclusion=failure kind=unknown evidence=UNKNOWN STEP
+red run 44110871903 sha=9982739 branch=feat/c10-privacy-readme event=pull_request conclusion=failure kind=infra evidence=no steps ran (capacity or runner loss)
+red run 44070093742 sha=be49d4c branch=feat/c9-release-v0.1.0 event=pull_request conclusion=failure kind=unknown evidence=UNKNOWN STEP

@@ -1,0 +1,21 @@
+run=44699916948 attempt=1 sha=44406af conclusion=success
+  success   ok      security audit
+  success   ok      footprint (macos-latest)
+  success   ok      weak-linux (node 24)
+  success   ok      verify (macos-latest, node 22)
+  success   ok      ui (ubuntu-latest)
+  success   ok      weak-linux (node 22)
+  success   ok      verify (windows-latest, node 22)
+  success   ok      footprint (windows-latest)
+  success   ok      verify (windows-11-arm, node 22)
+  success   ok      verify (ubuntu-24.04-arm, node 22)
+  success   ok      verify (macos-latest, node 24)
+  success   ok      slow tests (ubuntu-latest)
+  success   ok      verify (windows-latest, node 24)
+  success   ok      footprint (ubuntu-latest)
+  success   ok      verify (ubuntu-24.04-arm, node 24)
+  success   ok      verify (ubuntu-latest, node 24)
+  success   ok      verify (ubuntu-latest, node 22)
+  failure   masked  verify (windows-11-arm, node 24)
+
+MASKED (continue-on-error, not counted): verify (windows-11-arm, node 24)

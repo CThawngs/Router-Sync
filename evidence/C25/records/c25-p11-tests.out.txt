@@ -1,0 +1,12 @@
+▶ C25 P1.1: masked-job regex matches ci.yml continue-on-error jobs
+  ✔ MASKED_JOB_NAME_RE in ci-watch.mjs matches the expanded ARM job names in ci.yml (3.1147ms)
+  ✔ summarize still marks the ARM job masked and the other jobs not (6.2299ms)
+✔ C25 P1.1: masked-job regex matches ci.yml continue-on-error jobs (10.5659ms)
+ℹ tests 2
+ℹ suites 1
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 114.2384

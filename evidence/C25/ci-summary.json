@@ -1,0 +1,16 @@
+{
+  "mergedPR": 31,
+  "mergeCommit": "430846591393634dc51d4f7b74382ded6d4f731a",
+  "ciAfterMerge": {
+    "id": 44701424568,
+    "conclusion": "success",
+    "name": "CI",
+    "createdAt": "2026-11-20T08:18:00Z"
+  },
+  "prHeadRun": {
+    "id": 44699916948,
+    "conclusion": "success",
+    "note": "17/18 checks pass; verify(windows-11-arm,node24) allowed-fail"
+  },
+  "generatedAt": "2026-11-20T14:25:10.152Z"
+}
