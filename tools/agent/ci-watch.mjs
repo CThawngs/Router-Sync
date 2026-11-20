@@ -72,17 +72,31 @@ export function classifyStep(stepName, log) {
   return classifyLog(text) ? 'infra' : 'code';
 }
 
-export function classifyJob(name, conclusion, log) {
+/** First failing step name from a job's step list, or '' when there is none. */
+export function failedStepNames(job) {
+  return (job.steps ?? []).filter((s) => s.conclusion === 'failure').map((s) => s.name);
+}
+
+/** Extract the step name from the first column of a gh log line: job\tstep\ttimestamp. */
+export function stepNameFromLog(text) {
+  const line = (text ?? '').split('\n')[0] ?? '';
+  return line.split('\t').slice(1, -1).join(' ').trim();
+}
+
+/** Jobs whose conclusion is neither success nor skipped but nothing ever ran. */
+function noStepsRan(job) {
+  const steps = job.steps ?? [];
+  return steps.length === 0 || steps.every((s) => s.conclusion === 'skipped' || s.conclusion === 'never_executed');
+}
+
+export function classifyJob(name, conclusion, log, runConclusion) {
   if (conclusion === 'success') return { job: name, conclusion, kind: 'ok', evidence: null };
   if (conclusion === 'skipped') return { job: name, conclusion, kind: 'skipped', evidence: null };
-  const infra = classifyLog(log ?? '');
-  return {
-    job: name,
-    conclusion,
-    kind: infra ? 'infra' : 'code',
-    evidence: infra,
-    tail: maskText((log ?? '').split('\n').slice(-12).join('\n')),
-  };
+  if (conclusion === 'cancelled') {
+    return { job: name, conclusion, kind: 'infra', evidence: 'no steps ran (capacity or runner loss)', tail: maskText((log ?? '').split('\n').slice(-10).join('\n')) };
+  }
+  const kind = classifyStep(stepNameFromLog(log), log);
+  return { job: name, conclusion, kind: kind === 'infra' ? 'infra' : 'code', evidence: kind === 'infra' ? classifyLog(log) : null, tail: maskText((log ?? '').split('\n').slice(-10).join('\n')) };
 }
 
 function gh(args) {
@@ -124,18 +138,39 @@ function failedStepLog(runId, attempt) {
   }
 }
 
-export function summarize(jobs, logs) {
+function jobLog(runId, jobId) {
+  try {
+    return gh(['run', 'view', String(runId), '--job', String(jobId), '--log']);
+  } catch {
+    return '';
+  }
+}
+
+export function summarize(jobs, logs, runConclusion) {
   return jobs.map((job) => {
     if (job.conclusion === 'success' || job.conclusion === 'skipped') {
       return { job: job.name, conclusion: job.conclusion, kind: job.conclusion === 'success' ? 'ok' : 'skipped', evidence: null };
     }
-    const log = logs[job.database_id] ?? '';
-    const infra = classifyLog(log);
+    const log = logs[job.id] ?? logs[job.database_id] ?? '';
+    let kind;
+    let evidence;
+    let stepName = failedStepNames(job)[0] ?? stepNameFromLog(log);
+    if (job.conclusion === 'cancelled' && noStepsRan(job)) {
+      // A capacity or runner-loss cancel: the job never executed, that is infra.
+      kind = 'infra';
+      evidence = 'no steps ran (capacity or runner loss)';
+    } else {
+      kind = classifyStep(stepName, log);
+      if (kind === 'infra') evidence = classifyLog(log);
+    }
+    // continue-on-error jobs (windows-11-arm) do not fail the run: they are
+    // reported as masked, not as code.
+    if (job.continue_on_error && runConclusion !== 'success') kind = 'masked';
     return {
       job: job.name,
       conclusion: job.conclusion,
-      kind: infra ? 'infra' : 'code',
-      evidence: infra,
+      kind,
+      evidence,
       tail: maskText(log.split('\n').slice(-10).join('\n')),
     };
   });
@@ -143,8 +178,8 @@ export function summarize(jobs, logs) {
 
 export function exitCodeFor(results) {
   const failed = results.filter((r) => r.kind === 'code' || r.kind === 'infra');
-  if (failed.length === 0) return 0;
-  return failed.some((r) => r.kind === 'code') ? 11 : 10;
+  if (failed.some((r) => r.kind === 'code')) return 11;
+  return failed.length > 0 ? 10 : 0;
 }
 
 export async function watch(options = {}) {
@@ -173,18 +208,23 @@ export async function watch(options = {}) {
   const logs = {};
   for (const job of jobs) {
     if (job.conclusion === 'failure' || job.conclusion === 'cancelled') {
-      logs[job.database_id] = failedStepLog(run.id, run.run_attempt);
+      logs[job.id] = jobLog(run.id, job.id) || failedStepLog(run.id, run.run_attempt);
     }
   }
 
-  const results = summarize(jobs, logs);
+  const results = summarize(jobs, logs, run.conclusion);
   const code = exitCodeFor(results);
   const infra = results.filter((r) => r.kind === 'infra');
+  const masked = results.filter((r) => r.kind === 'masked');
   const failed = results.filter((r) => r.kind === 'code');
 
   log(`run=${run.id} attempt=${run.run_attempt} sha=${sha.slice(0, 7)} conclusion=${run.conclusion}`);
   for (const r of results) {
     log(`  ${r.conclusion.padEnd(9)} ${r.kind.padEnd(7)} ${r.job}${r.evidence ? ` [${r.evidence}]` : ''}`);
+  }
+  if (masked.length > 0) {
+    log('');
+    log(`MASKED (continue-on-error, not counted): ${masked.map((r) => r.job).join(', ')}`);
   }
   if (infra.length > 0) {
     log('');
