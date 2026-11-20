@@ -87,3 +87,36 @@ describe('C21 Y3: official source conclusions', () => {
     expect(result.conclusion).toBe('NO-OFFICIAL-SOURCE');
   });
 });
+
+describe('C26 D5: HF and NVIDIA catalog sources', () => {
+  const HF = {
+    provider: 'hf', label: 'Hugging Face public models API',
+    url: 'https://huggingface.co/api/models', kind: 'model-list-api' as const,
+  };
+  const NVIDIA = {
+    provider: 'nvidia', label: 'NVIDIA models (models.dev community catalog)',
+    url: 'https://models.dev/api.json', kind: 'catalog-api' as const,
+  };
+
+  it('resolves the two highest-row public providers; nvidia is a catalog, not official', () => {
+    expect(resolveOfficialSource('hf')?.url).toBe(HF.url);
+    const nvidia = resolveOfficialSource('nvidia');
+    expect(nvidia?.url).toBe(NVIDIA.url);
+    expect(nvidia?.kind).toBe('catalog-api');
+    expect(nvidia?.kind).not.toBe('official');
+  });
+
+  it('extracts Hugging Face bare-array ids and models.dev catalog ids', () => {
+    expect([...extractModelIds(HF, [{ id: 'org/model-a' }])]).toEqual(['org/model-a']);
+    const ids = extractModelIds(NVIDIA, { nvidia: { models: { 'nvidia/model-b': {} } } });
+    expect([...ids]).toEqual(['nvidia/model-b']);
+  });
+
+  it('reports UPSTREAM-UNREACHABLE on a network error for the new sources', async () => {
+    clearOfficialCache();
+    for (const provider of ['hf', 'nvidia']) {
+      const result = await checkOfficial(provider, 'vendor/model-a', { fetchImpl: failingFetch(), now: fixedNow });
+      expect(result.conclusion).toBe('UPSTREAM-UNREACHABLE');
+    }
+  });
+});
