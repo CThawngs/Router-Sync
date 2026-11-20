@@ -1,0 +1,19 @@
+(node:35888) [DEP0190] DeprecationWarning: Passing args to a child process with shell option true can lead to security vulnerabilities, as the arguments are not escaped, only concatenated.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+▶ C25 B1: prepush test:related catches a committed red test
+  ✔ a committed red vitest file makes test:related exit non-zero (2138.82ms)
+  ✔ a docs-only diff selects nothing and exits 0 (no false block) (578.6523ms)
+  ✔ a committed change to a source module selects the tests that import it (related wiring) (671.1349ms)
+✔ C25 B1: prepush test:related catches a committed red test (3389.7122ms)
+▶ C26 D1: prepush chain really invokes the RAM-gated related tests
+  ✔ prepush contains lint, typecheck:changed, heavy test:related, validate-workflows in order (0.7224ms)
+  ✔ test:related script goes through heavy.mjs (the RAM gate) (0.1652ms)
+✔ C26 D1: prepush chain really invokes the RAM-gated related tests (1.8507ms)
+ℹ tests 5
+ℹ suites 2
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 3479.798

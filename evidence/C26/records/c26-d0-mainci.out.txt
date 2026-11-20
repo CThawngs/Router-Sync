@@ -1,0 +1,32 @@
+run=44775807066 attempt=1 sha=0271e22 conclusion=failure
+  success   ok      slow tests (ubuntu-latest)
+  success   ok      security audit
+  success   ok      verify (windows-11-arm, node 22)
+  success   ok      weak-linux (node 24)
+  success   ok      footprint (windows-latest)
+  success   ok      footprint (ubuntu-latest)
+  success   ok      ui (ubuntu-latest)
+  success   ok      verify (windows-latest, node 24)
+  success   ok      weak-linux (node 22)
+  success   ok      footprint (macos-latest)
+  success   ok      verify (ubuntu-24.04-arm, node 24)
+  failure   code    verify (windows-latest, node 22)
+  success   ok      verify (ubuntu-latest, node 22)
+  success   ok      verify (macos-latest, node 22)
+  success   ok      verify (ubuntu-latest, node 24)
+  success   ok      verify (macos-latest, node 24)
+  success   ok      verify (ubuntu-24.04-arm, node 22)
+  success   ok      verify (windows-11-arm, node 24)
+
+CODE: verify (windows-latest, node 22)
+--- tail verify (windows-latest, node 22) ---
+verify (windows-latest, node 22)	Post Checkout code	2026-11-20T16:44:50.0761596Z [command]"C:\Program Files\Git\bin\git.exe" config --local --get-all includeif.gitdir:/github/workspace/.git.path
+verify (windows-latest, node 22)	Post Checkout code	2026-11-20T16:44:50.1030737Z /github/runner_temp/git-credentials-1357ea28-bb68-4bea-9862-e09444a716b6.config
+verify (windows-latest, node 22)	Post Checkout code	2026-11-20T16:44:50.1063803Z [command]"C:\Program Files\Git\bin\git.exe" config --local --unset includeif.gitdir:/github/workspace/.git.path \/github\/runner_temp\/git\-credentials\-1357ea28\-bb68\-4bea\-9862\-e09444a716b6\.config
+verify (windows-latest, node 22)	Post Checkout code	2026-11-20T16:44:50.1357826Z [command]"C:\Program Files\Git\bin\git.exe" config --local --get-all includeif.gitdir:/github/workspace/.git/worktrees/*.path
+verify (windows-latest, node 22)	Post Checkout code	2026-11-20T16:44:50.1614459Z /github/runner_temp/git-credentials-1357ea28-bb68-4bea-9862-e09444a716b6.config
+verify (windows-latest, node 22)	Post Checkout code	2026-11-20T16:44:50.1655441Z [command]"C:\Program Files\Git\bin\git.exe" config --local --unset includeif.gitdir:/github/workspace/.git/worktrees/*.path \/github\/runner_temp\/git\-credentials\-1357ea28\-bb68\-4bea\-9862\-e09444a716b6\.config
+verify (windows-latest, node 22)	Post Checkout code	2026-11-20T16:44:50.1956060Z [command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "git config --local --show-origin --name-only --get-regexp remote.origin.url"
+verify (windows-latest, node 22)	Post Checkout code	2026-11-20T16:44:50.9188790Z Removing credentials config 'D:\a\_temp\git-credentials-1357ea28-bb68-4bea-9862-e09444a716b6.config'
+verify (windows-latest, node 22)	Complete job	﻿2026-11-20T16:44:50.9358991Z Cleaning up orphan processes
+

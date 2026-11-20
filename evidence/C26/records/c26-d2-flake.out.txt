@@ -1,0 +1,11 @@
+flake-hunt (ubuntu-latest, node 24)	Repeat at-98 and collect red diagnostics	2026-11-20T15:34:35.2805390Z ^[[36;1m    echo "FLAKE-HUNT RED iteration=$i status=$status"^[[0m
+flake-hunt (ubuntu-latest, node 24)	Repeat at-98 and collect red diagnostics	2026-11-20T15:34:35.2807089Z ^[[36;1mecho "FLAKE-HUNT SUMMARY os=ubuntu-latest node=24 iterations=$ITERATIONS red=$red"^[[0m
+flake-hunt (ubuntu-latest, node 24)	Repeat at-98 and collect red diagnostics	2026-11-20T15:35:43.7722953Z FLAKE-HUNT SUMMARY os=ubuntu-latest node=24 iterations=50 red=0
+flake-hunt (windows-11-arm, node 24)	Repeat at-98 and collect red diagnostics	2026-11-20T15:36:22.2288459Z ^[[36;1m    echo "FLAKE-HUNT RED iteration=$i status=$status"^[[0m
+flake-hunt (windows-11-arm, node 24)	Repeat at-98 and collect red diagnostics	2026-11-20T15:36:22.2290425Z ^[[36;1mecho "FLAKE-HUNT SUMMARY os=windows-11-arm node=24 iterations=$ITERATIONS red=$red"^[[0m
+flake-hunt (windows-11-arm, node 24)	Repeat at-98 and collect red diagnostics	2026-11-20T15:37:07.6819879Z ^[[31m^[[1mAssertionError^[[22m: expected 'db-only (degraded)' to be 'full' // Object.is equality^[[39m
+flake-hunt (windows-11-arm, node 24)	Repeat at-98 and collect red diagnostics	2026-11-20T15:37:07.6854965Z ##[error]AssertionError: expected 'db-only (degraded)' to be 'full' // Object.is equality
+flake-hunt (windows-11-arm, node 24)	Repeat at-98 and collect red diagnostics	2026-11-20T15:37:07.6864960Z FLAKE-HUNT RED iteration=9 status=1
+flake-hunt (windows-11-arm, node 24)	Repeat at-98 and collect red diagnostics	2026-11-20T15:37:07.8673023Z ^[[31m^[[1mAssertionError^[[22m: expected 'db-only (degraded)' to be 'full' // Object.is equality^[[39m
+flake-hunt (windows-11-arm, node 24)	Repeat at-98 and collect red diagnostics	2026-11-20T15:37:07.8678382Z ##[error]AssertionError: expected 'db-only (degraded)' to be 'full' // Object.is equality
+flake-hunt (windows-11-arm, node 24)	Repeat at-98 and collect red diagnostics	2026-11-20T15:39:56.6779778Z FLAKE-HUNT SUMMARY os=windows-11-arm node=24 iterations=50 red=1

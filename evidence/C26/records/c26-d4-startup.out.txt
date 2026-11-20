@@ -1,0 +1,29 @@
+=== version ===
+command=version samples=20
+commit | p50 | p95 | n
+add0510 | p50=476.0ms | p95=780.8ms | n=20
+8363c5b | p50=497.5ms | p95=770.3ms | n=20
+f3ed81e | p50=421.3ms | p95=733.4ms | n=20
+d8233ba | p50=590.7ms | p95=977.1ms | n=20
+93d1d84 | p50=576.3ms | p95=756.3ms | n=20
+4308465 | p50=566.1ms | p95=671.7ms | n=20
+P50-JUMP d8233ba: 421.3 -> 590.7 (+40.2%)
+=== scan ===
+command=scan samples=20
+commit | p50 | p95 | n
+add0510 | p50=860.6ms | p95=1001.9ms | n=20
+8363c5b | p50=811.5ms | p95=863.7ms | n=20
+f3ed81e | p50=724.2ms | p95=931.2ms | n=20
+d8233ba | p50=913.3ms | p95=1299.2ms | n=20
+93d1d84 | p50=892.2ms | p95=1176.6ms | n=20
+4308465 | p50=892.2ms | p95=1082.0ms | n=20
+P50-JUMP d8233ba: 724.2 -> 913.3 (+26.1%)
+=== floor ===
+command=floor samples=20
+commit | p50 | p95 | n
+add0510 | p50=54.5ms | p95=69.7ms | n=20
+8363c5b | p50=51.1ms | p95=58.6ms | n=20
+f3ed81e | p50=52.0ms | p95=55.5ms | n=20
+d8233ba | p50=50.1ms | p95=57.1ms | n=20
+93d1d84 | p50=51.8ms | p95=59.4ms | n=20
+4308465 | p50=50.3ms | p95=57.9ms | n=20

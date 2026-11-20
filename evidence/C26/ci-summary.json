@@ -1,0 +1,40 @@
+{
+  "prs": [
+    {
+      "number": 32,
+      "mergeCommit": "7408d641af6f9624733f2a41f6cf3cb3f6d0f1e4",
+      "headRun": 44758736134,
+      "conclusion": "success"
+    },
+    {
+      "number": 33,
+      "headRun": 44763180840,
+      "conclusion": "success"
+    },
+    {
+      "number": 34,
+      "headRun": 44766142846,
+      "conclusion": "success"
+    },
+    {
+      "number": 35,
+      "headRun": 44773811831,
+      "conclusion": "success"
+    }
+  ],
+  "mainTip": "0271e22",
+  "mainRunAfterMerge": {
+    "id": 44775807066,
+    "conclusion": "failure",
+    "failingJob": "verify (windows-latest, node 22)",
+    "cause": "Hook timed out 10000ms at at-108.test.ts:39 and at-143-combo-strategy.test.ts:235 (baseline flake; main f3410b9 also failure)"
+  },
+  "flakeHunt": {
+    "run": 44764609302,
+    "armRed": 1,
+    "armSamples": 50,
+    "ubuntuRed": 0,
+    "ubuntuSamples": 50
+  },
+  "generatedAt": "2026-11-20T17:01:23.698Z"
+}
