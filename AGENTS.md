@@ -139,7 +139,28 @@ To build or test another revision:
   `pnpm install --frozen-lockfile` there; or
 - compare with `git diff` and reason from the source instead of building.
 
-## 7. Troubleshooting
+## 7. CI/CD: definition of done
+
+1. Before you push: `pnpm prepush` is green. Never push to "see what CI says".
+2. One push per meaningful change; squash small commits. At most one agent PR open
+   at a time; close a superseded PR with the reason.
+3. After every push: run `node tools/agent/ci-watch.mjs` until there is a verdict.
+   Do not start other work while a run is pending or red.
+4. Infra red (exit 10): `gh run rerun <id> --failed` at most once per head, and
+   record the evidence in the PR. Red again, or a code red (exit 11): fix the
+   cause; never rerun to get green.
+5. Forbidden: adding `continue-on-error`, disabling a job, raising a budget,
+  deleting a test, or weakening a guard to get past CI. Budgets change only through
+  `tools/ci/build-budgets.mjs` with the stated data.
+6. Merge only when the final head is green on all five OS; ARM is reported
+  separately. The squash title must describe the diff. After merging, check the
+  run on main and report it.
+7. Bump an action or dependency only through a Dependabot group or a task that
+  names it; read the release notes and confirm the action's `runs.using`.
+8. Every REPORT has a CI section: PR, head sha, run id, attempt count, infra
+  incidents with evidence, and the first-attempt green rate.
+
+## 8. Troubleshooting
 
 | Symptom | Cause | What to do |
 |---|---|---|

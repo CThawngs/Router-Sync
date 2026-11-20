@@ -35,7 +35,9 @@
     "ui:dev": "pnpm --filter @routersync/ui dev",
     "ui:build": "pnpm --filter @routersync/ui build",
     "ui:test": "pnpm --filter @routersync/ui test",
-    "ui:preview": "pnpm --filter @routersync/ui preview"
+    "ui:preview": "pnpm --filter @routersync/ui preview",
+    "prepush": "pnpm lint && pnpm typecheck:changed && pnpm test:changed && node tools/ci/validate-workflows.mjs",
+    "hooks:install": "node tools/ci/install-hooks.mjs"
   },
   "packageManager": "pnpm@10.20.0",
   "devDependencies": {

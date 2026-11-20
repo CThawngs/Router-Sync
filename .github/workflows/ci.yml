@@ -34,7 +34,7 @@ jobs:
         uses: pnpm/action-setup@v6.1.1
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4.1.0
+        uses: actions/setup-node@v5.0.0
         with:
           node-version: ${{ matrix.node }}
           cache: pnpm
@@ -124,7 +124,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7.0.1
       - uses: pnpm/action-setup@v6.1.1
-      - uses: actions/setup-node@v4.1.0
+      - uses: actions/setup-node@v5.0.0
         with:
           node-version: 24
           cache: pnpm
@@ -142,7 +142,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7.0.1
       - uses: pnpm/action-setup@v6.1.1
-      - uses: actions/setup-node@v4.1.0
+      - uses: actions/setup-node@v5.0.0
         with:
           node-version: 24
           cache: pnpm
@@ -150,7 +150,7 @@ jobs:
       - run: pnpm build
       - name: Pack, install, measure
         run: node tools/ci/footprint.mjs
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6.0.0
         with:
           name: footprint-${{ matrix.os }}
           path: footprint.json
@@ -206,7 +206,7 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@v6.1.1
       - name: Setup Node.js
-        uses: actions/setup-node@v4.1.0
+        uses: actions/setup-node@v5.0.0
         with:
           node-version: 24
           cache: pnpm
@@ -231,7 +231,7 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@v6.1.1
       - name: Setup Node.js
-        uses: actions/setup-node@v4.1.0
+        uses: actions/setup-node@v5.0.0
         with:
           node-version: 24
           cache: pnpm

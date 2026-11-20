@@ -50,7 +50,8 @@ export default defineConfig({
         test: {
           name: 'root-tools',
           include: ['test/**/*.{test,spec}.{js,mjs,ts}'],
-          exclude: ['**/node_modules/**', 'test/e2e/**'],
+          // node:test suites run under `node --test`; vitest cannot host them.
+          exclude: ['**/node_modules/**', 'test/e2e/**', '**/*.node.test.mjs'],
           environment: 'node',
           testTimeout: 20000,
           setupFiles: [setup],
