@@ -67,26 +67,34 @@ const greenFirstPush = pushes.filter((r) => r.attempt === 1 && r.conclusion === 
 // Classify red runs (bounded, to keep the tool quick).
 const red = ours.filter((r) => ['failure', 'cancelled', 'timed_out'].includes(r.conclusion));
 const classified = { code: 0, infra: 0, unknown: 0 };
+const lines = [];
 for (const r of red.slice(0, 40)) {
   let log = '';
   try {
     log = gh(['run', 'view', r.id, '--attempt', '1', '--log-failed']);
   } catch {
     classified.unknown += 1;
+    lines.push(`red run ${r.id} sha=${r.sha} branch=${r.branch} event=${r.event} conclusion=${r.conclusion} kind=unknown (log fetch failed)`);
     continue;
   }
   const clean = log.replace(/\u001b\[[0-9;]*m/g, '');
   const step = (clean.split('\n')[0] ?? '').split('\t').slice(1, -1).join(' ');
-  const kind = classifyStep(step, clean);
-  if (kind === 'infra') classified.infra += 1;
-  else classified.code += 1;
+  const kind = (() => {
+    if (r.conclusion === 'cancelled' && clean.trim() === '') return 'infra';
+    return classifyStep(step, clean);
+  })();
+  let evidence = step.trim() || '';
+  if (kind === 'infra') evidence = (evidence || 'no steps ran') + ' (cancelled, capacity or runner loss)';
+  classified[kind] += 1;
+  lines.push(`red run ${r.id} sha=${r.sha} branch=${r.branch} event=${r.event} conclusion=${r.conclusion} kind=${kind} evidence=${evidence}`);
 }
 
 console.log(`window since ${since.slice(0, 10)}: runs=${runs.length} uniqueSha=${rows.length}`);
 console.log(`push on main green first attempt: ${greenFirstPush.length}/${pushes.length}`);
-console.log(`all non-dependabot commits green first attempt: ${greenFirst.length}/${ours.length}`);
+console.log(`all non-dependabot commits green first attempt: ${greenFirst.length}/${ours.length} (${Math.round((100 * greenFirst.length) / Math.max(1, ours.length))}%, this-round ≈ 52% target)`);
 console.log(`commits needing attempt>1: ${ours.filter((r) => r.attempt > 1).length}`);
 console.log(`dependabot update runs: ${dependabot.length}`);
 console.log(`red runs (non-dependabot): ${red.length} -> code=${classified.code} infra=${classified.infra} unknown=${classified.unknown}`);
+for (const line of lines) console.log(line);
 console.log('\nsha | branch | event | attempt | conclusion');
 for (const r of rows) console.log(`${r.sha} | ${r.branch} | ${r.event} | ${r.attempt} | ${r.conclusion}`);
