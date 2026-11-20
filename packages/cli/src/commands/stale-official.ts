@@ -36,6 +36,21 @@ export const OFFICIAL_SOURCES: Readonly<Record<string, OfficialSource>> = {
     url: 'https://openrouter.ai/api/v1/models',
     kind: 'model-list-api',
   },
+  // C26 D5: the two public providers with the most rows in the 9Router DB
+  // (hf=936, nvidia=270). NVIDIA has no official no-key model list, so its
+  // community catalog is labelled `catalog`, never `official`.
+  hf: {
+    provider: 'hf',
+    label: 'Hugging Face public models API',
+    url: 'https://huggingface.co/api/models',
+    kind: 'model-list-api',
+  },
+  nvidia: {
+    provider: 'nvidia',
+    label: 'NVIDIA models (models.dev community catalog)',
+    url: 'https://models.dev/api.json',
+    kind: 'catalog-api',
+  },
 };
 
 /** Alias prefixes that resolve to the same upstream catalog. */
@@ -62,6 +77,22 @@ export function extractModelIds(source: OfficialSource, payload: unknown): Set<s
   const record = payload as Record<string, unknown>;
   if (source.url.endsWith('/models') && Array.isArray(record?.['data'])) {
     for (const entry of record['data'] as Array<Record<string, unknown>>) {
+      const id = entry?.['id'];
+      if (typeof id === 'string') ids.add(normalizeModelId(id));
+    }
+  }
+  // C26 D5: Hugging Face returns a bare array of { id }; models.dev returns
+  // { <provider>: { models: { <id>: {...} } } }.
+  if (source.kind === 'catalog-api' && record && typeof record === 'object') {
+    for (const providerEntry of Object.values(record)) {
+      const models = (providerEntry as Record<string, unknown>)?.['models'];
+      if (models && typeof models === 'object') {
+        for (const id of Object.keys(models)) ids.add(normalizeModelId(id));
+      }
+    }
+  }
+  if (Array.isArray(payload)) {
+    for (const entry of payload as Array<Record<string, unknown>>) {
       const id = entry?.['id'];
       if (typeof id === 'string') ids.add(normalizeModelId(id));
     }
