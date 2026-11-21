@@ -1,0 +1,2 @@
+đã ghi kế hoạch: evidence/C33/c33-combo-plan.json (9 combo)
+nhóm: REMOVE=54 MOVE-END=3 KEEP=24 FAST-ERROR=147 UNTESTED=3

@@ -1,0 +1,7 @@
+9Router-Agent-1	HANG-AFTER-USAGE	http=-	header=-ms	firstByte=-ms	total=300016ms	usageAt=45475ms	usage=gemini/gemini-4-hydrogen
+9Router-Agent-2	SLOW-OK	http=200	header=146223ms	firstByte=146226ms	total=146226ms	usageAt=40465ms	usage=groq/qwen/qwen3.8-27b
+9Router-Coder-2	SLOW-OK	http=200	header=156740ms	firstByte=156740ms	total=156740ms	usageAt=40836ms	usage=openrouter/baidu/ernie-5.5-flash-preview:free
+9Router-Coder-3	SLOW-OK	http=200	header=126918ms	firstByte=126918ms	total=126919ms	usageAt=45209ms	usage=openrouter/baidu/ernie-5.5-flash-preview:free
+9Router-Dev	SLOW-OK	http=200	header=175697ms	firstByte=175699ms	total=175699ms	usageAt=30133ms	usage=openrouter/baidu/ernie-5.5-flash-preview:free
+
+bắt đầu=2026-11-21T22:30:25.773Z tổng=5 HANG-AFTER-USAGE=1 SLOW-OK=4
