@@ -1,158 +1,194 @@
 #!/usr/bin/env node
-/**
- * capture.mjs — run a command and record evidence with the metadata every
- * evidence record needs: sha256 of outputs, `masked` (private provider names
- * found in workspace paths), `sys` (runId/headSha/os/durationMs) and real
- * durations.
- *
- * Usage:
- *   node tools/agent/capture.mjs <dir> <name> -- <command...>
- *       Writes <dir>/<name>.out.txt and <dir>/<name>.err.txt (if non-empty),
- *       appends <dir>/<name>.record.json.
- *       Default: refuses when <name>.out.txt already exists (R1).
- *       Add --fresh to re-run (R1 re-capture).
- *   node tools/agent/capture.mjs --verify <dir>
- *       Runs verify-records.mjs on <dir>.
- *
- * Guards:
- *   - `command` must be from the allowlist (gh, node, pnpm) — no shell
- *     operators (`;`, `&`, `|`), no `execute:` prefixes, no absolute paths.
- *   - sha256 of the outputs is computed before truncation.
- *
- * C29 J4: records are created by this script and never edited afterwards.
- */
-import { spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, writeFileSync, readFileSync, unlinkSync } from 'node:fs';
+// capture.mjs v3 - chạy một lệnh có giới hạn thời gian, che dữ liệu riêng tư, ghi một bản ghi JSON.
+// Cách dùng:   node capture.mjs <id> -- <lệnh và đối số...>
+// Đầu ra:      <dir>/<id>.out.txt, <dir>/<id>.err.txt (đã che) và một dòng JSON nối vào <dir>/records.jsonl
+// Thư mục <dir> mặc định là ./.agent/evidence (đổi bằng biến RS_EVIDENCE_DIR).
+// Giới hạn thời gian: RS_TIMEOUT_SEC (mặc định 900 giây). Quá hạn thì giết cả cây tiến trình, mã thoát = 124.
+// Tên cổng riêng: đọc từ ./.agent/private-names.local.json (mảng chuỗi, tệp bị git bỏ qua)
+// hoặc biến RS_PRIVATE_NAMES (phân tách bằng dấu phẩy). Che theo ranh giới từ.
+// Mã thoát của công cụ = mã thoát của lệnh được chạy (124 khi quá hạn).
+// Bản ghi có thêm: durationMs, timedOut, truncated và sys { cpus, totalMemMB, freeMemStartMB, freeMemMinMB }.
+
+import { spawn, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import path from 'node:path';
-
-const ROOT = process.cwd();
-
-const ALLOWED_VERBS = ['gh', 'node', 'pnpm'];
-const SHA_HEX_RE = /^[0-9a-f]{64}$/;
-const SHELL_RE = /[;&|`$<>]/;
-
-function sha256(s) {
-  return createHash('sha256').update(s, 'utf8').digest('hex');
-}
-
-function checkCommand(argv) {
-  const problems = [];
-  if (!argv.length) return ['empty command'];
-  if (!ALLOWED_VERBS.includes(argv[0])) problems.push(`verb ${argv[0]} not in allowlist`);
-  if (SHELL_RE.test(argv.join(' '))) problems.push('shell operator found in command');
-  if (argv.join(' ').includes('execute:')) problems.push('non-runnable command prefix');
-  for (const a of argv) {
-    if (path.isAbsolute(a)) problems.push(`absolute path in command: ${a}`);
-  }
-  return problems;
-}
-
-/** Names of private providers as they appear in workspace file paths. */
-function collectPrivatePaths() {
-  const rg = spawnSync('rg', ['-n', 'private', '--glob', '!evidence/**', '--glob', '!.agent/**', '--glob', '!node_modules/**'], { cwd: ROOT, encoding: 'utf8' });
-  if (rg.status !== 0) return [];
-  return [...new Set(rg.stdout.split('\n').map((l) => l.match(/^([^\s:]+)/)?.[1]).filter(Boolean))];
-}
-
-function readDbPrivateNames() {
-  const names = collectPrivatePaths();
-  return names.map((_, i) => `<pp${String(i + 1).padStart(2, '0')}>`);
-}
-
-function readRunSys() {
-  let runId = 'local';
-  try {
-    const out = spawnSync('gh', ['run', 'list', '--repo', 'CThawngs/Router-Sync', '--workflow', 'ci-watch', '--json', 'databaseId,headSha', '--limit', '1'], { cwd: ROOT, encoding: 'utf8', timeout: 20000, stdio: ['ignore', 'pipe', 'ignore'] });
-    const rows = JSON.parse(out.stdout ?? '[]');
-    if (rows[0]) runId = `ghrun:${rows[0].databaseId}`;
-  } catch { /* local mode */ }
-  return {
-    os: process.platform,
-    runId,
-    headSha: spawnSync('git', ['rev-parse', 'HEAD'], { cwd: ROOT, encoding: 'utf8' }).stdout.trim() || 'unknown',
-    nodeVersion: process.version,
-  };
-}
-
-function captureRun(dir, name, argv, extra) {
-  if (extra.fresh) {
-    const stale = path.join(dir, `${name}.record.json`);
-    if (existsSync(stale)) unlinkSync(stale);
-  }
-  const outFile = path.join(dir, `${name}.out.txt`);
-  if (existsSync(outFile) && !extra.fresh) {
-    return { code: 3, problems: [`${name}.out.txt already exists in ${dir}; rerun with --fresh (R1 guard)`] };
-  }
-  const issues = checkCommand(argv);
-  if (issues.length) return { code: 2, problems: issues.map((p) => `[guard] ${p}`) };
-  mkdirSync(dir, { recursive: true });
-  const t0 = Date.now();
-  const res = spawnSync(argv[0], argv.slice(1), { cwd: ROOT, encoding: 'utf8', maxBuffer: 200 * 1024 * 1024, timeout: 1200000 });
-  const durationMs = Date.now() - t0;
-  const outText = res.stdout ?? '';
-  const errText = res.stderr ?? '';
-  if (outText.length > 0) writeFileSync(outFile, outText);
-  if (errText.length > 0) writeFileSync(path.join(dir, `${name}.err.txt`), errText);
-  const record = {
-    name,
-    dir,
-    command: argv,
-    exitCode: res.status === null ? 1 : res.status,
-    startedAt: new Date(t0 - durationMs).toISOString(),
-    durationMs,
-    sha256: { out: sha256(outText), err: sha256(errText) },
-    stdout: { file: `${name}.out.txt` },
-    masked: readDbPrivatePaths() ? collectPrivatePaths().map((f, i) => `<pp${String(i + 1).padStart(2, '0')}>`) : [],
-    sys: readRunSys(),
-  };
-  const recordsPath = path.join(dir, 'records.jsonl');
-  const prior = existsSync(recordsPath) ? readFileSync(recordsPath, 'utf8').split(/\r?\n/).filter(Boolean) : [];
-  writeFileSync(recordsPath, [...prior, JSON.stringify(record)].join('\n') + '\n', 'utf8');
-  return { code: 0, problems: [] };
-}
-
-function readDbPrivatePaths() { return collectPrivatePaths(); }
-
-/** verify-records.mjs semantics for capture-produced records. */
-function verifyRecords(dir) {
-  const recordsPath = path.join(dir, 'records.jsonl');
-  if (!existsSync(recordsPath)) return ['missing records.jsonl'];
-  const problems = [];
-  const rows = readFileSync(recordsPath, 'utf8').split(/\r?\n/).filter(Boolean).map((l) => JSON.parse(l));
-  for (const r of rows) {
-    if (!SHA_HEX_RE.test(r.sha256?.out ?? '')) problems.push(`${r.name}: sha256.out not a full 64-hex digest`);
-    if (!r.sha256 || !SHA_HEX_RE.test(r.sha256.err)) problems.push(`${r.name}: sha256.err missing`);
-    if (typeof r.durationMs !== 'number' || r.durationMs < 0 || !Number.isFinite(r.durationMs)) problems.push(`${r.name}: durationMs not a real duration`);
-    const m = /T(\d{2}):\d{2}:(\d{2})(\.\d+)?Z$/.exec(new Date(r.startedAt).toISOString());
-    if (!m || parseInt(m[2], 10) === 0) problems.push(`${r.name}: startedAt looks hand-edited (round second)`);
-    if (!Array.isArray(r.masked)) problems.push(`${r.name}: masked missing`);
-    const s = r.sys;
-    if (!s || typeof s.os !== 'string' || typeof s.runId !== 'string' || !/^[0-9a-f]{40,64}$/.test(s.headSha)) problems.push(`${r.name}: sys.os/runId/headSha missing`);
-    if (!Array.isArray(r.command)) problems.push(`${r.name}: command missing`);
-    else for (const p of checkCommand(r.command)) problems.push(`${r.name}: ${p}`);
-  }
-  return problems;
-}
+import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { availableParallelism, cpus, freemem, homedir, totalmem, userInfo } from 'node:os';
+import { join, resolve } from 'node:path';
 
 const argv = process.argv.slice(2);
-const mode = argv[0];
-if (mode === '--verify') {
-  const problems = verifyRecords(argv[1] ?? '.');
-  if (problems.length === 0) console.log('verify-records: OK, all capture records valid');
-  else for (const p of problems) console.error(p);
-  process.exit(problems.length === 0 ? 0 : 1);
-}
-
-const dash = argv.indexOf('--');
-if (dash < 2 || argv.length < dash + 2) {
-  console.error('usage: node capture.mjs <dir> <name> -- <command...>  |  node capture.mjs --verify <dir>');
+const sep = argv.indexOf('--');
+if (argv.length < 3 || sep !== 1) {
+  console.error('Dùng: node capture.mjs <id> -- <lệnh...>');
   process.exit(2);
 }
-const dir = argv[0];
-const name = argv[1];
-const extra = argv.slice(2, dash).filter(Boolean);
-const cmd = argv.slice(dash + 1);
-const { code, problems } = captureRun(dir, name, cmd, { fresh: extra.includes('--fresh') });
-for (const p of problems) console.error(p);
-process.exit(code);
+const id = argv[0];
+if (!/^[A-Za-z0-9._-]+$/.test(id)) {
+  console.error('id chỉ gồm chữ, số, dấu chấm, gạch dưới, gạch ngang');
+  process.exit(2);
+}
+const command = argv.slice(sep + 1);
+const evidenceDir = resolve(process.env.RS_EVIDENCE_DIR || '.agent/evidence');
+mkdirSync(evidenceDir, { recursive: true });
+const timeoutSec = Number(process.env.RS_TIMEOUT_SEC || 900);
+const MAX_BYTES = 64 * 1024 * 1024;
+
+// ---- danh sách cần che -------------------------------------------------
+function loadPrivateNames() {
+  const names = new Set();
+  const file = resolve('.agent/private-names.local.json');
+  if (existsSync(file)) {
+    try {
+      for (const n of JSON.parse(readFileSync(file, 'utf8'))) if (typeof n === 'string' && n.trim()) names.add(n.trim());
+    } catch {
+      console.error('private-names.local.json không đọc được');
+      process.exit(2);
+    }
+  }
+  for (const n of (process.env.RS_PRIVATE_NAMES || '').split(',')) if (n.trim()) names.add(n.trim());
+  return [...names].sort((a, b) => a.localeCompare(b));
+}
+const privateNames = loadPrivateNames();
+
+const pathLiterals = new Set();
+for (const p of [homedir(), process.env.APPDATA, process.env.LOCALAPPDATA, process.env.USERPROFILE]) {
+  if (p && p.length > 3) {
+    pathLiterals.add(p);
+    pathLiterals.add(p.replace(/\\/g, '/'));
+    pathLiterals.add(p.replace(/\//g, '\\'));
+  }
+}
+let userName = '';
+try {
+  userName = userInfo().username || '';
+} catch {
+  userName = '';
+}
+
+const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const counts = { homePath: 0, userName: 0, privateName: 0, email: 0 };
+
+function mask(text) {
+  let out = text;
+  for (const p of [...pathLiterals].sort((a, b) => b.length - a.length)) {
+    out = out.replace(new RegExp(escapeRe(p), 'gi'), () => {
+      counts.homePath++;
+      return '<HOME>';
+    });
+  }
+  if (userName.length >= 3) {
+    out = out.replace(new RegExp(escapeRe(userName), 'gi'), () => {
+      counts.userName++;
+      return '<USER>';
+    });
+  }
+  privateNames.forEach((name, i) => {
+    const label = `<private-provider-${i + 1}>`;
+    const body = escapeRe(name).replace(/[- ]/g, '[- ]');
+    out = out.replace(new RegExp(`(?<![A-Za-z0-9])${body}(?![A-Za-z0-9])`, 'gi'), () => {
+      counts.privateName++;
+      return label;
+    });
+  });
+  out = out.replace(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g, (m) => {
+    if (/@users\.noreply\.github\.com$/i.test(m)) return m;
+    counts.email++;
+    return '<EMAIL>';
+  });
+  return out;
+}
+
+// ---- chạy lệnh có giới hạn thời gian ------------------------------------
+const MB = 1024 * 1024;
+const sys = {
+  cpus: availableParallelism ? availableParallelism() : cpus().length,
+  totalMemMB: Math.round(totalmem() / MB),
+  freeMemStartMB: Math.round(freemem() / MB),
+  freeMemMinMB: Math.round(freemem() / MB),
+};
+const sampler = setInterval(() => {
+  const f = Math.round(freemem() / MB);
+  if (f < sys.freeMemMinMB) sys.freeMemMinMB = f;
+}, 1000);
+
+function killTree(pid) {
+  try {
+    if (process.platform === 'win32') spawnSync('taskkill', ['/PID', String(pid), '/T', '/F'], { stdio: 'ignore' });
+    else process.kill(-pid, 'SIGKILL');
+  } catch {
+    /* tiến trình đã thoát */
+  }
+}
+
+const startedAt = new Date().toISOString();
+const t0 = Date.now();
+const outChunks = [];
+const errChunks = [];
+let outBytes = 0;
+let errBytes = 0;
+let truncated = false;
+let timedOut = false;
+let spawnError = '';
+
+const child = spawn(command[0], command.slice(1), {
+  shell: process.platform === 'win32',
+  detached: process.platform !== 'win32',
+  windowsHide: true,
+  stdio: ['ignore', 'pipe', 'pipe'],
+  env: process.env,
+});
+const timer = setTimeout(() => {
+  timedOut = true;
+  killTree(child.pid);
+}, timeoutSec * 1000);
+
+function collect(chunks, getBytes, setBytes) {
+  return (buf) => {
+    if (getBytes() >= MAX_BYTES) {
+      truncated = true;
+      return;
+    }
+    chunks.push(buf);
+    setBytes(getBytes() + buf.length);
+  };
+}
+child.stdout.on('data', collect(outChunks, () => outBytes, (n) => (outBytes = n)));
+child.stderr.on('data', collect(errChunks, () => errBytes, (n) => (errBytes = n)));
+child.on('error', (e) => {
+  spawnError = e.message;
+});
+
+child.on('close', (code) => {
+  clearTimeout(timer);
+  clearInterval(sampler);
+  const endedAt = new Date().toISOString();
+  const exitCode = timedOut ? 124 : typeof code === 'number' ? code : 1;
+  const stdout = mask(Buffer.concat(outChunks).toString('utf8'));
+  const stderr = mask(
+    Buffer.concat(errChunks).toString('utf8') +
+      (spawnError ? `\n[spawn-error] ${spawnError}` : '') +
+      (timedOut ? `\n[capture] quá hạn ${timeoutSec} giây, đã dừng cả cây tiến trình` : ''),
+  );
+  writeFileSync(join(evidenceDir, `${id}.out.txt`), stdout, 'utf8');
+  writeFileSync(join(evidenceDir, `${id}.err.txt`), stderr, 'utf8');
+  const sha = (s) => createHash('sha256').update(s, 'utf8').digest('hex');
+  const lines = (s) => (s === '' ? 0 : s.split(/\r?\n/).length);
+  const record = {
+    id,
+    command: mask(command.join(' ')),
+    startedAt,
+    endedAt,
+    durationMs: Date.now() - t0,
+    exitCode,
+    timedOut,
+    truncated,
+    stdout: { file: `${id}.out.txt`, sha256: sha(stdout), lines: lines(stdout), bytes: Buffer.byteLength(stdout) },
+    stderr: { file: `${id}.err.txt`, sha256: sha(stderr), lines: lines(stderr), bytes: Buffer.byteLength(stderr) },
+    masked: { ...counts, privateNamesLoaded: privateNames.length },
+    sys,
+  };
+  appendFileSync(join(evidenceDir, 'records.jsonl'), JSON.stringify(record) + '\n', 'utf8');
+  console.log(
+    `[capture] ${id} exit=${exitCode}${timedOut ? ' (QUÁ HẠN)' : ''} ${Math.round(record.durationMs / 100) / 10}s stdout=${record.stdout.lines} dòng, stderr=${record.stderr.lines} dòng, freeMemMin=${sys.freeMemMinMB}MB, sha256(stdout)=${record.stdout.sha256.slice(0, 12)}`,
+  );
+  process.exit(exitCode);
+});

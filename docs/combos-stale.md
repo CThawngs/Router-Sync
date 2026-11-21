@@ -14,9 +14,11 @@ a combo, did the router itself show any evidence that the model is available?
   (probed per id via `hfModelUrl` — `NOT-LISTED-UPSTREAM` only on a definitive
   404); NVIDIA via the `models.dev` community catalog (`catalog-api` —
   `NOT-IN-CATALOG` when the id is absent from a reachable catalog). C29 J0
-  added `ACCESS-RESTRICTED-OR-ABSENT` for non-200/404 HTTP statuses from the
-  per-id probe (e.g. 401 for repos that do not exist or need login) and
-  `LISTED-IN-CATALOG` / `NOT-IN-CATALOG` for catalog conclusions.
+  added `LISTED-IN-CATALOG` / `NOT-IN-CATALOG` for catalog conclusions and
+  `ACCESS-RESTRICTED-OR-ABSENT` for a gated per-id repo. C30 K3.1 narrowed
+  that label to real access restrictions only (401/403 and other 4xx except
+  404/429); rate-limit exhaustion, 5xx, network errors, timeouts and an
+  unparseable 200 body are `UPSTREAM-UNREACHABLE`.
 - The report prints `source=<value>` as its first line when the evidence is
   readable, and always carries `source` and `diagnostics.availabilitySource` in
   JSON, including under `--json`.
@@ -28,8 +30,8 @@ a combo, did the router itself show any evidence that the model is available?
 | `LISTED-UPSTREAM` | The provider's own catalog lists the model (OpenRouter/HF per-id). |
 | `NOT-LISTED-UPSTREAM` | The catalog answered (200/404 for the HF per-id probe) and does not list the model. |
 | `NO-OFFICIAL-SOURCE` | No machine-readable catalog is configured for that provider. |
-| `UPSTREAM-UNREACHABLE` | Network error, timeout, or unparseable 200 body. |
-| `ACCESS-RESTRICTED-OR-ABSENT` | The endpoint answered but the model is neither listed nor proven absent (HTTP 401/403/…; low confidence). |
+| `UPSTREAM-UNREACHABLE` | The upstream said nothing about this model: network error, timeout, unparseable 200 body, HTTP 5xx, or HTTP 429 after the retry budget is spent. |
+| `ACCESS-RESTRICTED-OR-ABSENT` | The endpoint answered but the repo is gated: HTTP 401, 403, or another 4xx except 404/429. Neither listed nor proven absent (low confidence). |
 | `LISTED-IN-CATALOG` | The provider's community catalog (models.dev, NVIDIA) lists the model. |
 | `NOT-IN-CATALOG` | The reachable community catalog does not list the model (low confidence). |
 
@@ -78,6 +80,15 @@ recorded so old notes stay readable.
 | G8 | A provider with no availability evidence is reported as `UNVERIFIABLE`, not `ABSENT`. | Closed in C19. |
 | G9 | An unreadable router database exits non-zero with `UNKNOWN` instead of an empty report. | Closed in C19. |
 | G10 | Alias expansion can report the same model twice (`google/...` and `gemini/...`). | Open. |
+
+### C30 K3.3: per-id lookups stay sequential (deliberate)
+
+The `official` source probes each id one at a time. For 147 steps that took
+29.9 s on the reference machine, which is acceptable for a report run, so the
+concurrency question (C29 J0.3) is closed as **not required**: sequential
+probes keep the request rate to the upstream low and keep the 429 retry budget
+predictable. If a future run needs to be faster, parallelise with a bounded
+pool and re-measure — do not raise the request rate unbounded.
 
 ### C19 → C20 label mapping
 

@@ -33,4 +33,14 @@ if ! node tools/ci/validate-workflows.mjs; then
   exit 1
 fi
 
+# C30 K2.4: never push a non-fast-forward ref. The hook reads the pre-push
+# stdin lines "<local ref> <local sha> <remote ref> <remote sha>" and rejects
+# any update that is not a fast-forward (remote sha must be an ancestor of the
+# new sha). A zero remote sha means the remote ref does not exist yet (create).
+echo "[prepush] fast-forward check"
+if ! node tools/guard/no-force-push.mjs; then
+  echo "[prepush] FAIL fast-forward check (no force-push; rename or merge instead)" >&2
+  exit 1
+fi
+
 echo "[prepush] OK"

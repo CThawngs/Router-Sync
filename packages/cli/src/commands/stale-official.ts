@@ -25,7 +25,8 @@ export type OfficialConclusion =
   // C29 J0: catalog-api (NVIDIA) conclusions
   | 'LISTED-IN-CATALOG'
   | 'NOT-IN-CATALOG'
-  // C29 J0: 401/403/other HTTP statuses from per-id probes (e.g. openai/gpt-4o → 401)
+  // C29 J0: 401/403/other 4xx (except 404, 429) from per-id probes — the repo is
+  // gated or private, so it is neither listed nor proven absent.
   | 'ACCESS-RESTRICTED-OR-ABSENT';
 
 export interface OfficialSource {
@@ -206,15 +207,17 @@ export async function checkOfficial(
 
 /**
  * C28 H1: per-id existence probe for Hugging Face via `hfModelUrl`.
- * 429/5xx/network/timeout or an unparseable 200 body is UPSTREAM-UNREACHABLE,
- * never NOT-LISTED: only a real 404 from the per-model endpoint proves absence.
+ * 200 with a parseable body -> LISTED-UPSTREAM; 404 -> NOT-LISTED-UPSTREAM.
  *
- * C29 J0.1: non-200/404 HTTP statuses other than 429 are ACCESS-RESTRICTED-OR-ABSENT
- * (e.g. 401 for repos that do not exist or need login): the endpoint answered, so
- * the model is neither listed nor proven absent.
+ * C30 K3.1: the verdict now separates "the repo is gated" from "the probe
+ * could not get an answer". Only 401/403 and other 4xx (except 404/429) mean
+ * ACCESS-RESTRICTED-OR-ABSENT. Rate-limit exhaustion, 5xx, network errors,
+ * timeouts and an unparseable 200 body are UPSTREAM-UNREACHABLE: in those
+ * cases the upstream said nothing about whether the model exists.
  *
- * C29 J0.3: 429 is retried with exponential backoff, up to PER_ID_429_LIMIT; after
- * the budget is spent the outcome is ACCESS-RESTRICTED-OR-ABSENT ("rate limited").
+ * C29 J0.3: 429 is retried with exponential backoff, up to PER_ID_429_LIMIT;
+ * after the budget is spent the outcome is UPSTREAM-UNREACHABLE (C30 K3.1,
+ * formerly ACCESS-RESTRICTED-OR-ABSENT).
  */
 export let PER_ID_429_LIMIT = 4;
 export function setPerId429Limit(limit: number): void {
@@ -226,6 +229,17 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+/**
+ * C30 K3.1: map an HTTP status to a conclusion for the per-id probe.
+ * Exported so tests can pin every branch without a network call.
+ */
+export function perIdStatusConclusion(status: number): OfficialConclusion {
+  if (status === 404) return 'NOT-LISTED-UPSTREAM';
+  if (status === 429) return 'UPSTREAM-UNREACHABLE';
+  if (status >= 500) return 'UPSTREAM-UNREACHABLE';
+  return 'ACCESS-RESTRICTED-OR-ABSENT';
+}
+
 async function checkHfPerId(
   source: OfficialSource,
   modelId: string,
@@ -234,14 +248,9 @@ async function checkHfPerId(
 ): Promise<OfficialCheck> {
   const wanted = normalizeModelId(modelId);
   const base = { provider: source.provider, source, checkedAt };
-  const restricted = (detail: string): OfficialCheck => ({
+  const withConclusion = (conclusion: OfficialConclusion, detail: string): OfficialCheck => ({
     ...base,
-    conclusion: 'ACCESS-RESTRICTED-OR-ABSENT',
-    detail,
-  });
-  const unreachable = (detail: string): OfficialCheck => ({
-    ...base,
-    conclusion: 'UPSTREAM-UNREACHABLE',
+    conclusion,
     detail,
   });
   const doFetch = options.fetchImpl ?? globalThis.fetch;
@@ -255,24 +264,39 @@ async function checkHfPerId(
       });
       if (response.status === 200) {
         // Prove the body parses before claiming existence.
-        await response.json();
+        try {
+          await response.json();
+        } catch (error) {
+          return withConclusion(
+            'UPSTREAM-UNREACHABLE',
+            `HTTP 200 but body unparseable: ${error instanceof Error ? error.message : String(error)}`
+          );
+        }
         return { ...base, conclusion: 'LISTED-UPSTREAM' };
       }
       if (response.status === 404) {
-        return { ...base, conclusion: 'NOT-LISTED-UPSTREAM' };
+        return withConclusion('NOT-LISTED-UPSTREAM', 'HTTP 404');
       }
       if (response.status !== 429) {
-        return restricted(`HTTP ${response.status}`);
+        const conclusion = perIdStatusConclusion(response.status);
+        const detail = `HTTP ${response.status}`;
+        return withConclusion(
+          conclusion,
+          conclusion === 'UPSTREAM-UNREACHABLE' ? `${detail} (upstream error)` : detail
+        );
       }
       if (attempt >= PER_ID_429_LIMIT) {
-        return restricted(`HTTP 429 (retries exhausted)`);
+        return withConclusion('UPSTREAM-UNREACHABLE', 'HTTP 429 (retries exhausted)');
       }
       await sleep((options.retryDelayMs ?? PER_ID_429_DELAY_MS) * 2 ** attempt);
     } catch (error) {
-      return unreachable(error instanceof Error ? error.message : String(error));
+      return withConclusion(
+        'UPSTREAM-UNREACHABLE',
+        error instanceof Error ? error.message : String(error)
+      );
     }
   }
-  return restricted('HTTP 429 (retries exhausted)');
+  return withConclusion('UPSTREAM-UNREACHABLE', 'HTTP 429 (retries exhausted)');
 }
 
 /** Test hook: drop the cache so a test can change the fake catalog. */

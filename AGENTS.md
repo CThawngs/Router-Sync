@@ -17,6 +17,10 @@ written to a router until a human types the confirmation word on a terminal.
 - Never commit directly on the local `main` branch. The `tools/hooks/pre-commit`
   hook (installed with `pnpm hooks:install`) refuses it; work on a branch and
   open a PR.
+- **Never force-push.** No `--force`, no `--force-with-lease`, no history
+  rewrite on a published branch. `tools/hooks/pre-push` rejects a non-fast-forward
+  ref update (`tools/guard/no-force-push.mjs`); if a push is rejected, rename the
+  branch or open a new one instead.
 - Never type or auto-fill the confirmation word (`chạy`, `chay`) for the user.
   Write commands need the user to type it in their own terminal.
 - Never read, print, or log API key values or password hashes.
