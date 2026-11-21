@@ -23,7 +23,7 @@
 ## G1 — Code from the local machine via PR
 
 - E1 (`fix/c27-closeout`, commit f8bf011): ci-watch prints failing-step context lines → PR #38, 18/18 checks green, **squash-merged** (merge sha 009d5b4).
-- E2.5 + G1.3 (`fix/c27-e25-at98`, commits 7655ecc + 5e4d5af + b7d8ce6): do-while read-back poll (at-98 ARM flake) + pre-commit hook refusing direct commits on main (tools/hooks/pre-commit, install-hooks installs it, AGENTS.md documents it, node:test covers main/master block + feature-branch allow) + G4 (verify-package record checks + measurement scripts in tools/agent) → PR #37, CI green (18/18), **squash-merged** (merge sha PENDING).
+- E2.5 + G1.3 (`fix/c27-e25-at98`, commits 7655ecc + 5e4d5af + b7d8ce6): do-while read-back poll (at-98 ARM flake) + pre-commit hook refusing direct commits on main (tools/hooks/pre-commit, install-hooks installs it, AGENTS.md documents it, node:test covers main/master block + feature-branch allow) + G4 (verify-package record checks + measurement scripts in tools/agent) → PR #37, CI green (18/18), **squash-merged** (merge sha 3281093).
 - Local `main` was reset to `origin/main` (no GitHub history rewrite); the direct commit 5680ef0 was moved to the branch.
 
 ## G2 — E3: startup regression
@@ -52,4 +52,6 @@
 
 ## Merge / CI status
 
-- PR #38: merged (009d5b4). PR #37: merged (sha PENDING). Main run after merge: PENDING (ci-watch).
+- PR #38: merged (009d5b4) — main CI green.
+- PR #37: merged (3281093) — main CI run 44867560487 **success on attempt 1** (ci-watch WATCH=0).
+- Evidence branch: `evidence/c27` (commit 8b430ab, `[skip ci]`, no CI runs on the branch).
