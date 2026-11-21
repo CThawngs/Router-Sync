@@ -54,6 +54,11 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Build
+        # Same as the main CI verify/slow-tests jobs: e2e runs against the
+        # installed dist, which pnpm install does not build.
+        run: pnpm build
+
       - name: Repeat target test and collect red diagnostics
         shell: bash
         env:
