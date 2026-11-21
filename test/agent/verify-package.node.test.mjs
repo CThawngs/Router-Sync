@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir, homedir } from 'node:os';
 import { join } from 'node:path';
-import { fakeRecordIssues, scanPackage } from '../../tools/agent/verify-package.mjs';
+import { fakeRecordIssues, scanPackage, requiredRecordIssues, commandIssues } from '../../tools/agent/verify-package.mjs';
 
 describe('C25 B6.2: fake-record and personal-name guard', () => {
   test('round-hour timestamps and duration < 50ms are rejected', () => {
@@ -20,6 +20,16 @@ describe('C25 B6.2: fake-record and personal-name guard', () => {
       { id: 'real', durationMs: 4300, startedAt: '2026-11-20T08:15:42.287Z', endedAt: '2026-11-20T08:15:46.600Z', stdout: { file: 'a.txt', lines: 20 }, stderr: { file: 'b.txt', lines: 0 } },
     ]);
     assert.deepEqual(issues, []);
+  });
+
+  test('capture records must carry masked and sys; commands must be runnable', () => {
+    const bare = requiredRecordIssues([{ name: 'x', startedAt: '2026-11-20T08:15:42.287Z' }]);
+    assert.ok(bare.some((i) => i.includes('masked missing')));
+    assert.ok(bare.some((i) => i.includes('sys missing')));
+    const shellish = commandIssues([{ name: 'y', command: ['node', 'a.mjs', '--flag=1;', 'rm'] }]);
+    assert.ok(shellish.some((i) => i.includes('shell operator')));
+    const ok = requiredRecordIssues([{ name: 'z', startedAt: '2026-11-20T08:15:42.287Z', masked: [], sys: { os: 'linux', runId: '1', headSha: 'a'.repeat(40) }, command: ['node', 'x.mjs'] }]);
+    assert.deepEqual(ok, []);
   });
 
   test('scanPackage finds the machine home path in a file', () => {

@@ -83,3 +83,5 @@ packages/ui/contrast-report.json
 packages/ui/code-scan-report.json
 test/ui/render-audit-report.txt
 test/ui/render-audit-interactive-report.txt
+# evidence capture output lives on evidence/* branches only
+/evidence/

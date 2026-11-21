@@ -9,10 +9,14 @@ a combo, did the router itself show any evidence that the model is available?
   reports — provider connections, custom models, aliases, disabled flags.
 - `snapshot`: the provider registry shipped with RouterSync.
 - `official` (C21): runs the `direct` classification, then asks the upstream
-  catalog of each **public** provider whether the model is listed. Only
-  `packages/cli/src/commands/stale-official.ts` knows which providers have a
-  machine-readable catalog; today that is OpenRouter only, so most rows come back
-  `NO-OFFICIAL-SOURCE`.
+  catalog of each **public** provider whether the model is listed. Providers
+  with a machine-readable catalog: OpenRouter (`model-list-api`); Hugging Face
+  (probed per id via `hfModelUrl` — `NOT-LISTED-UPSTREAM` only on a definitive
+  404); NVIDIA via the `models.dev` community catalog (`catalog-api` —
+  `NOT-IN-CATALOG` when the id is absent from a reachable catalog). C29 J0
+  added `ACCESS-RESTRICTED-OR-ABSENT` for non-200/404 HTTP statuses from the
+  per-id probe (e.g. 401 for repos that do not exist or need login) and
+  `LISTED-IN-CATALOG` / `NOT-IN-CATALOG` for catalog conclusions.
 - The report prints `source=<value>` as its first line when the evidence is
   readable, and always carries `source` and `diagnostics.availabilitySource` in
   JSON, including under `--json`.
@@ -21,10 +25,13 @@ a combo, did the router itself show any evidence that the model is available?
 
 | Conclusion | Meaning |
 |---|---|
-| `LISTED-UPSTREAM` | The provider's own catalog lists the model. |
-| `NOT-LISTED-UPSTREAM` | The catalog answered and does not list the model. |
+| `LISTED-UPSTREAM` | The provider's own catalog lists the model (OpenRouter/HF per-id). |
+| `NOT-LISTED-UPSTREAM` | The catalog answered (200/404 for the HF per-id probe) and does not list the model. |
 | `NO-OFFICIAL-SOURCE` | No machine-readable catalog is configured for that provider. |
-| `UPSTREAM-UNREACHABLE` | The request failed (network, timeout, non-2xx). |
+| `UPSTREAM-UNREACHABLE` | Network error, timeout, or unparseable 200 body. |
+| `ACCESS-RESTRICTED-OR-ABSENT` | The endpoint answered but the model is neither listed nor proven absent (HTTP 401/403/…; low confidence). |
+| `LISTED-IN-CATALOG` | The provider's community catalog (models.dev, NVIDIA) lists the model. |
+| `NOT-IN-CATALOG` | The reachable community catalog does not list the model (low confidence). |
 
 **Never delete a model because it is `NOT-LISTED-UPSTREAM`.** A catalog can lag,
 paginate or omit a model the router still serves. The removal decision belongs to
