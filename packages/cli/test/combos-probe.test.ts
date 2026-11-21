@@ -77,6 +77,8 @@ describe('C32 M1: phân loại một lần thử', () => {
     const report: ProbeReport = await runCombosProbeCommand({
       mode: 'combo',
       all: true,
+      // Dry-run không được mở DB router: trên máy CI không có 9Router.
+      state: { combos: [{ name: 'c1', steps: ['p/m1', 'p/m2'] }], apiKey: 'k', apiKeyName: 'fake' },
       fetchImpl: fetchImpl as unknown as typeof fetch,
       log,
     });

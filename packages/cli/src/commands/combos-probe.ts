@@ -117,7 +117,14 @@ function parseSteps(raw: unknown): string[] {
 
 /** Read combo steps and one usable API key. Read-only; the key is never printed. */
 export function readRouterState(): RouterDb {
-  const db = openRouterDb();
+  let db;
+  try {
+    db = openRouterDb();
+  } catch (err) {
+    throw new Error(
+      `không mở được DB 9Router (${err instanceof Error ? err.message : String(err)}). Đặt ROUTERSYNC_9ROUTER_DB hoặc chạy trên máy có 9Router.`,
+    );
+  }
   try {
     const rows = db.prepare('SELECT name, models FROM combos ORDER BY name').all() as Array<{
       name: string;
@@ -301,7 +308,7 @@ function printDryRun(state: RouterDb, combos: ComboInfo[], baseUrl: string, log:
   log(`apiKey=${state.apiKeyName} (giá trị không in)`);
   log(`combos=${combos.length} steps_theo_combo=${perCombo} unique_steps=${steps.length}`);
   log(
-    `u?c t�nh t?i da: combo = ${combos.length} � ${COMBO_TIMEOUT_MS / 1000}s = ${comboBudget}s (m?i combo t?i da ${COMBO_TIMEOUT_MS / 1000}s, combo d�i nh?t c� ${longestComboSteps} bu?c); step = ${steps.length} � ${STEP_TIMEOUT_MS / 1000}s = ${stepBudget}s`
+    `u?c t�nh t?i da: combo = ${combos.length} � ${COMBO_TIMEOUT_MS / 1000}s = ${comboBudget}s (m?i combo t?i da ${COMBO_TIMEOUT_MS / 1000}s, combo d�i nh?t c� ${longestComboSteps} bu?c); step = ${steps.length} � ${STEP_TIMEOUT_MS / 1000}s = ${stepBudget}s`
   );
   log('Đây là chạy thử: không có request nào được gửi.');
   log('Muốn chạy thật: thêm --yes-spend-tokens (tốn token của chủ dự án).');
@@ -332,16 +339,23 @@ export async function runCombosProbeCommand(options: ProbeOptions = {}): Promise
 
   const deadline = (options.now ?? Date.now)() + (options.maxMinutes ?? 40) * 60_000;
   const fetchImpl = options.fetchImpl ?? globalThis.fetch;
-  const usageCount = options.usageCount ?? (() => {
-    const db = openRouterDb();
-    try {
-      return (db.prepare('SELECT COUNT(*) n FROM usageHistory').get() as { n: number }).n;
-    } catch {
-      return 0;
-    } finally {
-      db.close();
-    }
-  });
+  // Mặc định: đọc usageHistory của 9Router. Khi máy không có DB router (CI, hoặc
+  // người dùng ở máy khác), trả 0 thay vì ném lỗi: phần đối chiếu "ai phục vụ"
+  // chỉ là phụ, không được làm chết cả lần đo.
+  const usageCount =
+    options.usageCount ??
+    (() => {
+      try {
+        const db = openRouterDb();
+        try {
+          return (db.prepare('SELECT COUNT(*) n FROM usageHistory').get() as { n: number }).n;
+        } finally {
+          db.close();
+        }
+      } catch {
+        return 0;
+      }
+    });
 
   const rows: ComboProbeRow[] = [];
   let consecutive429 = 0;
