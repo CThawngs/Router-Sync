@@ -454,12 +454,39 @@ describe('E2E - the installed package works end to end', () => {
       }
     ) as ChildProcessWithoutNullStreams;
 
+    // Capture the daemon output and watch liveness: the poll loop stops
+    // early once the process exits, and the failure message carries what the
+    // daemon printed, so a bind failure, a spawn crash, or a missing health
+    // endpoint is visible instead of an opaque `expected false to be true`.
+    const proc = daemonProc as ChildProcessWithoutNullStreams;
+    const daemonOut: string[] = [];
+    const daemonErr: string[] = [];
+    proc.stdout.on('data', (d: Buffer) => daemonOut.push(String(d)));
+    proc.stderr.on('data', (d: Buffer) => daemonErr.push(String(d)));
+    const stdoutText = () => daemonOut.join('');
+    const stderrText = () => daemonErr.join('');
+    const exited = () => proc.exitCode !== null;
+    // The daemon prints `[routersync-daemon] Listening on http://<host>:<port>`
+    // once the server is bound: poll the printed port when it appears, else
+    // the requested one. Possible failure modes, checked by evidence:
+    //   - daemon dies during startup (bind error, spawn crash) -> exited() true
+    //   - requested port busy / taken -> daemon exits, exited() true
+    //   - slow first health response on a loaded ARM runner -> poll times out
+    //   - wrong address: the fetch target is derived from the readiness line.
+    const boundPort = (): number => {
+      const m = stdoutText().match(/Listening on http:\/\/[^:]+:(\d+)/);
+      return m ? Number(m[1]) : port;
+    };
+    const diag = (): string =>
+      `exited=${exited()} exitCode=${proc.exitCode} stdout=${stdoutText().slice(-400)} stderr=${stderrText().slice(-400)}`;
+
     let body = '';
     let ok = false;
-    for (let attempt = 0; attempt < 40; attempt++) {
+    for (let attempt = 0; attempt < 40 && !exited(); attempt++) {
       await new Promise((r) => setTimeout(r, 500));
+      if (exited()) break;
       try {
-        const res = await fetch(`http://127.0.0.1:${port}/api/v1/health`);
+        const res = await fetch(`http://127.0.0.1:${boundPort()}/api/v1/health`);
         body = await res.text();
         ok = res.ok;
         if (ok) break;
@@ -467,7 +494,7 @@ describe('E2E - the installed package works end to end', () => {
         // not up yet
       }
     }
-    expect(ok).toBe(true);
+    expect(ok, `daemon health failed; ${diag()}`).toBe(true);
     expect(body.length).toBeGreaterThan(0);
   }, 120000);
 
