@@ -47,8 +47,8 @@
     "@routersync/core": "workspace:*",
     "@routersync/daemon": "workspace:*",
     "@types/node": "^26.6.5",
-    "better-sqlite3": "13.0.3",
-    "playwright-core": "^1.64.1",
+    "better-sqlite3": "13.2.0",
+    "playwright-core": "^1.65.1",
     "typescript": "5.6.3",
     "vitest": "4.1.12"
   }
