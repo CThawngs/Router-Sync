@@ -511,6 +511,36 @@ export function createCliProgram(): Command {
       });
     });
 
+  combosCmd
+    .command('probe')
+    .description('Try a combo the way a client does (dry-run by default; needs --yes-spend-tokens to send)')
+    .option('--mode <mode>', 'combo | step', 'combo')
+    .option('--combo <name>', 'One combo by name')
+    .option('--all', 'Every combo')
+    .option('--yes-spend-tokens', 'Actually send requests (spends the owner\'s tokens)')
+    .option('--max-minutes <n>', 'Wall-clock budget for a real run', '40')
+    .option('--json', 'Output result in JSON format')
+    .action(
+      async (opts: {
+        mode?: string;
+        combo?: string;
+        all?: boolean;
+        yesSpendTokens?: boolean;
+        maxMinutes?: string;
+        json?: boolean;
+      }) => {
+        const { runCombosProbeCommand } = await import('./commands/combos-probe.js');
+        await runCombosProbeCommand({
+          mode: opts.mode === 'step' ? 'step' : 'combo',
+          combo: opts.combo,
+          all: opts.all,
+          yesSpendTokens: opts.yesSpendTokens,
+          maxMinutes: Number(opts.maxMinutes ?? 40),
+          json: opts.json,
+        });
+      }
+    );
+
   // verify command (Round C4b F3b: multi-layer verification & accounting)
   program
     .command('verify')

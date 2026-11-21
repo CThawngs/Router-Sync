@@ -1,5 +1,9 @@
 # `combos stale` — evidence rules
 
+> Muốn biết gọi combo thật thì kết quả ra sao, xem `combos probe` trong
+> [docs/combos-probe.md](combos-probe.md). `stale` chỉ đọc trạng thái; `probe`
+> gửi request thật (cần `--yes-spend-tokens`).
+
 `routersync combos stale` is read-only. It answers one question: for each step in
 a combo, did the router itself show any evidence that the model is available?
 
@@ -34,6 +38,14 @@ is `UNVERIFIABLE`, never `ABSENT`.
 - The report prints `source=<value>` as its first line when the evidence is
   readable, and always carries `source` and `diagnostics.availabilitySource` in
   JSON, including under `--json`.
+
+### UNVERIFIABLE is not ABSENT (C32 M3)
+
+`UNVERIFIABLE` = the router carried **no availability evidence** for that provider.
+It is not a statement about the upstream and never a removal argument. In the
+2026-11-21 run, all 104 `hf` rows were `UNVERIFIABLE` in the router while the
+official per-id probe said `LISTED-UPSTREAM` for the same 104 ids — reading
+`UNVERIFIABLE` as "absent" would have deleted models that work.
 
 ### Official conclusions
 
