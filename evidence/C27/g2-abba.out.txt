@@ -1,5 +1,0 @@
-HEAD packages/cli/dist/index.js sha256=32b9bfeaeed82fd4b8a2617bfee35018a5ca6760f650e267549716793880bd89
-ABBA samples (--version): A=1941.1 B=2946 B=9867.7 A=3564.9 A=1988.3 B=2547.2 B=2690.1 A=2520.3 A=1906.8 B=1662.1
-A n=5 median=1988.3 min=1906.8 max=3564.9
-B n=5 median=2690.1 min=1662.1 max=9867.7
-ROUTERSYNC_PERF=(unset)
