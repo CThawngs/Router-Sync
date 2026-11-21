@@ -137,10 +137,15 @@ function gh(args) {
 }
 
 function parseArgs(argv) {
-  const options = { sha: undefined, timeoutMinutes: 30 };
+  const options = { sha: undefined, timeoutMinutes: 30, runId: undefined, workflow: 'CI' };
   for (let i = 0; i < argv.length; i += 1) {
     if (argv[i] === '--sha') options.sha = argv[++i];
     else if (argv[i] === '--timeout') options.timeoutMinutes = Number(argv[++i]);
+    // C30 K5.3: a sha can carry several runs (dependabot, flake-hunt). Without
+    // --run/--workflow the first run won, which reported a flake-hunt run as
+    // "the main CI". --run pins an id; --workflow names the workflow to prefer.
+    else if (argv[i] === '--run') options.runId = Number(argv[++i]);
+    else if (argv[i] === '--workflow') options.workflow = argv[++i];
   }
   return options;
 }
@@ -150,10 +155,16 @@ function currentSha() {
   return (r.stdout ?? '').trim();
 }
 
-function findRun(sha) {
-  const list = JSON.parse(gh(['api', `/repos/{owner}/{repo}/actions/runs`, '-X', 'GET', '-f', `head_sha=${sha}`, '-f', 'per_page=10']));
-  if (!list.workflow_runs?.length) return null;
-  return list.workflow_runs[0];
+function findRun(sha, options = {}) {
+  if (options.runId) {
+    const run = JSON.parse(gh(['api', `/repos/{owner}/{repo}/actions/runs/${options.runId}`]));
+    return run?.id ? run : null;
+  }
+  const list = JSON.parse(gh(['api', `/repos/{owner}/{repo}/actions/runs`, '-X', 'GET', '-f', `head_sha=${sha}`, '-f', 'per_page=30']));
+  const runs = list.workflow_runs ?? [];
+  if (!runs.length) return null;
+  const named = options.workflow ? runs.find((r) => r.name === options.workflow) : null;
+  return named ?? runs[0];
 }
 
 function runJobs(runId) {
@@ -227,7 +238,7 @@ export async function watch(options = {}) {
   const timeoutMinutes = options.timeoutMinutes ?? 30;
   const log = options.log ?? ((message) => console.log(message));
 
-  let run = findRun(sha);
+  let run = findRun(sha, options);
   if (!run) {
     log(`NO-RUN sha=${sha.slice(0, 7)}`);
     return 12;
@@ -236,7 +247,7 @@ export async function watch(options = {}) {
   const deadline = Date.now() + timeoutMinutes * 60000;
   while (run.status !== 'completed' && Date.now() < deadline) {
     await new Promise((resolve) => setTimeout(resolve, options.pollMs ?? 20000));
-    run = findRun(sha) ?? run;
+    run = findRun(sha, options) ?? run;
   }
 
   if (run.status !== 'completed') {
@@ -285,7 +296,7 @@ export async function watch(options = {}) {
 
 function main() {
   const options = parseArgs(process.argv.slice(2));
-  watch({ sha: options.sha, timeoutMinutes: options.timeoutMinutes })
+  watch({ sha: options.sha, timeoutMinutes: options.timeoutMinutes, runId: options.runId, workflow: options.workflow })
     .then((exit) => process.exit(exit))
     .catch((error) => {
       console.error(error instanceof Error ? error.message : String(error));

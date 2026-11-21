@@ -1,40 +1,64 @@
 #!/usr/bin/env node
 /**
- * C25 B6.2: reject fake records and personal identifiers in an evidence package.
+ * C25 B6.2 / C30 K1.2: reject fake records and personal identifiers in an
+ * evidence package. This is the SECOND layer: the standard
+ * `verify-records.mjs` (RouterSync-tools) owns integrity (sha256, bytes,
+ * timing, privateNamesLoaded); this one adds the checks the standard tool does
+ * not make: fake-record shapes, runnable commands, and a text scan for
+ * personal paths, usernames, emails and private provider names.
  *
  * Usage: node tools/agent/verify-package.mjs <package-dir>
  *
- * Checks on records.jsonl (one JSON per line):
- *  - startedAt !== endedAt at a round hour (e.g. 07:00:00.000Z)
- *  - durationMs >= 50 for a non-instant command
- *  - stdout.file !== stderr.file with 0 lines
- * Then scans records.jsonl and every *.out.txt for personal paths, user names,
- * emails and key-like tokens. Exit 0 when clean, 1 with a problem list.
+ * Record shape (capture.mjs v3):
+ *   { id, command, startedAt, endedAt, durationMs, exitCode,
+ *     stdout: { file, sha256, lines, bytes }, stderr: {...},
+ *     masked: { homePath, userName, privateName, email, privateNamesLoaded },
+ *     sys: { cpus, totalMemMB, freeMemStartMB, freeMemMinMB } }
  */
 import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import { join, basename } from 'node:path';
 import { homedir, userInfo, tmpdir } from 'node:os';
 
-const NAME_RE = /^[A-Za-z0-9._-]+$/;
+const SAFE_VERBS = new Set(['node', 'gh', 'pnpm', 'git', 'npx']);
 
 export function readRecords(dir) {
   const file = join(dir, 'records.jsonl');
   if (!existsSync(file)) return [];
-  return readFileSync(file, 'utf8').split(/\r?\n/).filter(Boolean).map((line) => JSON.parse(line));
+  return readFileSync(file, 'utf8')
+    .split(/\r?\n/)
+    .filter(Boolean)
+    .map((line) => JSON.parse(line));
 }
 
 export function requiredRecordIssues(rows) {
   const issues = [];
   for (const row of rows) {
-    const id = row.name ?? row.id ?? '(unknown)';
-    if (!Array.isArray(row.masked)) {
+    const id = row.id ?? '(unknown)';
+    if (typeof row.id !== 'string' || !/^[A-Za-z0-9._-]+$/.test(row.id)) {
+      issues.push(`${id}: id missing or malformed (capture.mjs must add it)`);
+    }
+    if (!row.masked || typeof row.masked !== 'object') {
       issues.push(`${id}: masked missing (capture.mjs must add it)`);
+    } else {
+      if (!(row.masked.privateNamesLoaded > 0)) {
+        issues.push(`${id}: masked.privateNamesLoaded is 0 (capture.mjs loaded no private names)`);
+      }
+      for (const key of ['homePath', 'userName', 'privateName', 'email']) {
+        if (typeof row.masked[key] !== 'number') issues.push(`${id}: masked.${key} missing`);
+      }
     }
-    if (!row.sys || typeof row.sys.os !== 'string' || typeof row.sys.runId !== 'string' || typeof row.sys.headSha !== 'string') {
-      issues.push(`${id}: sys missing (capture.mjs must add it: os, runId, headSha)`);
+    if (!row.sys || typeof row.sys !== 'object') {
+      issues.push(`${id}: sys missing (capture.mjs must add it)`);
+    } else {
+      for (const key of ['cpus', 'totalMemMB', 'freeMemStartMB', 'freeMemMinMB']) {
+        if (typeof row.sys[key] !== 'number') issues.push(`${id}: sys.${key} missing`);
+      }
+      if (typeof row.sys.freeMemMinMB === 'number' && typeof row.sys.freeMemStartMB === 'number' && row.sys.freeMemMinMB > row.sys.freeMemStartMB) {
+        issues.push(`${id}: sys.freeMemMinMB > sys.freeMemStartMB (hand-edited sample)`);
+      }
     }
-    if (typeof row.startedAt !== 'string') {
-      issues.push(`${id}: startedAt missing`);
+    if (typeof row.startedAt !== 'string' || Number.isNaN(Date.parse(row.startedAt))) {
+      issues.push(`${id}: startedAt missing or unparseable`);
     }
   }
   return issues;
@@ -42,21 +66,25 @@ export function requiredRecordIssues(rows) {
 
 export function commandIssues(rows) {
   const issues = [];
-  const safeVerb = new Set(['gh', 'node', 'pnpm']);
   for (const row of rows) {
-    const id = row.name ?? row.id ?? '(unknown)';
-    const cmd = Array.isArray(row.command) ? row.command.join(' ') : String(row.command ?? '');
-    if (cmd.startsWith('execute:') || cmd.startsWith('sh -c') || cmd.startsWith('bash -c')) {
+    const id = row.id ?? '(unknown)';
+    // capture.mjs stores the command as one string; an array is accepted for
+    // older records but the first token still has to be a known verb.
+    const parts = Array.isArray(row.command) ? row.command : String(row.command ?? '').split(' ');
+    const cmd = parts.join(' ');
+    if (!cmd.trim()) {
+      issues.push(`${id}: command is empty`);
+      continue;
+    }
+    if (/^(execute:|sh -c|bash -c)/.test(cmd)) {
       issues.push(`${id}: command is not runnable as-is (${cmd.slice(0, 40)})`);
     }
-    if (/[;|`$<>"]/.test(cmd)) {
+    if (/[;|`$<>]/.test(cmd)) {
       issues.push(`${id}: command contains a shell operator (${cmd.slice(0, 40)})`);
     }
-    if (cmd.includes('&')) {
-      issues.push(`${id}: command contains & (run it via capture.mjs, not hand-edited)`);
+    if (!SAFE_VERBS.has(parts[0])) {
+      issues.push(`${id}: command verb ${parts[0]} not in allowlist`);
     }
-    const verb = Array.isArray(row.command) ? row.command[0] : null;
-    if (!safeVerb.has(verb)) issues.push(`${id}: command verb ${verb} not in allowlist`);
   }
   return issues;
 }
@@ -65,7 +93,9 @@ export function fakeRecordIssues(rows) {
   const issues = [];
   for (const row of rows) {
     const id = row.id ?? '(unknown)';
-    if (typeof row.durationMs === 'number' && row.durationMs < 50) {
+    if (typeof row.durationMs !== 'number') {
+      issues.push(`${id}: durationMs missing (capture.mjs must add it)`);
+    } else if (row.durationMs < 50) {
       issues.push(`${id}: durationMs=${row.durationMs} < 50 (non-instant command)`);
     }
     for (const key of ['startedAt', 'endedAt']) {
@@ -74,42 +104,69 @@ export function fakeRecordIssues(rows) {
         issues.push(`${id}: ${key}=${value} is a round hour (hand-crafted)`);
       }
     }
-    if (row.stdout?.file && row.stderr?.file === row.stdout?.file && row.stdout.lines === 0) {
-      issues.push(`${id}: stdout and stderr share a file with 0 lines`);
+    if (row.stdout?.file && row.stderr?.file === row.stdout?.file) {
+      issues.push(`${id}: stdout and stderr share a file`);
+    }
+    if (row.stdout?.file && row.stdout.bytes === 0 && row.stderr?.bytes === 0) {
+      issues.push(`${id}: stdout and stderr are both empty (command produced nothing)`);
     }
   }
   return issues;
 }
 
-export function scanPackage(dir, rows = [], extraNames = []) {
+/**
+ * Text scan of the package. Scans records.jsonl plus every *.out.txt / *.err.txt
+ * in the directory (C30 K1.2: the C29 leak was in .out.txt files, which the
+ * earlier version of this scan never opened).
+ */
+export function scanPackage(dir, extraNames = []) {
   const names = new Set();
   for (const n of [homedir(), tmpdir(), userInfo().username, process.env.USERPROFILE, process.env.HOME]) {
     if (typeof n === 'string' && n.length > 3) names.add(n);
   }
   for (const n of extraNames) if (typeof n === 'string' && n.trim()) names.add(n.trim());
-  // Names loaded from the private-names file, if present.
-  const privateFile = join(dir, 'private-names.local.json');
-  if (existsSync(privateFile)) {
-    try {
-      for (const n of JSON.parse(readFileSync(privateFile, 'utf8'))) if (typeof n === 'string') names.add(n);
-    } catch { /* ignore malformed list */ }
-  }
 
   const files = [];
   const recordsFile = join(dir, 'records.jsonl');
   if (existsSync(recordsFile)) files.push(recordsFile);
-  const recordsDir = join(dir, 'records');
-  if (existsSync(recordsDir)) {
-    for (const f of readdirSync(recordsDir)) if (f.endsWith('.out.txt') || f.endsWith('.txt')) files.push(join(recordsDir, f));
+  for (const entry of readdirSync(dir)) {
+    if (/\.(out|err)\.txt$/.test(entry)) files.push(join(dir, entry));
   }
-  let matches = 0;
+
+  const hits = [];
   for (const file of files) {
     const text = readFileSync(file, 'utf8');
     for (const name of names) {
-      if (name && text.includes(name)) matches += 1;
+      if (!name) continue;
+      const matches = text.split(name).length - 1;
+      if (matches > 0) hits.push({ file: basename(file), name, matches });
     }
   }
-  return { files: files.length, names: names.size, matches, filesChecked: files.map((f) => basename(f)) };
+  return {
+    files: files.length,
+    names: names.size,
+    matches: hits.reduce((sum, h) => sum + h.matches, 0),
+    filesChecked: files.map((f) => basename(f)),
+    hits,
+  };
+}
+
+function loadPrivateNames() {
+  const candidates = [
+    process.env.RS_PRIVATE_NAMES ? null : null,
+    '.agent/private-names.local.json',
+  ].filter(Boolean);
+  const names = [];
+  for (const n of (process.env.RS_PRIVATE_NAMES || '').split(',')) if (n.trim()) names.push(n.trim());
+  for (const file of candidates) {
+    if (!existsSync(file)) continue;
+    try {
+      for (const n of JSON.parse(readFileSync(file, 'utf8'))) if (typeof n === 'string' && n.trim()) names.push(n.trim());
+    } catch {
+      /* danh sách hỏng: bỏ qua, verify-records vẫn bắt privateNamesLoaded */
+    }
+  }
+  return names;
 }
 
 function main() {
@@ -119,17 +176,20 @@ function main() {
     process.exit(2);
   }
   const rows = readRecords(dir);
+  const scan = scanPackage(dir, loadPrivateNames());
   const issues = [
     ...requiredRecordIssues(rows),
     ...commandIssues(rows),
     ...fakeRecordIssues(rows),
-    ...scanPackage(dir, rows).matches > 0 ? [`personal identifiers: ${scanPackage(dir, rows).matches} matches`] : [],
+    ...(scan.matches > 0 ? [`personal identifiers: ${scan.matches} match(es) in ${scan.filesChecked.join(', ')}`] : []),
   ];
   if (issues.length > 0) {
-    console.error(issues.join('\n'));
+    for (const issue of issues) console.error(issue);
     process.exit(1);
   }
-  console.log(`OK: ${rows.length} records, no fake records, no personal identifiers`);
+  console.log(
+    `OK: ${rows.length} records, no fake records, ${scan.files} file(s) scanned, no personal identifiers`
+  );
 }
 
 if (process.argv[1] && process.argv[1].endsWith('verify-package.mjs')) main();

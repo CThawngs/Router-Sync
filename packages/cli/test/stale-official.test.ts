@@ -6,6 +6,7 @@ import {
   extractModelIds,
   resolveOfficialSource,
   PER_ID_429_LIMIT,
+  perIdStatusConclusion,
   setPerId429Limit,
 } from '../src/commands/stale-official.js';
 import { hfModelUrl } from '../src/sync/confirm.js';
@@ -169,17 +170,63 @@ describe('C28 H1: HF per-id existence check', () => {
     expect(res.conclusion).toBe('NOT-LISTED-UPSTREAM');
   });
 
-  it('429 → UPSTREAM-UNREACHABLE (never NOT-LISTED: quota must not be a "missing" claim)', async () => {
+  it('429 hết lượt → UPSTREAM-UNREACHABLE (C30 K3.1: hết lượt vì giới hạn tốc độ, không phải repo bị hạn chế)', async () => {
     const { fetchImpl } = captureFetch(429);
     const res = await checkOfficial('hf', 'org/model-a', { fetchImpl, now: fixedNow, retryDelayMs: 0 });
-    expect(res.conclusion).toBe('ACCESS-RESTRICTED-OR-ABSENT');
+    expect(res.conclusion).toBe('UPSTREAM-UNREACHABLE');
+    expect(res.detail).toContain('429');
     expect(res.conclusion).not.toBe('NOT-LISTED-UPSTREAM');
   });
 
-  it('500 → ACCESS-RESTRICTED-OR-ABSENT (endpoint answered; access restricted)', async () => {
+  it('C30 K3.2: 500 → UPSTREAM-UNREACHABLE (lỗi máy chủ, không phải repo bị hạn chế)', async () => {
     const { fetchImpl } = captureFetch(500);
     const res = await checkOfficial('hf', 'org/model-a', { fetchImpl, now: fixedNow, retryDelayMs: 0 });
+    expect(res.conclusion).toBe('UPSTREAM-UNREACHABLE');
+  });
+
+  it('C30 K3.2: 502 → UPSTREAM-UNREACHABLE', async () => {
+    const { fetchImpl } = captureFetch(502);
+    const res = await checkOfficial('hf', 'org/model-a', { fetchImpl, now: fixedNow, retryDelayMs: 0 });
+    expect(res.conclusion).toBe('UPSTREAM-UNREACHABLE');
+  });
+
+  it('C30 K3.2: 401 → ACCESS-RESTRICTED-OR-ABSENT (repo cần đăng nhập)', async () => {
+    const { fetchImpl } = captureFetch(401);
+    const res = await checkOfficial('hf', 'org/model-a', { fetchImpl, now: fixedNow, retryDelayMs: 0 });
     expect(res.conclusion).toBe('ACCESS-RESTRICTED-OR-ABSENT');
+  });
+
+  it('C30 K3.2: 403 → ACCESS-RESTRICTED-OR-ABSENT (repo bị chặn)', async () => {
+    const { fetchImpl } = captureFetch(403);
+    const res = await checkOfficial('hf', 'org/model-a', { fetchImpl, now: fixedNow, retryDelayMs: 0 });
+    expect(res.conclusion).toBe('ACCESS-RESTRICTED-OR-ABSENT');
+  });
+
+  it('C30 K3.2: 418 (4xx khác ngoài 404/429) → ACCESS-RESTRICTED-OR-ABSENT', async () => {
+    const { fetchImpl } = captureFetch(418);
+    const res = await checkOfficial('hf', 'org/model-a', { fetchImpl, now: fixedNow, retryDelayMs: 0 });
+    expect(res.conclusion).toBe('ACCESS-RESTRICTED-OR-ABSENT');
+  });
+
+  it('C30 K3.2: hết thời gian chờ (timeout) → UPSTREAM-UNREACHABLE', async () => {
+    const fetchImpl = (async () => {
+      const err = new Error('The operation was aborted due to timeout');
+      err.name = 'TimeoutError';
+      throw err;
+    }) as unknown as typeof fetch;
+    const res = await checkOfficial('hf', 'org/model-a', { fetchImpl, now: fixedNow });
+    expect(res.conclusion).toBe('UPSTREAM-UNREACHABLE');
+  });
+
+  it('C30 K3.2 mutation: nếu 500 quay lại ACCESS-RESTRICTED-OR-ABSENT thì perIdStatusConclusion đỏ', () => {
+    // Hợp đồng phi mạng: bảng mã trạng thái phải khớp từng nhánh.
+    expect(perIdStatusConclusion(404)).toBe('NOT-LISTED-UPSTREAM');
+    expect(perIdStatusConclusion(429)).toBe('UPSTREAM-UNREACHABLE');
+    expect(perIdStatusConclusion(500)).toBe('UPSTREAM-UNREACHABLE');
+    expect(perIdStatusConclusion(503)).toBe('UPSTREAM-UNREACHABLE');
+    expect(perIdStatusConclusion(401)).toBe('ACCESS-RESTRICTED-OR-ABSENT');
+    expect(perIdStatusConclusion(403)).toBe('ACCESS-RESTRICTED-OR-ABSENT');
+    expect(perIdStatusConclusion(410)).toBe('ACCESS-RESTRICTED-OR-ABSENT');
   });
 
   it('C29 J0.3 mutation: with limit raised, 429s keep retrying (never 404)', async () => {
@@ -187,7 +234,7 @@ describe('C28 H1: HF per-id existence check', () => {
     try {
       const { fetchImpl, urls } = captureFetch(429);
       const res = await checkOfficial('hf', 'org/model-a', { fetchImpl, now: fixedNow, retryDelayMs: 0 });
-      expect(res.conclusion).toBe('ACCESS-RESTRICTED-OR-ABSENT');
+      expect(res.conclusion).toBe('UPSTREAM-UNREACHABLE');
       expect(urls).toHaveLength(9);
     } finally {
       setPerId429Limit(4);
