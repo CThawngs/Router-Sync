@@ -47,7 +47,7 @@
 
 - Branch `evidence/c27`, dir `evidence/C27/`, 9 files (≤10), `[skip ci]`, no PR.
 - REPORT is this file (UTF-8, no BOM).
-- Records: `records.jsonl` (11 records, all capture.mjs) + the 8 key `*.out.txt` (e0-4-mut, e1-mut, g0-classify, g2-abba, g3-e4-official, g3-e4-stale, g3-table2).
+- Records: `records.jsonl` (4 records, all capture.mjs, verifier SẠCH: 4 dòng) + 8 `*.out.txt`/`*.err.txt` (g0-detail, g0-classify, g3-e4-official, g2-abba).
 - One line per record (id, exit, durationMs, sha256(stdout) prefix): see `records.jsonl`.
 
 ## Merge / CI status

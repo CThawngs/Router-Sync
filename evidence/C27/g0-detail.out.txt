@@ -1,0 +1,55 @@
+2026-11-20T17:57:47.5464823Z ##[group]Run pnpm e2e
+2026-11-20T17:57:47.5465099Z [36;1mpnpm e2e[0m
+2026-11-20T17:57:47.5484601Z shell: /usr/bin/bash -e {0}
+2026-11-20T17:57:47.5484835Z env:
+2026-11-20T17:57:47.5485060Z   PNPM_HOME: /home/runner/setup-pnpm/node_modules/.bin
+2026-11-20T17:57:47.5485346Z ##[endgroup]
+2026-11-20T17:57:47.7779919Z 
+2026-11-20T17:57:47.7780447Z > routersync@0.1.0 e2e /home/runner/work/Router-Sync/Router-Sync
+2026-11-20T17:57:47.7780892Z > node tools/agent/heavy.mjs -- pnpm e2e
+2026-11-20T17:57:47.7781075Z 
+2026-11-20T17:57:48.2836824Z 
+2026-11-20T17:57:48.2837966Z [1m[30m[46m RUN [49m[39m[22m [36mv4.1.12 [39m[90m/home/runner/work/Router-Sync/Router-Sync[39m
+2026-11-20T17:57:48.2841045Z 
+2026-11-20T17:58:01.3546869Z [routersync-mcp] Server running on stdio (25 read-only tools active)
+2026-11-20T17:58:21.6358356Z  [31m❯[39m [30m[45m e2e [49m[39m test/e2e/e2e.test.ts [2m([22m[2m13 tests[22m[2m | [22m[31m1 failed[39m[2m)[22m[33m 33176[2mms[22m[39m
+2026-11-20T17:58:21.6359358Z      [33m[2m✓[22m[39m prints version and help from the installed CLI [33m 391[2mms[22m[39m
+2026-11-20T17:58:21.6360177Z      [32m✓[39m runs a read-only scan against the fake router databases[32m 244[2mms[22m[39m
+2026-11-20T17:58:21.6360955Z      [33m[2m✓[22m[39m ticks twice: the second run makes 0 requests (15 minute gate) [33m 993[2mms[22m[39m
+2026-11-20T17:58:21.6361620Z      [33m[2m✓[22m[39m detects a new model and a lost model [33m 547[2mms[22m[39m
+2026-11-20T17:58:21.6362231Z      [32m✓[39m records provider errors as zero-token failures[32m 276[2mms[22m[39m
+2026-11-20T17:58:21.6362834Z      [33m[2m✓[22m[39m runs verify and the inbox commands [33m 465[2mms[22m[39m
+2026-11-20T17:58:21.6363386Z      [32m✓[39m accepts a research submission[32m 217[2mms[22m[39m
+2026-11-20T17:58:21.6363989Z      [32m✓[39m runs a rank preview without touching the router database[32m 229[2mms[22m[39m
+2026-11-20T17:58:21.6364721Z      [33m[2m✓[22m[39m runs undo in plan-only mode and refuses sync without a TTY [33m 453[2mms[22m[39m
+2026-11-20T17:58:21.6365533Z      [33m[2m✓[22m[39m refuses sync --apply, undo --apply and rank --apply when stdin is a pipe [33m 630[2mms[22m[39m
+2026-11-20T17:58:21.6366326Z      [33m[2m✓[22m[39m serves the MCP server over stdio with 25 read-only tools [33m 401[2mms[22m[39m
+2026-11-20T17:58:21.6367163Z [31m     [31m×[31m starts the daemon on a random port and answers a health request[39m[33m 20092[2mms[22m[39m
+2026-11-20T17:58:21.6367918Z      [32m✓[39m leaves the fake router databases byte-identical[32m 0[2mms[22m[39m
+2026-11-20T17:58:21.6386357Z 
+2026-11-20T17:58:21.6387454Z [31m⎯⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 1 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+2026-11-20T17:58:21.6387853Z 
+2026-11-20T17:58:21.6389099Z [41m[1m FAIL [22m[49m [30m[45m e2e [49m[39m test/e2e/e2e.test.ts[2m > [22mE2E - the installed package works end to end[2m > [22mstarts the daemon on a random port and answers a health request
+2026-11-20T17:58:21.6396109Z [31m[1mAssertionError[22m: expected false to be true // Object.is equality[39m
+2026-11-20T17:58:21.6396439Z 
+2026-11-20T17:58:21.6396573Z [32m- Expected[39m
+2026-11-20T17:58:21.6396825Z [31m+ Received[39m
+2026-11-20T17:58:21.6396951Z 
+2026-11-20T17:58:21.6397050Z [32m- true[39m
+2026-11-20T17:58:21.6397273Z [31m+ false[39m
+2026-11-20T17:58:21.6397384Z 
+2026-11-20T17:58:21.6400586Z [36m [2m❯[22m test/e2e/e2e.test.ts:[2m470:16[22m[39m
+2026-11-20T17:58:21.6473986Z     [90m468|[39m       }
+2026-11-20T17:58:21.6474488Z     [90m469|[39m     }
+2026-11-20T17:58:21.6475116Z     [90m470|[39m     [34mexpect[39m(ok)[33m.[39m[34mtoBe[39m([35mtrue[39m)[33m;[39m
+2026-11-20T17:58:21.6475767Z     [90m   |[39m                [31m^[39m
+2026-11-20T17:58:21.6476521Z     [90m471|[39m     [34mexpect[39m(body[33m.[39mlength)[33m.[39m[34mtoBeGreaterThan[39m([34m0[39m)[33m;[39m
+2026-11-20T17:58:21.6477847Z     [90m472|[39m   }[33m,[39m [34m120000[39m)[33m;[39m
+2026-11-20T17:58:21.6478116Z 
+2026-11-20T17:58:21.6478262Z 
+2026-11-20T17:58:21.6478823Z [31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯[22m[39m
+2026-11-20T17:58:21.6480558Z 
+2026-11-20T17:58:21.6480944Z [2m Test Files [22m [1m[31m1 failed[39m[22m[90m (1)[39m
+2026-11-20T17:58:21.6481596Z [2m      Tests [22m [1m[31m1 failed[39m[22m[2m | [22m[1m[32m12 passed[39m[22m[90m (13)[39m
+2026-11-20T17:58:21.6482086Z [2m   Start at [22m 17:57:48
+2026-11-20T17:58:21.6482692Z [2m   Duration [22m 33.35s[2m (transform 49ms, setup 0ms, import 63ms, tests 33.18s, environment 0ms)[22m
