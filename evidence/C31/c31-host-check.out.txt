@@ -1,0 +1,49 @@
+{
+  "checkedAt": "2026-11-21T18:22:40.292Z",
+  "hf": {
+    "root": {
+      "status": 200,
+      "ok": true,
+      "ids": 1000,
+      "truncated": true
+    },
+    "perId": {
+      "openai/gpt-4o": {
+        "status": 401,
+        "ok": false,
+        "ms": 258
+      },
+      "CohereLabs/c4ai-command-a-03-2025": {
+        "status": 200,
+        "ok": true,
+        "ms": 292
+      },
+      "CohereLabs/command-r-08-2024": {
+        "status": 401,
+        "ok": false,
+        "ms": 264
+      },
+      "CohereLabs/c4ai-command-r7b-12-2024": {
+        "status": 200,
+        "ok": true,
+        "ms": 266
+      },
+      "CohereLabs/aya-expanse-32b": {
+        "status": 200,
+        "ok": true,
+        "ms": 266
+      }
+    }
+  },
+  "modelsDev": {
+    "status": 200,
+    "ok": true,
+    "nvidiaModels": 52,
+    "commandAIndex": -1
+  },
+  "openrouter": {
+    "status": 200,
+    "ok": true,
+    "ids": 476
+  }
+}

@@ -1,0 +1,4850 @@
+{
+  "generatedAt": "2026-11-21T18:22:07.759Z",
+  "status": "OK",
+  "unavailable": [],
+  "source": "direct",
+  "note": "ABSENT means not found in directly available router state, not an upstream provider classification. UNVERIFIABLE means the provider carried no availability evidence.",
+  "routers": [
+    "9router",
+    "omniroute"
+  ],
+  "omittedRouters": [],
+  "rows": [
+    {
+      "router": "9router",
+      "step": "bai/gemini-4-hydrogen",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "9router",
+      "step": "bzl/auto:free",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "9router",
+      "step": "bzl/beam-free",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "9router",
+      "step": "bzl/deepseek/deepseek-v4-flash-0731free:free",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "9router",
+      "step": "bzl/qwen/qwen3.7-flash:free",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "9router",
+      "step": "cf/@cf/deepseek-ai/deepseek-r1-distill-qwen-32b",
+      "status": "PRESENT"
+    },
+    {
+      "router": "9router",
+      "step": "cf/@cf/meta/llama-3.2-1b-instruct",
+      "status": "PRESENT"
+    },
+    {
+      "router": "9router",
+      "step": "cf/@cf/meta/llama-3.2-3b-instruct",
+      "status": "PRESENT"
+    },
+    {
+      "router": "9router",
+      "step": "cf/@cf/meta/llama-3.3-70b-instruct-fp8-fast",
+      "status": "PRESENT"
+    },
+    {
+      "router": "9router",
+      "step": "cf/@cf/mistralai/mistral-small-3.1-24b-instruct",
+      "status": "PRESENT"
+    },
+    {
+      "router": "9router",
+      "step": "cf/@cf/zai-org/glm-4.7-flash",
+      "status": "PRESENT"
+    },
+    {
+      "router": "9router",
+      "step": "cf/@cf/zai-org/glm-5.2",
+      "status": "PRESENT"
+    },
+    {
+      "router": "9router",
+      "step": "cf/zai-org/glm-5.2",
+      "status": "PRESENT"
+    },
+    {
+      "router": "9router",
+      "step": "cohere/c4ai-aya-expanse-32b",
+      "status": "PRESENT"
+    },
+    {
+      "router": "9router",
+      "step": "cohere/c4ai-aya-vision-32b",
+      "status": "PRESENT"
+    },
+    {
+      "router": "9router",
+      "step": "cohere/command-a-03-2025",
+      "status": "PRESENT"
+    },
+    {
+      "router": "9router",
+      "step": "cohere/command-a-plus-05-2026",
+      "status": "PRESENT"
+    },
+    {
+      "router": "9router",
+      "step": "cohere/command-a-reasoning-08-2025",
+      "status": "PRESENT"
+    },
+    {
+      "router": "9router",
+      "step": "cohere/command-a-translate-08-2025",
+      "status": "PRESENT"
+    },
+    {
+      "router": "9router",
+      "step": "cohere/command-a-vision-07-2025",
+      "status": "PRESENT"
+    },
+    {
+      "router": "9router",
+      "step": "cohere/command-r-08-2024",
+      "status": "PRESENT"
+    },
+    {
+      "router": "9router",
+      "step": "cohere/command-r-plus-08-2024",
+      "status": "PRESENT"
+    },
+    {
+      "router": "9router",
+      "step": "cohere/command-r7b-12-2024",
+      "status": "PRESENT"
+    },
+    {
+      "router": "9router",
+      "step": "cohere/command-r7b-arabic-02-2025",
+      "status": "PRESENT"
+    },
+    {
+      "router": "9router",
+      "step": "ds/deepseek-v4.1-flash",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "9router",
+      "step": "gemini/gemini-3.8-flash",
+      "status": "PRESENT"
+    },
+    {
+      "router": "9router",
+      "step": "gemini/gemini-3.8-live",
+      "status": "PRESENT"
+    },
+    {
+      "router": "9router",
+      "step": "gemini/gemini-3.8-live-extended-thinking",
+      "status": "PRESENT"
+    },
+    {
+      "router": "9router",
+      "step": "gemini/gemini-4-argon",
+      "status": "PRESENT"
+    },
+    {
+      "router": "9router",
+      "step": "gemini/gemini-4-hydrogen",
+      "status": "ABSENT"
+    },
+    {
+      "router": "9router",
+      "step": "gemini/models/gemini-3.8-flash",
+      "status": "PRESENT"
+    },
+    {
+      "router": "9router",
+      "step": "gemini/models/gemini-3.8-live",
+      "status": "PRESENT"
+    },
+    {
+      "router": "9router",
+      "step": "gemini/models/gemini-3.8-live-extended-thinking",
+      "status": "PRESENT"
+    },
+    {
+      "router": "9router",
+      "step": "google/gemini-3.8-flash",
+      "status": "PRESENT"
+    },
+    {
+      "router": "9router",
+      "step": "google/gemini-3.8-live",
+      "status": "PRESENT"
+    },
+    {
+      "router": "9router",
+      "step": "google/gemini-3.8-live-extended-thinking",
+      "status": "PRESENT"
+    },
+    {
+      "router": "9router",
+      "step": "google/gemini-4-argon",
+      "status": "PRESENT"
+    },
+    {
+      "router": "9router",
+      "step": "google/gemini-4-hydrogen",
+      "status": "ABSENT"
+    },
+    {
+      "router": "9router",
+      "step": "google/models/gemini-3.8-flash",
+      "status": "PRESENT"
+    },
+    {
+      "router": "9router",
+      "step": "google/models/gemini-3.8-live",
+      "status": "PRESENT"
+    },
+    {
+      "router": "9router",
+      "step": "google/models/gemini-3.8-live-extended-thinking",
+      "status": "PRESENT"
+    },
+    {
+      "router": "9router",
+      "step": "groq/allam-2-7b",
+      "status": "PRESENT"
+    },
+    {
+      "router": "9router",
+      "step": "groq/canopylabs/orpheus-arabic-saudi",
+      "status": "PRESENT"
+    },
+    {
+      "router": "9router",
+      "step": "groq/canopylabs/orpheus-v1-english",
+      "status": "PRESENT"
+    },
+    {
+      "router": "9router",
+      "step": "groq/openai/gpt-oss-120b",
+      "status": "ABSENT"
+    },
+    {
+      "router": "9router",
+      "step": "groq/openai/gpt-oss-20b",
+      "status": "PRESENT"
+    },
+    {
+      "router": "9router",
+      "step": "groq/qwen/qwen3.8-27b",
+      "status": "ABSENT"
+    },
+    {
+      "router": "9router",
+      "step": "hf/CohereLabs/aya-expanse-32b",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "9router",
+      "step": "hf/CohereLabs/aya-vision-32b",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "9router",
+      "step": "hf/CohereLabs/c4ai-command-a-03-2025",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "9router",
+      "step": "hf/CohereLabs/c4ai-command-r-08-2024",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "9router",
+      "step": "hf/CohereLabs/c4ai-command-r7b-12-2024",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "9router",
+      "step": "hf/CohereLabs/command-a-reasoning-08-2025",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "9router",
+      "step": "hf/CohereLabs/command-a-translate-08-2025",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "9router",
+      "step": "hf/CohereLabs/tiny-aya-earth",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "9router",
+      "step": "hf/CohereLabs/tiny-aya-fire",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "9router",
+      "step": "hf/CohereLabs/tiny-aya-global",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "9router",
+      "step": "hf/CohereLabs/tiny-aya-water",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "9router",
+      "step": "hf/NousResearch/Hermes-3-Llama-3.1-70B",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "9router",
+      "step": "hf/Qwen/Qwen2.5-VL-72B-Instruct",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "9router",
+      "step": "hf/Qwen/Qwen3-14B",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "9router",
+      "step": "hf/Qwen/Qwen3-30B-A3B",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "9router",
+      "step": "hf/Qwen/Qwen3-32B",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "9router",
+      "step": "hf/Qwen/Qwen3-Next-80B-A3B-Instruct",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "9router",
+      "step": "hf/Qwen/Qwen3-VL-235B-A22B-Instruct",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "9router",
+      "step": "hf/Qwen/Qwen3-VL-30B-A3B-Instruct",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "9router",
+      "step": "hf/Qwen/Qwen3.5-122B-A10B",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "9router",
+      "step": "hf/Qwen/Qwen3.5-27B",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "9router",
+      "step": "hf/Qwen/Qwen3.5-35B-A3B",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "9router",
+      "step": "hf/Qwen/Qwen3.5-397B-A17B",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "9router",
+      "step": "hf/Qwen/Qwen3.5-9B",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "9router",
+      "step": "hf/Qwen/Qwen3.6-27B",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "9router",
+      "step": "hf/Qwen/Qwen3.6-35B-A3B",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "9router",
+      "step": "hf/Qwen/Qwen3.8-2.4T-A95B",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "9router",
+      "step": "hf/Qwen/Qwen3.8-27B",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "9router",
+      "step": "hf/Sao10K/L3-8B-Stheno-v3.2",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "9router",
+      "step": "hf/XiaomiMiMo/MiMo-V2.5",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "9router",
+      "step": "hf/XiaomiMiMo/MiMo-V2.5-Pro",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "9router",
+      "step": "hf/XiaomiMiMo/MiMo-V2.6-Flash-RL",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "9router",
+      "step": "hf/XiaomiMiMo/MiMo-V2.6-Pro-RL",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "9router",
+      "step": "hf/aisingapore/Gemma-SEA-LION-v4-27B-IT",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "9router",
+      "step": "hf/aisingapore/Qwen-SEA-LION-v4-32B-IT",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "9router",
+      "step": "hf/alpindale/WizardLM-2-8x22B",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "9router",
+      "step": "hf/deepseek-ai/DeepSeek-R1",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "9router",
+      "step": "hf/deepseek-ai/DeepSeek-R1-0528",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "9router",
+      "step": "hf/deepseek-ai/DeepSeek-V3",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "9router",
+      "step": "hf/deepseek-ai/DeepSeek-V3-0324",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "9router",
+      "step": "hf/deepseek-ai/DeepSeek-V3.1",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "9router",
+      "step": "hf/deepseek-ai/DeepSeek-V3.1-Terminus",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "9router",
+      "step": "hf/deepseek-ai/DeepSeek-V3.2",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "9router",
+      "step": "hf/deepseek-ai/DeepSeek-V4-Flash",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "9router",
+      "step": "hf/deepseek-ai/DeepSeek-V4-Flash-0731",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "9router",
+      "step": "hf/deepseek-ai/DeepSeek-V4-Flash-Vision-Exp",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "9router",
+      "step": "hf/deepseek-ai/DeepSeek-V4.1-Flash",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "9router",
+      "step": "hf/deepseek-ai/DeepSeek-V4.1-Flash-1017",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "9router",
+      "step": "hf/google/gemma-3-12b-it",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "9router",
+      "step": "hf/google/gemma-3-27b-it",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "9router",
+      "step": "hf/google/gemma-3-4b-it",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "9router",
+      "step": "hf/google/gemma-4-26B-A4B-it",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "9router",
+      "step": "hf/google/gemma-4-31B-it",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "9router",
+      "step": "hf/ibm-granite/granite-4.2-3b",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "9router",
+      "step": "hf/inclusionAI/Ling-3.0-flash",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "9router",
+      "step": "hf/inclusionAI/Ling-3.0-flash-Fin",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "9router",
+      "step": "hf/inclusionAI/Ling-3.0-flash-VL",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "9router",
+      "step": "hf/inclusionAI/Ling-3.1-flash",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "9router",
+      "step": "hf/meta-llama/Llama-3.1-8B-Instruct",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "9router",
+      "step": "hf/meta-llama/Llama-3.3-70B-Instruct",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "9router",
+      "step": "hf/meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "9router",
+      "step": "hf/meta-llama/Llama-4-Scout-17B-16E-Instruct",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "9router",
+      "step": "hf/meta-models/Muse-Glimmer-30B",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "9router",
+      "step": "hf/meta-models/Muse-Spark-Open-816B-A42B",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "9router",
+      "step": "hf/microsoft/phi-4",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "9router",
+      "step": "hf/moonshotai/Kimi-K2-Instruct",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "9router",
+      "step": "hf/moonshotai/Kimi-K2-Instruct-0905",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "9router",
+      "step": "hf/moonshotai/Kimi-K2.5",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "9router",
+      "step": "hf/moonshotai/Kimi-K2.6",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "9router",
+      "step": "hf/moonshotai/Kimi-K2.7-Code",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "9router",
+      "step": "hf/moonshotai/Kimi-K3",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "9router",
+      "step": "hf/nvidia/NVIDIA-Nemotron-3-Ultra-550B-A55B-BF16",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "9router",
+      "step": "hf/nvidia/NVIDIA-Nemotron-3.5-Super-VL-120B-A12B-NVFP4",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "9router",
+      "step": "hf/openai/gpt-oss-120b",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "9router",
+      "step": "hf/openai/gpt-oss-20b",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "9router",
+      "step": "hf/speakleash/Bielik-11B-v3.0-Instruct",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "9router",
+      "step": "hf/stepfun-ai/Step-3.5-Flash",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "9router",
+      "step": "hf/stepfun-ai/Step-3.7-Flash",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "9router",
+      "step": "hf/swiss-ai/Apertus-8B-Instruct-2509",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "9router",
+      "step": "hf/tencent/Hy3",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "9router",
+      "step": "hf/tencent/Hy4-preview",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "9router",
+      "step": "hf/thinkingmachines/Inkling",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "9router",
+      "step": "hf/thinkingmachines/Inkling-Small",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "9router",
+      "step": "hf/zai-org/AutoGLM-Phone-9B-Multilingual",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "9router",
+      "step": "hf/zai-org/GLM-4.5",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "9router",
+      "step": "hf/zai-org/GLM-4.5-Air",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "9router",
+      "step": "hf/zai-org/GLM-4.5V",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "9router",
+      "step": "hf/zai-org/GLM-4.5V-FP8",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "9router",
+      "step": "hf/zai-org/GLM-4.6",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "9router",
+      "step": "hf/zai-org/GLM-4.6-FP8",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "9router",
+      "step": "hf/zai-org/GLM-4.6V",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "9router",
+      "step": "hf/zai-org/GLM-4.6V-FP8",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "9router",
+      "step": "hf/zai-org/GLM-4.6V-Flash",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "9router",
+      "step": "hf/zai-org/GLM-4.7",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "9router",
+      "step": "hf/zai-org/GLM-4.7-FP8",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "9router",
+      "step": "hf/zai-org/GLM-4.7-Flash",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "9router",
+      "step": "hf/zai-org/GLM-5",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "9router",
+      "step": "hf/zai-org/GLM-5.1",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "9router",
+      "step": "hf/zai-org/GLM-5.2",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "9router",
+      "step": "hf/zai-org/GLM-5.2-FP8",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "9router",
+      "step": "hf/zai-org/GLM-5.3",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "9router",
+      "step": "hf/zai-org/GLM-5.3-BF16",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "9router",
+      "step": "hf/zai-org/GLM-5.3-Flash",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "9router",
+      "step": "hf/zai-org/GLM-5.3-Flash-BF16",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "9router",
+      "step": "kc/cohere/north-mini-code:free",
+      "status": "PRESENT"
+    },
+    {
+      "router": "9router",
+      "step": "kc/nvidia/nemotron-3-super-120b-a12b:free",
+      "status": "PRESENT"
+    },
+    {
+      "router": "9router",
+      "step": "kc/nvidia/nemotron-3-ultra-550b-a55b:free",
+      "status": "PRESENT"
+    },
+    {
+      "router": "9router",
+      "step": "kc/poolside/laguna-xs.2:free",
+      "status": "PRESENT"
+    },
+    {
+      "router": "9router",
+      "step": "nvidia/google/codegemma-1.1-7b",
+      "status": "PRESENT"
+    },
+    {
+      "router": "9router",
+      "step": "nvidia/google/diffusiongemma-26b-a4b-it",
+      "status": "PRESENT"
+    },
+    {
+      "router": "9router",
+      "step": "nvidia/google/gemma-4-31b-it",
+      "status": "PRESENT"
+    },
+    {
+      "router": "9router",
+      "step": "nvidia/ibm/granite-34b-code-instruct",
+      "status": "PRESENT"
+    },
+    {
+      "router": "9router",
+      "step": "nvidia/meta/llama-3.2-90b-vision-instruct",
+      "status": "PRESENT"
+    },
+    {
+      "router": "9router",
+      "step": "nvidia/meta/muse-glimmer-30b",
+      "status": "PRESENT"
+    },
+    {
+      "router": "9router",
+      "step": "nvidia/mistralai/mistral-large-2-instruct",
+      "status": "PRESENT"
+    },
+    {
+      "router": "9router",
+      "step": "nvidia/moonshotai/kimi-k2.6",
+      "status": "PRESENT"
+    },
+    {
+      "router": "9router",
+      "step": "nvidia/nvidia/ai-synthetic-video-detector",
+      "status": "ABSENT"
+    },
+    {
+      "router": "9router",
+      "step": "nvidia/nvidia/ising-calibration-1.5-31b",
+      "status": "ABSENT"
+    },
+    {
+      "router": "9router",
+      "step": "nvidia/nvidia/llama3-chatqa-1.5-70b",
+      "status": "ABSENT"
+    },
+    {
+      "router": "9router",
+      "step": "nvidia/nvidia/mistral-nemo-minitron-8b-8k-instruct",
+      "status": "ABSENT"
+    },
+    {
+      "router": "9router",
+      "step": "nvidia/nvidia/nemotron-3-nano-omni-30b-a3b-reasoning",
+      "status": "ABSENT"
+    },
+    {
+      "router": "9router",
+      "step": "nvidia/nvidia/nemotron-3-super-120b-a12b",
+      "status": "ABSENT"
+    },
+    {
+      "router": "9router",
+      "step": "nvidia/nvidia/nemotron-3-ultra-550b-a55b",
+      "status": "ABSENT"
+    },
+    {
+      "router": "9router",
+      "step": "nvidia/nvidia/nemotron-3.5-lightning-30b-a3b",
+      "status": "ABSENT"
+    },
+    {
+      "router": "9router",
+      "step": "nvidia/nvidia/nemotron-3.5-super-vl-120b-a12b",
+      "status": "ABSENT"
+    },
+    {
+      "router": "9router",
+      "step": "nvidia/nvidia/nemotron-4-340b-instruct",
+      "status": "ABSENT"
+    },
+    {
+      "router": "9router",
+      "step": "nvidia/nvidia/nemotron-4-340b-reward",
+      "status": "ABSENT"
+    },
+    {
+      "router": "9router",
+      "step": "nvidia/nvidia/nemotron-nano-3-30b-a3b",
+      "status": "ABSENT"
+    },
+    {
+      "router": "9router",
+      "step": "nvidia/nvidia/nemotron-parse",
+      "status": "ABSENT"
+    },
+    {
+      "router": "9router",
+      "step": "nvidia/nvidia/nemotron-parse-2.0",
+      "status": "ABSENT"
+    },
+    {
+      "router": "9router",
+      "step": "nvidia/nvidia/neva-22b",
+      "status": "ABSENT"
+    },
+    {
+      "router": "9router",
+      "step": "nvidia/nvidia/riva-translate-4b-instruct",
+      "status": "ABSENT"
+    },
+    {
+      "router": "9router",
+      "step": "nvidia/nvidia/riva-translate-4b-instruct-v2",
+      "status": "ABSENT"
+    },
+    {
+      "router": "9router",
+      "step": "nvidia/nvidia/vila",
+      "status": "ABSENT"
+    },
+    {
+      "router": "9router",
+      "step": "nvidia/openai/gpt-oss-20b",
+      "status": "PRESENT"
+    },
+    {
+      "router": "9router",
+      "step": "nvidia/poolside/laguna-xs-2.1",
+      "status": "PRESENT"
+    },
+    {
+      "router": "9router",
+      "step": "nvidia/stepfun-ai/step-5-preview",
+      "status": "ABSENT"
+    },
+    {
+      "router": "9router",
+      "step": "nvidia/z-ai/glm-5.3-flash",
+      "status": "PRESENT"
+    },
+    {
+      "router": "9router",
+      "step": "oc/big-pickle",
+      "status": "PRESENT"
+    },
+    {
+      "router": "9router",
+      "step": "oc/deepseek-v4-flash-free",
+      "status": "PRESENT"
+    },
+    {
+      "router": "9router",
+      "step": "oc/deepseek-v4.1-flash-free",
+      "status": "PRESENT"
+    },
+    {
+      "router": "9router",
+      "step": "oc/exo-free",
+      "status": "PRESENT"
+    },
+    {
+      "router": "9router",
+      "step": "oc/hy3-free",
+      "status": "PRESENT"
+    },
+    {
+      "router": "9router",
+      "step": "oc/hy4-flash-free",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "9router",
+      "step": "oc/iceman-free",
+      "status": "PRESENT"
+    },
+    {
+      "router": "9router",
+      "step": "oc/inkling-2-small-free",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "9router",
+      "step": "oc/jev-1.13-free",
+      "status": "PRESENT"
+    },
+    {
+      "router": "9router",
+      "step": "oc/ling-3.0-flash-fin-free",
+      "status": "PRESENT"
+    },
+    {
+      "router": "9router",
+      "step": "oc/ling-3.0-flash-free",
+      "status": "PRESENT"
+    },
+    {
+      "router": "9router",
+      "step": "oc/ling-3.1-flash-free",
+      "status": "PRESENT"
+    },
+    {
+      "router": "9router",
+      "step": "oc/longcat-2.5-free",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "9router",
+      "step": "oc/mimo-v2.5-free",
+      "status": "PRESENT"
+    },
+    {
+      "router": "9router",
+      "step": "oc/mimo-v2.6-flash-free",
+      "status": "PRESENT"
+    },
+    {
+      "router": "9router",
+      "step": "oc/muse-spark-1.2-contributor-free",
+      "status": "PRESENT"
+    },
+    {
+      "router": "9router",
+      "step": "oc/muse-spark-1.3-contributor-free",
+      "status": "PRESENT"
+    },
+    {
+      "router": "9router",
+      "step": "oc/nemotron-3-ultra-free",
+      "status": "PRESENT"
+    },
+    {
+      "router": "9router",
+      "step": "oc/nemotron-3.5-lightning-free",
+      "status": "PRESENT"
+    },
+    {
+      "router": "9router",
+      "step": "oc/nemotron-3.5-super-vl-free",
+      "status": "PRESENT"
+    },
+    {
+      "router": "9router",
+      "step": "oc/north-mini-code-free",
+      "status": "PRESENT"
+    },
+    {
+      "router": "9router",
+      "step": "oc/qwen3.6-plus-free",
+      "status": "PRESENT"
+    },
+    {
+      "router": "9router",
+      "step": "oc/step-5-preview-free",
+      "status": "PRESENT"
+    },
+    {
+      "router": "9router",
+      "step": "oc/tidepool-alpha-free",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "9router",
+      "step": "oc/x-preview-f-free",
+      "status": "PRESENT"
+    },
+    {
+      "router": "9router",
+      "step": "ocz/beam-free",
+      "status": "PRESENT"
+    },
+    {
+      "router": "9router",
+      "step": "ocz/deepseek-v4.1-flash-free",
+      "status": "PRESENT"
+    },
+    {
+      "router": "9router",
+      "step": "ocz/flint-40b-free",
+      "status": "PRESENT"
+    },
+    {
+      "router": "9router",
+      "step": "ocz/mimo-v2.6-flash-free",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "9router",
+      "step": "ocz/nemotron-3.5-super-vl-free",
+      "status": "PRESENT"
+    },
+    {
+      "router": "9router",
+      "step": "openai-compatible-chat-5c7bdb86-5261-4ca7-b5e1-9413a85e6b92/deepseek/deepseek-v4-flash-free",
+      "status": "PRESENT"
+    },
+    {
+      "router": "9router",
+      "step": "openrouter/baidu/ernie-5.5-flash-preview:free",
+      "status": "PRESENT"
+    },
+    {
+      "router": "9router",
+      "step": "openrouter/cohere/north-mini-code:free",
+      "status": "PRESENT"
+    },
+    {
+      "router": "9router",
+      "step": "openrouter/dots-studio/dots-3-note-preview:free",
+      "status": "PRESENT"
+    },
+    {
+      "router": "9router",
+      "step": "openrouter/google/gemma-4-26b-a4b-it:free",
+      "status": "PRESENT"
+    },
+    {
+      "router": "9router",
+      "step": "openrouter/google/gemma-4-31b-it:free",
+      "status": "PRESENT"
+    },
+    {
+      "router": "9router",
+      "step": "openrouter/inclusionai/ling-3.2-flash:free",
+      "status": "PRESENT"
+    },
+    {
+      "router": "9router",
+      "step": "openrouter/liquid/lfm-2.5-2.6b:free",
+      "status": "PRESENT"
+    },
+    {
+      "router": "9router",
+      "step": "openrouter/nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
+      "status": "PRESENT"
+    },
+    {
+      "router": "9router",
+      "step": "openrouter/nvidia/nemotron-3-ultra-550b-a55b:free",
+      "status": "PRESENT"
+    },
+    {
+      "router": "9router",
+      "step": "openrouter/nvidia/nemotron-3.5-lightning:free",
+      "status": "PRESENT"
+    },
+    {
+      "router": "9router",
+      "step": "openrouter/nvidia/nemotron-3.5-super-vl:free",
+      "status": "PRESENT"
+    },
+    {
+      "router": "9router",
+      "step": "openrouter/openrouter/free",
+      "status": "PRESENT"
+    },
+    {
+      "router": "9router",
+      "step": "openrouter/recursive/flint-v1.0:free",
+      "status": "PRESENT"
+    },
+    {
+      "router": "9router",
+      "step": "openrouter/thinkingmachines/inkling-2-small:free",
+      "status": "PRESENT"
+    },
+    {
+      "router": "9router",
+      "step": "openrouter/xingchen-agi/xing4.0-29b-a4b:free",
+      "status": "ABSENT"
+    },
+    {
+      "router": "9router",
+      "step": "openrouter/z-ai/glm-5.2:free",
+      "status": "PRESENT"
+    },
+    {
+      "router": "9router",
+      "step": "<private-provider-2>/deepseek/deepseek-v4-flash-free",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "9router",
+      "step": "<private-provider-2>/deepseek/deepseek-v4.1-flash-free",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "9router",
+      "step": "<private-provider-2>/orca/orcaverify-text1.0-free",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "9router",
+      "step": "<private-provider-2>/<private-provider-2>/free",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "9router",
+      "step": "<private-provider-2>/tencent/hy3-free",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "9router",
+      "step": "<private-provider-2>/tencent/hy4-preview-free",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "9router",
+      "step": "<private-provider-2>/z-ai/glm-5.3-flash-free",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "9router",
+      "step": "<private-provider-3>/qwen/qwen3-coder-plus:free",
+      "status": "PRESENT"
+    },
+    {
+      "router": "9router",
+      "step": "<private-provider-4>/z-ai/glm-5.3-free",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "omniroute",
+      "step": "bazaarlink/bazaarlink/auto:free",
+      "status": "PRESENT-NORMALIZED"
+    },
+    {
+      "router": "omniroute",
+      "step": "bazaarlink/bazaarlink/beam-free",
+      "status": "PRESENT-NORMALIZED"
+    },
+    {
+      "router": "omniroute",
+      "step": "bazaarlink/bazaarlink/deepseek/deepseek-v4-flash-0731free:free",
+      "status": "ABSENT"
+    },
+    {
+      "router": "omniroute",
+      "step": "bazaarlink/bazaarlink/nemotron-3.5-lightning-free",
+      "status": "PRESENT-NORMALIZED"
+    },
+    {
+      "router": "omniroute",
+      "step": "bazaarlink/bazaarlink/nvidia/nemotron-3.5-lightning-free:free",
+      "status": "ABSENT"
+    },
+    {
+      "router": "omniroute",
+      "step": "bazaarlink/bazaarlink/qwen/qwen3.7-flash:free",
+      "status": "ABSENT"
+    },
+    {
+      "router": "omniroute",
+      "step": "bazaarlink/bazaarlink/reflection/beam-free:free",
+      "status": "ABSENT"
+    },
+    {
+      "router": "omniroute",
+      "step": "bazaarlink/bazaarlink/stealth/glyph-cluster:free",
+      "status": "ABSENT"
+    },
+    {
+      "router": "omniroute",
+      "step": "bzl/bzl/auto:free",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "omniroute",
+      "step": "bzl/bzl/deepseek/deepseek-v4-flash-0731free:free",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "omniroute",
+      "step": "bzl/bzl/qwen/qwen3.7-flash:free",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "omniroute",
+      "step": "cerebras/cerebras/gpt-oss-120b",
+      "status": "PRESENT-NORMALIZED"
+    },
+    {
+      "router": "omniroute",
+      "step": "cerebras/cerebras/zai-glm-4.7",
+      "status": "PRESENT-NORMALIZED"
+    },
+    {
+      "router": "omniroute",
+      "step": "cloudflare-ai/cloudflare-ai/@cf/@cf/zai-org/glm-5.2",
+      "status": "PRESENT-NORMALIZED"
+    },
+    {
+      "router": "omniroute",
+      "step": "cloudflare-ai/cloudflare-ai/@cf/deepseek-ai/deepseek-math-7b-instruct",
+      "status": "ABSENT"
+    },
+    {
+      "router": "omniroute",
+      "step": "cloudflare-ai/cloudflare-ai/@cf/deepseek-ai/deepseek-r1-distill-qwen-32b",
+      "status": "ABSENT"
+    },
+    {
+      "router": "omniroute",
+      "step": "cloudflare-ai/cloudflare-ai/@cf/deepseek-ai/deepseek-v4-flash-0731",
+      "status": "ABSENT"
+    },
+    {
+      "router": "omniroute",
+      "step": "cloudflare-ai/cloudflare-ai/@cf/google/gemma-2b-it",
+      "status": "ABSENT"
+    },
+    {
+      "router": "omniroute",
+      "step": "cloudflare-ai/cloudflare-ai/@cf/google/gemma-7b-it",
+      "status": "ABSENT"
+    },
+    {
+      "router": "omniroute",
+      "step": "cloudflare-ai/cloudflare-ai/@cf/meta/llama-2-7b-chat-fp16",
+      "status": "ABSENT"
+    },
+    {
+      "router": "omniroute",
+      "step": "cloudflare-ai/cloudflare-ai/@cf/meta/llama-3-8b-instruct",
+      "status": "ABSENT"
+    },
+    {
+      "router": "omniroute",
+      "step": "cloudflare-ai/cloudflare-ai/@cf/meta/llama-3.1-70b-instruct",
+      "status": "ABSENT"
+    },
+    {
+      "router": "omniroute",
+      "step": "cloudflare-ai/cloudflare-ai/@cf/meta/llama-3.1-70b-instruct-fp8-fast",
+      "status": "ABSENT"
+    },
+    {
+      "router": "omniroute",
+      "step": "cloudflare-ai/cloudflare-ai/@cf/meta/llama-3.1-8b-instruct",
+      "status": "ABSENT"
+    },
+    {
+      "router": "omniroute",
+      "step": "cloudflare-ai/cloudflare-ai/@cf/meta/llama-3.1-8b-instruct-awq",
+      "status": "ABSENT"
+    },
+    {
+      "router": "omniroute",
+      "step": "cloudflare-ai/cloudflare-ai/@cf/meta/llama-3.1-8b-instruct-fp8-fast",
+      "status": "ABSENT"
+    },
+    {
+      "router": "omniroute",
+      "step": "cloudflare-ai/cloudflare-ai/@cf/meta/llama-3.2-1b-instruct",
+      "status": "ABSENT"
+    },
+    {
+      "router": "omniroute",
+      "step": "cloudflare-ai/cloudflare-ai/@cf/meta/llama-3.2-3b-instruct",
+      "status": "ABSENT"
+    },
+    {
+      "router": "omniroute",
+      "step": "cloudflare-ai/cloudflare-ai/@cf/meta/llama-3.3-70b-instruct",
+      "status": "ABSENT"
+    },
+    {
+      "router": "omniroute",
+      "step": "cloudflare-ai/cloudflare-ai/@cf/meta/llama-3.3-70b-instruct-fp8-fast",
+      "status": "ABSENT"
+    },
+    {
+      "router": "omniroute",
+      "step": "cloudflare-ai/cloudflare-ai/@cf/microsoft/phi-2",
+      "status": "ABSENT"
+    },
+    {
+      "router": "omniroute",
+      "step": "cloudflare-ai/cloudflare-ai/@cf/mistral/mistral-7b-instruct-v0.1",
+      "status": "ABSENT"
+    },
+    {
+      "router": "omniroute",
+      "step": "cloudflare-ai/cloudflare-ai/@cf/mistral/mistral-7b-instruct-v0.2",
+      "status": "ABSENT"
+    },
+    {
+      "router": "omniroute",
+      "step": "cloudflare-ai/cloudflare-ai/@cf/mistralai/mistral-small-3.1-24b-instruct",
+      "status": "ABSENT"
+    },
+    {
+      "router": "omniroute",
+      "step": "cloudflare-ai/cloudflare-ai/@cf/moonshotai/kimi-k2.5",
+      "status": "ABSENT"
+    },
+    {
+      "router": "omniroute",
+      "step": "cloudflare-ai/cloudflare-ai/@cf/moonshotai/kimi-k2.6",
+      "status": "ABSENT"
+    },
+    {
+      "router": "omniroute",
+      "step": "cloudflare-ai/cloudflare-ai/@cf/openchat/openchat-3.5-0106",
+      "status": "ABSENT"
+    },
+    {
+      "router": "omniroute",
+      "step": "cloudflare-ai/cloudflare-ai/@cf/qwen/qwen1.5-7b-chat-awq",
+      "status": "ABSENT"
+    },
+    {
+      "router": "omniroute",
+      "step": "cloudflare-ai/cloudflare-ai/@cf/qwen/qwen2.5-14b-instruct",
+      "status": "ABSENT"
+    },
+    {
+      "router": "omniroute",
+      "step": "cloudflare-ai/cloudflare-ai/@cf/qwen/qwen2.5-72b-instruct",
+      "status": "ABSENT"
+    },
+    {
+      "router": "omniroute",
+      "step": "cloudflare-ai/cloudflare-ai/@cf/qwen/qwen2.5-7b-instruct",
+      "status": "ABSENT"
+    },
+    {
+      "router": "omniroute",
+      "step": "cloudflare-ai/cloudflare-ai/@cf/qwen/qwen2.5-coder-32b-instruct",
+      "status": "ABSENT"
+    },
+    {
+      "router": "omniroute",
+      "step": "cloudflare-ai/cloudflare-ai/@cf/qwen/qwen2.5-coder-7b-instruct",
+      "status": "ABSENT"
+    },
+    {
+      "router": "omniroute",
+      "step": "cloudflare-ai/cloudflare-ai/@cf/qwen/qwq-32b",
+      "status": "ABSENT"
+    },
+    {
+      "router": "omniroute",
+      "step": "cloudflare-ai/cloudflare-ai/@cf/thebloke/discolm-german-7b-v1-awq",
+      "status": "ABSENT"
+    },
+    {
+      "router": "omniroute",
+      "step": "cloudflare-ai/cloudflare-ai/@cf/tiiuae/falcon-7b-instruct",
+      "status": "ABSENT"
+    },
+    {
+      "router": "omniroute",
+      "step": "cloudflare-ai/cloudflare-ai/@cf/zai-org/glm-4.7-flash",
+      "status": "ABSENT"
+    },
+    {
+      "router": "omniroute",
+      "step": "cloudflare-ai/cloudflare-ai/@cf/zai-org/glm-5.2",
+      "status": "PRESENT-NORMALIZED"
+    },
+    {
+      "router": "omniroute",
+      "step": "cloudflare-ai/cloudflare-ai/glm-5.2",
+      "status": "PRESENT-NORMALIZED"
+    },
+    {
+      "router": "omniroute",
+      "step": "cloudflare-ai/cloudflare-ai/zai-org/glm-5.2",
+      "status": "PRESENT-NORMALIZED"
+    },
+    {
+      "router": "omniroute",
+      "step": "cohere/cohere/c4ai-aya-expanse-32b",
+      "status": "PRESENT-NORMALIZED"
+    },
+    {
+      "router": "omniroute",
+      "step": "cohere/cohere/c4ai-aya-vision-32b",
+      "status": "PRESENT-NORMALIZED"
+    },
+    {
+      "router": "omniroute",
+      "step": "cohere/cohere/command-a-03-2025",
+      "status": "PRESENT-NORMALIZED"
+    },
+    {
+      "router": "omniroute",
+      "step": "cohere/cohere/command-a-plus-05-2026",
+      "status": "PRESENT-NORMALIZED"
+    },
+    {
+      "router": "omniroute",
+      "step": "cohere/cohere/command-a-reasoning-08-2025",
+      "status": "PRESENT-NORMALIZED"
+    },
+    {
+      "router": "omniroute",
+      "step": "cohere/cohere/command-a-translate-08-2025",
+      "status": "PRESENT-NORMALIZED"
+    },
+    {
+      "router": "omniroute",
+      "step": "cohere/cohere/command-a-vision-07-2025",
+      "status": "PRESENT-NORMALIZED"
+    },
+    {
+      "router": "omniroute",
+      "step": "cohere/cohere/command-r-08-2024",
+      "status": "PRESENT-NORMALIZED"
+    },
+    {
+      "router": "omniroute",
+      "step": "cohere/cohere/command-r-plus-08-2024",
+      "status": "PRESENT-NORMALIZED"
+    },
+    {
+      "router": "omniroute",
+      "step": "cohere/cohere/command-r7b-12-2024",
+      "status": "PRESENT-NORMALIZED"
+    },
+    {
+      "router": "omniroute",
+      "step": "cohere/cohere/command-r7b-arabic-02-2025",
+      "status": "PRESENT-NORMALIZED"
+    },
+    {
+      "router": "omniroute",
+      "step": "gemini/gemini/gemini-3.8-flash",
+      "status": "PRESENT-NORMALIZED"
+    },
+    {
+      "router": "omniroute",
+      "step": "gemini/gemini/gemini-4-argon",
+      "status": "PRESENT-NORMALIZED"
+    },
+    {
+      "router": "omniroute",
+      "step": "gemini/gemini/gemini-4-hydrogen",
+      "status": "PRESENT-NORMALIZED"
+    },
+    {
+      "router": "omniroute",
+      "step": "gemini/gemini/models/gemini-3.8-flash",
+      "status": "PRESENT-NORMALIZED"
+    },
+    {
+      "router": "omniroute",
+      "step": "gemini/gemini/models/gemini-3.8-live",
+      "status": "ABSENT"
+    },
+    {
+      "router": "omniroute",
+      "step": "gemini/gemini/models/gemini-3.8-live-extended-thinking",
+      "status": "ABSENT"
+    },
+    {
+      "router": "omniroute",
+      "step": "google/gemini/gemini-3.8-flash",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "omniroute",
+      "step": "google/gemini/gemini-4-argon",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "omniroute",
+      "step": "google/gemini/gemini-4-hydrogen",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "omniroute",
+      "step": "google/gemini/models/gemini-3.8-flash",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "omniroute",
+      "step": "google/gemini/models/gemini-3.8-live",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "omniroute",
+      "step": "google/gemini/models/gemini-3.8-live-extended-thinking",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "omniroute",
+      "step": "groq/groq/allam-2-7b",
+      "status": "PRESENT-NORMALIZED"
+    },
+    {
+      "router": "omniroute",
+      "step": "groq/groq/canopylabs/orpheus-arabic-saudi",
+      "status": "PRESENT-NORMALIZED"
+    },
+    {
+      "router": "omniroute",
+      "step": "groq/groq/canopylabs/orpheus-v1-english",
+      "status": "PRESENT-NORMALIZED"
+    },
+    {
+      "router": "omniroute",
+      "step": "groq/groq/openai/gpt-oss-120b",
+      "status": "ABSENT"
+    },
+    {
+      "router": "omniroute",
+      "step": "groq/groq/openai/gpt-oss-20b",
+      "status": "ABSENT"
+    },
+    {
+      "router": "omniroute",
+      "step": "groq/groq/qwen/qwen3.8-27b",
+      "status": "ABSENT"
+    },
+    {
+      "router": "omniroute",
+      "step": "huggingface/huggingface/deepseek-ai/DeepSeek-V3",
+      "status": "ABSENT"
+    },
+    {
+      "router": "omniroute",
+      "step": "kc/kc/cohere/north-mini-code:free",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "omniroute",
+      "step": "kc/kc/nvidia/nemotron-3-super-120b-a12b:free",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "omniroute",
+      "step": "kc/kc/nvidia/nemotron-3-ultra-550b-a55b:free",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "omniroute",
+      "step": "kc/kc/poolside/laguna-xs.2:free",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "omniroute",
+      "step": "nvidia/nvidia/google/codegemma-1.1-7b",
+      "status": "PRESENT-NORMALIZED"
+    },
+    {
+      "router": "omniroute",
+      "step": "nvidia/nvidia/google/diffusiongemma-26b-a4b-it",
+      "status": "PRESENT-NORMALIZED"
+    },
+    {
+      "router": "omniroute",
+      "step": "nvidia/nvidia/google/gemma-4-31b-it",
+      "status": "ABSENT"
+    },
+    {
+      "router": "omniroute",
+      "step": "nvidia/nvidia/ibm/granite-34b-code-instruct",
+      "status": "PRESENT-NORMALIZED"
+    },
+    {
+      "router": "omniroute",
+      "step": "nvidia/nvidia/meta/llama-3.2-90b-vision-instruct",
+      "status": "ABSENT"
+    },
+    {
+      "router": "omniroute",
+      "step": "nvidia/nvidia/meta/muse-glimmer-30b",
+      "status": "PRESENT-NORMALIZED"
+    },
+    {
+      "router": "omniroute",
+      "step": "nvidia/nvidia/mistralai/mistral-large-2-instruct",
+      "status": "PRESENT-NORMALIZED"
+    },
+    {
+      "router": "omniroute",
+      "step": "nvidia/nvidia/moonshotai/kimi-k2.6",
+      "status": "ABSENT"
+    },
+    {
+      "router": "omniroute",
+      "step": "nvidia/nvidia/nvidia/ai-synthetic-video-detector",
+      "status": "PRESENT-NORMALIZED"
+    },
+    {
+      "router": "omniroute",
+      "step": "nvidia/nvidia/nvidia/ising-calibration-1.5-31b",
+      "status": "ABSENT"
+    },
+    {
+      "router": "omniroute",
+      "step": "nvidia/nvidia/nvidia/llama3-chatqa-1.5-70b",
+      "status": "PRESENT-NORMALIZED"
+    },
+    {
+      "router": "omniroute",
+      "step": "nvidia/nvidia/nvidia/mistral-nemo-minitron-8b-8k-instruct",
+      "status": "PRESENT-NORMALIZED"
+    },
+    {
+      "router": "omniroute",
+      "step": "nvidia/nvidia/nvidia/nemotron-3-nano-omni-30b-a3b-reasoning",
+      "status": "ABSENT"
+    },
+    {
+      "router": "omniroute",
+      "step": "nvidia/nvidia/nvidia/nemotron-3-super-120b-a12b",
+      "status": "ABSENT"
+    },
+    {
+      "router": "omniroute",
+      "step": "nvidia/nvidia/nvidia/nemotron-3-ultra-550b-a55b",
+      "status": "ABSENT"
+    },
+    {
+      "router": "omniroute",
+      "step": "nvidia/nvidia/nvidia/nemotron-3.5-lightning-30b-a3b",
+      "status": "PRESENT-NORMALIZED"
+    },
+    {
+      "router": "omniroute",
+      "step": "nvidia/nvidia/nvidia/nemotron-3.5-super-vl-120b-a12b",
+      "status": "ABSENT"
+    },
+    {
+      "router": "omniroute",
+      "step": "nvidia/nvidia/nvidia/nemotron-4-340b-instruct",
+      "status": "PRESENT-NORMALIZED"
+    },
+    {
+      "router": "omniroute",
+      "step": "nvidia/nvidia/nvidia/nemotron-4-340b-reward",
+      "status": "PRESENT-NORMALIZED"
+    },
+    {
+      "router": "omniroute",
+      "step": "nvidia/nvidia/nvidia/nemotron-nano-3-30b-a3b",
+      "status": "PRESENT-NORMALIZED"
+    },
+    {
+      "router": "omniroute",
+      "step": "nvidia/nvidia/nvidia/nemotron-parse",
+      "status": "PRESENT-NORMALIZED"
+    },
+    {
+      "router": "omniroute",
+      "step": "nvidia/nvidia/nvidia/nemotron-parse-2.0",
+      "status": "ABSENT"
+    },
+    {
+      "router": "omniroute",
+      "step": "nvidia/nvidia/nvidia/neva-22b",
+      "status": "PRESENT-NORMALIZED"
+    },
+    {
+      "router": "omniroute",
+      "step": "nvidia/nvidia/nvidia/riva-translate-4b-instruct",
+      "status": "PRESENT-NORMALIZED"
+    },
+    {
+      "router": "omniroute",
+      "step": "nvidia/nvidia/nvidia/riva-translate-4b-instruct-v2",
+      "status": "PRESENT-NORMALIZED"
+    },
+    {
+      "router": "omniroute",
+      "step": "nvidia/nvidia/nvidia/vila",
+      "status": "PRESENT-NORMALIZED"
+    },
+    {
+      "router": "omniroute",
+      "step": "nvidia/nvidia/openai/gpt-oss-20b",
+      "status": "ABSENT"
+    },
+    {
+      "router": "omniroute",
+      "step": "nvidia/nvidia/poolside/laguna-xs-2.1",
+      "status": "PRESENT-NORMALIZED"
+    },
+    {
+      "router": "omniroute",
+      "step": "nvidia/nvidia/stepfun-ai/step-5-preview",
+      "status": "ABSENT"
+    },
+    {
+      "router": "omniroute",
+      "step": "nvidia/nvidia/z-ai/glm-5.3-flash",
+      "status": "ABSENT"
+    },
+    {
+      "router": "omniroute",
+      "step": "oc/oc/big-pickle",
+      "status": "ABSENT"
+    },
+    {
+      "router": "omniroute",
+      "step": "oc/oc/claude-sonnet-4-6",
+      "status": "PRESENT-NORMALIZED"
+    },
+    {
+      "router": "omniroute",
+      "step": "oc/oc/claude-sonnet-5-5",
+      "status": "ABSENT"
+    },
+    {
+      "router": "omniroute",
+      "step": "oc/oc/deepseek-v4-flash-free",
+      "status": "ABSENT"
+    },
+    {
+      "router": "omniroute",
+      "step": "oc/oc/deepseek-v4.1-flash-free",
+      "status": "ABSENT"
+    },
+    {
+      "router": "omniroute",
+      "step": "oc/oc/exo-free",
+      "status": "ABSENT"
+    },
+    {
+      "router": "omniroute",
+      "step": "oc/oc/hy3-free",
+      "status": "ABSENT"
+    },
+    {
+      "router": "omniroute",
+      "step": "oc/oc/hy4-flash-free",
+      "status": "ABSENT"
+    },
+    {
+      "router": "omniroute",
+      "step": "oc/oc/iceman-free",
+      "status": "ABSENT"
+    },
+    {
+      "router": "omniroute",
+      "step": "oc/oc/jev-1.13-free",
+      "status": "ABSENT"
+    },
+    {
+      "router": "omniroute",
+      "step": "oc/oc/ling-3.0-flash-fin-free",
+      "status": "ABSENT"
+    },
+    {
+      "router": "omniroute",
+      "step": "oc/oc/ling-3.0-flash-free",
+      "status": "ABSENT"
+    },
+    {
+      "router": "omniroute",
+      "step": "oc/oc/ling-3.1-flash-free",
+      "status": "ABSENT"
+    },
+    {
+      "router": "omniroute",
+      "step": "oc/oc/mimo-v2.5-free",
+      "status": "ABSENT"
+    },
+    {
+      "router": "omniroute",
+      "step": "oc/oc/mimo-v2.6-flash-free",
+      "status": "ABSENT"
+    },
+    {
+      "router": "omniroute",
+      "step": "oc/oc/muse-spark-1.2-contributor-free",
+      "status": "PRESENT-NORMALIZED"
+    },
+    {
+      "router": "omniroute",
+      "step": "oc/oc/muse-spark-1.3-contributor-free",
+      "status": "ABSENT"
+    },
+    {
+      "router": "omniroute",
+      "step": "oc/oc/nemotron-3-ultra-free",
+      "status": "ABSENT"
+    },
+    {
+      "router": "omniroute",
+      "step": "oc/oc/nemotron-3.5-lightning-free",
+      "status": "PRESENT-NORMALIZED"
+    },
+    {
+      "router": "omniroute",
+      "step": "oc/oc/nemotron-3.5-super-vl-free",
+      "status": "ABSENT"
+    },
+    {
+      "router": "omniroute",
+      "step": "oc/oc/north-mini-code-free",
+      "status": "ABSENT"
+    },
+    {
+      "router": "omniroute",
+      "step": "oc/oc/qwen3.6-plus-free",
+      "status": "ABSENT"
+    },
+    {
+      "router": "omniroute",
+      "step": "oc/oc/step-5-preview-free",
+      "status": "ABSENT"
+    },
+    {
+      "router": "omniroute",
+      "step": "oc/oc/tidepool-alpha-free",
+      "status": "ABSENT"
+    },
+    {
+      "router": "omniroute",
+      "step": "oc/oc/x-preview-f-free",
+      "status": "PRESENT-NORMALIZED"
+    },
+    {
+      "router": "omniroute",
+      "step": "openadapter/openadapter/auto-free",
+      "status": "PRESENT-NORMALIZED"
+    },
+    {
+      "router": "omniroute",
+      "step": "openai-compatible-chat-5c7bdb86-5261-4ca7-b5e1-9413a85e6b92/openai-compatible-chat-5c7bdb86-5261-4ca7-b5e1-9413a85e6b92/deepseek/deepseek-v4-flash-free",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "omniroute",
+      "step": "openai-compatible-chat-5c7bdb86-5261-4ca7-b5e1-9413a85e6b92/openai-compatible-chat-5c7bdb86-5261-4ca7-b5e1-9413a85e6b92/qwen/qwen3.8-27b-free",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "omniroute",
+      "step": "openai-compatible-chat-75b6525d-1d6d-48db-b781-270362dca9e0/openai-compatible-chat-75b6525d-1d6d-48db-b781-270362dca9e0/meituan/longcat-2.5-preview:free",
+      "status": "ABSENT"
+    },
+    {
+      "router": "omniroute",
+      "step": "openai-compatible-chat-75b6525d-1d6d-48db-b781-270362dca9e0/openai-compatible-chat-75b6525d-1d6d-48db-b781-270362dca9e0/qwen/qwen-plus-2025-07-28:free",
+      "status": "ABSENT"
+    },
+    {
+      "router": "omniroute",
+      "step": "openai-compatible-chat-75b6525d-1d6d-48db-b781-270362dca9e0/openai-compatible-chat-75b6525d-1d6d-48db-b781-270362dca9e0/qwen/qwen3-coder-plus:free",
+      "status": "ABSENT"
+    },
+    {
+      "router": "omniroute",
+      "step": "openai-compatible-chat-75b6525d-1d6d-48db-b781-270362dca9e0/openai-compatible-chat-75b6525d-1d6d-48db-b781-270362dca9e0/qwen/qwen3-max:free",
+      "status": "ABSENT"
+    },
+    {
+      "router": "omniroute",
+      "step": "openai-compatible-chat-75b6525d-1d6d-48db-b781-270362dca9e0/openai-compatible-chat-75b6525d-1d6d-48db-b781-270362dca9e0/qwen/qwen3-omni-flash:free",
+      "status": "ABSENT"
+    },
+    {
+      "router": "omniroute",
+      "step": "openai-compatible-chat-75b6525d-1d6d-48db-b781-270362dca9e0/openai-compatible-chat-75b6525d-1d6d-48db-b781-270362dca9e0/qwen/qwen3-vl-plus:free",
+      "status": "ABSENT"
+    },
+    {
+      "router": "omniroute",
+      "step": "openai-compatible-chat-75b6525d-1d6d-48db-b781-270362dca9e0/openai-compatible-chat-75b6525d-1d6d-48db-b781-270362dca9e0/qwen/qwen3.5-397b-a17b:free",
+      "status": "ABSENT"
+    },
+    {
+      "router": "omniroute",
+      "step": "openai-compatible-chat-75b6525d-1d6d-48db-b781-270362dca9e0/openai-compatible-chat-75b6525d-1d6d-48db-b781-270362dca9e0/qwen/qwen3.5-flash:free",
+      "status": "ABSENT"
+    },
+    {
+      "router": "omniroute",
+      "step": "openai-compatible-chat-75b6525d-1d6d-48db-b781-270362dca9e0/openai-compatible-chat-75b6525d-1d6d-48db-b781-270362dca9e0/qwen/qwen3.5-omni-flash:free",
+      "status": "ABSENT"
+    },
+    {
+      "router": "omniroute",
+      "step": "openai-compatible-chat-75b6525d-1d6d-48db-b781-270362dca9e0/openai-compatible-chat-75b6525d-1d6d-48db-b781-270362dca9e0/qwen/qwen3.5-omni-plus:free",
+      "status": "ABSENT"
+    },
+    {
+      "router": "omniroute",
+      "step": "openai-compatible-chat-75b6525d-1d6d-48db-b781-270362dca9e0/openai-compatible-chat-75b6525d-1d6d-48db-b781-270362dca9e0/qwen/qwen3.5-plus:free",
+      "status": "ABSENT"
+    },
+    {
+      "router": "omniroute",
+      "step": "openai-compatible-chat-75b6525d-1d6d-48db-b781-270362dca9e0/openai-compatible-chat-75b6525d-1d6d-48db-b781-270362dca9e0/qwen/qwen3.6-27b:free",
+      "status": "ABSENT"
+    },
+    {
+      "router": "omniroute",
+      "step": "openai-compatible-chat-75b6525d-1d6d-48db-b781-270362dca9e0/openai-compatible-chat-75b6525d-1d6d-48db-b781-270362dca9e0/qwen/qwen3.6-35b-a3b:free",
+      "status": "ABSENT"
+    },
+    {
+      "router": "omniroute",
+      "step": "openai-compatible-chat-75b6525d-1d6d-48db-b781-270362dca9e0/openai-compatible-chat-75b6525d-1d6d-48db-b781-270362dca9e0/qwen/qwen3.6-max-preview:free",
+      "status": "ABSENT"
+    },
+    {
+      "router": "omniroute",
+      "step": "openai-compatible-chat-75b6525d-1d6d-48db-b781-270362dca9e0/openai-compatible-chat-75b6525d-1d6d-48db-b781-270362dca9e0/qwen/qwen3.6-plus:free",
+      "status": "ABSENT"
+    },
+    {
+      "router": "omniroute",
+      "step": "openai-compatible-chat-75b6525d-1d6d-48db-b781-270362dca9e0/openai-compatible-chat-75b6525d-1d6d-48db-b781-270362dca9e0/qwen/qwen3.7-flash:free",
+      "status": "ABSENT"
+    },
+    {
+      "router": "omniroute",
+      "step": "openai-compatible-chat-75b6525d-1d6d-48db-b781-270362dca9e0/openai-compatible-chat-75b6525d-1d6d-48db-b781-270362dca9e0/qwen/qwen3.7-max:free",
+      "status": "ABSENT"
+    },
+    {
+      "router": "omniroute",
+      "step": "openai-compatible-chat-75b6525d-1d6d-48db-b781-270362dca9e0/openai-compatible-chat-75b6525d-1d6d-48db-b781-270362dca9e0/qwen/qwen3.7-plus:free",
+      "status": "ABSENT"
+    },
+    {
+      "router": "omniroute",
+      "step": "openai-compatible-chat-75b6525d-1d6d-48db-b781-270362dca9e0/openai-compatible-chat-75b6525d-1d6d-48db-b781-270362dca9e0/qwen/qwen3.8-max:free",
+      "status": "ABSENT"
+    },
+    {
+      "router": "omniroute",
+      "step": "openai-compatible-chat-75b6525d-1d6d-48db-b781-270362dca9e0/openai-compatible-chat-75b6525d-1d6d-48db-b781-270362dca9e0/qwen/qwen3.8-omni-flash:free",
+      "status": "ABSENT"
+    },
+    {
+      "router": "omniroute",
+      "step": "opencode/opencode/beam-free",
+      "status": "PRESENT-NORMALIZED"
+    },
+    {
+      "router": "omniroute",
+      "step": "opencode/opencode/big-pickle",
+      "status": "PRESENT-NORMALIZED"
+    },
+    {
+      "router": "omniroute",
+      "step": "opencode/opencode/claude-sonnet-4-6",
+      "status": "PRESENT-NORMALIZED"
+    },
+    {
+      "router": "omniroute",
+      "step": "opencode/opencode/claude-sonnet-5-5",
+      "status": "PRESENT-NORMALIZED"
+    },
+    {
+      "router": "omniroute",
+      "step": "opencode/opencode/deepseek-v4-flash",
+      "status": "PRESENT-NORMALIZED"
+    },
+    {
+      "router": "omniroute",
+      "step": "opencode/opencode/deepseek-v4.1-flash",
+      "status": "PRESENT-NORMALIZED"
+    },
+    {
+      "router": "omniroute",
+      "step": "opencode/opencode/deepseek-v4.1-flash-free",
+      "status": "PRESENT-NORMALIZED"
+    },
+    {
+      "router": "omniroute",
+      "step": "opencode/opencode/flint-40b-free",
+      "status": "PRESENT-NORMALIZED"
+    },
+    {
+      "router": "omniroute",
+      "step": "opencode/opencode/glm-5",
+      "status": "PRESENT-NORMALIZED"
+    },
+    {
+      "router": "omniroute",
+      "step": "opencode/opencode/glm-5.1",
+      "status": "PRESENT-NORMALIZED"
+    },
+    {
+      "router": "omniroute",
+      "step": "opencode/opencode/glm-5.2",
+      "status": "PRESENT-NORMALIZED"
+    },
+    {
+      "router": "omniroute",
+      "step": "opencode/opencode/glm-5.3",
+      "status": "PRESENT-NORMALIZED"
+    },
+    {
+      "router": "omniroute",
+      "step": "opencode/opencode/glm-5.3-flash",
+      "status": "PRESENT-NORMALIZED"
+    },
+    {
+      "router": "omniroute",
+      "step": "opencode/opencode/glm-5.3-flash-free",
+      "status": "PRESENT-NORMALIZED"
+    },
+    {
+      "router": "omniroute",
+      "step": "opencode/opencode/gpt-5",
+      "status": "PRESENT-NORMALIZED"
+    },
+    {
+      "router": "omniroute",
+      "step": "opencode/opencode/gpt-5-codex",
+      "status": "PRESENT-NORMALIZED"
+    },
+    {
+      "router": "omniroute",
+      "step": "opencode/opencode/gpt-5-nano",
+      "status": "PRESENT-NORMALIZED"
+    },
+    {
+      "router": "omniroute",
+      "step": "opencode/opencode/gpt-5.1",
+      "status": "PRESENT-NORMALIZED"
+    },
+    {
+      "router": "omniroute",
+      "step": "opencode/opencode/gpt-5.1-codex",
+      "status": "PRESENT-NORMALIZED"
+    },
+    {
+      "router": "omniroute",
+      "step": "opencode/opencode/gpt-5.1-codex-max",
+      "status": "PRESENT-NORMALIZED"
+    },
+    {
+      "router": "omniroute",
+      "step": "opencode/opencode/gpt-5.1-codex-mini",
+      "status": "PRESENT-NORMALIZED"
+    },
+    {
+      "router": "omniroute",
+      "step": "opencode/opencode/gpt-5.2",
+      "status": "PRESENT-NORMALIZED"
+    },
+    {
+      "router": "omniroute",
+      "step": "opencode/opencode/gpt-5.2-codex",
+      "status": "PRESENT-NORMALIZED"
+    },
+    {
+      "router": "omniroute",
+      "step": "opencode/opencode/gpt-5.3-codex",
+      "status": "PRESENT-NORMALIZED"
+    },
+    {
+      "router": "omniroute",
+      "step": "opencode/opencode/gpt-5.3-codex-spark",
+      "status": "PRESENT-NORMALIZED"
+    },
+    {
+      "router": "omniroute",
+      "step": "opencode/opencode/gpt-5.4",
+      "status": "PRESENT-NORMALIZED"
+    },
+    {
+      "router": "omniroute",
+      "step": "opencode/opencode/gpt-5.4-mini",
+      "status": "PRESENT-NORMALIZED"
+    },
+    {
+      "router": "omniroute",
+      "step": "opencode/opencode/gpt-5.4-nano",
+      "status": "PRESENT-NORMALIZED"
+    },
+    {
+      "router": "omniroute",
+      "step": "opencode/opencode/gpt-5.4-pro",
+      "status": "PRESENT-NORMALIZED"
+    },
+    {
+      "router": "omniroute",
+      "step": "opencode/opencode/gpt-5.5",
+      "status": "PRESENT-NORMALIZED"
+    },
+    {
+      "router": "omniroute",
+      "step": "opencode/opencode/gpt-5.5-pro",
+      "status": "PRESENT-NORMALIZED"
+    },
+    {
+      "router": "omniroute",
+      "step": "opencode/opencode/gpt-5.6-luna",
+      "status": "PRESENT-NORMALIZED"
+    },
+    {
+      "router": "omniroute",
+      "step": "opencode/opencode/gpt-5.6-sol",
+      "status": "PRESENT-NORMALIZED"
+    },
+    {
+      "router": "omniroute",
+      "step": "opencode/opencode/gpt-5.6-terra",
+      "status": "PRESENT-NORMALIZED"
+    },
+    {
+      "router": "omniroute",
+      "step": "opencode/opencode/gpt-6-astra",
+      "status": "PRESENT-NORMALIZED"
+    },
+    {
+      "router": "omniroute",
+      "step": "opencode/opencode/gpt-6-luna",
+      "status": "PRESENT-NORMALIZED"
+    },
+    {
+      "router": "omniroute",
+      "step": "opencode/opencode/gpt-6-sol",
+      "status": "PRESENT-NORMALIZED"
+    },
+    {
+      "router": "omniroute",
+      "step": "opencode/opencode/gpt-6.1-sol",
+      "status": "PRESENT-NORMALIZED"
+    },
+    {
+      "router": "omniroute",
+      "step": "opencode/opencode/grok-4.5",
+      "status": "PRESENT-NORMALIZED"
+    },
+    {
+      "router": "omniroute",
+      "step": "opencode/opencode/grok-4.6",
+      "status": "PRESENT-NORMALIZED"
+    },
+    {
+      "router": "omniroute",
+      "step": "opencode/opencode/grok-4.7",
+      "status": "PRESENT-NORMALIZED"
+    },
+    {
+      "router": "omniroute",
+      "step": "opencode/opencode/grok-build-0.1",
+      "status": "PRESENT-NORMALIZED"
+    },
+    {
+      "router": "omniroute",
+      "step": "opencode/opencode/hy4-flash-free",
+      "status": "PRESENT-NORMALIZED"
+    },
+    {
+      "router": "omniroute",
+      "step": "opencode/opencode/iceman-free",
+      "status": "PRESENT-NORMALIZED"
+    },
+    {
+      "router": "omniroute",
+      "step": "opencode/opencode/inkling-2-small-free",
+      "status": "PRESENT-NORMALIZED"
+    },
+    {
+      "router": "omniroute",
+      "step": "opencode/opencode/jev-1.13",
+      "status": "PRESENT-NORMALIZED"
+    },
+    {
+      "router": "omniroute",
+      "step": "opencode/opencode/jev-1.13-free",
+      "status": "PRESENT-NORMALIZED"
+    },
+    {
+      "router": "omniroute",
+      "step": "opencode/opencode/kimi-k2.5",
+      "status": "PRESENT-NORMALIZED"
+    },
+    {
+      "router": "omniroute",
+      "step": "opencode/opencode/kimi-k2.6",
+      "status": "PRESENT-NORMALIZED"
+    },
+    {
+      "router": "omniroute",
+      "step": "opencode/opencode/kimi-k2.7-code",
+      "status": "PRESENT-NORMALIZED"
+    },
+    {
+      "router": "omniroute",
+      "step": "opencode/opencode/kimi-k3",
+      "status": "PRESENT-NORMALIZED"
+    },
+    {
+      "router": "omniroute",
+      "step": "opencode/opencode/longcat-2.5-free",
+      "status": "PRESENT-NORMALIZED"
+    },
+    {
+      "router": "omniroute",
+      "step": "opencode/opencode/mimo-v2.6-flash-free",
+      "status": "PRESENT-NORMALIZED"
+    },
+    {
+      "router": "omniroute",
+      "step": "opencode/opencode/mistral-large-4",
+      "status": "PRESENT-NORMALIZED"
+    },
+    {
+      "router": "omniroute",
+      "step": "opencode/opencode/muse-spark-1.2",
+      "status": "PRESENT-NORMALIZED"
+    },
+    {
+      "router": "omniroute",
+      "step": "opencode/opencode/muse-spark-1.3",
+      "status": "PRESENT-NORMALIZED"
+    },
+    {
+      "router": "omniroute",
+      "step": "opencode/opencode/muse-wonder-1.0",
+      "status": "PRESENT-NORMALIZED"
+    },
+    {
+      "router": "omniroute",
+      "step": "opencode/opencode/nemotron-3.5-lightning-free",
+      "status": "PRESENT-NORMALIZED"
+    },
+    {
+      "router": "omniroute",
+      "step": "opencode/opencode/nemotron-3.5-super-vl-free",
+      "status": "PRESENT-NORMALIZED"
+    },
+    {
+      "router": "omniroute",
+      "step": "opencode/opencode/qwen3.5-plus",
+      "status": "PRESENT-NORMALIZED"
+    },
+    {
+      "router": "omniroute",
+      "step": "opencode/opencode/qwen3.6-plus",
+      "status": "PRESENT-NORMALIZED"
+    },
+    {
+      "router": "omniroute",
+      "step": "opencode/opencode/qwen3.8-flash",
+      "status": "PRESENT-NORMALIZED"
+    },
+    {
+      "router": "omniroute",
+      "step": "opencode/opencode/qwen3.8-max",
+      "status": "PRESENT-NORMALIZED"
+    },
+    {
+      "router": "omniroute",
+      "step": "opencode/opencode/test",
+      "status": "PRESENT-NORMALIZED"
+    },
+    {
+      "router": "omniroute",
+      "step": "opencode/opencode/tidepool-alpha-free",
+      "status": "PRESENT-NORMALIZED"
+    },
+    {
+      "router": "omniroute",
+      "step": "openrouter/google/gemini-2.0-flash-exp:free",
+      "status": "ABSENT"
+    },
+    {
+      "router": "omniroute",
+      "step": "openrouter/meta-llama/llama-3.3-70b-instruct:free",
+      "status": "ABSENT"
+    },
+    {
+      "router": "omniroute",
+      "step": "openrouter/nvidia/nemotron-3-ultra-550b-a55b:free",
+      "status": "PRESENT"
+    },
+    {
+      "router": "omniroute",
+      "step": "openrouter/nvidia/nemotron-3.5-lightning:free",
+      "status": "PRESENT"
+    },
+    {
+      "router": "omniroute",
+      "step": "openrouter/openrouter/baidu/ernie-5.5-flash-preview:free",
+      "status": "ABSENT"
+    },
+    {
+      "router": "omniroute",
+      "step": "openrouter/openrouter/cohere/north-mini-code:free",
+      "status": "ABSENT"
+    },
+    {
+      "router": "omniroute",
+      "step": "openrouter/openrouter/dots-studio/dots-3-note-preview:free",
+      "status": "ABSENT"
+    },
+    {
+      "router": "omniroute",
+      "step": "openrouter/openrouter/google/gemma-4-26b-a4b-it:free",
+      "status": "ABSENT"
+    },
+    {
+      "router": "omniroute",
+      "step": "openrouter/openrouter/google/gemma-4-31b-it:free",
+      "status": "ABSENT"
+    },
+    {
+      "router": "omniroute",
+      "step": "openrouter/openrouter/inclusionai/ling-3.2-flash:free",
+      "status": "ABSENT"
+    },
+    {
+      "router": "omniroute",
+      "step": "openrouter/openrouter/liquid/lfm-2.5-2.6b:free",
+      "status": "ABSENT"
+    },
+    {
+      "router": "omniroute",
+      "step": "openrouter/openrouter/nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
+      "status": "ABSENT"
+    },
+    {
+      "router": "omniroute",
+      "step": "openrouter/openrouter/nvidia/nemotron-3-ultra-550b-a55b:free",
+      "status": "ABSENT"
+    },
+    {
+      "router": "omniroute",
+      "step": "openrouter/openrouter/nvidia/nemotron-3.5-lightning:free",
+      "status": "ABSENT"
+    },
+    {
+      "router": "omniroute",
+      "step": "openrouter/openrouter/nvidia/nemotron-3.5-super-vl:free",
+      "status": "ABSENT"
+    },
+    {
+      "router": "omniroute",
+      "step": "openrouter/openrouter/openrouter/free",
+      "status": "ABSENT"
+    },
+    {
+      "router": "omniroute",
+      "step": "openrouter/openrouter/recursive/flint-v1.0:free",
+      "status": "ABSENT"
+    },
+    {
+      "router": "omniroute",
+      "step": "openrouter/openrouter/thinkingmachines/inkling-2-small:free",
+      "status": "ABSENT"
+    },
+    {
+      "router": "omniroute",
+      "step": "openrouter/openrouter/xingchen-agi/xing4.0-29b-a4b:free",
+      "status": "ABSENT"
+    },
+    {
+      "router": "omniroute",
+      "step": "openrouter/openrouter/z-ai/glm-5.2:free",
+      "status": "ABSENT"
+    },
+    {
+      "router": "omniroute",
+      "step": "<private-provider-2>/<private-provider-2>/deepseek/deepseek-v4-flash-free",
+      "status": "ABSENT"
+    },
+    {
+      "router": "omniroute",
+      "step": "<private-provider-2>/<private-provider-2>/deepseek/deepseek-v4.1-flash-free",
+      "status": "ABSENT"
+    },
+    {
+      "router": "omniroute",
+      "step": "<private-provider-2>/<private-provider-2>/orca/orcaverify-text1.0-free",
+      "status": "ABSENT"
+    },
+    {
+      "router": "omniroute",
+      "step": "<private-provider-2>/<private-provider-2>/<private-provider-2>/free",
+      "status": "ABSENT"
+    },
+    {
+      "router": "omniroute",
+      "step": "<private-provider-2>/<private-provider-2>/tencent/hy3-free",
+      "status": "ABSENT"
+    },
+    {
+      "router": "omniroute",
+      "step": "<private-provider-2>/<private-provider-2>/tencent/hy4-preview-free",
+      "status": "ABSENT"
+    },
+    {
+      "router": "omniroute",
+      "step": "<private-provider-2>/<private-provider-2>/z-ai/glm-5.3-flash-free",
+      "status": "ABSENT"
+    },
+    {
+      "router": "omniroute",
+      "step": "sambanova/sambanova/DeepSeek-V3.2",
+      "status": "PRESENT-NORMALIZED"
+    },
+    {
+      "router": "omniroute",
+      "step": "sambanova/sambanova/Meta-Llama-3.3-70B-Instruct",
+      "status": "PRESENT-NORMALIZED"
+    },
+    {
+      "router": "omniroute",
+      "step": "sambanova/sambanova/gpt-oss-120b",
+      "status": "PRESENT-NORMALIZED"
+    },
+    {
+      "router": "omniroute",
+      "step": "<private-provider-3>/<private-provider-3>/qwen/qwen3-coder-plus:free",
+      "status": "UNVERIFIABLE"
+    },
+    {
+      "router": "omniroute",
+      "step": "<private-provider-4>/<private-provider-4>/deepseek/deepseek-v4-flash-vision-exp-free",
+      "status": "ABSENT"
+    },
+    {
+      "router": "omniroute",
+      "step": "<private-provider-4>/<private-provider-4>/z-ai/glm-4.6v-flash-free",
+      "status": "ABSENT"
+    },
+    {
+      "router": "omniroute",
+      "step": "<private-provider-4>/<private-provider-4>/z-ai/glm-4.7-flash-free",
+      "status": "ABSENT"
+    },
+    {
+      "router": "omniroute",
+      "step": "<private-provider-4>/<private-provider-4>/z-ai/glm-5.3-free",
+      "status": "ABSENT"
+    }
+  ],
+  "counts": {
+    "PRESENT": 96,
+    "PRESENT-NORMALIZED": 118,
+    "DISABLED": 0,
+    "ABSENT": 150,
+    "UNVERIFIABLE": 139
+  },
+  "official": [
+    {
+      "router": "9router",
+      "step": "bai/gemini-4-hydrogen",
+      "provider": "bai",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:07.779Z"
+    },
+    {
+      "router": "9router",
+      "step": "bzl/auto:free",
+      "provider": "bzl",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:07.779Z"
+    },
+    {
+      "router": "9router",
+      "step": "bzl/beam-free",
+      "provider": "bzl",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:07.779Z"
+    },
+    {
+      "router": "9router",
+      "step": "bzl/deepseek/deepseek-v4-flash-0731free:free",
+      "provider": "bzl",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:07.779Z"
+    },
+    {
+      "router": "9router",
+      "step": "bzl/qwen/qwen3.7-flash:free",
+      "provider": "bzl",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:07.779Z"
+    },
+    {
+      "router": "9router",
+      "step": "ds/deepseek-v4.1-flash",
+      "provider": "ds",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:07.780Z"
+    },
+    {
+      "router": "9router",
+      "step": "gemini/gemini-4-hydrogen",
+      "provider": "gemini",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:07.780Z"
+    },
+    {
+      "router": "9router",
+      "step": "google/gemini-4-hydrogen",
+      "provider": "google",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:07.780Z"
+    },
+    {
+      "router": "9router",
+      "step": "groq/openai/gpt-oss-120b",
+      "provider": "groq",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:07.780Z"
+    },
+    {
+      "router": "9router",
+      "step": "groq/qwen/qwen3.8-27b",
+      "provider": "groq",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:07.780Z"
+    },
+    {
+      "router": "9router",
+      "step": "hf/CohereLabs/aya-expanse-32b",
+      "provider": "hf",
+      "conclusion": "LISTED-UPSTREAM",
+      "sourceUrl": "https://huggingface.co/api/models",
+      "checkedAt": "2026-11-21T18:22:07.780Z"
+    },
+    {
+      "router": "9router",
+      "step": "hf/CohereLabs/aya-vision-32b",
+      "provider": "hf",
+      "conclusion": "LISTED-UPSTREAM",
+      "sourceUrl": "https://huggingface.co/api/models",
+      "checkedAt": "2026-11-21T18:22:08.131Z"
+    },
+    {
+      "router": "9router",
+      "step": "hf/CohereLabs/c4ai-command-a-03-2025",
+      "provider": "hf",
+      "conclusion": "LISTED-UPSTREAM",
+      "sourceUrl": "https://huggingface.co/api/models",
+      "checkedAt": "2026-11-21T18:22:08.419Z"
+    },
+    {
+      "router": "9router",
+      "step": "hf/CohereLabs/c4ai-command-r-08-2024",
+      "provider": "hf",
+      "conclusion": "LISTED-UPSTREAM",
+      "sourceUrl": "https://huggingface.co/api/models",
+      "checkedAt": "2026-11-21T18:22:08.678Z"
+    },
+    {
+      "router": "9router",
+      "step": "hf/CohereLabs/c4ai-command-r7b-12-2024",
+      "provider": "hf",
+      "conclusion": "LISTED-UPSTREAM",
+      "sourceUrl": "https://huggingface.co/api/models",
+      "checkedAt": "2026-11-21T18:22:08.946Z"
+    },
+    {
+      "router": "9router",
+      "step": "hf/CohereLabs/command-a-reasoning-08-2025",
+      "provider": "hf",
+      "conclusion": "LISTED-UPSTREAM",
+      "sourceUrl": "https://huggingface.co/api/models",
+      "checkedAt": "2026-11-21T18:22:09.216Z"
+    },
+    {
+      "router": "9router",
+      "step": "hf/CohereLabs/command-a-translate-08-2025",
+      "provider": "hf",
+      "conclusion": "LISTED-UPSTREAM",
+      "sourceUrl": "https://huggingface.co/api/models",
+      "checkedAt": "2026-11-21T18:22:09.488Z"
+    },
+    {
+      "router": "9router",
+      "step": "hf/CohereLabs/tiny-aya-earth",
+      "provider": "hf",
+      "conclusion": "LISTED-UPSTREAM",
+      "sourceUrl": "https://huggingface.co/api/models",
+      "checkedAt": "2026-11-21T18:22:09.770Z"
+    },
+    {
+      "router": "9router",
+      "step": "hf/CohereLabs/tiny-aya-fire",
+      "provider": "hf",
+      "conclusion": "LISTED-UPSTREAM",
+      "sourceUrl": "https://huggingface.co/api/models",
+      "checkedAt": "2026-11-21T18:22:10.048Z"
+    },
+    {
+      "router": "9router",
+      "step": "hf/CohereLabs/tiny-aya-global",
+      "provider": "hf",
+      "conclusion": "LISTED-UPSTREAM",
+      "sourceUrl": "https://huggingface.co/api/models",
+      "checkedAt": "2026-11-21T18:22:10.318Z"
+    },
+    {
+      "router": "9router",
+      "step": "hf/CohereLabs/tiny-aya-water",
+      "provider": "hf",
+      "conclusion": "LISTED-UPSTREAM",
+      "sourceUrl": "https://huggingface.co/api/models",
+      "checkedAt": "2026-11-21T18:22:10.585Z"
+    },
+    {
+      "router": "9router",
+      "step": "hf/NousResearch/Hermes-3-Llama-3.1-70B",
+      "provider": "hf",
+      "conclusion": "LISTED-UPSTREAM",
+      "sourceUrl": "https://huggingface.co/api/models",
+      "checkedAt": "2026-11-21T18:22:10.848Z"
+    },
+    {
+      "router": "9router",
+      "step": "hf/Qwen/Qwen2.5-VL-72B-Instruct",
+      "provider": "hf",
+      "conclusion": "LISTED-UPSTREAM",
+      "sourceUrl": "https://huggingface.co/api/models",
+      "checkedAt": "2026-11-21T18:22:11.123Z"
+    },
+    {
+      "router": "9router",
+      "step": "hf/Qwen/Qwen3-14B",
+      "provider": "hf",
+      "conclusion": "LISTED-UPSTREAM",
+      "sourceUrl": "https://huggingface.co/api/models",
+      "checkedAt": "2026-11-21T18:22:11.397Z"
+    },
+    {
+      "router": "9router",
+      "step": "hf/Qwen/Qwen3-30B-A3B",
+      "provider": "hf",
+      "conclusion": "LISTED-UPSTREAM",
+      "sourceUrl": "https://huggingface.co/api/models",
+      "checkedAt": "2026-11-21T18:22:11.664Z"
+    },
+    {
+      "router": "9router",
+      "step": "hf/Qwen/Qwen3-32B",
+      "provider": "hf",
+      "conclusion": "LISTED-UPSTREAM",
+      "sourceUrl": "https://huggingface.co/api/models",
+      "checkedAt": "2026-11-21T18:22:11.937Z"
+    },
+    {
+      "router": "9router",
+      "step": "hf/Qwen/Qwen3-Next-80B-A3B-Instruct",
+      "provider": "hf",
+      "conclusion": "LISTED-UPSTREAM",
+      "sourceUrl": "https://huggingface.co/api/models",
+      "checkedAt": "2026-11-21T18:22:12.217Z"
+    },
+    {
+      "router": "9router",
+      "step": "hf/Qwen/Qwen3-VL-235B-A22B-Instruct",
+      "provider": "hf",
+      "conclusion": "LISTED-UPSTREAM",
+      "sourceUrl": "https://huggingface.co/api/models",
+      "checkedAt": "2026-11-21T18:22:12.482Z"
+    },
+    {
+      "router": "9router",
+      "step": "hf/Qwen/Qwen3-VL-30B-A3B-Instruct",
+      "provider": "hf",
+      "conclusion": "LISTED-UPSTREAM",
+      "sourceUrl": "https://huggingface.co/api/models",
+      "checkedAt": "2026-11-21T18:22:12.745Z"
+    },
+    {
+      "router": "9router",
+      "step": "hf/Qwen/Qwen3.5-122B-A10B",
+      "provider": "hf",
+      "conclusion": "LISTED-UPSTREAM",
+      "sourceUrl": "https://huggingface.co/api/models",
+      "checkedAt": "2026-11-21T18:22:13.006Z"
+    },
+    {
+      "router": "9router",
+      "step": "hf/Qwen/Qwen3.5-27B",
+      "provider": "hf",
+      "conclusion": "LISTED-UPSTREAM",
+      "sourceUrl": "https://huggingface.co/api/models",
+      "checkedAt": "2026-11-21T18:22:13.268Z"
+    },
+    {
+      "router": "9router",
+      "step": "hf/Qwen/Qwen3.5-35B-A3B",
+      "provider": "hf",
+      "conclusion": "LISTED-UPSTREAM",
+      "sourceUrl": "https://huggingface.co/api/models",
+      "checkedAt": "2026-11-21T18:22:13.537Z"
+    },
+    {
+      "router": "9router",
+      "step": "hf/Qwen/Qwen3.5-397B-A17B",
+      "provider": "hf",
+      "conclusion": "LISTED-UPSTREAM",
+      "sourceUrl": "https://huggingface.co/api/models",
+      "checkedAt": "2026-11-21T18:22:13.797Z"
+    },
+    {
+      "router": "9router",
+      "step": "hf/Qwen/Qwen3.5-9B",
+      "provider": "hf",
+      "conclusion": "LISTED-UPSTREAM",
+      "sourceUrl": "https://huggingface.co/api/models",
+      "checkedAt": "2026-11-21T18:22:14.075Z"
+    },
+    {
+      "router": "9router",
+      "step": "hf/Qwen/Qwen3.6-27B",
+      "provider": "hf",
+      "conclusion": "LISTED-UPSTREAM",
+      "sourceUrl": "https://huggingface.co/api/models",
+      "checkedAt": "2026-11-21T18:22:14.351Z"
+    },
+    {
+      "router": "9router",
+      "step": "hf/Qwen/Qwen3.6-35B-A3B",
+      "provider": "hf",
+      "conclusion": "LISTED-UPSTREAM",
+      "sourceUrl": "https://huggingface.co/api/models",
+      "checkedAt": "2026-11-21T18:22:14.623Z"
+    },
+    {
+      "router": "9router",
+      "step": "hf/Qwen/Qwen3.8-2.4T-A95B",
+      "provider": "hf",
+      "conclusion": "LISTED-UPSTREAM",
+      "sourceUrl": "https://huggingface.co/api/models",
+      "checkedAt": "2026-11-21T18:22:14.897Z"
+    },
+    {
+      "router": "9router",
+      "step": "hf/Qwen/Qwen3.8-27B",
+      "provider": "hf",
+      "conclusion": "LISTED-UPSTREAM",
+      "sourceUrl": "https://huggingface.co/api/models",
+      "checkedAt": "2026-11-21T18:22:15.173Z"
+    },
+    {
+      "router": "9router",
+      "step": "hf/Sao10K/L3-8B-Stheno-v3.2",
+      "provider": "hf",
+      "conclusion": "LISTED-UPSTREAM",
+      "sourceUrl": "https://huggingface.co/api/models",
+      "checkedAt": "2026-11-21T18:22:15.439Z"
+    },
+    {
+      "router": "9router",
+      "step": "hf/XiaomiMiMo/MiMo-V2.5",
+      "provider": "hf",
+      "conclusion": "LISTED-UPSTREAM",
+      "sourceUrl": "https://huggingface.co/api/models",
+      "checkedAt": "2026-11-21T18:22:15.699Z"
+    },
+    {
+      "router": "9router",
+      "step": "hf/XiaomiMiMo/MiMo-V2.5-Pro",
+      "provider": "hf",
+      "conclusion": "LISTED-UPSTREAM",
+      "sourceUrl": "https://huggingface.co/api/models",
+      "checkedAt": "2026-11-21T18:22:15.973Z"
+    },
+    {
+      "router": "9router",
+      "step": "hf/XiaomiMiMo/MiMo-V2.6-Flash-RL",
+      "provider": "hf",
+      "conclusion": "LISTED-UPSTREAM",
+      "sourceUrl": "https://huggingface.co/api/models",
+      "checkedAt": "2026-11-21T18:22:16.238Z"
+    },
+    {
+      "router": "9router",
+      "step": "hf/XiaomiMiMo/MiMo-V2.6-Pro-RL",
+      "provider": "hf",
+      "conclusion": "LISTED-UPSTREAM",
+      "sourceUrl": "https://huggingface.co/api/models",
+      "checkedAt": "2026-11-21T18:22:16.532Z"
+    },
+    {
+      "router": "9router",
+      "step": "hf/aisingapore/Gemma-SEA-LION-v4-27B-IT",
+      "provider": "hf",
+      "conclusion": "LISTED-UPSTREAM",
+      "sourceUrl": "https://huggingface.co/api/models",
+      "checkedAt": "2026-11-21T18:22:16.792Z"
+    },
+    {
+      "router": "9router",
+      "step": "hf/aisingapore/Qwen-SEA-LION-v4-32B-IT",
+      "provider": "hf",
+      "conclusion": "LISTED-UPSTREAM",
+      "sourceUrl": "https://huggingface.co/api/models",
+      "checkedAt": "2026-11-21T18:22:17.065Z"
+    },
+    {
+      "router": "9router",
+      "step": "hf/alpindale/WizardLM-2-8x22B",
+      "provider": "hf",
+      "conclusion": "LISTED-UPSTREAM",
+      "sourceUrl": "https://huggingface.co/api/models",
+      "checkedAt": "2026-11-21T18:22:17.327Z"
+    },
+    {
+      "router": "9router",
+      "step": "hf/deepseek-ai/DeepSeek-R1",
+      "provider": "hf",
+      "conclusion": "LISTED-UPSTREAM",
+      "sourceUrl": "https://huggingface.co/api/models",
+      "checkedAt": "2026-11-21T18:22:17.594Z"
+    },
+    {
+      "router": "9router",
+      "step": "hf/deepseek-ai/DeepSeek-R1-0528",
+      "provider": "hf",
+      "conclusion": "LISTED-UPSTREAM",
+      "sourceUrl": "https://huggingface.co/api/models",
+      "checkedAt": "2026-11-21T18:22:17.848Z"
+    },
+    {
+      "router": "9router",
+      "step": "hf/deepseek-ai/DeepSeek-V3",
+      "provider": "hf",
+      "conclusion": "LISTED-UPSTREAM",
+      "sourceUrl": "https://huggingface.co/api/models",
+      "checkedAt": "2026-11-21T18:22:18.137Z"
+    },
+    {
+      "router": "9router",
+      "step": "hf/deepseek-ai/DeepSeek-V3-0324",
+      "provider": "hf",
+      "conclusion": "LISTED-UPSTREAM",
+      "sourceUrl": "https://huggingface.co/api/models",
+      "checkedAt": "2026-11-21T18:22:18.413Z"
+    },
+    {
+      "router": "9router",
+      "step": "hf/deepseek-ai/DeepSeek-V3.1",
+      "provider": "hf",
+      "conclusion": "LISTED-UPSTREAM",
+      "sourceUrl": "https://huggingface.co/api/models",
+      "checkedAt": "2026-11-21T18:22:18.676Z"
+    },
+    {
+      "router": "9router",
+      "step": "hf/deepseek-ai/DeepSeek-V3.1-Terminus",
+      "provider": "hf",
+      "conclusion": "LISTED-UPSTREAM",
+      "sourceUrl": "https://huggingface.co/api/models",
+      "checkedAt": "2026-11-21T18:22:18.937Z"
+    },
+    {
+      "router": "9router",
+      "step": "hf/deepseek-ai/DeepSeek-V3.2",
+      "provider": "hf",
+      "conclusion": "LISTED-UPSTREAM",
+      "sourceUrl": "https://huggingface.co/api/models",
+      "checkedAt": "2026-11-21T18:22:19.214Z"
+    },
+    {
+      "router": "9router",
+      "step": "hf/deepseek-ai/DeepSeek-V4-Flash",
+      "provider": "hf",
+      "conclusion": "LISTED-UPSTREAM",
+      "sourceUrl": "https://huggingface.co/api/models",
+      "checkedAt": "2026-11-21T18:22:19.498Z"
+    },
+    {
+      "router": "9router",
+      "step": "hf/deepseek-ai/DeepSeek-V4-Flash-0731",
+      "provider": "hf",
+      "conclusion": "LISTED-UPSTREAM",
+      "sourceUrl": "https://huggingface.co/api/models",
+      "checkedAt": "2026-11-21T18:22:19.771Z"
+    },
+    {
+      "router": "9router",
+      "step": "hf/deepseek-ai/DeepSeek-V4-Flash-Vision-Exp",
+      "provider": "hf",
+      "conclusion": "LISTED-UPSTREAM",
+      "sourceUrl": "https://huggingface.co/api/models",
+      "checkedAt": "2026-11-21T18:22:20.044Z"
+    },
+    {
+      "router": "9router",
+      "step": "hf/deepseek-ai/DeepSeek-V4.1-Flash",
+      "provider": "hf",
+      "conclusion": "LISTED-UPSTREAM",
+      "sourceUrl": "https://huggingface.co/api/models",
+      "checkedAt": "2026-11-21T18:22:20.337Z"
+    },
+    {
+      "router": "9router",
+      "step": "hf/deepseek-ai/DeepSeek-V4.1-Flash-1017",
+      "provider": "hf",
+      "conclusion": "LISTED-UPSTREAM",
+      "sourceUrl": "https://huggingface.co/api/models",
+      "checkedAt": "2026-11-21T18:22:20.617Z"
+    },
+    {
+      "router": "9router",
+      "step": "hf/google/gemma-3-12b-it",
+      "provider": "hf",
+      "conclusion": "LISTED-UPSTREAM",
+      "sourceUrl": "https://huggingface.co/api/models",
+      "checkedAt": "2026-11-21T18:22:20.886Z"
+    },
+    {
+      "router": "9router",
+      "step": "hf/google/gemma-3-27b-it",
+      "provider": "hf",
+      "conclusion": "LISTED-UPSTREAM",
+      "sourceUrl": "https://huggingface.co/api/models",
+      "checkedAt": "2026-11-21T18:22:21.154Z"
+    },
+    {
+      "router": "9router",
+      "step": "hf/google/gemma-3-4b-it",
+      "provider": "hf",
+      "conclusion": "LISTED-UPSTREAM",
+      "sourceUrl": "https://huggingface.co/api/models",
+      "checkedAt": "2026-11-21T18:22:21.421Z"
+    },
+    {
+      "router": "9router",
+      "step": "hf/google/gemma-4-26B-A4B-it",
+      "provider": "hf",
+      "conclusion": "LISTED-UPSTREAM",
+      "sourceUrl": "https://huggingface.co/api/models",
+      "checkedAt": "2026-11-21T18:22:21.681Z"
+    },
+    {
+      "router": "9router",
+      "step": "hf/google/gemma-4-31B-it",
+      "provider": "hf",
+      "conclusion": "LISTED-UPSTREAM",
+      "sourceUrl": "https://huggingface.co/api/models",
+      "checkedAt": "2026-11-21T18:22:21.946Z"
+    },
+    {
+      "router": "9router",
+      "step": "hf/ibm-granite/granite-4.2-3b",
+      "provider": "hf",
+      "conclusion": "LISTED-UPSTREAM",
+      "sourceUrl": "https://huggingface.co/api/models",
+      "checkedAt": "2026-11-21T18:22:22.206Z"
+    },
+    {
+      "router": "9router",
+      "step": "hf/inclusionAI/Ling-3.0-flash",
+      "provider": "hf",
+      "conclusion": "LISTED-UPSTREAM",
+      "sourceUrl": "https://huggingface.co/api/models",
+      "checkedAt": "2026-11-21T18:22:22.475Z"
+    },
+    {
+      "router": "9router",
+      "step": "hf/inclusionAI/Ling-3.0-flash-Fin",
+      "provider": "hf",
+      "conclusion": "LISTED-UPSTREAM",
+      "sourceUrl": "https://huggingface.co/api/models",
+      "checkedAt": "2026-11-21T18:22:22.749Z"
+    },
+    {
+      "router": "9router",
+      "step": "hf/inclusionAI/Ling-3.0-flash-VL",
+      "provider": "hf",
+      "conclusion": "LISTED-UPSTREAM",
+      "sourceUrl": "https://huggingface.co/api/models",
+      "checkedAt": "2026-11-21T18:22:23.011Z"
+    },
+    {
+      "router": "9router",
+      "step": "hf/inclusionAI/Ling-3.1-flash",
+      "provider": "hf",
+      "conclusion": "LISTED-UPSTREAM",
+      "sourceUrl": "https://huggingface.co/api/models",
+      "checkedAt": "2026-11-21T18:22:23.284Z"
+    },
+    {
+      "router": "9router",
+      "step": "hf/meta-llama/Llama-3.1-8B-Instruct",
+      "provider": "hf",
+      "conclusion": "LISTED-UPSTREAM",
+      "sourceUrl": "https://huggingface.co/api/models",
+      "checkedAt": "2026-11-21T18:22:23.550Z"
+    },
+    {
+      "router": "9router",
+      "step": "hf/meta-llama/Llama-3.3-70B-Instruct",
+      "provider": "hf",
+      "conclusion": "LISTED-UPSTREAM",
+      "sourceUrl": "https://huggingface.co/api/models",
+      "checkedAt": "2026-11-21T18:22:23.848Z"
+    },
+    {
+      "router": "9router",
+      "step": "hf/meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8",
+      "provider": "hf",
+      "conclusion": "LISTED-UPSTREAM",
+      "sourceUrl": "https://huggingface.co/api/models",
+      "checkedAt": "2026-11-21T18:22:24.114Z"
+    },
+    {
+      "router": "9router",
+      "step": "hf/meta-llama/Llama-4-Scout-17B-16E-Instruct",
+      "provider": "hf",
+      "conclusion": "LISTED-UPSTREAM",
+      "sourceUrl": "https://huggingface.co/api/models",
+      "checkedAt": "2026-11-21T18:22:24.386Z"
+    },
+    {
+      "router": "9router",
+      "step": "hf/meta-models/Muse-Glimmer-30B",
+      "provider": "hf",
+      "conclusion": "LISTED-UPSTREAM",
+      "sourceUrl": "https://huggingface.co/api/models",
+      "checkedAt": "2026-11-21T18:22:24.650Z"
+    },
+    {
+      "router": "9router",
+      "step": "hf/meta-models/Muse-Spark-Open-816B-A42B",
+      "provider": "hf",
+      "conclusion": "LISTED-UPSTREAM",
+      "sourceUrl": "https://huggingface.co/api/models",
+      "checkedAt": "2026-11-21T18:22:24.910Z"
+    },
+    {
+      "router": "9router",
+      "step": "hf/microsoft/phi-4",
+      "provider": "hf",
+      "conclusion": "LISTED-UPSTREAM",
+      "sourceUrl": "https://huggingface.co/api/models",
+      "checkedAt": "2026-11-21T18:22:25.177Z"
+    },
+    {
+      "router": "9router",
+      "step": "hf/moonshotai/Kimi-K2-Instruct",
+      "provider": "hf",
+      "conclusion": "LISTED-UPSTREAM",
+      "sourceUrl": "https://huggingface.co/api/models",
+      "checkedAt": "2026-11-21T18:22:25.454Z"
+    },
+    {
+      "router": "9router",
+      "step": "hf/moonshotai/Kimi-K2-Instruct-0905",
+      "provider": "hf",
+      "conclusion": "LISTED-UPSTREAM",
+      "sourceUrl": "https://huggingface.co/api/models",
+      "checkedAt": "2026-11-21T18:22:25.724Z"
+    },
+    {
+      "router": "9router",
+      "step": "hf/moonshotai/Kimi-K2.5",
+      "provider": "hf",
+      "conclusion": "LISTED-UPSTREAM",
+      "sourceUrl": "https://huggingface.co/api/models",
+      "checkedAt": "2026-11-21T18:22:25.997Z"
+    },
+    {
+      "router": "9router",
+      "step": "hf/moonshotai/Kimi-K2.6",
+      "provider": "hf",
+      "conclusion": "LISTED-UPSTREAM",
+      "sourceUrl": "https://huggingface.co/api/models",
+      "checkedAt": "2026-11-21T18:22:26.279Z"
+    },
+    {
+      "router": "9router",
+      "step": "hf/moonshotai/Kimi-K2.7-Code",
+      "provider": "hf",
+      "conclusion": "LISTED-UPSTREAM",
+      "sourceUrl": "https://huggingface.co/api/models",
+      "checkedAt": "2026-11-21T18:22:26.555Z"
+    },
+    {
+      "router": "9router",
+      "step": "hf/moonshotai/Kimi-K3",
+      "provider": "hf",
+      "conclusion": "LISTED-UPSTREAM",
+      "sourceUrl": "https://huggingface.co/api/models",
+      "checkedAt": "2026-11-21T18:22:26.835Z"
+    },
+    {
+      "router": "9router",
+      "step": "hf/nvidia/NVIDIA-Nemotron-3-Ultra-550B-A55B-BF16",
+      "provider": "hf",
+      "conclusion": "LISTED-UPSTREAM",
+      "sourceUrl": "https://huggingface.co/api/models",
+      "checkedAt": "2026-11-21T18:22:27.092Z"
+    },
+    {
+      "router": "9router",
+      "step": "hf/nvidia/NVIDIA-Nemotron-3.5-Super-VL-120B-A12B-NVFP4",
+      "provider": "hf",
+      "conclusion": "LISTED-UPSTREAM",
+      "sourceUrl": "https://huggingface.co/api/models",
+      "checkedAt": "2026-11-21T18:22:27.358Z"
+    },
+    {
+      "router": "9router",
+      "step": "hf/openai/gpt-oss-120b",
+      "provider": "hf",
+      "conclusion": "LISTED-UPSTREAM",
+      "sourceUrl": "https://huggingface.co/api/models",
+      "checkedAt": "2026-11-21T18:22:27.633Z"
+    },
+    {
+      "router": "9router",
+      "step": "hf/openai/gpt-oss-20b",
+      "provider": "hf",
+      "conclusion": "LISTED-UPSTREAM",
+      "sourceUrl": "https://huggingface.co/api/models",
+      "checkedAt": "2026-11-21T18:22:27.924Z"
+    },
+    {
+      "router": "9router",
+      "step": "hf/speakleash/Bielik-11B-v3.0-Instruct",
+      "provider": "hf",
+      "conclusion": "LISTED-UPSTREAM",
+      "sourceUrl": "https://huggingface.co/api/models",
+      "checkedAt": "2026-11-21T18:22:28.179Z"
+    },
+    {
+      "router": "9router",
+      "step": "hf/stepfun-ai/Step-3.5-Flash",
+      "provider": "hf",
+      "conclusion": "LISTED-UPSTREAM",
+      "sourceUrl": "https://huggingface.co/api/models",
+      "checkedAt": "2026-11-21T18:22:28.457Z"
+    },
+    {
+      "router": "9router",
+      "step": "hf/stepfun-ai/Step-3.7-Flash",
+      "provider": "hf",
+      "conclusion": "LISTED-UPSTREAM",
+      "sourceUrl": "https://huggingface.co/api/models",
+      "checkedAt": "2026-11-21T18:22:28.747Z"
+    },
+    {
+      "router": "9router",
+      "step": "hf/swiss-ai/Apertus-8B-Instruct-2509",
+      "provider": "hf",
+      "conclusion": "LISTED-UPSTREAM",
+      "sourceUrl": "https://huggingface.co/api/models",
+      "checkedAt": "2026-11-21T18:22:29.017Z"
+    },
+    {
+      "router": "9router",
+      "step": "hf/tencent/Hy3",
+      "provider": "hf",
+      "conclusion": "LISTED-UPSTREAM",
+      "sourceUrl": "https://huggingface.co/api/models",
+      "checkedAt": "2026-11-21T18:22:29.301Z"
+    },
+    {
+      "router": "9router",
+      "step": "hf/tencent/Hy4-preview",
+      "provider": "hf",
+      "conclusion": "LISTED-UPSTREAM",
+      "sourceUrl": "https://huggingface.co/api/models",
+      "checkedAt": "2026-11-21T18:22:29.569Z"
+    },
+    {
+      "router": "9router",
+      "step": "hf/thinkingmachines/Inkling",
+      "provider": "hf",
+      "conclusion": "LISTED-UPSTREAM",
+      "sourceUrl": "https://huggingface.co/api/models",
+      "checkedAt": "2026-11-21T18:22:29.837Z"
+    },
+    {
+      "router": "9router",
+      "step": "hf/thinkingmachines/Inkling-Small",
+      "provider": "hf",
+      "conclusion": "LISTED-UPSTREAM",
+      "sourceUrl": "https://huggingface.co/api/models",
+      "checkedAt": "2026-11-21T18:22:30.126Z"
+    },
+    {
+      "router": "9router",
+      "step": "hf/zai-org/AutoGLM-Phone-9B-Multilingual",
+      "provider": "hf",
+      "conclusion": "LISTED-UPSTREAM",
+      "sourceUrl": "https://huggingface.co/api/models",
+      "checkedAt": "2026-11-21T18:22:30.420Z"
+    },
+    {
+      "router": "9router",
+      "step": "hf/zai-org/GLM-4.5",
+      "provider": "hf",
+      "conclusion": "LISTED-UPSTREAM",
+      "sourceUrl": "https://huggingface.co/api/models",
+      "checkedAt": "2026-11-21T18:22:30.695Z"
+    },
+    {
+      "router": "9router",
+      "step": "hf/zai-org/GLM-4.5-Air",
+      "provider": "hf",
+      "conclusion": "LISTED-UPSTREAM",
+      "sourceUrl": "https://huggingface.co/api/models",
+      "checkedAt": "2026-11-21T18:22:30.968Z"
+    },
+    {
+      "router": "9router",
+      "step": "hf/zai-org/GLM-4.5V",
+      "provider": "hf",
+      "conclusion": "LISTED-UPSTREAM",
+      "sourceUrl": "https://huggingface.co/api/models",
+      "checkedAt": "2026-11-21T18:22:31.228Z"
+    },
+    {
+      "router": "9router",
+      "step": "hf/zai-org/GLM-4.5V-FP8",
+      "provider": "hf",
+      "conclusion": "LISTED-UPSTREAM",
+      "sourceUrl": "https://huggingface.co/api/models",
+      "checkedAt": "2026-11-21T18:22:31.498Z"
+    },
+    {
+      "router": "9router",
+      "step": "hf/zai-org/GLM-4.6",
+      "provider": "hf",
+      "conclusion": "LISTED-UPSTREAM",
+      "sourceUrl": "https://huggingface.co/api/models",
+      "checkedAt": "2026-11-21T18:22:31.761Z"
+    },
+    {
+      "router": "9router",
+      "step": "hf/zai-org/GLM-4.6-FP8",
+      "provider": "hf",
+      "conclusion": "LISTED-UPSTREAM",
+      "sourceUrl": "https://huggingface.co/api/models",
+      "checkedAt": "2026-11-21T18:22:32.021Z"
+    },
+    {
+      "router": "9router",
+      "step": "hf/zai-org/GLM-4.6V",
+      "provider": "hf",
+      "conclusion": "LISTED-UPSTREAM",
+      "sourceUrl": "https://huggingface.co/api/models",
+      "checkedAt": "2026-11-21T18:22:32.290Z"
+    },
+    {
+      "router": "9router",
+      "step": "hf/zai-org/GLM-4.6V-FP8",
+      "provider": "hf",
+      "conclusion": "LISTED-UPSTREAM",
+      "sourceUrl": "https://huggingface.co/api/models",
+      "checkedAt": "2026-11-21T18:22:32.566Z"
+    },
+    {
+      "router": "9router",
+      "step": "hf/zai-org/GLM-4.6V-Flash",
+      "provider": "hf",
+      "conclusion": "LISTED-UPSTREAM",
+      "sourceUrl": "https://huggingface.co/api/models",
+      "checkedAt": "2026-11-21T18:22:32.836Z"
+    },
+    {
+      "router": "9router",
+      "step": "hf/zai-org/GLM-4.7",
+      "provider": "hf",
+      "conclusion": "LISTED-UPSTREAM",
+      "sourceUrl": "https://huggingface.co/api/models",
+      "checkedAt": "2026-11-21T18:22:33.108Z"
+    },
+    {
+      "router": "9router",
+      "step": "hf/zai-org/GLM-4.7-FP8",
+      "provider": "hf",
+      "conclusion": "LISTED-UPSTREAM",
+      "sourceUrl": "https://huggingface.co/api/models",
+      "checkedAt": "2026-11-21T18:22:33.387Z"
+    },
+    {
+      "router": "9router",
+      "step": "hf/zai-org/GLM-4.7-Flash",
+      "provider": "hf",
+      "conclusion": "LISTED-UPSTREAM",
+      "sourceUrl": "https://huggingface.co/api/models",
+      "checkedAt": "2026-11-21T18:22:33.675Z"
+    },
+    {
+      "router": "9router",
+      "step": "hf/zai-org/GLM-5",
+      "provider": "hf",
+      "conclusion": "LISTED-UPSTREAM",
+      "sourceUrl": "https://huggingface.co/api/models",
+      "checkedAt": "2026-11-21T18:22:33.949Z"
+    },
+    {
+      "router": "9router",
+      "step": "hf/zai-org/GLM-5.1",
+      "provider": "hf",
+      "conclusion": "LISTED-UPSTREAM",
+      "sourceUrl": "https://huggingface.co/api/models",
+      "checkedAt": "2026-11-21T18:22:34.223Z"
+    },
+    {
+      "router": "9router",
+      "step": "hf/zai-org/GLM-5.2",
+      "provider": "hf",
+      "conclusion": "LISTED-UPSTREAM",
+      "sourceUrl": "https://huggingface.co/api/models",
+      "checkedAt": "2026-11-21T18:22:34.491Z"
+    },
+    {
+      "router": "9router",
+      "step": "hf/zai-org/GLM-5.2-FP8",
+      "provider": "hf",
+      "conclusion": "LISTED-UPSTREAM",
+      "sourceUrl": "https://huggingface.co/api/models",
+      "checkedAt": "2026-11-21T18:22:34.768Z"
+    },
+    {
+      "router": "9router",
+      "step": "hf/zai-org/GLM-5.3",
+      "provider": "hf",
+      "conclusion": "LISTED-UPSTREAM",
+      "sourceUrl": "https://huggingface.co/api/models",
+      "checkedAt": "2026-11-21T18:22:35.041Z"
+    },
+    {
+      "router": "9router",
+      "step": "hf/zai-org/GLM-5.3-BF16",
+      "provider": "hf",
+      "conclusion": "LISTED-UPSTREAM",
+      "sourceUrl": "https://huggingface.co/api/models",
+      "checkedAt": "2026-11-21T18:22:35.316Z"
+    },
+    {
+      "router": "9router",
+      "step": "hf/zai-org/GLM-5.3-Flash",
+      "provider": "hf",
+      "conclusion": "LISTED-UPSTREAM",
+      "sourceUrl": "https://huggingface.co/api/models",
+      "checkedAt": "2026-11-21T18:22:35.585Z"
+    },
+    {
+      "router": "9router",
+      "step": "hf/zai-org/GLM-5.3-Flash-BF16",
+      "provider": "hf",
+      "conclusion": "LISTED-UPSTREAM",
+      "sourceUrl": "https://huggingface.co/api/models",
+      "checkedAt": "2026-11-21T18:22:35.861Z"
+    },
+    {
+      "router": "9router",
+      "step": "nvidia/nvidia/ai-synthetic-video-detector",
+      "provider": "nvidia",
+      "conclusion": "NOT-IN-CATALOG",
+      "sourceUrl": "https://models.dev/api.json",
+      "checkedAt": "2026-11-21T18:22:36.154Z"
+    },
+    {
+      "router": "9router",
+      "step": "nvidia/nvidia/ising-calibration-1.5-31b",
+      "provider": "nvidia",
+      "conclusion": "NOT-IN-CATALOG",
+      "sourceUrl": "https://models.dev/api.json",
+      "checkedAt": "2026-11-21T18:22:36.851Z"
+    },
+    {
+      "router": "9router",
+      "step": "nvidia/nvidia/llama3-chatqa-1.5-70b",
+      "provider": "nvidia",
+      "conclusion": "NOT-IN-CATALOG",
+      "sourceUrl": "https://models.dev/api.json",
+      "checkedAt": "2026-11-21T18:22:36.851Z"
+    },
+    {
+      "router": "9router",
+      "step": "nvidia/nvidia/mistral-nemo-minitron-8b-8k-instruct",
+      "provider": "nvidia",
+      "conclusion": "NOT-IN-CATALOG",
+      "sourceUrl": "https://models.dev/api.json",
+      "checkedAt": "2026-11-21T18:22:36.851Z"
+    },
+    {
+      "router": "9router",
+      "step": "nvidia/nvidia/nemotron-3-nano-omni-30b-a3b-reasoning",
+      "provider": "nvidia",
+      "conclusion": "LISTED-IN-CATALOG",
+      "sourceUrl": "https://models.dev/api.json",
+      "checkedAt": "2026-11-21T18:22:36.851Z"
+    },
+    {
+      "router": "9router",
+      "step": "nvidia/nvidia/nemotron-3-super-120b-a12b",
+      "provider": "nvidia",
+      "conclusion": "LISTED-IN-CATALOG",
+      "sourceUrl": "https://models.dev/api.json",
+      "checkedAt": "2026-11-21T18:22:36.851Z"
+    },
+    {
+      "router": "9router",
+      "step": "nvidia/nvidia/nemotron-3-ultra-550b-a55b",
+      "provider": "nvidia",
+      "conclusion": "LISTED-IN-CATALOG",
+      "sourceUrl": "https://models.dev/api.json",
+      "checkedAt": "2026-11-21T18:22:36.851Z"
+    },
+    {
+      "router": "9router",
+      "step": "nvidia/nvidia/nemotron-3.5-lightning-30b-a3b",
+      "provider": "nvidia",
+      "conclusion": "LISTED-IN-CATALOG",
+      "sourceUrl": "https://models.dev/api.json",
+      "checkedAt": "2026-11-21T18:22:36.851Z"
+    },
+    {
+      "router": "9router",
+      "step": "nvidia/nvidia/nemotron-3.5-super-vl-120b-a12b",
+      "provider": "nvidia",
+      "conclusion": "LISTED-IN-CATALOG",
+      "sourceUrl": "https://models.dev/api.json",
+      "checkedAt": "2026-11-21T18:22:36.851Z"
+    },
+    {
+      "router": "9router",
+      "step": "nvidia/nvidia/nemotron-4-340b-instruct",
+      "provider": "nvidia",
+      "conclusion": "NOT-IN-CATALOG",
+      "sourceUrl": "https://models.dev/api.json",
+      "checkedAt": "2026-11-21T18:22:36.851Z"
+    },
+    {
+      "router": "9router",
+      "step": "nvidia/nvidia/nemotron-4-340b-reward",
+      "provider": "nvidia",
+      "conclusion": "NOT-IN-CATALOG",
+      "sourceUrl": "https://models.dev/api.json",
+      "checkedAt": "2026-11-21T18:22:36.851Z"
+    },
+    {
+      "router": "9router",
+      "step": "nvidia/nvidia/nemotron-nano-3-30b-a3b",
+      "provider": "nvidia",
+      "conclusion": "NOT-IN-CATALOG",
+      "sourceUrl": "https://models.dev/api.json",
+      "checkedAt": "2026-11-21T18:22:36.851Z"
+    },
+    {
+      "router": "9router",
+      "step": "nvidia/nvidia/nemotron-parse",
+      "provider": "nvidia",
+      "conclusion": "NOT-IN-CATALOG",
+      "sourceUrl": "https://models.dev/api.json",
+      "checkedAt": "2026-11-21T18:22:36.851Z"
+    },
+    {
+      "router": "9router",
+      "step": "nvidia/nvidia/nemotron-parse-2.0",
+      "provider": "nvidia",
+      "conclusion": "NOT-IN-CATALOG",
+      "sourceUrl": "https://models.dev/api.json",
+      "checkedAt": "2026-11-21T18:22:36.851Z"
+    },
+    {
+      "router": "9router",
+      "step": "nvidia/nvidia/neva-22b",
+      "provider": "nvidia",
+      "conclusion": "NOT-IN-CATALOG",
+      "sourceUrl": "https://models.dev/api.json",
+      "checkedAt": "2026-11-21T18:22:36.851Z"
+    },
+    {
+      "router": "9router",
+      "step": "nvidia/nvidia/riva-translate-4b-instruct",
+      "provider": "nvidia",
+      "conclusion": "NOT-IN-CATALOG",
+      "sourceUrl": "https://models.dev/api.json",
+      "checkedAt": "2026-11-21T18:22:36.851Z"
+    },
+    {
+      "router": "9router",
+      "step": "nvidia/nvidia/riva-translate-4b-instruct-v2",
+      "provider": "nvidia",
+      "conclusion": "NOT-IN-CATALOG",
+      "sourceUrl": "https://models.dev/api.json",
+      "checkedAt": "2026-11-21T18:22:36.851Z"
+    },
+    {
+      "router": "9router",
+      "step": "nvidia/nvidia/vila",
+      "provider": "nvidia",
+      "conclusion": "NOT-IN-CATALOG",
+      "sourceUrl": "https://models.dev/api.json",
+      "checkedAt": "2026-11-21T18:22:36.851Z"
+    },
+    {
+      "router": "9router",
+      "step": "nvidia/stepfun-ai/step-5-preview",
+      "provider": "nvidia",
+      "conclusion": "LISTED-IN-CATALOG",
+      "sourceUrl": "https://models.dev/api.json",
+      "checkedAt": "2026-11-21T18:22:36.851Z"
+    },
+    {
+      "router": "9router",
+      "step": "oc/hy4-flash-free",
+      "provider": "oc",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:36.851Z"
+    },
+    {
+      "router": "9router",
+      "step": "oc/inkling-2-small-free",
+      "provider": "oc",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:36.851Z"
+    },
+    {
+      "router": "9router",
+      "step": "oc/longcat-2.5-free",
+      "provider": "oc",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:36.851Z"
+    },
+    {
+      "router": "9router",
+      "step": "oc/tidepool-alpha-free",
+      "provider": "oc",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:36.851Z"
+    },
+    {
+      "router": "9router",
+      "step": "ocz/mimo-v2.6-flash-free",
+      "provider": "ocz",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:36.851Z"
+    },
+    {
+      "router": "9router",
+      "step": "openrouter/xingchen-agi/xing4.0-29b-a4b:free",
+      "provider": "openrouter",
+      "conclusion": "NOT-LISTED-UPSTREAM",
+      "sourceUrl": "https://openrouter.ai/api/v1/models",
+      "checkedAt": "2026-11-21T18:22:36.851Z"
+    },
+    {
+      "router": "9router",
+      "step": "<private-provider-2>/deepseek/deepseek-v4-flash-free",
+      "provider": "<private-provider-2>",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:37.035Z"
+    },
+    {
+      "router": "9router",
+      "step": "<private-provider-2>/deepseek/deepseek-v4.1-flash-free",
+      "provider": "<private-provider-2>",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:37.035Z"
+    },
+    {
+      "router": "9router",
+      "step": "<private-provider-2>/orca/orcaverify-text1.0-free",
+      "provider": "<private-provider-2>",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:37.035Z"
+    },
+    {
+      "router": "9router",
+      "step": "<private-provider-2>/<private-provider-2>/free",
+      "provider": "<private-provider-2>",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:37.035Z"
+    },
+    {
+      "router": "9router",
+      "step": "<private-provider-2>/tencent/hy3-free",
+      "provider": "<private-provider-2>",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:37.035Z"
+    },
+    {
+      "router": "9router",
+      "step": "<private-provider-2>/tencent/hy4-preview-free",
+      "provider": "<private-provider-2>",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:37.035Z"
+    },
+    {
+      "router": "9router",
+      "step": "<private-provider-2>/z-ai/glm-5.3-flash-free",
+      "provider": "<private-provider-2>",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:37.035Z"
+    },
+    {
+      "router": "9router",
+      "step": "<private-provider-4>/z-ai/glm-5.3-free",
+      "provider": "<private-provider-4>",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:37.035Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "bazaarlink/bazaarlink/deepseek/deepseek-v4-flash-0731free:free",
+      "provider": "bazaarlink",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:37.035Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "bazaarlink/bazaarlink/nvidia/nemotron-3.5-lightning-free:free",
+      "provider": "bazaarlink",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "bazaarlink/bazaarlink/qwen/qwen3.7-flash:free",
+      "provider": "bazaarlink",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "bazaarlink/bazaarlink/reflection/beam-free:free",
+      "provider": "bazaarlink",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "bazaarlink/bazaarlink/stealth/glyph-cluster:free",
+      "provider": "bazaarlink",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "bzl/bzl/auto:free",
+      "provider": "bzl",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "bzl/bzl/deepseek/deepseek-v4-flash-0731free:free",
+      "provider": "bzl",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "bzl/bzl/qwen/qwen3.7-flash:free",
+      "provider": "bzl",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "cloudflare-ai/cloudflare-ai/@cf/deepseek-ai/deepseek-math-7b-instruct",
+      "provider": "cloudflare-ai",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "cloudflare-ai/cloudflare-ai/@cf/deepseek-ai/deepseek-r1-distill-qwen-32b",
+      "provider": "cloudflare-ai",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "cloudflare-ai/cloudflare-ai/@cf/deepseek-ai/deepseek-v4-flash-0731",
+      "provider": "cloudflare-ai",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "cloudflare-ai/cloudflare-ai/@cf/google/gemma-2b-it",
+      "provider": "cloudflare-ai",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "cloudflare-ai/cloudflare-ai/@cf/google/gemma-7b-it",
+      "provider": "cloudflare-ai",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "cloudflare-ai/cloudflare-ai/@cf/meta/llama-2-7b-chat-fp16",
+      "provider": "cloudflare-ai",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "cloudflare-ai/cloudflare-ai/@cf/meta/llama-3-8b-instruct",
+      "provider": "cloudflare-ai",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "cloudflare-ai/cloudflare-ai/@cf/meta/llama-3.1-70b-instruct",
+      "provider": "cloudflare-ai",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "cloudflare-ai/cloudflare-ai/@cf/meta/llama-3.1-70b-instruct-fp8-fast",
+      "provider": "cloudflare-ai",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "cloudflare-ai/cloudflare-ai/@cf/meta/llama-3.1-8b-instruct",
+      "provider": "cloudflare-ai",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "cloudflare-ai/cloudflare-ai/@cf/meta/llama-3.1-8b-instruct-awq",
+      "provider": "cloudflare-ai",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "cloudflare-ai/cloudflare-ai/@cf/meta/llama-3.1-8b-instruct-fp8-fast",
+      "provider": "cloudflare-ai",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "cloudflare-ai/cloudflare-ai/@cf/meta/llama-3.2-1b-instruct",
+      "provider": "cloudflare-ai",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "cloudflare-ai/cloudflare-ai/@cf/meta/llama-3.2-3b-instruct",
+      "provider": "cloudflare-ai",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "cloudflare-ai/cloudflare-ai/@cf/meta/llama-3.3-70b-instruct",
+      "provider": "cloudflare-ai",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "cloudflare-ai/cloudflare-ai/@cf/meta/llama-3.3-70b-instruct-fp8-fast",
+      "provider": "cloudflare-ai",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "cloudflare-ai/cloudflare-ai/@cf/microsoft/phi-2",
+      "provider": "cloudflare-ai",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "cloudflare-ai/cloudflare-ai/@cf/mistral/mistral-7b-instruct-v0.1",
+      "provider": "cloudflare-ai",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "cloudflare-ai/cloudflare-ai/@cf/mistral/mistral-7b-instruct-v0.2",
+      "provider": "cloudflare-ai",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "cloudflare-ai/cloudflare-ai/@cf/mistralai/mistral-small-3.1-24b-instruct",
+      "provider": "cloudflare-ai",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "cloudflare-ai/cloudflare-ai/@cf/moonshotai/kimi-k2.5",
+      "provider": "cloudflare-ai",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "cloudflare-ai/cloudflare-ai/@cf/moonshotai/kimi-k2.6",
+      "provider": "cloudflare-ai",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "cloudflare-ai/cloudflare-ai/@cf/openchat/openchat-3.5-0106",
+      "provider": "cloudflare-ai",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "cloudflare-ai/cloudflare-ai/@cf/qwen/qwen1.5-7b-chat-awq",
+      "provider": "cloudflare-ai",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "cloudflare-ai/cloudflare-ai/@cf/qwen/qwen2.5-14b-instruct",
+      "provider": "cloudflare-ai",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "cloudflare-ai/cloudflare-ai/@cf/qwen/qwen2.5-72b-instruct",
+      "provider": "cloudflare-ai",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "cloudflare-ai/cloudflare-ai/@cf/qwen/qwen2.5-7b-instruct",
+      "provider": "cloudflare-ai",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "cloudflare-ai/cloudflare-ai/@cf/qwen/qwen2.5-coder-32b-instruct",
+      "provider": "cloudflare-ai",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "cloudflare-ai/cloudflare-ai/@cf/qwen/qwen2.5-coder-7b-instruct",
+      "provider": "cloudflare-ai",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "cloudflare-ai/cloudflare-ai/@cf/qwen/qwq-32b",
+      "provider": "cloudflare-ai",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "cloudflare-ai/cloudflare-ai/@cf/thebloke/discolm-german-7b-v1-awq",
+      "provider": "cloudflare-ai",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "cloudflare-ai/cloudflare-ai/@cf/tiiuae/falcon-7b-instruct",
+      "provider": "cloudflare-ai",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "cloudflare-ai/cloudflare-ai/@cf/zai-org/glm-4.7-flash",
+      "provider": "cloudflare-ai",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "gemini/gemini/models/gemini-3.8-live",
+      "provider": "gemini",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "gemini/gemini/models/gemini-3.8-live-extended-thinking",
+      "provider": "gemini",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "google/gemini/gemini-3.8-flash",
+      "provider": "google",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "google/gemini/gemini-4-argon",
+      "provider": "google",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "google/gemini/gemini-4-hydrogen",
+      "provider": "google",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "google/gemini/models/gemini-3.8-flash",
+      "provider": "google",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "google/gemini/models/gemini-3.8-live",
+      "provider": "google",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "google/gemini/models/gemini-3.8-live-extended-thinking",
+      "provider": "google",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "groq/groq/openai/gpt-oss-120b",
+      "provider": "groq",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "groq/groq/openai/gpt-oss-20b",
+      "provider": "groq",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "groq/groq/qwen/qwen3.8-27b",
+      "provider": "groq",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "huggingface/huggingface/deepseek-ai/DeepSeek-V3",
+      "provider": "huggingface",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "kc/kc/cohere/north-mini-code:free",
+      "provider": "kc",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "kc/kc/nvidia/nemotron-3-super-120b-a12b:free",
+      "provider": "kc",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "kc/kc/nvidia/nemotron-3-ultra-550b-a55b:free",
+      "provider": "kc",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "kc/kc/poolside/laguna-xs.2:free",
+      "provider": "kc",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "nvidia/nvidia/google/gemma-4-31b-it",
+      "provider": "nvidia",
+      "conclusion": "NOT-IN-CATALOG",
+      "sourceUrl": "https://models.dev/api.json",
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "nvidia/nvidia/meta/llama-3.2-90b-vision-instruct",
+      "provider": "nvidia",
+      "conclusion": "NOT-IN-CATALOG",
+      "sourceUrl": "https://models.dev/api.json",
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "nvidia/nvidia/moonshotai/kimi-k2.6",
+      "provider": "nvidia",
+      "conclusion": "NOT-IN-CATALOG",
+      "sourceUrl": "https://models.dev/api.json",
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "nvidia/nvidia/nvidia/ising-calibration-1.5-31b",
+      "provider": "nvidia",
+      "conclusion": "NOT-IN-CATALOG",
+      "sourceUrl": "https://models.dev/api.json",
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "nvidia/nvidia/nvidia/nemotron-3-nano-omni-30b-a3b-reasoning",
+      "provider": "nvidia",
+      "conclusion": "NOT-IN-CATALOG",
+      "sourceUrl": "https://models.dev/api.json",
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "nvidia/nvidia/nvidia/nemotron-3-super-120b-a12b",
+      "provider": "nvidia",
+      "conclusion": "NOT-IN-CATALOG",
+      "sourceUrl": "https://models.dev/api.json",
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "nvidia/nvidia/nvidia/nemotron-3-ultra-550b-a55b",
+      "provider": "nvidia",
+      "conclusion": "NOT-IN-CATALOG",
+      "sourceUrl": "https://models.dev/api.json",
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "nvidia/nvidia/nvidia/nemotron-3.5-super-vl-120b-a12b",
+      "provider": "nvidia",
+      "conclusion": "NOT-IN-CATALOG",
+      "sourceUrl": "https://models.dev/api.json",
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "nvidia/nvidia/nvidia/nemotron-parse-2.0",
+      "provider": "nvidia",
+      "conclusion": "NOT-IN-CATALOG",
+      "sourceUrl": "https://models.dev/api.json",
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "nvidia/nvidia/openai/gpt-oss-20b",
+      "provider": "nvidia",
+      "conclusion": "NOT-IN-CATALOG",
+      "sourceUrl": "https://models.dev/api.json",
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "nvidia/nvidia/stepfun-ai/step-5-preview",
+      "provider": "nvidia",
+      "conclusion": "NOT-IN-CATALOG",
+      "sourceUrl": "https://models.dev/api.json",
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "nvidia/nvidia/z-ai/glm-5.3-flash",
+      "provider": "nvidia",
+      "conclusion": "NOT-IN-CATALOG",
+      "sourceUrl": "https://models.dev/api.json",
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "oc/oc/big-pickle",
+      "provider": "oc",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "oc/oc/claude-sonnet-5-5",
+      "provider": "oc",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "oc/oc/deepseek-v4-flash-free",
+      "provider": "oc",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "oc/oc/deepseek-v4.1-flash-free",
+      "provider": "oc",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "oc/oc/exo-free",
+      "provider": "oc",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "oc/oc/hy3-free",
+      "provider": "oc",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "oc/oc/hy4-flash-free",
+      "provider": "oc",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "oc/oc/iceman-free",
+      "provider": "oc",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "oc/oc/jev-1.13-free",
+      "provider": "oc",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "oc/oc/ling-3.0-flash-fin-free",
+      "provider": "oc",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "oc/oc/ling-3.0-flash-free",
+      "provider": "oc",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "oc/oc/ling-3.1-flash-free",
+      "provider": "oc",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "oc/oc/mimo-v2.5-free",
+      "provider": "oc",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "oc/oc/mimo-v2.6-flash-free",
+      "provider": "oc",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "oc/oc/muse-spark-1.3-contributor-free",
+      "provider": "oc",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "oc/oc/nemotron-3-ultra-free",
+      "provider": "oc",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "oc/oc/nemotron-3.5-super-vl-free",
+      "provider": "oc",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "oc/oc/north-mini-code-free",
+      "provider": "oc",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "oc/oc/qwen3.6-plus-free",
+      "provider": "oc",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "oc/oc/step-5-preview-free",
+      "provider": "oc",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "oc/oc/tidepool-alpha-free",
+      "provider": "oc",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "openai-compatible-chat-5c7bdb86-5261-4ca7-b5e1-9413a85e6b92/openai-compatible-chat-5c7bdb86-5261-4ca7-b5e1-9413a85e6b92/deepseek/deepseek-v4-flash-free",
+      "provider": "openai-compatible-chat-5c7bdb86-5261-4ca7-b5e1-9413a85e6b92",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "openai-compatible-chat-5c7bdb86-5261-4ca7-b5e1-9413a85e6b92/openai-compatible-chat-5c7bdb86-5261-4ca7-b5e1-9413a85e6b92/qwen/qwen3.8-27b-free",
+      "provider": "openai-compatible-chat-5c7bdb86-5261-4ca7-b5e1-9413a85e6b92",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "openai-compatible-chat-75b6525d-1d6d-48db-b781-270362dca9e0/openai-compatible-chat-75b6525d-1d6d-48db-b781-270362dca9e0/meituan/longcat-2.5-preview:free",
+      "provider": "openai-compatible-chat-75b6525d-1d6d-48db-b781-270362dca9e0",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "openai-compatible-chat-75b6525d-1d6d-48db-b781-270362dca9e0/openai-compatible-chat-75b6525d-1d6d-48db-b781-270362dca9e0/qwen/qwen-plus-2025-07-28:free",
+      "provider": "openai-compatible-chat-75b6525d-1d6d-48db-b781-270362dca9e0",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "openai-compatible-chat-75b6525d-1d6d-48db-b781-270362dca9e0/openai-compatible-chat-75b6525d-1d6d-48db-b781-270362dca9e0/qwen/qwen3-coder-plus:free",
+      "provider": "openai-compatible-chat-75b6525d-1d6d-48db-b781-270362dca9e0",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "openai-compatible-chat-75b6525d-1d6d-48db-b781-270362dca9e0/openai-compatible-chat-75b6525d-1d6d-48db-b781-270362dca9e0/qwen/qwen3-max:free",
+      "provider": "openai-compatible-chat-75b6525d-1d6d-48db-b781-270362dca9e0",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "openai-compatible-chat-75b6525d-1d6d-48db-b781-270362dca9e0/openai-compatible-chat-75b6525d-1d6d-48db-b781-270362dca9e0/qwen/qwen3-omni-flash:free",
+      "provider": "openai-compatible-chat-75b6525d-1d6d-48db-b781-270362dca9e0",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "openai-compatible-chat-75b6525d-1d6d-48db-b781-270362dca9e0/openai-compatible-chat-75b6525d-1d6d-48db-b781-270362dca9e0/qwen/qwen3-vl-plus:free",
+      "provider": "openai-compatible-chat-75b6525d-1d6d-48db-b781-270362dca9e0",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "openai-compatible-chat-75b6525d-1d6d-48db-b781-270362dca9e0/openai-compatible-chat-75b6525d-1d6d-48db-b781-270362dca9e0/qwen/qwen3.5-397b-a17b:free",
+      "provider": "openai-compatible-chat-75b6525d-1d6d-48db-b781-270362dca9e0",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "openai-compatible-chat-75b6525d-1d6d-48db-b781-270362dca9e0/openai-compatible-chat-75b6525d-1d6d-48db-b781-270362dca9e0/qwen/qwen3.5-flash:free",
+      "provider": "openai-compatible-chat-75b6525d-1d6d-48db-b781-270362dca9e0",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "openai-compatible-chat-75b6525d-1d6d-48db-b781-270362dca9e0/openai-compatible-chat-75b6525d-1d6d-48db-b781-270362dca9e0/qwen/qwen3.5-omni-flash:free",
+      "provider": "openai-compatible-chat-75b6525d-1d6d-48db-b781-270362dca9e0",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "openai-compatible-chat-75b6525d-1d6d-48db-b781-270362dca9e0/openai-compatible-chat-75b6525d-1d6d-48db-b781-270362dca9e0/qwen/qwen3.5-omni-plus:free",
+      "provider": "openai-compatible-chat-75b6525d-1d6d-48db-b781-270362dca9e0",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "openai-compatible-chat-75b6525d-1d6d-48db-b781-270362dca9e0/openai-compatible-chat-75b6525d-1d6d-48db-b781-270362dca9e0/qwen/qwen3.5-plus:free",
+      "provider": "openai-compatible-chat-75b6525d-1d6d-48db-b781-270362dca9e0",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "openai-compatible-chat-75b6525d-1d6d-48db-b781-270362dca9e0/openai-compatible-chat-75b6525d-1d6d-48db-b781-270362dca9e0/qwen/qwen3.6-27b:free",
+      "provider": "openai-compatible-chat-75b6525d-1d6d-48db-b781-270362dca9e0",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "openai-compatible-chat-75b6525d-1d6d-48db-b781-270362dca9e0/openai-compatible-chat-75b6525d-1d6d-48db-b781-270362dca9e0/qwen/qwen3.6-35b-a3b:free",
+      "provider": "openai-compatible-chat-75b6525d-1d6d-48db-b781-270362dca9e0",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "openai-compatible-chat-75b6525d-1d6d-48db-b781-270362dca9e0/openai-compatible-chat-75b6525d-1d6d-48db-b781-270362dca9e0/qwen/qwen3.6-max-preview:free",
+      "provider": "openai-compatible-chat-75b6525d-1d6d-48db-b781-270362dca9e0",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "openai-compatible-chat-75b6525d-1d6d-48db-b781-270362dca9e0/openai-compatible-chat-75b6525d-1d6d-48db-b781-270362dca9e0/qwen/qwen3.6-plus:free",
+      "provider": "openai-compatible-chat-75b6525d-1d6d-48db-b781-270362dca9e0",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "openai-compatible-chat-75b6525d-1d6d-48db-b781-270362dca9e0/openai-compatible-chat-75b6525d-1d6d-48db-b781-270362dca9e0/qwen/qwen3.7-flash:free",
+      "provider": "openai-compatible-chat-75b6525d-1d6d-48db-b781-270362dca9e0",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "openai-compatible-chat-75b6525d-1d6d-48db-b781-270362dca9e0/openai-compatible-chat-75b6525d-1d6d-48db-b781-270362dca9e0/qwen/qwen3.7-max:free",
+      "provider": "openai-compatible-chat-75b6525d-1d6d-48db-b781-270362dca9e0",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "openai-compatible-chat-75b6525d-1d6d-48db-b781-270362dca9e0/openai-compatible-chat-75b6525d-1d6d-48db-b781-270362dca9e0/qwen/qwen3.7-plus:free",
+      "provider": "openai-compatible-chat-75b6525d-1d6d-48db-b781-270362dca9e0",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "openai-compatible-chat-75b6525d-1d6d-48db-b781-270362dca9e0/openai-compatible-chat-75b6525d-1d6d-48db-b781-270362dca9e0/qwen/qwen3.8-max:free",
+      "provider": "openai-compatible-chat-75b6525d-1d6d-48db-b781-270362dca9e0",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "openai-compatible-chat-75b6525d-1d6d-48db-b781-270362dca9e0/openai-compatible-chat-75b6525d-1d6d-48db-b781-270362dca9e0/qwen/qwen3.8-omni-flash:free",
+      "provider": "openai-compatible-chat-75b6525d-1d6d-48db-b781-270362dca9e0",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "openrouter/google/gemini-2.0-flash-exp:free",
+      "provider": "openrouter",
+      "conclusion": "NOT-LISTED-UPSTREAM",
+      "sourceUrl": "https://openrouter.ai/api/v1/models",
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "openrouter/meta-llama/llama-3.3-70b-instruct:free",
+      "provider": "openrouter",
+      "conclusion": "NOT-LISTED-UPSTREAM",
+      "sourceUrl": "https://openrouter.ai/api/v1/models",
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "openrouter/openrouter/baidu/ernie-5.5-flash-preview:free",
+      "provider": "openrouter",
+      "conclusion": "NOT-LISTED-UPSTREAM",
+      "sourceUrl": "https://openrouter.ai/api/v1/models",
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "openrouter/openrouter/cohere/north-mini-code:free",
+      "provider": "openrouter",
+      "conclusion": "NOT-LISTED-UPSTREAM",
+      "sourceUrl": "https://openrouter.ai/api/v1/models",
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "openrouter/openrouter/dots-studio/dots-3-note-preview:free",
+      "provider": "openrouter",
+      "conclusion": "NOT-LISTED-UPSTREAM",
+      "sourceUrl": "https://openrouter.ai/api/v1/models",
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "openrouter/openrouter/google/gemma-4-26b-a4b-it:free",
+      "provider": "openrouter",
+      "conclusion": "NOT-LISTED-UPSTREAM",
+      "sourceUrl": "https://openrouter.ai/api/v1/models",
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "openrouter/openrouter/google/gemma-4-31b-it:free",
+      "provider": "openrouter",
+      "conclusion": "NOT-LISTED-UPSTREAM",
+      "sourceUrl": "https://openrouter.ai/api/v1/models",
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "openrouter/openrouter/inclusionai/ling-3.2-flash:free",
+      "provider": "openrouter",
+      "conclusion": "NOT-LISTED-UPSTREAM",
+      "sourceUrl": "https://openrouter.ai/api/v1/models",
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "openrouter/openrouter/liquid/lfm-2.5-2.6b:free",
+      "provider": "openrouter",
+      "conclusion": "NOT-LISTED-UPSTREAM",
+      "sourceUrl": "https://openrouter.ai/api/v1/models",
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "openrouter/openrouter/nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
+      "provider": "openrouter",
+      "conclusion": "NOT-LISTED-UPSTREAM",
+      "sourceUrl": "https://openrouter.ai/api/v1/models",
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "openrouter/openrouter/nvidia/nemotron-3-ultra-550b-a55b:free",
+      "provider": "openrouter",
+      "conclusion": "NOT-LISTED-UPSTREAM",
+      "sourceUrl": "https://openrouter.ai/api/v1/models",
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "openrouter/openrouter/nvidia/nemotron-3.5-lightning:free",
+      "provider": "openrouter",
+      "conclusion": "NOT-LISTED-UPSTREAM",
+      "sourceUrl": "https://openrouter.ai/api/v1/models",
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "openrouter/openrouter/nvidia/nemotron-3.5-super-vl:free",
+      "provider": "openrouter",
+      "conclusion": "NOT-LISTED-UPSTREAM",
+      "sourceUrl": "https://openrouter.ai/api/v1/models",
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "openrouter/openrouter/openrouter/free",
+      "provider": "openrouter",
+      "conclusion": "NOT-LISTED-UPSTREAM",
+      "sourceUrl": "https://openrouter.ai/api/v1/models",
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "openrouter/openrouter/recursive/flint-v1.0:free",
+      "provider": "openrouter",
+      "conclusion": "NOT-LISTED-UPSTREAM",
+      "sourceUrl": "https://openrouter.ai/api/v1/models",
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "openrouter/openrouter/thinkingmachines/inkling-2-small:free",
+      "provider": "openrouter",
+      "conclusion": "NOT-LISTED-UPSTREAM",
+      "sourceUrl": "https://openrouter.ai/api/v1/models",
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "openrouter/openrouter/xingchen-agi/xing4.0-29b-a4b:free",
+      "provider": "openrouter",
+      "conclusion": "NOT-LISTED-UPSTREAM",
+      "sourceUrl": "https://openrouter.ai/api/v1/models",
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "openrouter/openrouter/z-ai/glm-5.2:free",
+      "provider": "openrouter",
+      "conclusion": "NOT-LISTED-UPSTREAM",
+      "sourceUrl": "https://openrouter.ai/api/v1/models",
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "<private-provider-2>/<private-provider-2>/deepseek/deepseek-v4-flash-free",
+      "provider": "<private-provider-2>",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "<private-provider-2>/<private-provider-2>/deepseek/deepseek-v4.1-flash-free",
+      "provider": "<private-provider-2>",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "<private-provider-2>/<private-provider-2>/orca/orcaverify-text1.0-free",
+      "provider": "<private-provider-2>",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "<private-provider-2>/<private-provider-2>/<private-provider-2>/free",
+      "provider": "<private-provider-2>",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "<private-provider-2>/<private-provider-2>/tencent/hy3-free",
+      "provider": "<private-provider-2>",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "<private-provider-2>/<private-provider-2>/tencent/hy4-preview-free",
+      "provider": "<private-provider-2>",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "<private-provider-2>/<private-provider-2>/z-ai/glm-5.3-flash-free",
+      "provider": "<private-provider-2>",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "<private-provider-3>/<private-provider-3>/qwen/qwen3-coder-plus:free",
+      "provider": "<private-provider-3>",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "<private-provider-4>/<private-provider-4>/deepseek/deepseek-v4-flash-vision-exp-free",
+      "provider": "<private-provider-4>",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "<private-provider-4>/<private-provider-4>/z-ai/glm-4.6v-flash-free",
+      "provider": "<private-provider-4>",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "<private-provider-4>/<private-provider-4>/z-ai/glm-4.7-flash-free",
+      "provider": "<private-provider-4>",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    },
+    {
+      "router": "omniroute",
+      "step": "<private-provider-4>/<private-provider-4>/z-ai/glm-5.3-free",
+      "provider": "<private-provider-4>",
+      "conclusion": "NO-OFFICIAL-SOURCE",
+      "sourceUrl": null,
+      "checkedAt": "2026-11-21T18:22:37.036Z"
+    }
+  ]
+}
