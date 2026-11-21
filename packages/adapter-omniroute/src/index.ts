@@ -458,7 +458,7 @@ export class OmniRouteAdapter implements RouterAdapter {
       let lastReason = '';
       let apiCombosEverOk = false;
 
-      while (Date.now() - startPoll <= maxWaitMs) {
+      do {
         try {
           const res = await this.fetchFn(`${this.apiBaseUrl}/api/combos`, {
             method: 'GET',
@@ -485,7 +485,7 @@ export class OmniRouteAdapter implements RouterAdapter {
         }
         if (maxWaitMs === 0) break;
         await sleep(Math.min(500, maxWaitMs));
-      }
+      } while (Date.now() - startPoll <= maxWaitMs);
 
       // If /api/combos responded 200, cache didn't reflect changes in time -> STALE
       if (apiCombosEverOk) {
