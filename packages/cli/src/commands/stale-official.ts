@@ -7,7 +7,15 @@
  *
  * `NOT-LISTED-UPSTREAM` is NOT a removal argument: an upstream catalog can lag,
  * paginate, or simply not list a model the router still serves.
+ *
+ * C28 H1: HF (`hfModelUrl`) uses a per-id existence probe
+ * (`GET /api/models/{id}`): 200 -> LISTED-UPSTREAM, 404 -> NOT-LISTED-UPSTREAM,
+ * 429/5xx/network/timeout/unparseable body -> UPSTREAM-UNREACHABLE (never
+ * NOT-LISTED, so a quota/error never turns into a "missing" claim). Other
+ * sources keep the catalog-based check.
  */
+
+import { hfModelUrl } from '../sync/confirm.js';
 
 export type OfficialConclusion =
   | 'LISTED-UPSTREAM'
@@ -153,6 +161,10 @@ export async function checkOfficial(
   if (!source) {
     return { provider, conclusion: 'NO-OFFICIAL-SOURCE', source: null, checkedAt };
   }
+  if (source.provider === 'hf') {
+    // C28 H1: per-id probe is fresher than a lagging/paginating catalog.
+    return checkHfPerId(source, modelId, checkedAt, options);
+  }
   try {
     const { ids } = await loadCatalog(source, options);
     const wanted = normalizeModelId(modelId);
@@ -171,6 +183,46 @@ export async function checkOfficial(
       checkedAt,
       detail: error instanceof Error ? error.message : String(error),
     };
+  }
+}
+
+/**
+ * C28 H1: per-id existence probe for Hugging Face via `hfModelUrl`.
+ * 429/5xx/network/timeout or an unparseable 200 body is UPSTREAM-UNREACHABLE,
+ * never NOT-LISTED: only a real 404 from the per-model endpoint proves absence.
+ */
+async function checkHfPerId(
+  source: OfficialSource,
+  modelId: string,
+  checkedAt: string,
+  options: OfficialOptions
+): Promise<OfficialCheck> {
+  const wanted = normalizeModelId(modelId);
+  const unreachable = (detail: string): OfficialCheck => ({
+    provider: source.provider,
+    conclusion: 'UPSTREAM-UNREACHABLE',
+    source,
+    checkedAt,
+    detail,
+  });
+  try {
+    const doFetch = options.fetchImpl ?? globalThis.fetch;
+    const response = await doFetch(hfModelUrl(wanted), {
+      method: 'GET',
+      headers: { 'User-Agent': 'routersync-stale-official/0.1' },
+      signal: AbortSignal.timeout(options.timeoutMs ?? 15000),
+    });
+    if (response.status === 200) {
+      // Prove the body parses before claiming existence.
+      await response.json();
+      return { provider: source.provider, conclusion: 'LISTED-UPSTREAM', source, checkedAt };
+    }
+    if (response.status === 404) {
+      return { provider: source.provider, conclusion: 'NOT-LISTED-UPSTREAM', source, checkedAt };
+    }
+    return unreachable(`HTTP ${response.status}`);
+  } catch (error) {
+    return unreachable(error instanceof Error ? error.message : String(error));
   }
 }
 

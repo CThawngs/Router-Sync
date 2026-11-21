@@ -211,6 +211,9 @@ export async function runCombosStaleCommand(options: CombosStaleOptions = {}): P
     const { checkOfficial, resolveOfficialSource } = await import('./stale-official.js');
     const rows: OfficialRow[] = [];
     const cache = new Map<string, Awaited<ReturnType<typeof checkOfficial>>>();
+    // Per-id key: HF now probes per model id, so one provider can hold many
+    // different conclusions; dedup still works for repeated id+provider pairs.
+    const cacheKey = (provider: string, modelId: string): string => `${provider}\n${modelId}`;
     for (const row of report.rows) {
       if (row.status !== 'ABSENT' && row.status !== 'UNVERIFIABLE') continue;
       const slash = row.step.indexOf('/');
@@ -219,7 +222,7 @@ export async function runCombosStaleCommand(options: CombosStaleOptions = {}): P
       const modelId = row.step.slice(slash + 1);
       if (!resolveOfficialSource(provider)) {
         const empty = await checkOfficial(provider, modelId);
-        cache.set(provider, empty);
+        cache.set(cacheKey(provider, modelId), empty);
         rows.push({
           router: row.router,
           step: row.step,
@@ -230,8 +233,8 @@ export async function runCombosStaleCommand(options: CombosStaleOptions = {}): P
         });
         continue;
       }
-      const hit = cache.get(provider) ?? (await checkOfficial(provider, modelId));
-      if (hit.conclusion !== 'NO-OFFICIAL-SOURCE' && hit.source) cache.set(provider, hit);
+      const hit = cache.get(cacheKey(provider, modelId)) ?? (await checkOfficial(provider, modelId));
+      if (hit.conclusion !== 'NO-OFFICIAL-SOURCE' && hit.source) cache.set(cacheKey(provider, modelId), hit);
       rows.push({
         router: row.router,
         step: row.step,
