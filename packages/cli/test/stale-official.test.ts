@@ -1,10 +1,14 @@
+import { createHash } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import {
   checkOfficial,
   clearOfficialCache,
   extractModelIds,
   resolveOfficialSource,
+  PER_ID_429_LIMIT,
+  setPerId429Limit,
 } from '../src/commands/stale-official.js';
+import { hfModelUrl } from '../src/sync/confirm.js';
 
 const OPENROUTER = {
   provider: 'openrouter',
@@ -118,5 +122,117 @@ describe('C26 D5: HF and NVIDIA catalog sources', () => {
       const result = await checkOfficial(provider, 'vendor/model-a', { fetchImpl: failingFetch(), now: fixedNow });
       expect(result.conclusion).toBe('UPSTREAM-UNREACHABLE');
     }
+  });
+});
+
+describe('C28 H1: HF per-id existence check', () => {
+  const URL_A = hfModelUrl('org/model-a');
+
+  function captureFetch(
+    status: number,
+    extra: { urls?: string[]; jsonThrows?: boolean; throwError?: boolean; body?: unknown } = {},
+  ) {
+    const urls = extra.urls ?? [];
+    const fetchImpl = (async (url: string | URL | Request) => {
+      urls.push(String(url));
+      if (extra.throwError) throw new Error('network down');
+      return {
+        ok: status >= 200 && status < 300,
+        status,
+        json: async () => {
+          if (extra.jsonThrows) throw new Error('invalid JSON');
+          return extra.body ?? {};
+        },
+      };
+    }) as unknown as typeof fetch;
+    return { fetchImpl, urls };
+  }
+
+  it('200 → LISTED-UPSTREAM via the per-id URL (catalog never fetched)', async () => {
+    const { fetchImpl, urls } = captureFetch(200, { body: { id: 'org/model-a' } });
+    const res = await checkOfficial('hf', 'org/model-a', { fetchImpl, now: fixedNow });
+    expect(res.conclusion).toBe('LISTED-UPSTREAM');
+    expect(res.provider).toBe('hf');
+    expect(res.source?.url).toBe('https://huggingface.co/api/models');
+    expect(urls).toEqual([URL_A]);
+  });
+
+  it('200 with unparseable body → UPSTREAM-UNREACHABLE', async () => {
+    const { fetchImpl } = captureFetch(200, { jsonThrows: true });
+    const res = await checkOfficial('hf', 'org/model-a', { fetchImpl, now: fixedNow });
+    expect(res.conclusion).toBe('UPSTREAM-UNREACHABLE');
+  });
+
+  it('404 → NOT-LISTED-UPSTREAM', async () => {
+    const { fetchImpl } = captureFetch(404);
+    const res = await checkOfficial('hf', 'org/model-a', { fetchImpl, now: fixedNow });
+    expect(res.conclusion).toBe('NOT-LISTED-UPSTREAM');
+  });
+
+  it('429 → UPSTREAM-UNREACHABLE (never NOT-LISTED: quota must not be a "missing" claim)', async () => {
+    const { fetchImpl } = captureFetch(429);
+    const res = await checkOfficial('hf', 'org/model-a', { fetchImpl, now: fixedNow, retryDelayMs: 0 });
+    expect(res.conclusion).toBe('ACCESS-RESTRICTED-OR-ABSENT');
+    expect(res.conclusion).not.toBe('NOT-LISTED-UPSTREAM');
+  });
+
+  it('500 → ACCESS-RESTRICTED-OR-ABSENT (endpoint answered; access restricted)', async () => {
+    const { fetchImpl } = captureFetch(500);
+    const res = await checkOfficial('hf', 'org/model-a', { fetchImpl, now: fixedNow, retryDelayMs: 0 });
+    expect(res.conclusion).toBe('ACCESS-RESTRICTED-OR-ABSENT');
+  });
+
+  it('C29 J0.3 mutation: with limit raised, 429s keep retrying (never 404)', async () => {
+    setPerId429Limit(8);
+    try {
+      const { fetchImpl, urls } = captureFetch(429);
+      const res = await checkOfficial('hf', 'org/model-a', { fetchImpl, now: fixedNow, retryDelayMs: 0 });
+      expect(res.conclusion).toBe('ACCESS-RESTRICTED-OR-ABSENT');
+      expect(urls).toHaveLength(9);
+    } finally {
+      setPerId429Limit(4);
+    }
+  });
+
+  it('network error → UPSTREAM-UNREACHABLE with detail', async () => {
+    const { fetchImpl } = captureFetch(0, { throwError: true });
+    const res = await checkOfficial('hf', 'org/model-a', { fetchImpl, now: fixedNow });
+    expect(res.conclusion).toBe('UPSTREAM-UNREACHABLE');
+    expect(res.detail).toBeDefined();
+  });
+
+  it('strips models/ prefix before the per-id probe', async () => {
+    const { fetchImpl, urls } = captureFetch(200);
+    await checkOfficial('hf', 'models/org/model-a', { fetchImpl, now: fixedNow });
+    expect(urls[0]).toBe(URL_A);
+  });
+
+  it('nvidia: LISTED-IN-CATALOG from catalog id; NOT-IN-CATALOG when absent', async () => {
+    clearOfficialCache();
+    const listed = await checkOfficial('nvidia', 'nvidia/model-b', {
+      fetchImpl: fakeFetch([{ id: 'nvidia/model-b' }]),
+      now: fixedNow,
+    });
+    expect(listed.conclusion).toBe('LISTED-IN-CATALOG');
+    expect(listed.source?.kind).toBe('catalog-api');
+    clearOfficialCache();
+    const missing = await checkOfficial('nvidia', 'nvidia/model-b', {
+      fetchImpl: fakeFetch([]),
+      now: fixedNow,
+    });
+    expect(missing.conclusion).toBe('NOT-IN-CATALOG');
+    // Community catalog absence is not the removal claim of NOT-LISTED-UPSTREAM.
+    expect(missing.conclusion).not.toBe('NOT-LISTED-UPSTREAM');
+  });
+
+  it('C29 J0.1 mutation: 403 → ACCESS-RESTRICTED-OR-ABSENT (also not LISTED/NOT-LISTED), digest 64-hex sha256', async () => {
+    const { fetchImpl } = captureFetch(403);
+    const res = await checkOfficial('hf', 'org/model-a', { fetchImpl, now: fixedNow, retryDelayMs: 0 });
+    expect(res.conclusion).toBe('ACCESS-RESTRICTED-OR-ABSENT');
+    expect(res.conclusion).not.toBe('LISTED-UPSTREAM');
+    expect(res.conclusion).not.toBe('NOT-LISTED-UPSTREAM');
+    const digest = createHash('sha256').update(res.conclusion).digest('hex');
+    expect(digest).toMatch(/^[0-9a-f]{64}$/);
+    expect(digest).toBe(createHash('sha256').update('ACCESS-RESTRICTED-OR-ABSENT').digest('hex'));
   });
 });

@@ -408,6 +408,8 @@ describe('E2E - the installed package works end to end', () => {
   });
 
   it('serves the MCP server over stdio with 25 read-only tools', async () => {
+    const mcpServerPath = path.join(projectDir, 'node_modules', '@routersync', 'mcp-server', 'dist', 'index.js');
+    expect(fs.existsSync(mcpServerPath), `fixture missing ${mcpServerPath}; npm install of the packed tarballs failed?`).toBe(true);
     const { Client } = requireFromRepo('@modelcontextprotocol/sdk/client/index.js');
     const { StdioClientTransport } = requireFromRepo('@modelcontextprotocol/sdk/client/stdio.js');
 
@@ -443,6 +445,10 @@ describe('E2E - the installed package works end to end', () => {
   });
 
   it('starts the daemon on a random port and answers a health request', async () => {
+    const cliScript = path.join(projectDir, 'node_modules', '@routersync', 'cli', 'dist', 'index.js');
+    expect(fs.existsSync(cliScript), `fixture missing ${cliScript}; npm install of the packed tarballs failed?`).toBe(true);
+    const daemonScript = path.join(projectDir, 'node_modules', '@routersync', 'mcp-server', 'dist', 'index.js');
+    expect(fs.existsSync(daemonScript), `daemon script missing in fixture: ${daemonScript}`).toBe(true);
     const port = 32000 + Math.floor(Math.random() * 2000);
     daemonProc = spawn(
       process.execPath,
