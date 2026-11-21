@@ -21,7 +21,7 @@
   "scripts": {
     "typecheck": "node tools/agent/heavy.mjs -- pnpm typecheck",
     "typecheck:changed": "node tools/agent/typecheck-changed.mjs",
-    "lint": "node tools/guard/no-secrets.mjs && node tools/guard/no-personal-paths.mjs",
+    "lint": "node tools/guard/no-secrets.mjs && node tools/guard/no-personal-paths.mjs && node tools/guard/no-evidence-in-main.mjs",
     "guard:paths": "node tools/guard/no-personal-paths.mjs",
     "test": "node tools/agent/heavy.mjs -- pnpm test",
     "test:changed": "vitest run --changed",

@@ -23,6 +23,44 @@ export function readRecords(dir) {
   return readFileSync(file, 'utf8').split(/\r?\n/).filter(Boolean).map((line) => JSON.parse(line));
 }
 
+export function requiredRecordIssues(rows) {
+  const issues = [];
+  for (const row of rows) {
+    const id = row.name ?? row.id ?? '(unknown)';
+    if (!Array.isArray(row.masked)) {
+      issues.push(`${id}: masked missing (capture.mjs must add it)`);
+    }
+    if (!row.sys || typeof row.sys.os !== 'string' || typeof row.sys.runId !== 'string' || typeof row.sys.headSha !== 'string') {
+      issues.push(`${id}: sys missing (capture.mjs must add it: os, runId, headSha)`);
+    }
+    if (typeof row.startedAt !== 'string') {
+      issues.push(`${id}: startedAt missing`);
+    }
+  }
+  return issues;
+}
+
+export function commandIssues(rows) {
+  const issues = [];
+  const safeVerb = new Set(['gh', 'node', 'pnpm']);
+  for (const row of rows) {
+    const id = row.name ?? row.id ?? '(unknown)';
+    const cmd = Array.isArray(row.command) ? row.command.join(' ') : String(row.command ?? '');
+    if (cmd.startsWith('execute:') || cmd.startsWith('sh -c') || cmd.startsWith('bash -c')) {
+      issues.push(`${id}: command is not runnable as-is (${cmd.slice(0, 40)})`);
+    }
+    if (/[;|`$<>"]/.test(cmd)) {
+      issues.push(`${id}: command contains a shell operator (${cmd.slice(0, 40)})`);
+    }
+    if (cmd.includes('&')) {
+      issues.push(`${id}: command contains & (run it via capture.mjs, not hand-edited)`);
+    }
+    const verb = Array.isArray(row.command) ? row.command[0] : null;
+    if (!safeVerb.has(verb)) issues.push(`${id}: command verb ${verb} not in allowlist`);
+  }
+  return issues;
+}
+
 export function fakeRecordIssues(rows) {
   const issues = [];
   for (const row of rows) {
@@ -82,6 +120,8 @@ function main() {
   }
   const rows = readRecords(dir);
   const issues = [
+    ...requiredRecordIssues(rows),
+    ...commandIssues(rows),
     ...fakeRecordIssues(rows),
     ...scanPackage(dir, rows).matches > 0 ? [`personal identifiers: ${scanPackage(dir, rows).matches} matches`] : [],
   ];
