@@ -1,0 +1,11 @@
+9Router-Agent	OK	http=200	header=57112ms	firstByte=57114ms	total=57114ms	usage=nvidia/z-ai/glm-5.3-flash
+9Router-Agent-1	HANG-AFTER-USAGE	http=-	header=-ms	firstByte=-ms	total=120026ms	usage=nvidia/z-ai/glm-5.3-flash
+9Router-Agent-2	HANG-AFTER-USAGE	http=-	header=-ms	firstByte=-ms	total=120017ms	usage=openrouter/nvidia/nemotron-3.5-super-vl:free
+9Router-Coder-1	OK	http=200	header=94274ms	firstByte=94274ms	total=94275ms	usage=gemini/gemini-4-hydrogen
+9Router-Coder-2	HANG-AFTER-USAGE	http=-	header=-ms	firstByte=-ms	total=120027ms	usage=openrouter/baidu/ernie-5.5-flash-preview:free
+9Router-Coder-3	HANG-AFTER-USAGE	http=-	header=-ms	firstByte=-ms	total=120024ms	usage=gemini/gemini-4-hydrogen
+9Router-Coder-4	OK	http=200	header=79686ms	firstByte=79688ms	total=79690ms	usage=openrouter/baidu/ernie-5.5-flash-preview:free
+9Router-Coder-5	OK	http=200	header=24180ms	firstByte=24182ms	total=24182ms	usage=nvidia/z-ai/glm-5.3-flash
+
+tổng=8 OK=4 HANG-AFTER-USAGE=4
+dừng sớm: max-minutes
