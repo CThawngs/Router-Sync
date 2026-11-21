@@ -512,34 +512,58 @@ export function createCliProgram(): Command {
     });
 
   combosCmd
+  combosCmd
     .command('probe')
     .description('Try a combo the way a client does (dry-run by default; needs --yes-spend-tokens to send)')
     .option('--mode <mode>', 'combo | step', 'combo')
-    .option('--combo <name>', 'One combo by name')
+    .option('--combo <name>', 'Combo to probe (repeatable)', (v: string, prev: string[]) => [...prev, v], [] as string[])
     .option('--all', 'Every combo')
     .option('--yes-spend-tokens', 'Actually send requests (spends the owner\'s tokens)')
     .option('--max-minutes <n>', 'Wall-clock budget for a real run', '40')
+    .option('--combo-timeout-sec <n>', 'Per-combo deadline in seconds (1..600, default 120)')
+    .option('--only <regex>', 'Step mode: only probe steps matching this regex')
     .option('--json', 'Output result in JSON format')
     .action(
       async (opts: {
         mode?: string;
-        combo?: string;
+        combo?: string[];
         all?: boolean;
         yesSpendTokens?: boolean;
         maxMinutes?: string;
+        comboTimeoutSec?: string;
+        only?: string;
         json?: boolean;
       }) => {
         const { runCombosProbeCommand } = await import('./commands/combos-probe.js');
         await runCombosProbeCommand({
           mode: opts.mode === 'step' ? 'step' : 'combo',
-          combo: opts.combo,
+          combos: opts.combo ?? [],
           all: opts.all,
           yesSpendTokens: opts.yesSpendTokens,
           maxMinutes: Number(opts.maxMinutes ?? 40),
+          comboTimeoutSec: opts.comboTimeoutSec === undefined ? undefined : Number(opts.comboTimeoutSec),
+          only: opts.only,
           json: opts.json,
         });
       }
     );
+
+  combosCmd
+    .command('plan')
+    .description('Build a combo trimming plan from probe results (read-only; writes a plan file only)')
+    .option('--router <router>', 'Router to read the current combo order from', '9router')
+    .option('--from <file>', 'Probe output file (repeatable)', (v: string, prev: string[]) => [...prev, v], [] as string[])
+    .option('--out <file>', 'Where to write the plan JSON', 'combo-plan.json')
+    .option('--min-gap-minutes <n>', 'Minimum gap between two runs that must agree', '1')
+    .action(async (opts: { router?: string; from?: string[]; out?: string; minGapMinutes?: string }) => {
+      const { runCombosPlan } = await import('./commands/combos-plan.js');
+      runCombosPlan({
+        router: opts.router,
+        from: opts.from ?? [],
+        out: opts.out ?? 'combo-plan.json',
+        minGapMinutes: Number(opts.minGapMinutes ?? 1),
+      });
+    });
 
   // verify command (Round C4b F3b: multi-layer verification & accounting)
   program

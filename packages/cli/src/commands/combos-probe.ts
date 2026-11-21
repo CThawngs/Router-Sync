@@ -1,7 +1,7 @@
 /**
  * packages/cli/src/commands/combos-probe.ts
  *
- * C32 M1: try a combo the way a real client does.
+ * C32 M1 / C33 N1-N2: try a combo the way a real client does.
  *
  * The default run is a dry run: it prints what would be called and stops. A
  * real request needs `--yes-spend-tokens`, because every call costs the owner
@@ -10,6 +10,10 @@
  * Two modes:
  *   --mode combo  send one request per combo, model = combo name (like a client)
  *   --mode step   send one request per unique step, max_tokens = 1
+ *
+ * C33 N1: combo mode polls `usageHistory` while it waits, so "slow" (header
+ * after 120 s) is separated from "hanging" (no header, with or without an
+ * upstream usage row).
  *
  * Nothing is written to the router: the 9Router database is opened read-only,
  * and the API key is read from it and never printed.
@@ -26,7 +30,11 @@ export type StepVerdict =
   | 'AUTH'
   | 'TIMEOUT-NO-HEADER'
   | 'HANG-AFTER-USAGE'
+  | 'ERROR-5XX'
   | 'ERROR';
+
+/** C33 N1: verdict of a whole-combo attempt. */
+export type ComboVerdict = 'OK' | 'SLOW-OK' | 'HANG-AFTER-USAGE' | 'HANG-NO-USAGE';
 
 export interface VerdictInput {
   /** HTTP status, or null when no response arrived. */
@@ -44,8 +52,15 @@ export interface VerdictInput {
 const EOL_RE = /end of life|no longer available|reached its end|deprecated|not available anymore/i;
 const NO_PROVIDER_RE = /no provider|no providers|no upstream|not served|nothing serves/i;
 
+/** Ngưỡng "chậm": trên mức này, một combo có header vẫn được coi là chậm. */
+export const SLOW_THRESHOLD_MS = 120_000;
+
 /**
  * Pure classification of one probe attempt. Every branch is pinned by a test.
+ *
+ * C33 N2.1: a bare 503 without a matching message is `ERROR-5XX`, not
+ * `NO-PROVIDER`: only a message that says "no provider serves this model"
+ * proves absence. A 5xx that says nothing must not enter a removal list.
  */
 export function perStepConclusion(input: VerdictInput): StepVerdict {
   if (input.timedOut && !input.headerReceived) {
@@ -53,7 +68,7 @@ export function perStepConclusion(input: VerdictInput): StepVerdict {
     return input.usageRowAdded ? 'HANG-AFTER-USAGE' : 'TIMEOUT-NO-HEADER';
   }
   if (!input.headerReceived) {
-    return input.status === null ? 'TIMEOUT-NO-HEADER' : 'ERROR';
+    return input.status === null ? 'TIMEOUT-NO-HEADER' : 'ERROR-5XX';
   }
   if (input.status === 200) return 'OK';
   if (input.status === 429) return 'RATE-LIMITED';
@@ -63,12 +78,36 @@ export function perStepConclusion(input: VerdictInput): StepVerdict {
   if (EOL_RE.test(body)) return 'EOL-GONE';
   if (input.status === 410) return 'EOL-GONE';
   if (NO_PROVIDER_RE.test(body)) return 'NO-PROVIDER';
-  if (input.status === 503) return 'NO-PROVIDER';
+  if (input.status !== null && input.status >= 500) return 'ERROR-5XX';
   return 'ERROR';
 }
 
-export interface ComboStep {
-  step: string;
+export interface ComboConclusionInput {
+  /** Time from request start to response headers, or null when none arrived. */
+  headerMs: number | null;
+  /** When the deadline hit (client-side), in ms from request start. */
+  deadlineMs: number;
+  /** When the first usageHistory row appeared, or null. */
+  firstUsageMs: number | null;
+  timedOut: boolean;
+}
+
+/**
+ * C33 N1.3: split "slow" from "hanging".
+ *
+ * - header before the deadline: OK, or SLOW-OK when it took longer than the
+ *   C32 threshold (120 s).
+ * - no header by the deadline: HANG-AFTER-USAGE when upstream did the work
+ *   (usage row seen) and HANG-NO-USAGE when it did not.
+ */
+export function perComboConclusion(input: ComboConclusionInput): ComboVerdict {
+  if (input.headerMs !== null) {
+    return input.headerMs > SLOW_THRESHOLD_MS ? 'SLOW-OK' : 'OK';
+  }
+  if (input.timedOut || input.headerMs === null) {
+    return input.firstUsageMs === null ? 'HANG-NO-USAGE' : 'HANG-AFTER-USAGE';
+  }
+  return 'HANG-NO-USAGE';
 }
 
 export interface ComboInfo {
@@ -122,7 +161,7 @@ export function readRouterState(): RouterDb {
     db = openRouterDb();
   } catch (err) {
     throw new Error(
-      `không mở được DB 9Router (${err instanceof Error ? err.message : String(err)}). Đặt ROUTERSYNC_9ROUTER_DB hoặc chạy trên máy có 9Router.`,
+      `không mở được DB 9Router (${err instanceof Error ? err.message : String(err)}). Đặt ROUTERSYNC_9ROUTER_DB hoặc chạy trên máy có 9Router.`
     );
   }
   try {
@@ -143,30 +182,38 @@ export function readRouterState(): RouterDb {
 
 export interface ProbeOptions {
   mode?: ProbeMode | undefined;
+  /** C33 N1: chọn nhiều combo bằng cách truyền cờ này nhiều lần. */
+  combos?: string[] | undefined;
   combo?: string | undefined;
   all?: boolean | undefined;
   yesSpendTokens?: boolean | undefined;
   maxMinutes?: number | undefined;
+  /** C33 N1: hạn cho mỗi combo, 1..600 giây. */
+  comboTimeoutSec?: number | undefined;
+  /** C33 N2: chỉ thử các bước khớp regex. */
+  only?: string | undefined;
   baseUrl?: string | undefined;
-  /** Test hook: b? qua DB router. */
   state?: RouterDb | undefined;
   comboTimeoutMs?: number | undefined;
   stepTimeoutMs?: number | undefined;
   json?: boolean | undefined;
-  /** Test hooks. */
   fetchImpl?: typeof fetch;
   now?: () => number;
-  sleepImpl?: (ms: number) => Promise<void>;
+  /** Test hook: vòng lặp chờ (mặc định setTimeout). */
+  sleepImpl?: ((ms: number) => Promise<void>) | undefined;
   usageCount?: (() => number) | undefined;
   log?: (line: string) => void | undefined;
 }
 
-const DEFAULT_BASE_URL = 'http://127.0.0.1:20128';
-const COMBO_TIMEOUT_MS = 120_000;
-const STEP_TIMEOUT_MS = 20_000;
-const MAX_CONSECUTIVE_429 = 5;
+export const DEFAULT_BASE_URL = 'http://127.0.0.1:20128';
+export const COMBO_TIMEOUT_MS = 120_000;
+export const MAX_COMBO_TIMEOUT_MS = 600_000;
+export const STEP_TIMEOUT_MS = 20_000;
+export const MAX_CONSECUTIVE_429 = 5;
+/** C33 N1: hỏi usageHistory mỗi 5 giây khi đang chờ combo. */
+export const USAGE_POLL_MS = 5_000;
 
-const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+const defaultSleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
 export interface ComboProbeRow {
   combo: string;
@@ -175,9 +222,13 @@ export interface ComboProbeRow {
   headerMs: number | null;
   firstByteMs: number | null;
   totalMs: number;
-  verdict: StepVerdict;
+  /** Step verdict in step mode, combo verdict in combo mode. */
+  verdict: StepVerdict | ComboVerdict;
   detail: string;
   usageServedBy: string | null;
+  /** C33 N1: when the first usageHistory row appeared during this attempt. */
+  firstUsageMs?: number | null;
+  startedAt?: string;
 }
 
 export interface ProbeReport {
@@ -185,6 +236,7 @@ export interface ProbeReport {
   mode: ProbeMode;
   baseUrl: string;
   apiKeyName: string;
+  comboTimeoutSec: number;
   stoppedEarly: string | null;
   combos: string[];
   uniqueSteps: number;
@@ -201,19 +253,54 @@ function redact(text: string, secrets: string[]): string {
 
 function usageDelta(before: number, after: number): string | null {
   if (after <= before) return null;
-  const db = openRouterDb();
   try {
-    const row = db
-      .prepare('SELECT provider, model FROM usageHistory ORDER BY id DESC LIMIT 1')
-      .get() as { provider: string; model: string } | undefined;
-    return row ? `${row.provider}/${row.model}` : 'unknown';
+    const db = openRouterDb();
+    try {
+      const row = db
+        .prepare('SELECT provider, model FROM usageHistory ORDER BY id DESC LIMIT 1')
+        .get() as { provider: string; model: string } | undefined;
+      return row ? `${row.provider}/${row.model}` : 'unknown';
+    } finally {
+      db.close();
+    }
   } catch {
     return 'unknown';
-  } finally {
-    db.close();
   }
 }
 
+async function sendAndRead(
+  url: string,
+  apiKey: string,
+  body: unknown,
+  timeoutMs: number,
+  fetchImpl: typeof fetch
+): Promise<{ headerMs: number | null; firstByteMs: number | null; status: number | null; text: string; timedOut: boolean; totalMs: number }> {
+  const t0 = Date.now();
+  try {
+    const res = await fetchImpl(url, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', authorization: `Bearer ${apiKey}` },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(timeoutMs),
+    });
+    const headerMs = Date.now() - t0;
+    const reader = res.body?.getReader();
+    if (reader) {
+      const decoder = new TextDecoder();
+      const first = await reader.read();
+      const firstByteMs = Date.now() - t0;
+      const text = decoder.decode(first.value ?? new Uint8Array());
+      await reader.cancel().catch(() => undefined);
+      return { headerMs, firstByteMs, status: res.status, text, timedOut: false, totalMs: Date.now() - t0 };
+    }
+    const text = (await res.text()).slice(0, 400);
+    return { headerMs, firstByteMs: Date.now() - t0, status: res.status, text, timedOut: false, totalMs: Date.now() - t0 };
+  } catch (err) {
+    return { headerMs: null, firstByteMs: null, status: null, text: err instanceof Error ? err.message : String(err), timedOut: true, totalMs: Date.now() - t0 };
+  }
+}
+
+/** C33 N1: step mode call (unchanged shape, plus startedAt). */
 async function callOnce(
   url: string,
   apiKey: string,
@@ -222,74 +309,110 @@ async function callOnce(
   fetchImpl: typeof fetch,
   usageCount: () => number
 ): Promise<{ row: Omit<ComboProbeRow, 'combo'> }> {
-  const t0 = Date.now();
-  let headerMs: number | null = null;
-  let firstByteMs: number | null = null;
-  let httpStatus: number | null = null;
-  let text = '';
-  let timedOut = false;
+  const startedAt = new Date().toISOString();
   const before = usageCount();
-
-  try {
-    const res = await fetchImpl(url, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json', authorization: `Bearer ${apiKey}` },
-      body: JSON.stringify(body),
-      signal: AbortSignal.timeout(timeoutMs),
-    });
-    headerMs = Date.now() - t0;
-    httpStatus = res.status;
-    const reader = res.body?.getReader();
-    if (reader) {
-      const decoder = new TextDecoder();
-      const first = await reader.read();
-      firstByteMs = Date.now() - t0;
-      text = decoder.decode(first.value ?? new Uint8Array());
-      await reader.cancel().catch(() => undefined);
-    } else {
-      text = (await res.text()).slice(0, 400);
-      firstByteMs = Date.now() - t0;
-    }
-  } catch (err) {
-    timedOut = true;
-    text = err instanceof Error ? err.message : String(err);
-  }
-
-  const totalMs = Date.now() - t0;
+  const res = await sendAndRead(url, apiKey, body, timeoutMs, fetchImpl);
   const after = usageCount();
   const usageRowAdded = after > before;
-  const servedBy = usageRowAdded ? usageDelta(before, after) : null;
-  const verdict = perStepConclusion({
-    status: httpStatus,
-    body: redact(text, [apiKey]),
-    headerReceived: headerMs !== null,
-    usageRowAdded,
-    timedOut,
-  });
   return {
     row: {
       model: '',
-      httpStatus,
-      headerMs,
-      firstByteMs,
-      totalMs,
-      verdict,
-      detail: redact(text, [apiKey]),
-      usageServedBy: servedBy,
+      startedAt,
+      httpStatus: res.status,
+      headerMs: res.headerMs,
+      firstByteMs: res.firstByteMs,
+      totalMs: res.totalMs,
+      verdict: perStepConclusion({
+        status: res.status,
+        body: redact(res.text, [apiKey]),
+        headerReceived: res.headerMs !== null,
+        usageRowAdded,
+        timedOut: res.timedOut,
+      }),
+      detail: redact(res.text, [apiKey]),
+      usageServedBy: usageRowAdded ? usageDelta(before, after) : null,
+      firstUsageMs: null,
     },
   };
 }
 
-function selectCombos(state: RouterDb, options: ProbeOptions): ComboInfo[] {
-  if (options.all) return state.combos;
-  if (options.combo) {
-    const hit = state.combos.filter((c) => c.name === options.combo);
-    if (hit.length === 0) {
-      throw new Error(`unknown combo "${options.combo}"; known: ${state.combos.map((c) => c.name).join(', ')}`);
+/**
+ * C33 N1.2: combo mode call that polls `usageHistory` every `pollMs` while it
+ * waits, so the verdict can separate "slow" from "hanging".
+ */
+export async function callComboWithUsage(
+  url: string,
+  apiKey: string,
+  body: unknown,
+  timeoutMs: number,
+  fetchImpl: typeof fetch,
+  usageCount: () => number,
+  pollMs = USAGE_POLL_MS,
+  sleepImpl: (ms: number) => Promise<void> = defaultSleep,
+  clock: () => number = Date.now
+): Promise<{ row: Omit<ComboProbeRow, 'combo'>; firstUsageMs: number | null }> {
+  const startedAt = new Date().toISOString();
+  const t0 = clock();
+  const before = usageCount();
+  let firstUsageMs: number | null = null;
+  let stopped = false;
+
+  const poll = (async () => {
+    while (!stopped) {
+      await sleepImpl(pollMs);
+      if (stopped) return;
+      if (usageCount() > before) {
+        firstUsageMs = clock() - t0;
+        return;
+      }
+      if (clock() - t0 > timeoutMs) return;
     }
-    return hit;
+  })();
+
+  const res = await sendAndRead(url, apiKey, body, timeoutMs, fetchImpl);
+  stopped = true;
+  await poll.catch(() => undefined);
+
+  const totalMs = res.totalMs;
+  if (firstUsageMs === null && usageCount() > before) firstUsageMs = clock() - t0;
+  const after = usageCount();
+  const usageRowAdded = after > before;
+  const verdict = perComboConclusion({
+    headerMs: res.headerMs,
+    deadlineMs: timeoutMs,
+    firstUsageMs,
+    timedOut: res.timedOut,
+  });
+
+  return {
+    row: {
+      model: '',
+      startedAt,
+      httpStatus: res.status,
+      headerMs: res.headerMs,
+      firstByteMs: res.firstByteMs,
+      totalMs,
+      verdict,
+      detail: redact(res.text, [apiKey]),
+      usageServedBy: usageRowAdded ? usageDelta(before, after) : null,
+      firstUsageMs,
+    },
+    firstUsageMs,
+  };
+}
+
+function selectCombos(state: RouterDb, options: ProbeOptions): ComboInfo[] {
+  const wanted = options.combos && options.combos.length > 0 ? options.combos : options.combo ? [options.combo] : [];
+  if (wanted.length === 0) return options.all === false ? [] : state.combos;
+  const picked: ComboInfo[] = [];
+  for (const name of wanted) {
+    const hit = state.combos.filter((c) => c.name === name);
+    if (hit.length === 0) {
+      throw new Error(`unknown combo "${name}"; known: ${state.combos.map((c) => c.name).join(', ')}`);
+    }
+    picked.push(...hit);
   }
-  return state.combos;
+  return picked;
 }
 
 function uniqueSteps(combos: ComboInfo[]): string[] {
@@ -298,17 +421,30 @@ function uniqueSteps(combos: ComboInfo[]): string[] {
   return [...seen].sort();
 }
 
-function printDryRun(state: RouterDb, combos: ComboInfo[], baseUrl: string, log: (l: string) => void): void {
+function comboTimeoutFor(options: ProbeOptions): number {
+  if (typeof options.comboTimeoutMs === 'number') return options.comboTimeoutMs;
+  const sec = options.comboTimeoutSec ?? COMBO_TIMEOUT_MS / 1000;
+  const bounded = Math.min(MAX_COMBO_TIMEOUT_MS / 1000, Math.max(1, Math.floor(sec)));
+  return bounded * 1000;
+}
+
+function printDryRun(
+  state: RouterDb,
+  combos: ComboInfo[],
+  baseUrl: string,
+  comboTimeoutMs: number,
+  log: (l: string) => void
+): void {
   const steps = uniqueSteps(combos);
   const perCombo = combos.reduce((n, c) => n + c.steps.length, 0);
   const longestComboSteps = Math.max(0, ...combos.map((c) => c.steps.length));
-  const comboBudget = combos.length * (COMBO_TIMEOUT_MS / 1000);
-  const stepBudget = steps.length * (STEP_TIMEOUT_MS / 1000);
+  const comboBudget = (combos.length * comboTimeoutMs) / 1000;
+  const stepBudget = (steps.length * STEP_TIMEOUT_MS) / 1000;
   log(`baseUrl=${baseUrl}`);
   log(`apiKey=${state.apiKeyName} (giá trị không in)`);
   log(`combos=${combos.length} steps_theo_combo=${perCombo} unique_steps=${steps.length}`);
   log(
-    `u?c t�nh t?i da: combo = ${combos.length} � ${COMBO_TIMEOUT_MS / 1000}s = ${comboBudget}s (m?i combo t?i da ${COMBO_TIMEOUT_MS / 1000}s, combo d�i nh?t c� ${longestComboSteps} bu?c); step = ${steps.length} � ${STEP_TIMEOUT_MS / 1000}s = ${stepBudget}s`
+    `ước tính tối đa: combo = ${combos.length} × ${comboTimeoutMs / 1000}s = ${comboBudget}s (mỗi combo tối đa ${comboTimeoutMs / 1000}s, combo dài nhất có ${longestComboSteps} bước); step = ${steps.length} × ${STEP_TIMEOUT_MS / 1000}s = ${stepBudget}s`
   );
   log('Đây là chạy thử: không có request nào được gửi.');
   log('Muốn chạy thật: thêm --yes-spend-tokens (tốn token của chủ dự án).');
@@ -318,18 +454,21 @@ export async function runCombosProbeCommand(options: ProbeOptions = {}): Promise
   const log = options.log ?? ((line: string) => console.log(line));
   const baseUrl = options.baseUrl ?? process.env['ROUTERSYNC_9ROUTER_BASE_URL'] ?? DEFAULT_BASE_URL;
   const mode: ProbeMode = options.mode ?? 'combo';
+  const comboTimeoutMs = comboTimeoutFor(options);
+  const startedAt = new Date().toISOString();
 
   const state = options.state ?? readRouterState();
   const combos = selectCombos(state, options);
   if (combos.length === 0) throw new Error('no combo selected');
 
   if (!options.yesSpendTokens) {
-    printDryRun(state, combos, baseUrl, log);
+    printDryRun(state, combos, baseUrl, comboTimeoutMs, log);
     return {
       generatedAt: new Date().toISOString(),
       mode,
       baseUrl,
       apiKeyName: state.apiKeyName,
+      comboTimeoutSec: comboTimeoutMs / 1000,
       stoppedEarly: 'dry-run',
       combos: combos.map((c) => c.name),
       uniqueSteps: uniqueSteps(combos).length,
@@ -337,7 +476,8 @@ export async function runCombosProbeCommand(options: ProbeOptions = {}): Promise
     };
   }
 
-  const deadline = (options.now ?? Date.now)() + (options.maxMinutes ?? 40) * 60_000;
+  const clock = options.now ?? Date.now;
+  const deadline = clock() + (options.maxMinutes ?? 40) * 60_000;
   const fetchImpl = options.fetchImpl ?? globalThis.fetch;
   // Mặc định: đọc usageHistory của 9Router. Khi máy không có DB router (CI, hoặc
   // người dùng ở máy khác), trả 0 thay vì ném lỗi: phần đối chiếu "ai phục vụ"
@@ -364,7 +504,7 @@ export async function runCombosProbeCommand(options: ProbeOptions = {}): Promise
 
   if (mode === 'combo') {
     for (const combo of combos) {
-      if ((options.now ?? Date.now)() > deadline) {
+      if (clock() > deadline) {
         stoppedEarly = 'max-minutes';
         break;
       }
@@ -372,7 +512,7 @@ export async function runCombosProbeCommand(options: ProbeOptions = {}): Promise
         stoppedEarly = `${MAX_CONSECUTIVE_429} lần 429 liên tiếp`;
         break;
       }
-      const result = await callOnce(
+      const result = await callComboWithUsage(
         `${baseUrl}/v1/chat/completions`,
         state.apiKey,
         {
@@ -381,21 +521,24 @@ export async function runCombosProbeCommand(options: ProbeOptions = {}): Promise
           max_tokens: 8,
           stream: true,
         },
-        options.comboTimeoutMs ?? COMBO_TIMEOUT_MS,
+        comboTimeoutMs,
         fetchImpl,
-        usageCount
+        usageCount,
+        options.stepTimeoutMs ? USAGE_POLL_MS : USAGE_POLL_MS,
+        options.sleepImpl,
+        clock
       );
-      if (result.row.verdict === 'RATE-LIMITED') consecutive429 += 1;
+      if (result.row.httpStatus === 429) consecutive429 += 1;
       else consecutive429 = 0;
       rows.push({ combo: combo.name, ...result.row, model: combo.name });
       log(
-        `${combo.name}\t${result.row.verdict}\thttp=${result.row.httpStatus ?? '-'}\theader=${result.row.headerMs ?? '-'}ms\tfirstByte=${result.row.firstByteMs ?? '-'}ms\ttotal=${result.row.totalMs}ms\tusage=${result.row.usageServedBy ?? 'không có dòng usage'}`
+        `${combo.name}\t${result.row.verdict}\thttp=${result.row.httpStatus ?? '-'}\theader=${result.row.headerMs ?? '-'}ms\tfirstByte=${result.row.firstByteMs ?? '-'}ms\ttotal=${result.row.totalMs}ms\tusageAt=${result.firstUsageMs ?? '-'}ms\tusage=${result.row.usageServedBy ?? 'không có dòng usage'}`
       );
     }
   } else {
-    const steps = uniqueSteps(combos);
+    const steps = uniqueSteps(combos).filter((s) => (options.only ? new RegExp(options.only).test(s) : true));
     for (const step of steps) {
-      if ((options.now ?? Date.now)() > deadline) {
+      if (clock() > deadline) {
         stoppedEarly = 'max-minutes';
         break;
       }
@@ -430,6 +573,7 @@ export async function runCombosProbeCommand(options: ProbeOptions = {}): Promise
     mode,
     baseUrl,
     apiKeyName: state.apiKeyName,
+    comboTimeoutSec: comboTimeoutMs / 1000,
     stoppedEarly,
     combos: combos.map((c) => c.name),
     uniqueSteps: uniqueSteps(combos).length,
@@ -442,15 +586,11 @@ export async function runCombosProbeCommand(options: ProbeOptions = {}): Promise
     const tally = new Map<string, number>();
     for (const r of rows) tally.set(r.verdict, (tally.get(r.verdict) ?? 0) + 1);
     log('');
-    log(`tổng=${rows.length} ${[...tally.entries()].map(([k, v]) => `${k}=${v}`).join(' ')}`);
+    log(`bắt đầu=${startedAt} tổng=${rows.length} ${[...tally.entries()].map(([k, v]) => `${k}=${v}`).join(' ')}`);
     if (stoppedEarly) log(`dừng sớm: ${stoppedEarly}`);
   }
   void secrets;
   return report;
 }
 
-export { DEFAULT_BASE_URL, COMBO_TIMEOUT_MS, STEP_TIMEOUT_MS, MAX_CONSECUTIVE_429, redact };
-
-
-
-
+export { redact };
