@@ -149,13 +149,19 @@ export function buildStaleReport(
     unavailable.length > 0
       ? ` Router evidence unreadable: ${unavailable.map((u) => `${u.router} (${u.reason})`).join('; ')}. No status is claimed for those rows.`
       : '';
+  // C32 M3.2: "UNVERIFIABLE" reads like "absent" to a human skimming a table.
+  // Say the difference where the numbers are, not in a separate doc.
+  const unverifiableNote =
+    counts.UNVERIFIABLE > 0
+      ? ` UNVERIFIABLE (${counts.UNVERIFIABLE} rows) means the router carried no availability evidence for that provider: it is NOT the same as ABSENT and never a removal argument.`
+      : '';
 
   return {
     generatedAt: new Date().toISOString(),
     status: unavailable.length > 0 ? 'UNKNOWN' : 'OK',
     unavailable,
     source,
-    note: `${sourceNote}${omittedNote}${unavailableNote}`,
+    note: `${sourceNote}${omittedNote}${unavailableNote}${unverifiableNote}`,
     routers: [...routers],
     omittedRouters: [...omittedRouters],
     rows,

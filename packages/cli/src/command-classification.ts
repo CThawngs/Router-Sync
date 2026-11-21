@@ -88,6 +88,8 @@ export const COMMAND_CLASSES: Record<string, CommandClass> = {
   'agents update': 'interactive',
   combos: 'short',
   'combos stale': 'short',
+  // C32 M1: probe làm vi?c m?ng nhi?u phút, không du?c watchdog 120s c?t.
+  'combos probe': 'long-running',
 };
 
 /** Classify argv (process.argv.slice(2)). Unknown commands default to short. */
@@ -116,3 +118,4 @@ export function watchdogDelayMs(): number {
   const value = Number(raw);
   return Number.isFinite(value) && value >= 0 ? value : 120_000;
 }
+
