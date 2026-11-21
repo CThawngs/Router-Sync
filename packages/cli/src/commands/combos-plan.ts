@@ -15,7 +15,7 @@
  */
 import { createHash } from 'node:crypto';
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
-import { dirname } from 'node:path';
+import { basename, dirname } from 'node:path';
 import { locateRouterDb } from '@routersync/core';
 import { readRouterState } from './combos-probe.js';
 
@@ -285,9 +285,11 @@ export function runCombosPlan(options: PlanOptions): PlanFile {
   const plan: PlanFile = {
     generatedAt: new Date().toISOString(),
     router: options.router ?? '9router',
-    sourceDb: state.dbPath ?? '(không xác định)',
+    // Chỉ ghi tên tệp: đường dẫn tuyệt đối để lộ đường dẫn cá nhân khi gói bằng chứng đi xa.
+    sourceDb: state.dbPath ? basename(state.dbPath) : '(không xác định)',
     sourceDbSha256: sha256IfExists(state.dbPath),
-    probeRuns: runs.map((r) => ({ file: r.file, rows: r.rows.length })),
+    // Chỉ tên tệp, không phải đường dẫn đầy đủ.
+    probeRuns: runs.map((r) => ({ file: basename(r.file), rows: r.rows.length })),
     minGapMinutes: options.minGapMinutes ?? 1,
     counts,
     combos,
