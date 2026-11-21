@@ -14,6 +14,10 @@ if (!existsSync(path.join(hooksDir, 'pre-push'))) {
   console.error(`missing ${path.join(hooksDir, 'pre-push')}`);
   process.exit(1);
 }
+if (!existsSync(path.join(hooksDir, 'pre-commit'))) {
+  console.error(`missing ${path.join(hooksDir, 'pre-commit')}`);
+  process.exit(1);
+}
 
 const before = execFileSync('git', ['config', '--get', 'core.hooksPath'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] })
     .toString()
@@ -21,4 +25,5 @@ const before = execFileSync('git', ['config', '--get', 'core.hooksPath'], { enco
 execFileSync('git', ['config', 'core.hooksPath', 'tools/hooks'], { stdio: 'inherit' });
 
 console.log(`core.hooksPath: ${before || '(unset)'} -> tools/hooks`);
+console.log('pre-commit will refuse direct commits on main.');
 console.log('pre-push will run: pnpm lint, pnpm typecheck:changed, pnpm test:changed, validate-workflows');

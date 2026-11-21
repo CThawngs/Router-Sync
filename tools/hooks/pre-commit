@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+# C27 G1.3: refuse direct commits on the local main branch. The owner commits to
+# main never; every change reaches main through a PR (branch -> CI -> squash).
+set -u
+
+branch="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo '?')"
+if [ "$branch" = "main" ] || [ "$branch" = "master" ]; then
+  echo "[precommit] FAIL: direct commit on '$branch' is blocked." >&2
+  echo "[precommit] Create a branch (git switch -c <name>), commit there, then open a PR." >&2
+  exit 1
+fi
+
+exit 0
