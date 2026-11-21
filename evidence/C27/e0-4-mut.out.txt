@@ -1,0 +1,3 @@
+sha256(mutated vitest.config.ts)=fe28bbb89f1ef8564e4cba64276cd430f456e157f61076f51138e899719a553d
+mutantExit=red
+(nested node:test: mutation verified by content check)
