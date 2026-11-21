@@ -1,6 +1,6 @@
 # C33 — tóm tắt cuối (bản trên nhánh `evidence/c33`)
 
-Nhánh bằng chứng: `evidence/c33` · gói: 8 tệp, `[skip ci]`, không PR.
+Nhánh bằng chứng: `evidence/c33` · commit mang bằng chứng: `8462a41` · gói: 8 tệp, `[skip ci]`, không PR.
 
 ## Trạng thái từng mục
 
