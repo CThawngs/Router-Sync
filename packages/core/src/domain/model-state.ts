@@ -260,19 +260,34 @@ export function readRouterModelState(
                   : [];
                 if (Array.isArray(list)) {
                   for (const m of list) {
-                    if (typeof m === 'string' && m.trim().length > 0) {
-                      if (m.includes('/')) {
-                        const slashIdx = m.indexOf('/');
-                        const prov = m.slice(0, slashIdx);
-                        const mId = m.slice(slashIdx + 1);
-                        const normId = mId.startsWith('models/') ? mId.slice('models/'.length) : mId;
-                        for (const alias of getProviderAliases(prov)) {
-                          comboModels.add(`${alias}/${mId}`);
-                          comboModels.add(`${alias}/${normId}`);
-                        }
-                      } else {
-                        comboModels.add(m);
+                    // C31 L1: OmniRoute stores combo steps as objects
+                    // ({ id, kind, model, providerId, weight }) while 9Router
+                    // stores plain "provider/model" strings.
+                    let stepId = '';
+                    if (typeof m === 'string') {
+                      stepId = m.trim();
+                    } else if (m && typeof m === 'object') {
+                      const rec = m as Record<string, unknown>;
+                      const provider = (rec['providerId'] ?? rec['provider'] ?? rec['prefix']) as string | undefined;
+                      const model = (rec['model'] ?? rec['modelId'] ?? rec['id']) as string | undefined;
+                      if (typeof provider === 'string' && provider.trim() && typeof model === 'string' && model.trim()) {
+                        stepId = `${provider.trim()}/${model.trim()}`;
+                      } else if (typeof model === 'string' && model.includes('/')) {
+                        stepId = model.trim();
                       }
+                    }
+                    if (!stepId) continue;
+                    if (stepId.includes('/')) {
+                      const slashIdx = stepId.indexOf('/');
+                      const prov = stepId.slice(0, slashIdx);
+                      const mId = stepId.slice(slashIdx + 1);
+                      const normId = mId.startsWith('models/') ? mId.slice('models/'.length) : mId;
+                      for (const alias of getProviderAliases(prov)) {
+                        comboModels.add(`${alias}/${mId}`);
+                        comboModels.add(`${alias}/${normId}`);
+                      }
+                    } else {
+                      comboModels.add(stepId);
                     }
                   }
                 }
@@ -579,6 +594,131 @@ export function readRouterModelState(
       }
       for (const m of availableModels) {
         enabledModels.add(m);
+      }
+    }
+
+    // 3. OmniRoute state (C31 L1).
+    //
+    // OmniRoute keeps its router state in the same `key_value` table shape as
+    // 9Router but with different namespaces:
+    //   - `syncedAvailableModels`: provider -> JSON array of model objects.
+    //     This is the provider's synced model list, i.e. live router evidence.
+    //   - `customModels`: provider -> JSON array of models added by hand.
+    //   - `modelAliases`: alias -> "provider/model" target.
+    //   - `radar_local_model_state`: provider, model_id, enabled, tombstoned.
+    //     Only used for the DISABLED verdict; it is empty on most installs, and
+    //     an empty table must not be read as "nothing disabled".
+    if (isOmniRoute) {
+      // A DB that opens but cannot answer these queries is unreadable evidence,
+      // never "the router has nothing".
+      try {
+      if (db) {
+        const kvCheck = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='key_value'").get();
+        if (!kvCheck) {
+          missingTables.push('key_value');
+        } else {
+          const addPair = (provider: string, modelId: string) => {
+            const clean = modelId.startsWith('models/') ? modelId.slice('models/'.length) : modelId;
+            availableModels.add(`${provider}/${clean}`);
+            availableModels.add(`${provider}/${modelId}`);
+          };
+          const parseModels = (raw: unknown): Array<Record<string, unknown>> => {
+            try {
+              const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
+              if (!Array.isArray(parsed)) return [];
+              return parsed.filter((m): m is Record<string, unknown> => Boolean(m) && typeof m === 'object');
+            } catch {
+              return [];
+            }
+          };
+
+          const synced = db.prepare("SELECT key, value FROM key_value WHERE namespace = 'syncedAvailableModels'").all() as Array<{ key: string; value: string }>;
+          for (const row of synced) {
+            // OmniRoute keys this namespace "<provider>:<connectionId>"; the
+            // combo steps carry the bare provider code, so split on ':'.
+            const provider = (String(row.key ?? '').split(':')[0] ?? '').trim();
+            if (!provider) continue;
+            for (const model of parseModels(row.value)) {
+              const id = typeof model['id'] === 'string' ? model['id'] : undefined;
+              if (!id) continue;
+              addPair(provider, id);
+            }
+            // A row that exists is evidence this provider is known to the
+            // router, even when its synced list is empty.
+            evidenceProviders.add(provider);
+          }
+
+          const custom = db.prepare("SELECT key, value FROM key_value WHERE namespace = 'customModels'").all() as Array<{ key: string; value: string }>;
+          for (const row of custom) {
+            const provider = String(row.key ?? '').trim();
+            if (!provider) continue;
+            evidenceProviders.add(provider);
+            for (const model of parseModels(row.value)) {
+              const id = typeof model['id'] === 'string' ? model['id'] : undefined;
+              if (!id) continue;
+              if (model['isHidden'] === true || model['tombstoned'] === true) {
+                disabledModels.add(`${provider}/${id}`);
+                disabledModels.add(`${provider}/${id.startsWith('models/') ? id : `models/${id}`}`);
+                continue;
+              }
+              addPair(provider, id);
+            }
+          }
+
+          const aliases = db.prepare("SELECT key, value FROM key_value WHERE namespace = 'modelAliases'").all() as Array<{ key: string; value: string }>;
+          for (const row of aliases) {
+            const alias = String(row.key ?? '').trim();
+            let target = String(row.value ?? '').trim();
+            try {
+              const parsed: unknown = JSON.parse(target);
+              if (typeof parsed === 'string') target = parsed;
+            } catch {
+              /* value may be stored unquoted */
+            }
+            const slash = target.indexOf('/');
+            if (!alias || slash <= 0) continue;
+            const provider = target.slice(0, slash);
+            const modelId = target.slice(slash + 1);
+            if (!modelId) continue;
+            evidenceProviders.add(provider);
+            aliasModels.add(`${provider}/${modelId}`);
+            // A combo may reference the alias itself; resolve it to the target.
+            aliasModels.add(`${alias}/${modelId}`);
+          }
+        }
+
+        // Disabled state: only an explicit row can disable a model.
+        const radarCheck = db.prepare(
+          "SELECT name FROM sqlite_master WHERE type='table' AND name='radar_local_model_state'"
+        ).get();
+        if (radarCheck) {
+          try {
+            const rows = db
+              .prepare('SELECT provider, model_id, enabled, tombstoned FROM radar_local_model_state')
+              .all() as Array<{ provider: string; model_id: string; enabled: number; tombstoned: number }>;
+            for (const r of rows) {
+              if (r.enabled === 0 || r.tombstoned === 1) {
+                disabledModels.add(`${r.provider}/${r.model_id}`);
+                disabledModels.add(`${r.provider}/models/${String(r.model_id).replace(/^models\//, '')}`);
+              }
+            }
+          } catch {
+            // A broken table is not evidence of "nothing disabled".
+            missingTables.push('radar_local_model_state (unreadable)');
+          }
+        }
+      }
+
+      // `direct` is the only honest source for OmniRoute: there is no registry
+      // shipped with RouterSync that mirrors its provider pages. `snapshot`
+      // therefore behaves like `direct` and says so in the report note.
+      for (const m of customModels) availableModels.add(m);
+      for (const m of aliasModels) availableModels.add(m);
+      // A model the router itself disabled must not be reported as present.
+      for (const m of disabledModels) availableModels.delete(m);
+      for (const m of availableModels) enabledModels.add(m);
+      } catch {
+        missingTables.push('key_value (unreadable)');
       }
     }
   } finally {

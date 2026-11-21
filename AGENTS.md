@@ -21,6 +21,11 @@ written to a router until a human types the confirmation word on a terminal.
   rewrite on a published branch. `tools/hooks/pre-push` rejects a non-fast-forward
   ref update (`tools/guard/no-force-push.mjs`); if a push is rejected, rename the
   branch or open a new one instead.
+- Evidence packages are delivered through a branch, not as chat attachments:
+  push `evidence/c<N>` with `[skip ci]`, no PR, at most 10 files, a `NOTE.md`
+  holding the final chat summary verbatim, and 0 private-name matches
+  (`node tools/agent/scan-private-names.mjs <ref>`). The last chat message only
+  names the branch and its sha. `docs/CI.md` §9 has the full procedure.
 - Never type or auto-fill the confirmation word (`chạy`, `chay`) for the user.
   Write commands need the user to type it in their own terminal.
 - Never read, print, or log API key values or password hashes.

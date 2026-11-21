@@ -90,6 +90,14 @@ export function classifyComboStep(step: string, state: RouterModelState): StaleS
   const normalized = `${prefix}/${norm}`;
   if (state.availableModels.has(direct)) return 'PRESENT';
   if (state.availableModels.has(normalized)) return 'PRESENT-NORMALIZED';
+  // C31 L1: OmniRoute combo steps carry fully-qualified ids ("vendor/model")
+  // while the provider's synced list carries the bare model id. Matching the
+  // last path segment is the documented normalisation for OmniRoute only; the
+  // row keeps the combo's own step string.
+  if (state.router === 'omniroute' && id.includes('/')) {
+    const tail = id.slice(id.lastIndexOf('/') + 1);
+    if (state.availableModels.has(`${prefix}/${tail}`)) return 'PRESENT-NORMALIZED';
+  }
   if (state.disabledModels.has(direct) || state.disabledModels.has(normalized)) return 'DISABLED';
   // A provider with no availability evidence at all is not "absent"; it is
   // unverifiable, and must never be used as a removal argument.
@@ -192,8 +200,11 @@ export async function runCombosStaleCommand(options: CombosStaleOptions = {}): P
 
   const source = options.source ?? DEFAULT_STALE_SOURCE;
   const requestedRouters = target === 'all' ? ['9router', 'omniroute'] : [target];
-  const routers = requestedRouters.filter((router) => router === '9router');
-  const omittedRouters = requestedRouters.filter((router) => router !== '9router');
+  // C31 L1: OmniRoute has a reader now (`key_value` namespaces), so it is no
+  // longer omitted. It is only listed as omitted when the caller asks for a
+  // router this build cannot read at all.
+  const routers = requestedRouters.filter((router) => router === '9router' || router === 'omniroute');
+  const omittedRouters = requestedRouters.filter((router) => router !== '9router' && router !== 'omniroute');
   const effectiveSource = source === 'official' ? 'direct' : source;
   const states = new Map<string, RouterModelState>();
   for (const router of routers) {
