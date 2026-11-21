@@ -59,6 +59,28 @@ describe('C15 Q4: combos stale statuses', () => {
     expect(report.note).toContain('directly available router state');
   });
 
+  it('says UNVERIFIABLE is not ABSENT when any row is UNVERIFIABLE (C32 M3.2)', () => {
+    const s = state({
+      availableModels: new Set(['gemini/gemini-2.5-flash']),
+      comboModels: new Set(['gemini/gemini-2.5-flash', 'hf/some-model']),
+    });
+    const report = buildStaleReport(['9router'], new Map([['9router', s]]));
+    expect(report.counts.UNVERIFIABLE).toBeGreaterThan(0);
+    expect(report.note).toMatch(/UNVERIFIABLE \(\d+ rows\)/);
+    expect(report.note).toMatch(/NOT the same as ABSENT/);
+    expect(report.note).toMatch(/never a removal argument/);
+  });
+
+  it('does not add the UNVERIFIABLE note when every row has evidence', () => {
+    const s = state({
+      availableModels: new Set(['gemini/gemini-2.5-flash']),
+      comboModels: new Set(['gemini/gemini-2.5-flash']),
+    });
+    const report = buildStaleReport(['9router'], new Map([['9router', s]]));
+    expect(report.counts.UNVERIFIABLE).toBe(0);
+    expect(report.note).not.toMatch(/UNVERIFIABLE \(/);
+  });
+
   it('labels direct and snapshot reports with their evidence source', () => {
     const s = state({
       availableModels: new Set(['gemini/gemini-2.5-flash']),
