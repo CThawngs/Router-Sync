@@ -1,4 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import type { RouterModelState } from '@routersync/core';
 import {
   buildStaleReport,
@@ -109,20 +112,27 @@ describe('C15 Q4: combos stale statuses', () => {
     expect(report.note).toContain('without an availability reader');
   });
 
-  it('does not classify OmniRoute rows before an availability reader exists', async () => {
+  it('reports OmniRoute as unreadable when its database is missing (C31 L1)', async () => {
     const log = vi.spyOn(console, 'log').mockImplementation(() => undefined);
+    const dir = mkdtempSync(join(tmpdir(), 'rs-omni-missing-'));
     try {
       const report = await runCombosStaleCommand({
         router: 'omniroute',
-        env: {},
+        env: { ROUTERSYNC_OMNIROUTE_DB: join(dir, 'storage.sqlite') },
       });
 
-      expect(report.routers).toEqual([]);
-      expect(report.omittedRouters).toEqual(['omniroute']);
+      // It has a reader now: it must be named, not omitted, and it must not
+      // claim ABSENT for models it could not see.
+      expect(report.routers).toEqual(['omniroute']);
+      expect(report.omittedRouters).toEqual([]);
       expect(report.rows).toEqual([]);
       expect(report.counts.ABSENT).toBe(0);
+      expect(report.status).toBe('UNKNOWN');
+      expect(report.unavailable.map((u) => u.router)).toContain('omniroute');
+      expect(report.unavailable[0]?.reason).toMatch(/could not be opened|not resolved/);
     } finally {
       log.mockRestore();
+      rmSync(dir, { recursive: true, force: true, maxRetries: 3, retryDelay: 50 });
     }
   });
 

@@ -18,6 +18,7 @@
 import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import { join, basename } from 'node:path';
 import { homedir, userInfo, tmpdir } from 'node:os';
+import { floorIssues, effectivePrivateNames } from './private-names.mjs';
 
 const SAFE_VERBS = new Set(['node', 'gh', 'pnpm', 'git', 'npx']);
 
@@ -163,24 +164,35 @@ function loadPrivateNames() {
     try {
       for (const n of JSON.parse(readFileSync(file, 'utf8'))) if (typeof n === 'string' && n.trim()) names.push(n.trim());
     } catch {
-      /* danh sách hỏng: bỏ qua, verify-records vẫn bắt privateNamesLoaded */
+      /* danh sách hỏng: bỏ qua, floor check vẫn bắt privateNamesLoaded */
     }
   }
   return names;
 }
 
+/**
+ * Floor theo danh sách hiện hành. Một gói mà mọi bản ghi nạp 4 tên trong khi
+ * guard báo 7 là gói của một phiên bản danh sách cũ — từ chối, đừng đẩy.
+ */
+export function nameFloorIssues(rows, expected) {
+  return floorIssues(rows, expected);
+}
+
 function main() {
   const dir = process.argv[2];
-  if (!dir) {
-    console.error('Usage: node tools/agent/verify-package.mjs <package-dir>');
+  if (!dir || dir.startsWith('--')) {
+    console.error('Usage: node tools/agent/verify-package.mjs <package-dir> [--min-private-names <n>]');
     process.exit(2);
   }
+  const flagIndex = process.argv.indexOf('--min-private-names');
+  const expected = flagIndex >= 0 ? Number(process.argv[flagIndex + 1]) : effectivePrivateNames().length;
   const rows = readRecords(dir);
   const scan = scanPackage(dir, loadPrivateNames());
   const issues = [
     ...requiredRecordIssues(rows),
     ...commandIssues(rows),
     ...fakeRecordIssues(rows),
+    ...nameFloorIssues(rows, expected),
     ...(scan.matches > 0 ? [`personal identifiers: ${scan.matches} match(es) in ${scan.filesChecked.join(', ')}`] : []),
   ];
   if (issues.length > 0) {
@@ -188,7 +200,7 @@ function main() {
     process.exit(1);
   }
   console.log(
-    `OK: ${rows.length} records, no fake records, ${scan.files} file(s) scanned, no personal identifiers`
+    `OK: ${rows.length} records, no fake records, ${scan.files} file(s) scanned, no personal identifiers, privateNamesLoaded >= ${expected}`
   );
 }
 

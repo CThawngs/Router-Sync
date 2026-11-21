@@ -3,6 +3,18 @@
 `routersync combos stale` is read-only. It answers one question: for each step in
 a combo, did the router itself show any evidence that the model is available?
 
+## Routers with a state reader
+
+| Router | Evidence source | Notes |
+|---|---|---|
+| `9router` | `kv` (`disabledModels`, `customModels`, `modelAliases`), `providerConnections`, `model-catalog.json` | Original reader. |
+| `omniroute` | `key_value` namespaces `syncedAvailableModels` (`<provider>:<connectionId>` → model array), `customModels`, `modelAliases`; `radar_local_model_state` for DISABLED | C31 L1. There is no RouterSync registry mirroring its provider pages, so `snapshot` behaves like `direct`. |
+
+OmniRoute combo steps carry fully-qualified ids (`vendor/model`) while the synced
+list carries the bare id; the last path segment is matched for OmniRoute only and
+reported as `PRESENT-NORMALIZED`. A provider with no `syncedAvailableModels` row
+is `UNVERIFIABLE`, never `ABSENT`.
+
 ## Evidence source
 
 - `direct` (default, `DEFAULT_STALE_SOURCE`): only what the router database
