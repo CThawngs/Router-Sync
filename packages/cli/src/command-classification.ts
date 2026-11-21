@@ -88,8 +88,10 @@ export const COMMAND_CLASSES: Record<string, CommandClass> = {
   'agents update': 'interactive',
   combos: 'short',
   'combos stale': 'short',
-  // C32 M1: probe l�m vi?c m?ng nhi?u ph�t, kh�ng du?c watchdog 120s c?t.
+  // C32 M1: probe l�m vi?c m?ng nhi?u ph�t, kh�ng du?c watchdog 120s c?t.
   'combos probe': 'long-running',
+  // C33 N3: plan đọc DB + ghi một file kế hoạch, tính bằng giây.
+  'combos plan': 'short',
 };
 
 /** Classify argv (process.argv.slice(2)). Unknown commands default to short. */

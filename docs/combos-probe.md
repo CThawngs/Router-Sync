@@ -59,6 +59,52 @@ Hàm phân loại là `perStepConclusion()` (thuần, có test cho từng nhánh
   là combo chưa bao giờ gọi tới provider.
 - `HANG-AFTER-USAGE` là tín hiệu tách biệt: upstream đã trả lời, client thì không.
 
+## C33: hạn dài, đo "chậm" vs "treo" (mode combo)
+
+| Cờ | Nghĩa |
+|---|---|
+| `--combo-timeout-sec <n>` | Hạn cho mỗi combo, 1..600 giây (mặc định 120). |
+| `--combo <tên>` | Chọn một combo, truyền nhiều lần để chọn nhiều. |
+| `--only <regex>` | (mode step) chỉ thử bước khớp regex. |
+
+Trong lúc chờ, lệnh hỏi `usageHistory` mỗi 5 giây và ghi thời điểm dòng usage
+xuất hiện so với header. Kết luận của mode combo:
+
+| Kết luận | Nghĩa |
+|---|---|
+| `OK` | Header trong ngưỡng |
+| `SLOW-OK` | Có header nhưng sau 120 giây (chậm, không treo) |
+| `HANG-AFTER-USAGE` | Hết hạn, chưa có header, **có** dòng usage (upstream đã làm việc) |
+| `HANG-NO-USAGE` | Hết hạn, chưa header, **không** dòng usage |
+
+Ngưỡng 120 giây là hằng số `SLOW_THRESHOLD_MS`. Một dòng log có `usageAt=` cho
+biết dòng usage xuất hiện ở mili-giây thứ mấy.
+
+## `combos plan` — kế hoạch gọn combo (chỉ lập kế hoạch)
+
+```
+routersync combos plan --router 9router \
+  --from evidence/C33/c33-probe-step.out.txt \
+  --from evidence/C33/c33-probe-step-pass2.out.txt \
+  --out combo-plan.json
+```
+
+Đọc DB router **chỉ đọc**, đọc các file probe, rồi ghi một file kế hoạch. Không
+ghi gì vào router.
+
+| Nhóm | Vào nhóm khi |
+|---|---|
+| `REMOVE` | lỗi cứng (EOL-GONE, hoặc NO-PROVIDER có thông điệp khớp) ở ≥2 lượt cách nhau > 1 phút — **đề xuất gỡ**, chờ chủ dự án xác nhận |
+| `MOVE-END` | `TIMEOUT-NO-HEADER` ở ≥2 lượt — gợi ý đưa xuống cuối |
+| `KEEP` | `OK` ở 2 lượt — xếp theo thời gian tăng dần |
+| `FAST-ERROR` | 404/405/400 — chỉ liệt kê, **không** phải lý do gỡ |
+| `UNTESTED` | còn lại (ABSENT, UNVERIFIABLE, NOT-LISTED, NOT-IN-CATALOG) |
+
+Kế hoạch có hai phương án cho từng combo: **A** bản gọn của chính combo đó (bỏ
+nhóm gỡ, đưa nhóm timeout xuống cuối), **B** combo mới chỉ gồm bước OK hai lượt.
+Kèm dự đoán thời gian tới header theo mô hình ở `docs/combos-probe.md` mục
+"Vì sao combo chậm", sha256 của DB đầu vào, và bản sao thứ tự cũ để hoàn tác.
+
 ## Không làm
 
 - Không sửa combo, không sửa cấu hình, không ghi vào DB router.

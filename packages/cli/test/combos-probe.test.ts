@@ -37,8 +37,9 @@ describe('C32 M1: phân loại một lần thử', () => {
     expect(perStepConclusion({ ...base, status: 503, body })).toBe('NO-PROVIDER');
   });
 
-  it('503 không có nội dung → NO-PROVIDER', () => {
-    expect(perStepConclusion({ ...base, status: 503 })).toBe('NO-PROVIDER');
+  // C33 N2.1: 503 trơn không còn là NO-PROVIDER (xem combos-probe-c33.test.ts).
+  it('503 không có nội dung → ERROR-5XX', () => {
+    expect(perStepConclusion({ ...base, status: 503 })).toBe('ERROR-5XX');
   });
 
   it('hết hạn, không header, có dòng usage → HANG-AFTER-USAGE', () => {
@@ -54,7 +55,7 @@ describe('C32 M1: phân loại một lần thử', () => {
   });
 
   it('còn lại → ERROR', () => {
-    expect(perStepConclusion({ ...base, status: 500 })).toBe('ERROR');
+    expect(perStepConclusion({ ...base, status: 400 })).toBe('ERROR');
   });
 
   it('mutation: nếu 410 trả OK thì test đỏ', () => {
