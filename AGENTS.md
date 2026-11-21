@@ -14,6 +14,9 @@ written to a router until a human types the confirmation word on a terminal.
 
 ## 2. Hard rules
 
+- Never commit directly on the local `main` branch. The `tools/hooks/pre-commit`
+  hook (installed with `pnpm hooks:install`) refuses it; work on a branch and
+  open a PR.
 - Never type or auto-fill the confirmation word (`chạy`, `chay`) for the user.
   Write commands need the user to type it in their own terminal.
 - Never read, print, or log API key values or password hashes.
