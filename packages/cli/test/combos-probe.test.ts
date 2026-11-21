@@ -64,7 +64,10 @@ describe('C32 M1: phân loại một lần thử', () => {
   });
 
   it('che chuỗi dài và khoá trong thân lỗi', () => {
-    const out = redact('key=sk-abcdefghijklmnopqrstuvwxyz0123456789', ['sk-abcdefghijklmnopqrstuvwxyz0123456789']);
+    // Chuỗi giả: không phải key thật (guard đọc mọi chuỗi dạng sk-...).
+    // no-secrets:allow: synthetic token used to prove redact() masks long strings
+    const fakeToken = 'sk-' + 'abcdefghijklmnopqrstuvwxyz0123456789';
+    const out = redact(`key=${fakeToken}`, [fakeToken]);
     assertNotLeak(out);
   });
 
