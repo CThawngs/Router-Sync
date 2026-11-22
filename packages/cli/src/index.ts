@@ -577,6 +577,26 @@ export function createCliProgram(): Command {
       });
     });
 
+  combosCmd
+    .command('reliability')
+    .description('Measure per-step reliability from probe results (read-only)')
+    .option('--from <file>', 'Probe result file (step mode)')
+    .option('--repeat <n>', 'Requests per round', '3')
+    .option('--rounds <r>', 'Rounds per step', '2')
+    .option('--gap-sec <s>', 'Gap between requests', '5')
+    .option('--max-minutes <n>', 'Total budget', '40')
+    .action(async (opts: { from?: string; repeat?: string; rounds?: string; gapSec?: string; maxMinutes?: string }) => {
+      const { runReliability } = await import('./commands/combos-reliability.js');
+      const res = await runReliability({
+        from: opts.from ?? '',
+        repeat: Number(opts.repeat ?? 3),
+        rounds: Number(opts.rounds ?? 2),
+        gapSec: Number(opts.gapSec ?? 5),
+        maxMinutes: Number(opts.maxMinutes ?? 40),
+      });
+      console.log('xong: ' + res.steps.length + ' bước, chưa đo ' + res.skipped.length);
+    });
+
   // router command group (C35 R1: lấy mẫu sức khỏe router)
   const routerCmd = program.command('router').description('Router health sampling (read-only)');
 

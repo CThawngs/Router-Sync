@@ -92,6 +92,7 @@ export const COMMAND_CLASSES: Record<string, CommandClass> = {
   'combos probe': 'long-running',
   // C33 N3: plan đọc DB + ghi một file kế hoạch, tính bằng giây.
   'combos plan': 'short',
+  'combos reliability': 'long-running',
   // C35 R1: watch chạy nhiều phút, không bị watchdog 120s cắt.
   'router': 'long-running',
   'router watch': 'long-running',
