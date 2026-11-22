@@ -1,0 +1,14 @@
+control#1	header=326ms	status=200	modelsMs=-ms
+control#2	header=287ms	status=200	modelsMs=-ms
+control#3	header=317ms	status=200	modelsMs=-ms
+control#4	header=309ms	status=200	modelsMs=-ms
+control#5	header=298ms	status=200	modelsMs=-ms
+concurrent#1	header=3071ms	status=200	modelsMs=6050ms
+concurrent#2	header=3440ms	status=200	modelsMs=5761ms
+concurrent#3	header=3297ms	status=200	modelsMs=5395ms
+concurrent#4	header=3462ms	status=200	modelsMs=5500ms
+concurrent#5	header=4301ms	status=200	modelsMs=6262ms
+PHASE control: n=5 p50=309ms max=326ms
+PHASE concurrent: n=5 p50=3440ms max=4301ms
+combo-variant: /v1/models trong lúc combo chờ = 5312ms
+combo-variant: KHÔNG CÓ HEADER trong 120 s

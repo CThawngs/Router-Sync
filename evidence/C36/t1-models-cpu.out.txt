@@ -1,0 +1,8 @@
+#1	ms=6797	cpuSec=5.19	ratio=0.76	bytes=424955	models=904	status=200	usageAdded=0
+#2	ms=5512	cpuSec=4.39	ratio=0.8	bytes=424955	models=904	status=200	usageAdded=0
+#3	ms=5236	cpuSec=4.3	ratio=0.82	bytes=424955	models=904	status=200	usageAdded=0
+#4	ms=5848	cpuSec=4.88	ratio=0.83	bytes=424955	models=904	status=200	usageAdded=0
+#5	ms=5151	cpuSec=4.11	ratio=0.8	bytes=424955	models=904	status=200	usageAdded=0
+#6	ms=5037	cpuSec=4.28	ratio=0.85	bytes=424955	models=904	status=200	usageAdded=0
+
+TỔNG HỢP n=6 medianMs=5512 medianCpuSec=4.39 medianRatio=0.82 bytes=424955 models=904

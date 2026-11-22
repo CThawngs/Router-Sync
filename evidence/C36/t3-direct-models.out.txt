@@ -1,0 +1,10 @@
+tidepool-alpha-free	mt=8	n=3	verdicts=RATE-LIMITED,RATE-LIMITED,RATE-LIMITED	headers=504,607,639ms	median=607ms
+tidepool-alpha-free	mt=64	n=3	verdicts=RATE-LIMITED,RATE-LIMITED,RATE-LIMITED	headers=366,304,326ms	median=326ms
+glm-5.3-flash	mt=8	n=6	verdicts=TIMEOUT-NO-HEADER,HANG-AFTER-USAGE,HANG-AFTER-USAGE,ERROR-5XX,ERROR-5XX,ERROR-5XX	headers=,,,12,7,7ms	median=7ms
+glm-5.3-flash	mt=64	n=6	verdicts=HANG-AFTER-USAGE,HANG-AFTER-USAGE,TIMEOUT-NO-HEADER,ERROR-5XX,ERROR-5XX,ERROR-5XX	headers=,,,3636,7,6ms	median=7ms
+nemotron-3.5-super-vl	mt=8	n=12	verdicts=OK,OK,OK,RATE-LIMITED,RATE-LIMITED,RATE-LIMITED,ERROR-5XX,ERROR-5XX,ERROR-5XX,OK,OK,OK	headers=685,666,437,364,307,295,9,7,7,576,608,593ms	median=437ms
+nemotron-3.5-super-vl	mt=64	n=12	verdicts=OK,OK,OK,RATE-LIMITED,RATE-LIMITED,RATE-LIMITED,ERROR-5XX,ERROR-5XX,ERROR-5XX,OK,OK,OK	headers=437,417,429,377,302,342,6,5,6,594,890,617ms	median=417ms
+gemini-4-hydrogen	mt=8	n=6	verdicts=ERROR,ERROR,ERROR,TIMEOUT-NO-HEADER,OK,OK	headers=25,8,19,,10366,15175ms	median=25ms
+gemini-4-hydrogen	mt=64	n=6	verdicts=ERROR,ERROR,ERROR,TIMEOUT-NO-HEADER,OK,TIMEOUT-NO-HEADER	headers=28,6,14,,6470,ms	median=28ms
+ernie-5.5-flash-preview	mt=8	n=3	verdicts=OK,OK,OK	headers=1838,1067,1589ms	median=1589ms
+ernie-5.5-flash-preview	mt=64	n=3	verdicts=OK,OK,OK	headers=1592,1268,1030ms	median=1268ms
