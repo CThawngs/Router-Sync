@@ -18,7 +18,17 @@
  * Nothing is written to the router: the 9Router database is opened read-only,
  * and the API key is read from it and never printed.
  */
+import { readFileSync } from 'node:fs';
 import { openBetterSqlite3, locateRouterDb } from '@routersync/core';
+import {
+  classifyStep,
+  interleaveProviders,
+  providerDelayMs,
+  providerOf,
+  recentQuotaSteps,
+  RequestBudget,
+  DEFAULT_REQUEST_BUDGET,
+} from './combos-budget.js';
 
 export type ProbeMode = 'combo' | 'step';
 
@@ -208,6 +218,10 @@ export interface ProbeOptions {
   stream?: boolean | undefined;
   /** C34 Q3: mode step, lặp lại mỗi bước n lần. */
   repeat?: number | undefined;
+  /** C40 X0: trần số request cho một lần chạy (mặc định 40). */
+  budget?: number | undefined;
+  /** C40 X0: tệp kết quả trước đó; bước 429/quota trong 30 phút qua bị bỏ qua. */
+  skipQuotaFrom?: string[] | undefined;
   json?: boolean | undefined;
   fetchImpl?: typeof fetch;
   now?: () => number;
@@ -256,6 +270,8 @@ export interface ComboProbeRow {
   firstUsageMs?: number | null;
   /** C34 Q2: mọi dòng usage mới trong lần gọi (chỉ khi bật timeline). */
   usageRows?: UsageRow[] | undefined;
+  /** C40 X0: 429 do quota gói miễn phí, không phải 429 thường. */
+  quota?: boolean | undefined;
   startedAt?: string;
 }
 
@@ -271,6 +287,10 @@ export interface ProbeReport {
   combos: string[];
   uniqueSteps: number;
   rows: ComboProbeRow[];
+  /** C40 X0: bộ đếm request cuối lần chạy, chia theo provider. */
+  requests?: { total: number; limit: number; byProvider: Record<string, number> } | undefined;
+  /** C40 X0: bước bỏ qua vì đã 429/quota trong 30 phút qua. */
+  skippedQuota?: string[] | undefined;
 }
 
 function redact(text: string, secrets: string[]): string {
@@ -344,6 +364,15 @@ async function callOnce(
   const res = await sendAndRead(url, apiKey, body, timeoutMs, fetchImpl);
   const after = usageCount();
   const usageRowAdded = after > before;
+  const detail = redact(res.text, [apiKey]);
+  const rawVerdict = perStepConclusion({
+    status: res.status,
+    body: detail,
+    headerReceived: res.headerMs !== null,
+    usageRowAdded,
+    timedOut: res.timedOut,
+  });
+  const classified = classifyStep({ verdict: rawVerdict, body: detail });
   return {
     row: {
       model: '',
@@ -352,14 +381,9 @@ async function callOnce(
       headerMs: res.headerMs,
       firstByteMs: res.firstByteMs,
       totalMs: res.totalMs,
-      verdict: perStepConclusion({
-        status: res.status,
-        body: redact(res.text, [apiKey]),
-        headerReceived: res.headerMs !== null,
-        usageRowAdded,
-        timedOut: res.timedOut,
-      }),
-      detail: redact(res.text, [apiKey]),
+      verdict: classified.verdict as ComboProbeRow['verdict'],
+      quota: classified.quota,
+      detail,
       usageServedBy: usageRowAdded ? usageDelta(before, after) : null,
       firstUsageMs: null,
     },
@@ -534,6 +558,17 @@ export async function runCombosProbeCommand(options: ProbeOptions = {}): Promise
   const combos = selectCombos(state, options);
   if (combos.length === 0) throw new Error('no combo selected');
 
+  // C40 X0: bước đã 429/quota trong tệp kết quả gần đây thì không gửi lại.
+  const skipNow = (options.now ?? Date.now)();
+  const skippedQuota = new Set<string>();
+  for (const file of options.skipQuotaFrom ?? []) {
+    try {
+      for (const step of recentQuotaSteps(readFileSync(file, 'utf8'), skipNow)) skippedQuota.add(step);
+    } catch {
+      // Tệp không đọc được → không bỏ qua bước nào; vẫn ghi rõ trong báo cáo.
+    }
+  }
+
   if (!options.yesSpendTokens) {
     printDryRun(state, combos, baseUrl, comboTimeoutMs, log);
     return {
@@ -547,6 +582,8 @@ export async function runCombosProbeCommand(options: ProbeOptions = {}): Promise
       combos: combos.map((c) => c.name),
       uniqueSteps: uniqueSteps(combos).length,
       rows: [],
+      skippedQuota: [...skippedQuota],
+      requests: { total: 0, limit: options.budget ?? DEFAULT_REQUEST_BUDGET, byProvider: {} },
     };
   }
 
@@ -606,6 +643,9 @@ export async function runCombosProbeCommand(options: ProbeOptions = {}): Promise
   let consecutive429 = 0;
   let stoppedEarly: string | null = null;
   const secrets = [state.apiKey];
+  const budget = new RequestBudget(options.budget ?? DEFAULT_REQUEST_BUDGET);
+  let lastProvider: string | null = null;
+  let lastRequestAtMs: number | null = null;
 
   if (mode === 'combo') {
     for (const combo of combos) {
@@ -617,6 +657,12 @@ export async function runCombosProbeCommand(options: ProbeOptions = {}): Promise
         stoppedEarly = `${MAX_CONSECUTIVE_429} lần 429 liên tiếp`;
         break;
       }
+      if (!budget.reserve(combo.name)) {
+        stoppedEarly = `budget=${budget.limit}`;
+        break;
+      }
+      lastProvider = combo.name;
+      lastRequestAtMs = clock();
       const result = await callComboWithUsage(
         `${baseUrl}/v1/chat/completions`,
         state.apiKey,
@@ -648,38 +694,55 @@ export async function runCombosProbeCommand(options: ProbeOptions = {}): Promise
       );
     }
   } else {
-    const steps = uniqueSteps(combos).filter((s) => (options.only ? new RegExp(options.only).test(s) : true));
+    const selected = uniqueSteps(combos).filter((s) => (options.only ? new RegExp(options.only).test(s) : true));
+    const steps = interleaveProviders(selected);
     const repeat = Math.min(10, Math.max(1, Math.floor(options.repeat ?? 1)));
     for (const step of steps) {
+      if (skippedQuota.has(step)) {
+        log(`${step}\tSKIPPED-QUOTA\thttp=-\ttotal=0ms\tusage=-\tquota=1`);
+        continue;
+      }
       for (let attempt = 1; attempt <= repeat; attempt += 1) {
-      if (clock() > deadline) {
-        stoppedEarly = 'max-minutes';
-        break;
+        if (clock() > deadline) {
+          stoppedEarly = 'max-minutes';
+          break;
+        }
+        if (consecutive429 >= MAX_CONSECUTIVE_429) {
+          stoppedEarly = `${MAX_CONSECUTIVE_429} lần 429 liên tiếp`;
+          break;
+        }
+        const provider = providerOf(step);
+        const waitMs = providerDelayMs(lastProvider, provider, lastRequestAtMs, clock());
+        if (waitMs > 0) await (options.sleepImpl ?? defaultSleep)(waitMs);
+        if (!budget.reserve(provider)) {
+          stoppedEarly = `budget=${budget.limit}`;
+          break;
+        }
+        lastProvider = provider;
+        lastRequestAtMs = clock();
+        const result = await callOnce(
+          `${baseUrl}/v1/chat/completions`,
+          state.apiKey,
+          {
+            model: step,
+            messages: [{ role: 'user', content: 'ping' }],
+            max_tokens: maxTokens,
+            stream: options.stream !== false,
+          },
+          options.stepTimeoutMs ?? STEP_TIMEOUT_MS,
+          fetchImpl,
+          usageCount
+        );
+        if (result.row.verdict === 'RATE-LIMITED') consecutive429 += 1;
+        else consecutive429 = 0;
+        rows.push({ combo: '(step)', ...result.row, model: repeat > 1 ? `${step}#${attempt}` : step });
+        const label = repeat > 1 ? `${step}#${attempt}` : step;
+        const quotaTail = result.row.quota === true ? `\tquota=1\tat=${result.row.startedAt ?? ''}` : '';
+        log(
+          `${label}\t${result.row.verdict}\thttp=${result.row.httpStatus ?? '-'}\ttotal=${result.row.totalMs}ms\tusage=${result.row.usageServedBy ?? 'không có dòng usage'}${quotaTail}`
+        );
       }
-      if (consecutive429 >= MAX_CONSECUTIVE_429) {
-        stoppedEarly = `${MAX_CONSECUTIVE_429} lần 429 liên tiếp`;
-        break;
-      }
-      const result = await callOnce(
-        `${baseUrl}/v1/chat/completions`,
-        state.apiKey,
-        {
-          model: step,
-          messages: [{ role: 'user', content: 'ping' }],
-          max_tokens: maxTokens,
-          stream: options.stream !== false,
-        },
-        options.stepTimeoutMs ?? STEP_TIMEOUT_MS,
-        fetchImpl,
-        usageCount
-      );
-      if (result.row.verdict === 'RATE-LIMITED') consecutive429 += 1;
-      else consecutive429 = 0;
-      rows.push({ combo: '(step)', ...result.row, model: repeat > 1 ? `${step}#${attempt}` : step });
-      log(
-        `${repeat > 1 ? `${step}#${attempt}` : step}\t${result.row.verdict}\thttp=${result.row.httpStatus ?? '-'}\ttotal=${result.row.totalMs}ms\tusage=${result.row.usageServedBy ?? 'không có dòng usage'}`
-      );
-      }
+      if (stoppedEarly) break;
     }
   }
 
@@ -694,6 +757,17 @@ export async function runCombosProbeCommand(options: ProbeOptions = {}): Promise
     combos: combos.map((c) => c.name),
     uniqueSteps: uniqueSteps(combos).length,
     rows,
+    skippedQuota: [...skippedQuota],
+    requests: {
+      total: budget.count,
+      limit: budget.limit,
+      byProvider: Object.fromEntries(
+        [...new Set(rows.map((r) => providerOf(r.model)))].map((p) => [
+          p,
+          rows.filter((r) => providerOf(r.model) === p).length,
+        ])
+      ),
+    },
   };
 
   if (options.json) {
@@ -703,6 +777,8 @@ export async function runCombosProbeCommand(options: ProbeOptions = {}): Promise
     for (const r of rows) tally.set(r.verdict, (tally.get(r.verdict) ?? 0) + 1);
     log('');
     log(`bắt đầu=${startedAt} tổng=${rows.length} ${[...tally.entries()].map(([k, v]) => `${k}=${v}`).join(' ')}`);
+    if (skippedQuota.size > 0) log(`SKIPPED-QUOTA=${skippedQuota.size}`);
+    log(budget.tally());
     if (stoppedEarly) log(`dừng sớm: ${stoppedEarly}`);
   }
   void secrets;

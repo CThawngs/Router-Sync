@@ -18,6 +18,7 @@ import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { basename, dirname } from 'node:path';
 import { locateRouterDb } from '@routersync/core';
 import { readRouterState } from './combos-probe.js';
+import { formatReorderBody, hangMoves, parseReliabilityText, reorderCombo, sameSteps } from './combos-reorder.js';
 
 export type ProbeVerdict =
   | 'OK'
@@ -276,6 +277,8 @@ export interface PlanOptions {
   log?: (line: string) => void;
   readState?: () => { combos: Array<{ name: string; steps: string[] }>; dbPath?: string | undefined };
   strategies?: Record<string, string> | undefined;
+  /** C40 X1: ghi danh sách sắp xếp lại (tên thật) ra tệp này. */
+  emitReorder?: string | undefined;
 }
 
 /** C34 Q0.4: dự đoán chỉ tính phần trước bước phục vụ. */
@@ -326,6 +329,41 @@ export function runCombosPlan(options: PlanOptions): PlanFile {
   writeFileSync(options.out, `${JSON.stringify(plan, null, 2)}\n`, 'utf8');
   log(`đã ghi kế hoạch: ${options.out} (${combos.length} combo)`);
   log(`nhóm: ${Object.entries(counts).map(([k, v]) => `${k}=${v}`).join(' ')}`);
+
+  if (options.emitReorder) {
+    const rel = new Map<string, import('./combos-reorder.js').ReliabilityInfo>();
+    for (const file of options.from) {
+      try {
+        for (const [step, info] of parseReliabilityText(readFileSync(file, 'utf8'))) rel.set(step, info);
+      } catch {
+        // Tệp không đọc được thì bỏ qua số đo Reliability.
+      }
+    }
+    const lines = [
+      '# Sắp xếp lại combo 9Router — BẢN TÊN THẬT (không đưa lên GitHub)',
+      '# Thứ tự fallback: bước nhanh/ổn định trước; HANG ở cuối nhưng không xoá.',
+      '',
+    ];
+    let totalBefore = 0;
+    let totalAfter = 0;
+    for (const c of state.combos) {
+      const result = reorderCombo(c.steps, stats, rel);
+      if (!sameSteps(c.steps, result.order)) throw new Error(`sắp xếp lại làm mất/nhân đôi bước ở combo ${c.name}`);
+      totalBefore += c.steps.length;
+      totalAfter += result.order.length;
+      lines.push(`## ${c.name} (${c.steps.length} bước)`, ...formatReorderBody(result));
+      if (c.name === '9Router-Agent-1') {
+        const moves = hangMoves(result);
+        lines.push(`# 9Router-Agent-1: ${moves.length} bước HANG, vị trí cũ -> mới:`);
+        for (const m of moves) lines.push(`#   ${m.step}: ${m.oldIndex} -> ${m.newIndex}`);
+        lines.push('# Không in predictedHeaderMs: mô hình cũ sai số tới 80.8% (C33).');
+        lines.push('');
+      }
+    }
+    mkdirSync(dirname(options.emitReorder), { recursive: true });
+    writeFileSync(options.emitReorder, `${lines.join('\n')}\n`, 'utf8');
+    log(`đã ghi sắp xếp lại: ${options.emitReorder} (${totalBefore} bước trước, ${totalAfter} bước sau)`);
+  }
   return plan;
 }
 

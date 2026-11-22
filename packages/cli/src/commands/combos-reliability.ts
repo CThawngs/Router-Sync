@@ -5,7 +5,17 @@
  * Mỗi bước: `rounds` vòng, mỗi vòng `repeat` request, cách `gapSec` giây,
  * hạn 30 s, max_tokens 8, stream bật, tuần tự.
  */
+import { readFileSync } from 'node:fs';
 import { perStepConclusion, type ComboProbeRow, type VerdictInput } from './combos-probe.js';
+import {
+  classifyStep,
+  interleaveProviders,
+  providerDelayMs,
+  providerOf,
+  recentQuotaSteps,
+  RequestBudget,
+  DEFAULT_REQUEST_BUDGET,
+} from './combos-budget.js';
 import { createRequire } from 'node:module';
 import os from 'node:os';
 import path from 'node:path';
@@ -52,13 +62,18 @@ async function probeStep(
     timedOut = true;
     text = err instanceof Error ? err.message : String(err);
   }
+  const body = text.replace(new RegExp(key, 'g'), '<KEY>').slice(0, 200);
   const input: VerdictInput = {
     status,
-    body: text.replace(new RegExp(key, 'g'), '<KEY>').slice(0, 200),
+    body,
     headerReceived: headerMs !== null,
     usageRowAdded: false,
     timedOut,
   };
+  const classified = classifyStep({
+    verdict: perStepConclusion(input),
+    body,
+  });
   return {
     combo: '(step)',
     model: step,
@@ -66,8 +81,9 @@ async function probeStep(
     headerMs,
     firstByteMs: headerMs,
     totalMs: Date.now() - t0,
-    verdict: perStepConclusion(input),
-    detail: input.body ?? '',
+    verdict: classified.verdict as ComboProbeRow['verdict'],
+    quota: classified.quota,
+    detail: body,
     usageServedBy: null,
   };
 }
@@ -143,9 +159,20 @@ export interface ReliabilityOptions {
   baseUrl?: string;
   fetchImpl?: typeof fetch;
   log?: (line: string) => void;
+  /** C40 X0 */
+  budget?: number | undefined;
+  skipQuotaFrom?: string[] | undefined;
+  sleepImpl?: (ms: number) => Promise<void> | undefined;
 }
 
-export async function runReliability(options: ReliabilityOptions): Promise<{ steps: StepReliability[]; skipped: string[] }> {
+export interface ReliabilityResult {
+  steps: StepReliability[];
+  skipped: string[];
+  skippedQuota: string[];
+  requests: string;
+}
+
+export async function runReliability(options: ReliabilityOptions): Promise<ReliabilityResult> {
   const log = options.log ?? ((l: string) => console.log(l));
   if (!options.from) throw new Error('--from là bắt buộc (tệp kết quả combos probe --mode step)');
   const raw = await import('node:fs').then((fs) => fs.readFileSync(options.from, 'utf8'));
@@ -163,17 +190,47 @@ export async function runReliability(options: ReliabilityOptions): Promise<{ ste
   const budgetMs = Math.max(1, options.maxMinutes ?? 40) * 60_000;
   const t0 = Date.now();
 
-  log(`bước cần đo: ${targetSteps.length} (giới hạn 70)`);
+  const skippedQuota = new Set<string>();
+  for (const file of options.skipQuotaFrom ?? []) {
+    try {
+      for (const step of recentQuotaSteps(readFileSync(file, 'utf8'), Date.now())) skippedQuota.add(step);
+    } catch {
+      //Không đọc được thì không bỏ qua bước nào.
+    }
+  }
+  const steps = interleaveProviders(targetSteps);
+  const budget = new RequestBudget(options.budget ?? DEFAULT_REQUEST_BUDGET);
+  const sleep = options.sleepImpl ?? ((ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms)));
+  let lastProvider: string | null = null;
+  let lastAtMs: number | null = null;
+
+  log(`bước cần đo: ${steps.length} (giới hạn 70)`);
+  if (skippedQuota.size > 0) log(`SKIPPED-QUOTA=${skippedQuota.size}`);
   const out: StepReliability[] = [];
   const skipped: string[] = [];
-  for (const step of targetSteps) {
+  for (const step of steps) {
+    if (skippedQuota.has(step)) {
+      log(`${step}\tSKIPPED-QUOTA\thttp=-\ttotal=0ms\tusage=-\tquota=1`);
+      continue;
+    }
     if (Date.now() - t0 > budgetMs) {
       skipped.push(step);
       continue;
     }
+    const provider = providerOf(step);
     const rows: ComboProbeRow[] = [];
-    for (let round = 1; round <= rounds; round += 1) {
+    let exhausted = false;
+    for (let round = 1; round <= rounds && !exhausted; round += 1) {
       for (let i = 1; i <= repeat; i += 1) {
+        const waitMs = providerDelayMs(lastProvider, provider, lastAtMs, Date.now());
+        if (waitMs > 0) await sleep(waitMs);
+        if (!budget.reserve(provider)) {
+          skipped.push(step);
+          exhausted = true;
+          break;
+        }
+        lastProvider = provider;
+        lastAtMs = Date.now();
         const r = await probeStep(step, {
           maxTokens: 8,
           timeoutMs: STEP_TIMEOUT_MS,
@@ -181,13 +238,16 @@ export async function runReliability(options: ReliabilityOptions): Promise<{ ste
           baseUrl: options.baseUrl,
         });
         rows.push(r);
-        if (i < repeat || round < rounds) await new Promise((resolve) => setTimeout(resolve, gapSec * 1000));
+        if (i < repeat || round < rounds) await sleep(gapSec * 1000);
       }
     }
+    if (rows.length === 0) continue;
     const summary = summarizeAttempts(step, rows);
     out.push(summary);
-    log(`${step}\t${summary.label}\tok=${summary.ok}/${summary.attempts}\tp90=${summary.p90 ?? '-'}ms`);
+    const quotaTail = rows.some((r) => r.quota === true) ? '\tquota=1' : '';
+    log(`${step}\t${summary.label}\tok=${summary.ok}/${summary.attempts}\tp90=${summary.p90 ?? '-'}ms${quotaTail}`);
   }
   if (skipped.length) log(`chưa đo: ${skipped.length} bước (hết ngân sách)`);
-  return { steps: out, skipped };
+  log(budget.tally());
+  return { steps: out, skipped, skippedQuota: [...skippedQuota], requests: budget.tally() };
 }

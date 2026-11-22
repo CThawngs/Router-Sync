@@ -32,6 +32,43 @@ giữ nguyên khả năng failover giữa các account/provider.
 Nếu không dùng, xóa combo trong dashboard. RouterSync không xóa giúp: mọi thao tác
 ghi vào router cần chủ dự án tự làm.
 
+## Sắp xếp lại combo có sẵn (C40 X1)
+
+Không cần xóa bước để sửa thứ tự. Lệnh sau **chỉ đọc DB** và ghi một tệp kế
+hoạch + một tệp thứ tự mới:
+
+```
+routersync combos plan \
+  --from evidence/C38/w4-reliability.out.txt \
+  --from evidence/C32/c32-probe-step.out.txt \
+  --out combo-plan.json \
+  --emit-reorder reorder.real.txt
+```
+
+Thứ tự mới xếp theo hạng:
+
+| hạng | nội dung |
+|---|---|
+| 1 | `RELIABLE`, sort theo p90 tăng dần — đây là các bước trả lời trước |
+| 2 | `SLOW` |
+| 3 | `RATE-LIMITED` (quota) — thất bại nhanh, giữ lại để dùng khi quota hồi |
+| 4 | chưa đo |
+| 5 | lỗi nhanh cứng (404/405/400/410) |
+| 6 | `HANG` và 503 chậm (≥2 s) — **đặt cuối cùng, không xoá** |
+
+Trong cùng hạng, thứ tự gốc được giữ khi chưa có số đo, và provider được xen kẽ
+để một provider nghẽn không chặn cả hạng. Tệp `--emit-reorder` chứa **tên thật**,
+chỉ dùng local; bản đã che tên riêng nằm trong gói bằng chứng.
+
+Với `9Router-Agent-1` (combo OpenMausBot đang dùng), tệp in thêm vị trí cũ → mới
+của từng bước `HANG`. Lệnh **không in `predictedHeaderMs` như một con số đáng tin**
+— mô hình cũ có sai số trung vị 33,7%, tối đa 80,8% (C33). Chỉ nên đọc danh sách
+"các bước đứng trước bước chạy được đầu tiên" và đối chiếu với số đo thật gần
+nhất.
+
+Sau khi có thứ tự mới: mở dashboard 9Router, sửa thứ tự bước của combo rồi lưu.
+RouterSync không tự sửa combo.
+
 ## Giữ xoay vòng tài khoản, dùng fallback ở cấp combo
 
 - Giữ nguyên cấu hình provider/account (nhiều tài khoản mỗi provider) — đây là nơi xoay vòng khi hết quota.
