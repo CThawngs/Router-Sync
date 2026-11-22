@@ -178,6 +178,8 @@ export interface PlanVariant {
 
 export interface ComboPlan {
   combo: string;
+  /** C38 W2 */
+  strategy?: string | undefined;
   order: string[];
   planA: PlanVariant;
   planB: PlanVariant;
@@ -188,7 +190,12 @@ export interface ComboPlan {
   untested: string[];
 }
 
-export function buildComboPlan(combo: string, order: string[], stats: Map<string, StepStat>): ComboPlan {
+export function buildComboPlan(
+  combo: string,
+  order: string[],
+  stats: Map<string, StepStat>,
+  strategies?: Record<string, string>
+): ComboPlan {
   const groupOf = (s: string): PlanGroup => stats.get(s)?.group ?? 'UNTESTED';
   const remove = order.filter((s) => groupOf(s) === 'REMOVE');
   const moveEnd = order.filter((s) => groupOf(s) === 'MOVE-END');
@@ -205,6 +212,7 @@ export function buildComboPlan(combo: string, order: string[], stats: Map<string
 
   return {
     combo,
+    strategy: strategies?.[combo],
     order,
     planA: {
       name: `${combo} (gọn)`,
@@ -254,6 +262,8 @@ export interface PlanFile {
   counts: Record<PlanGroup, number>;
   /** C34 Q0.4: cảnh báo về độ tin cậy của predictedHeaderMs. */
   modelCaveat: string;
+  /** C38 W2: cảnh báo chiến lược combo, kèm số đo W1. */
+  strategyWarning?: string | undefined;
   combos: ComboPlan[];
   note: string;
 }
@@ -265,6 +275,7 @@ export interface PlanOptions {
   minGapMinutes?: number;
   log?: (line: string) => void;
   readState?: () => { combos: Array<{ name: string; steps: string[] }>; dbPath?: string | undefined };
+  strategies?: Record<string, string> | undefined;
 }
 
 /** C34 Q0.4: dự đoán chỉ tính phần trước bước phục vụ. */
@@ -291,7 +302,7 @@ export function runCombosPlan(options: PlanOptions): PlanFile {
   const counts: Record<PlanGroup, number> = { REMOVE: 0, 'MOVE-END': 0, KEEP: 0, 'FAST-ERROR': 0, UNTESTED: 0 };
   for (const s of stats.values()) counts[s.group] += 1;
 
-  const combos = state.combos.map((c) => buildComboPlan(c.name, c.steps, stats));
+  const combos = state.combos.map((c) => buildComboPlan(c.name, c.steps, stats, options.strategies));
   const plan: PlanFile = {
     generatedAt: new Date().toISOString(),
     router: options.router ?? '9router',
@@ -305,6 +316,10 @@ export function runCombosPlan(options: PlanOptions): PlanFile {
     modelCaveat: MODEL_CAVEAT,
     combos,
     note: NOTE,
+    strategyWarning:
+      'RISK-ROUND-ROBIN: combo round-robin có thể thử nhiều bước trước khi trả header; ' +
+      'giữ xoay vòng tài khoản ở cấp provider và cân nhắc fallback ở cấp combo. ' +
+      'Xem số đo W1 trong evidence/c38.',
   };
 
   mkdirSync(dirname(options.out), { recursive: true });
@@ -314,7 +329,11 @@ export function runCombosPlan(options: PlanOptions): PlanFile {
   return plan;
 }
 
-function readComboOrder(router: string): { combos: Array<{ name: string; steps: string[] }>; dbPath?: string | undefined } {
+function readComboOrder(router: string): {
+  combos: Array<{ name: string; steps: string[] }>;
+  dbPath?: string | undefined;
+  strategies?: Record<string, string> | undefined;
+} {
   const st = readRouterState();
   let dbPath: string | undefined;
   try {
@@ -322,5 +341,5 @@ function readComboOrder(router: string): { combos: Array<{ name: string; steps: 
   } catch {
     dbPath = undefined;
   }
-  return { combos: st.combos.map((c) => ({ name: c.name, steps: c.steps })), dbPath };
+  return { combos: st.combos.map((c) => ({ name: c.name, steps: c.steps })), dbPath, strategies: undefined };
 }

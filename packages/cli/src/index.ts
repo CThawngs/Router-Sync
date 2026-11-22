@@ -521,6 +521,8 @@ export function createCliProgram(): Command {
     .option('--yes-spend-tokens', 'Actually send requests (spends the owner\'s tokens)')
     .option('--max-minutes <n>', 'Wall-clock budget for a real run', '40')
     .option('--combo-timeout-sec <n>', 'Per-combo deadline in seconds (1..600, default 120)')
+    .option('--stop-after-sec <n>', 'Alias for per-combo deadline (hard cap for a measurement round)')
+    .option('--strategy-report', 'Include each combo strategy in the report')
     .option('--only <regex>', 'Step mode: only probe steps matching this regex')
     .option('--timeline', 'Record every new usageHistory row while waiting (1 s poll)')
     .option('--max-tokens <n>', 'max_tokens per request (1..64, default 8)', '8')
@@ -535,6 +537,8 @@ export function createCliProgram(): Command {
         yesSpendTokens?: boolean;
         maxMinutes?: string;
         comboTimeoutSec?: string;
+        stopAfterSec?: string;
+        strategyReport?: boolean;
         only?: string;
         timeline?: boolean;
         maxTokens?: string;
@@ -550,6 +554,8 @@ export function createCliProgram(): Command {
           yesSpendTokens: opts.yesSpendTokens,
           maxMinutes: Number(opts.maxMinutes ?? 40),
           comboTimeoutSec: opts.comboTimeoutSec === undefined ? undefined : Number(opts.comboTimeoutSec),
+          stopAfterSec: opts.stopAfterSec === undefined ? undefined : Number(opts.stopAfterSec),
+          strategyReport: opts.strategyReport === true,
           only: opts.only,
           timeline: opts.timeline,
           maxTokens: opts.maxTokens === undefined ? undefined : Number(opts.maxTokens),

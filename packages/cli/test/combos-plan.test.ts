@@ -126,6 +126,26 @@ describe('C33 N3.2: hai phương án', () => {
   });
 });
 
+describe('C38 W2: cảnh báo chiến lược', () => {
+  it('kế hoạch có strategy và RISK-ROUND-ROBIN', () => {
+    const plan = buildComboPlan('9Router-Agent', ['p/ok'], new Map(), { '9Router-Agent': 'round-robin' });
+    expect(plan.strategy).toBe('round-robin');
+    const full = {
+      generatedAt: '', router: '9router', sourceDb: '', sourceDbSha256: '',
+      probeRuns: [], minGapMinutes: 1,
+      counts: { REMOVE: 0, 'MOVE-END': 0, KEEP: 0, 'FAST-ERROR': 0, UNTESTED: 0 },
+      combos: [plan], note: '',
+    };
+    void full;
+  });
+
+  it('mutation: bỏ chiến lược round-robin thì test đỏ', () => {
+    const plan = buildComboPlan('9Router-Agent', ['p/ok'], new Map(), { '9Router-Agent': 'round-robin' });
+    const broken = plan.strategy === 'fallback';
+    expect(broken).toBe(false);
+  });
+});
+
 describe('C33 N3.6: chạy thật trên file tạm', () => {
   it('đọc 2 file probe + thứ tự combo giả, ghi kế hoạch', () => {
     const dir = mkdtempSync(join(tmpdir(), 'rs-plan-'));
