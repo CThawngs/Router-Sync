@@ -19,6 +19,7 @@ import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import { join, basename } from 'node:path';
 import { homedir, userInfo, tmpdir } from 'node:os';
 import { floorIssues, effectivePrivateNames } from './private-names.mjs';
+import { personalPatterns } from './scan-private-names.mjs';
 
 const SAFE_VERBS = new Set(['node', 'gh', 'pnpm', 'git', 'npx']);
 
@@ -140,7 +141,12 @@ export function scanPackage(dir, extraNames = []) {
     for (const name of names) {
       if (!name) continue;
       const matches = text.split(name).length - 1;
-      if (matches > 0) hits.push({ file: basename(file), name, matches });
+      if (matches > 0) hits.push({ file: basename(file), name: '<private>', matches });
+    }
+    for (const p of personalPatterns()) {
+      const re = new RegExp(p.regex.source, 'gi');
+      const matches = (text.match(re) ?? []).length;
+      if (matches > 0) hits.push({ file: basename(file), name: p.name, matches });
     }
   }
   return {
