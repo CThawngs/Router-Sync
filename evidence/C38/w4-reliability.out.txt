@@ -1,0 +1,25 @@
+bước cần đo: 39 (giới hạn 70)
+cf/@cf/meta/llama-3.2-3b-instruct	RELIABLE	ok=6/6	p90=674ms
+cf/@cf/meta/llama-3.3-70b-instruct-fp8-fast	RELIABLE	ok=6/6	p90=719ms
+cf/@cf/mistralai/mistral-small-3.1-24b-instruct	RELIABLE	ok=6/6	p90=986ms
+cf/@cf/zai-org/glm-4.7-flash	RELIABLE	ok=6/6	p90=3080ms
+gemini/gemini-3.8-flash	HANG	ok=0/6	p90=3777ms
+gemini/gemini-4-hydrogen	HANG	ok=1/6	p90=17020ms
+groq/allam-2-7b	RELIABLE	ok=6/6	p90=1682ms
+groq/openai/gpt-oss-120b	RELIABLE	ok=6/6	p90=3122ms
+groq/openai/gpt-oss-20b	RELIABLE	ok=6/6	p90=684ms
+groq/qwen/qwen3.8-27b	RELIABLE	ok=6/6	p90=1525ms
+kc/nvidia/nemotron-3-ultra-550b-a55b:free	RELIABLE	ok=6/6	p90=2257ms
+nvidia/google/gemma-4-31b-it	HANG	ok=0/6	p90=-ms
+nvidia/meta/muse-glimmer-30b	HANG	ok=0/6	p90=-ms
+nvidia/nvidia/ising-calibration-1.5-31b	RELIABLE	ok=6/6	p90=895ms
+nvidia/nvidia/nemotron-3-nano-omni-30b-a3b-reasoning	RELIABLE	ok=6/6	p90=1777ms
+nvidia/nvidia/nemotron-3-ultra-550b-a55b	RELIABLE	ok=6/6	p90=2243ms
+nvidia/nvidia/nemotron-3.5-lightning-30b-a3b	RELIABLE	ok=6/6	p90=1754ms
+nvidia/nvidia/nemotron-3.5-super-vl-120b-a12b	RELIABLE	ok=6/6	p90=1884ms
+nvidia/nvidia/riva-translate-4b-instruct-v2	RELIABLE	ok=6/6	p90=1597ms
+nvidia/poolside/laguna-xs-2.1	RELIABLE	ok=6/6	p90=1653ms
+nvidia/stepfun-ai/step-5-preview	HANG	ok=4/6	p90=5354ms
+nvidia/z-ai/glm-5.3-flash	HANG	ok=0/6	p90=-ms
+chưa đo: 17 bước (hết ngân sách)
+xong: 22 bước, chưa đo 17
