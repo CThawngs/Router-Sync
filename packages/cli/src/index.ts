@@ -577,6 +577,35 @@ export function createCliProgram(): Command {
       });
     });
 
+  // router command group (C35 R1: lấy mẫu sức khỏe router)
+  const routerCmd = program.command('router').description('Router health sampling (read-only)');
+
+  routerCmd
+    .command('watch')
+    .description('Sample free RAM, router process and /v1/models latency into a JSONL file')
+    .option('--router <router>', 'Router to sample', '9router')
+    .option('--minutes <n>', 'How long to sample', '10')
+    .option('--interval-sec <n>', 'Seconds between samples', '10')
+    .option('--combo <name>', 'Also probe this combo every --combo-every-min minutes')
+    .option('--combo-every-min <n>', 'Minutes between combo probes', '5')
+    .option('--out <file>', 'Where to write the JSONL samples')
+    .option('--summarize <file>', 'Print a summary of an existing JSONL file and exit')
+    .action(async (opts: { router?: string; minutes?: string; intervalSec?: string; combo?: string; comboEveryMin?: string; out?: string; summarize?: string }) => {
+      const { runRouterWatch, runSummarize } = await import('./commands/router-watch.js');
+      if (opts.summarize) {
+        runSummarize(opts.summarize);
+        return;
+      }
+      const res = await runRouterWatch({
+        minutes: Number(opts.minutes ?? 10),
+        intervalSec: Number(opts.intervalSec ?? 10),
+        combo: opts.combo,
+        comboEveryMin: Number(opts.comboEveryMin ?? 5),
+        out: opts.out,
+      });
+      console.log(`đã ghi ${res.samples} mẫu -> ${res.out}`);
+    });
+
   // verify command (Round C4b F3b: multi-layer verification & accounting)
   program
     .command('verify')
