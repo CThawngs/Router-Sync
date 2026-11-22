@@ -50,6 +50,28 @@ Hàm phân loại là `perStepConclusion()` (thuần, có test cho từng nhánh
 - Hết `--max-minutes`.
 - **5 lần 429 liên tiếp**: dừng, không cố tiếp. Đây là giới hạn cứng, không phải
   gợi ý.
+- **Hết `--budget <n>`** (C40 X0, mặc định 40 request): dừng và liệt kê các bước
+  chưa đo. Bộ đếm cuối lần chạy in `requests=<đã gửi>/<giới hạn>` và số request
+  chia theo provider.
+
+## C40 X0 — thăm dò có tiết kiệm quota
+
+Mỗi lần thăm dò **đều tốn quota gói miễn phí** của provider, kể cả request trả
+404/429/503. Đây là chi phí thật, không phải lỗi của router.
+
+| Cờ / hành vi | Tác dụng |
+|---|---|
+| `--budget <n>` | Trần số request cho một lần chạy (`combos probe` và `combos reliability`). Mặc định 40. |
+| `--skip-quota-from <file>` | Đọc tệp kết quả trước; bước trả `429` / `FreeUsageLimitError` trong 30 phút qua được in là `SKIPPED-QUOTA` và **không gửi lại**. |
+| `quota=1` | Chú thích trên dòng `RATE-LIMITED` do quota, phân biệt với 429 thường. |
+| xen kẽ provider | Tối đa 3 request liên tiếp tới cùng provider; giữa hai request cùng provider cách ít nhất 3 giây. |
+
+Số request đã dùng ở các vòng trước là **ước lượng**: cộng số dòng kết quả trong
+các tệp `*.out.txt` của `evidence/c32` … `evidence/c39`. Chạy
+`node tools/agent/x40-evidence.mjs` để in số theo từng nhánh — đừng gõ tay. Ở lần
+đo C40, con số đó là **381** (trong đó C32 = 354, C38 = 22, C39 = 5); các nhánh
+đã xóa hoặc không còn tệp kết quả thì in 0. Con số này là ước lượng dưới, vì một
+số vòng không lưu đầu ra dạng dòng kết quả.
 
 ## Đọc kết quả
 

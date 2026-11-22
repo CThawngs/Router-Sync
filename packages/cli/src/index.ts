@@ -528,6 +528,8 @@ export function createCliProgram(): Command {
     .option('--max-tokens <n>', 'max_tokens per request (1..64, default 8)', '8')
     .option('--no-stream', 'Send stream: false')
     .option('--repeat <n>', 'Step mode: repeat each step n times', '1')
+    .option('--budget <n>', 'Max requests per run (default 40); stops and lists unmeasured steps')
+    .option('--skip-quota-from <file>', 'Skip steps that returned 429/quota recently (repeatable)')
     .option('--json', 'Output result in JSON format')
     .action(
       async (opts: {
@@ -544,6 +546,8 @@ export function createCliProgram(): Command {
         maxTokens?: string;
         stream?: boolean;
         repeat?: string;
+        budget?: string;
+        skipQuotaFrom?: string[];
         json?: boolean;
       }) => {
         const { runCombosProbeCommand } = await import('./commands/combos-probe.js');
@@ -561,6 +565,8 @@ export function createCliProgram(): Command {
           maxTokens: opts.maxTokens === undefined ? undefined : Number(opts.maxTokens),
           stream: opts.stream === false ? false : undefined,
           repeat: opts.repeat === undefined ? undefined : Number(opts.repeat),
+          budget: opts.budget === undefined ? undefined : Number(opts.budget),
+          skipQuotaFrom: opts.skipQuotaFrom,
           json: opts.json,
         });
       }
@@ -573,13 +579,21 @@ export function createCliProgram(): Command {
     .option('--from <file>', 'Probe output file (repeatable)', (v: string, prev: string[]) => [...prev, v], [] as string[])
     .option('--out <file>', 'Where to write the plan JSON', 'combo-plan.json')
     .option('--min-gap-minutes <n>', 'Minimum gap between two runs that must agree', '1')
-    .action(async (opts: { router?: string; from?: string[]; out?: string; minGapMinutes?: string }) => {
+    .option('--emit-reorder <file>', 'Write a reordered copy of every combo (real names; local only)')
+    .action(async (opts: {
+      router?: string;
+      from?: string[];
+      out?: string;
+      minGapMinutes?: string;
+      emitReorder?: string;
+    }) => {
       const { runCombosPlan } = await import('./commands/combos-plan.js');
       runCombosPlan({
         router: opts.router,
         from: opts.from ?? [],
         out: opts.out ?? 'combo-plan.json',
         minGapMinutes: Number(opts.minGapMinutes ?? 1),
+        emitReorder: opts.emitReorder,
       });
     });
 
@@ -591,7 +605,17 @@ export function createCliProgram(): Command {
     .option('--rounds <r>', 'Rounds per step', '2')
     .option('--gap-sec <s>', 'Gap between requests', '5')
     .option('--max-minutes <n>', 'Total budget', '40')
-    .action(async (opts: { from?: string; repeat?: string; rounds?: string; gapSec?: string; maxMinutes?: string }) => {
+    .option('--budget <n>', 'Max requests per run (default 40)')
+    .option('--skip-quota-from <file>', 'Skip recent 429/quota steps (repeatable)')
+    .action(async (opts: {
+      from?: string;
+      repeat?: string;
+      rounds?: string;
+      gapSec?: string;
+      maxMinutes?: string;
+      budget?: string;
+      skipQuotaFrom?: string[];
+    }) => {
       const { runReliability } = await import('./commands/combos-reliability.js');
       const res = await runReliability({
         from: opts.from ?? '',
@@ -599,8 +623,10 @@ export function createCliProgram(): Command {
         rounds: Number(opts.rounds ?? 2),
         gapSec: Number(opts.gapSec ?? 5),
         maxMinutes: Number(opts.maxMinutes ?? 40),
+        budget: opts.budget === undefined ? undefined : Number(opts.budget),
+        skipQuotaFrom: opts.skipQuotaFrom,
       });
-      console.log('xong: ' + res.steps.length + ' bước, chưa đo ' + res.skipped.length);
+      console.log('xong: ' + res.steps.length + ' bước, chưa đo ' + res.skipped.length + '; ' + res.requests);
     });
 
   // router command group (C35 R1: lấy mẫu sức khỏe router)
