@@ -19,7 +19,8 @@
 
 import { spawnSync } from 'node:child_process';
 import { readFileSync, existsSync } from 'node:fs';
-import { join, dirname } from 'node:path';
+import { join, dirname, resolve } from 'node:path';
+import { homedir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { localPrivateNames, effectivePrivateNames } from './private-names.mjs';
 
@@ -32,7 +33,31 @@ if (argv.length < 3 || sep !== 1) {
 const id = argv[0];
 const command = argv.slice(sep + 1);
 
-const names = effectivePrivateNames();
+// T0.3: ngoài tên riêng, đưa cả đường dẫn của repo và đoạn OneDrive/<HOME>
+// vào danh sách che của capture.mjs. capture.mjs sẽ che TRƯỚC khi tính sha256,
+// nên bản ghi vẫn khớp tệp — không sửa tay tệp do capture sinh ra.
+function maskNames() {
+  const names = effectivePrivateNames();
+  const repo = resolve(process.cwd());
+  const home = homedir();
+  const afterHome = repo.replace(home, '<HOME>');
+  const oneDrive = join(home, 'OneDrive', 'Documents');
+  const extra = [
+    repo,
+    repo.replace(/\\/g, '/'),
+    afterHome,
+    afterHome.replace(/\\/g, '/'),
+    oneDrive,
+    oneDrive.replace(/\\/g, '/'),
+    'OneDrive\\Documents',
+    'OneDrive/Documents',
+  ];
+  const seen = new Set(names);
+  for (const e of extra) if (e && e.length > 8) seen.add(e);
+  return [...seen];
+}
+
+const names = maskNames();
 if (names.length === 0) {
   console.error('[capture-evidence] danh sách tên riêng rỗng — từ chối chạy (che thiếu còn tệ hơn không chạy)');
   process.exit(2);
