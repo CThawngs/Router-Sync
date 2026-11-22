@@ -1,0 +1,12 @@
+9Router-Coder-3	a: mt8 stream	OK	header=1121ms	total=1124ms	usageRows=0	first=-	last=-
+9Router-Coder-3	b: mt64 stream	OK	header=1684ms	total=1687ms	usageRows=1	first=1696ms opencode/deepseek-v4.1-flash-free	last=1696ms opencode/deepseek-v4.1-flash-free
+9Router-Coder-3	c: mt8 no-stream	OK	header=2434ms	total=2435ms	usageRows=1	first=2437ms opencode/deepseek-v4.1-flash-free	last=2437ms opencode/deepseek-v4.1-flash-free
+9Router-Coder-3	d: mt64 no-stream	OK	header=667ms	total=669ms	usageRows=1	first=669ms opencode/deepseek-v4.1-flash-free	last=669ms opencode/deepseek-v4.1-flash-free
+9Router-Agent-1	a: mt8 stream	OK	header=1411ms	total=1413ms	usageRows=1	first=1423ms opencode/deepseek-v4.1-flash-free	last=1423ms opencode/deepseek-v4.1-flash-free
+9Router-Agent-1	b: mt64 stream	OK	header=1038ms	total=1039ms	usageRows=1	first=1048ms opencode/deepseek-v4.1-flash-free	last=1048ms opencode/deepseek-v4.1-flash-free
+9Router-Agent-1	c: mt8 no-stream	OK	header=1256ms	total=1257ms	usageRows=1	first=1263ms opencode/deepseek-v4.1-flash-free	last=1263ms opencode/deepseek-v4.1-flash-free
+9Router-Agent-1	d: mt64 no-stream	OK	header=3348ms	total=3349ms	usageRows=1	first=3351ms opencode/deepseek-v4.1-flash-free	last=3351ms opencode/deepseek-v4.1-flash-free
+
+# tổng hợp
+9Router-Coder-3: n=4 header=4 usageRows=0/1/1/1
+9Router-Agent-1: n=4 header=4 usageRows=1/1/1/1

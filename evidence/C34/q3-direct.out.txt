@@ -1,0 +1,23 @@
+openrouter/baidu/ernie-5.5-flash-preview:free	a: mt8 stream	OK	http=200	header=1804ms	total=1805ms
+openrouter/baidu/ernie-5.5-flash-preview:free	a: mt8 stream	OK	http=200	header=946ms	total=950ms
+openrouter/baidu/ernie-5.5-flash-preview:free	a: mt8 stream	OK	http=200	header=1276ms	total=1276ms
+openrouter/baidu/ernie-5.5-flash-preview:free	b: mt64 stream	OK	http=200	header=1492ms	total=1495ms
+openrouter/baidu/ernie-5.5-flash-preview:free	b: mt64 stream	OK	http=200	header=1226ms	total=1227ms
+openrouter/baidu/ernie-5.5-flash-preview:free	b: mt64 stream	OK	http=200	header=1059ms	total=1060ms
+groq/qwen/qwen3.8-27b	a: mt8 stream	OK	http=200	header=308ms	total=309ms
+groq/qwen/qwen3.8-27b	a: mt8 stream	OK	http=200	header=296ms	total=297ms
+groq/qwen/qwen3.8-27b	a: mt8 stream	OK	http=200	header=280ms	total=281ms
+groq/qwen/qwen3.8-27b	b: mt64 stream	OK	http=200	header=335ms	total=337ms
+groq/qwen/qwen3.8-27b	b: mt64 stream	OK	http=200	header=293ms	total=294ms
+groq/qwen/qwen3.8-27b	b: mt64 stream	OK	http=200	header=276ms	total=276ms
+gemini/gemini-4-hydrogen	a: mt8 stream	OK	http=200	header=3836ms	total=3837ms
+gemini/gemini-4-hydrogen	a: mt8 stream	OK	http=200	header=12070ms	total=12070ms
+gemini/gemini-4-hydrogen	a: mt8 stream	OK	http=200	header=4427ms	total=4428ms
+gemini/gemini-4-hydrogen	b: mt64 stream	OK	http=200	header=3111ms	total=3112ms
+gemini/gemini-4-hydrogen	b: mt64 stream	OK	http=200	header=2779ms	total=2783ms
+gemini/gemini-4-hydrogen	b: mt64 stream	OK	http=200	header=9770ms	total=9772ms
+
+# tổng hợp theo model
+openrouter/baidu/ernie-5.5-flash-preview:free: n=6 header min/med/max=946/1276/1804 ms
+groq/qwen/qwen3.8-27b: n=6 header min/med/max=276/296/335 ms
+gemini/gemini-4-hydrogen: n=6 header min/med/max=2779/4427/12070 ms
