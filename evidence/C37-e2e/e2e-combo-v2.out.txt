@@ -1,0 +1,6 @@
+  usage@2605ms opencode/deepseek-v4.1-flash-free status=ok tokens_out=3
+9Router-Coder-3	OK	http=200	header=2510ms	firstByte=2511ms	total=2513ms	usageAt=2605ms	usage=opencode/deepseek-v4.1-flash-free
+9Router-Agent-1	OK	http=200	header=2393ms	firstByte=2393ms	total=2393ms	usageAt=-ms	usage=không có dòng usage
+9Router-Dev	OK	http=200	header=2440ms	firstByte=2441ms	total=2441ms	usageAt=-ms	usage=không có dòng usage
+
+bắt đầu=2026-11-22T07:56:39.143Z tổng=3 OK=3

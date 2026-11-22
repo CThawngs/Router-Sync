@@ -1,0 +1,25 @@
+  usage@14140ms cloudflare-ai/@cf/zai-org/glm-4.7-flash status=ok tokens_out=8
+  usage@22307ms opencode/hy4-flash-free status=ok tokens_out=8
+  usage@23874ms opencode/mimo-v2.6-flash-free status=ok tokens_out=8
+  usage@55318ms openrouter/nvidia/nemotron-3.5-super-vl:free status=ok tokens_out=8
+  usage@58425ms opencode/nemotron-3.5-super-vl-free status=ok tokens_out=8
+  usage@116085ms cloudflare-ai/@cf/zai-org/glm-4.7-flash status=ok tokens_out=8
+9Router-Agent	HANG-AFTER-USAGE	http=-	header=-ms	firstByte=-ms	total=120023ms	usageAt=14140ms	usage=cloudflare-ai/@cf/zai-org/glm-4.7-flash
+  usage@623ms opencode/hy4-flash-free status=ok tokens_out=9
+  usage@1384ms opencode/deepseek-v4.1-flash-free status=ok tokens_out=3
+9Router-Agent-1	OK	http=200	header=1382ms	firstByte=1383ms	total=1383ms	usageAt=623ms	usage=opencode/deepseek-v4.1-flash-free
+9Router-Agent-2	OK	http=200	header=1815ms	firstByte=1815ms	total=1816ms	usageAt=-ms	usage=không có dòng usage
+  usage@1113ms opencode/mimo-v2.6-flash-free status=ok tokens_out=8
+  usage@2217ms opencode/deepseek-v4.1-flash-free status=ok tokens_out=3
+  usage@2277ms openrouter/nvidia/nemotron-3.5-super-vl:free status=ok tokens_out=8
+9Router-Coder-1	OK	http=200	header=2205ms	firstByte=2205ms	total=2206ms	usageAt=1113ms	usage=openrouter/nvidia/nemotron-3.5-super-vl:free
+  usage@2ms opencode/nemotron-3.5-super-vl-free status=ok tokens_out=10
+  usage@1761ms opencode/deepseek-v4.1-flash-free status=ok tokens_out=3
+9Router-Coder-2	OK	http=200	header=1749ms	firstByte=1750ms	total=1751ms	usageAt=2ms	usage=opencode/deepseek-v4.1-flash-free
+  usage@2760ms opencode/deepseek-v4.1-flash-free status=ok tokens_out=3
+9Router-Coder-3	OK	http=200	header=2752ms	firstByte=2752ms	total=2753ms	usageAt=2760ms	usage=opencode/deepseek-v4.1-flash-free
+9Router-Coder-4	OK	http=200	header=2078ms	firstByte=2078ms	total=2079ms	usageAt=-ms	usage=không có dòng usage
+9Router-Coder-5	OK	http=200	header=2461ms	firstByte=2461ms	total=2462ms	usageAt=-ms	usage=không có dòng usage
+9Router-Dev	OK	http=200	header=2152ms	firstByte=2152ms	total=2152ms	usageAt=-ms	usage=không có dòng usage
+
+bắt đầu=2026-11-22T08:08:57.271Z tổng=9 HANG-AFTER-USAGE=1 OK=8

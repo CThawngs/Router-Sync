@@ -1,0 +1,16 @@
+  usage@1983ms opencode/deepseek-v4.1-flash-free status=ok tokens_out=3
+9Router-Agent	OK	http=200	header=1976ms	firstByte=1977ms	total=1978ms	usageAt=1983ms	usage=opencode/deepseek-v4.1-flash-free
+9Router-Agent-1	OK	http=200	header=1324ms	firstByte=1324ms	total=1326ms	usageAt=-ms	usage=không có dòng usage
+  usage@1480ms opencode/deepseek-v4.1-flash-free status=ok tokens_out=3
+9Router-Agent-2	OK	http=200	header=1469ms	firstByte=1470ms	total=1471ms	usageAt=1480ms	usage=opencode/deepseek-v4.1-flash-free
+  usage@894ms opencode/deepseek-v4.1-flash-free status=ok tokens_out=3
+9Router-Coder-1	OK	http=200	header=883ms	firstByte=884ms	total=884ms	usageAt=894ms	usage=opencode/deepseek-v4.1-flash-free
+  usage@2803ms opencode/deepseek-v4.1-flash-free status=ok tokens_out=3
+9Router-Coder-2	OK	http=200	header=2794ms	firstByte=2794ms	total=2794ms	usageAt=2803ms	usage=opencode/deepseek-v4.1-flash-free
+  usage@1482ms opencode/deepseek-v4.1-flash-free status=ok tokens_out=3
+9Router-Coder-3	OK	http=200	header=1473ms	firstByte=1474ms	total=1474ms	usageAt=1482ms	usage=opencode/deepseek-v4.1-flash-free
+9Router-Coder-4	OK	http=200	header=2343ms	firstByte=2343ms	total=2343ms	usageAt=-ms	usage=không có dòng usage
+9Router-Coder-5	OK	http=200	header=2625ms	firstByte=2626ms	total=2626ms	usageAt=-ms	usage=không có dòng usage
+9Router-Dev	OK	http=200	header=1563ms	firstByte=1564ms	total=1564ms	usageAt=-ms	usage=không có dòng usage
+
+bắt đầu=2026-11-22T07:57:20.946Z tổng=9 OK=9
