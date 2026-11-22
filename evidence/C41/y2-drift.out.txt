@@ -1,0 +1,3 @@
+instance                model                   kết luận
+openai-compat-<uuid>    9Router-Agent-1         OK (231 bước, fallback)
+  bước chạy được đầu tiên ở vị trí 0

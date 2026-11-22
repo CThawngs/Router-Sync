@@ -1,0 +1,27 @@
+# rs-fast (bản thật, C40)
+cf/@cf/meta/llama-3.3-70b-instruct-fp8-fast
+groq/openai/gpt-oss-120b
+nvidia/nvidia/nemotron-3-ultra-550b-a55b
+kc/nvidia/nemotron-3-ultra-550b-a55b:free
+cf/@cf/mistralai/mistral-small-3.1-24b-instruct
+groq/qwen/qwen3.8-27b
+nvidia/nvidia/nemotron-3-nano-omni-30b-a3b-reasoning
+cf/@cf/meta/llama-3.2-3b-instruct
+groq/openai/gpt-oss-20b
+cf/@cf/zai-org/glm-4.7-flash
+groq/allam-2-7b
+# rs-max (bản thật, C40)
+cf/@cf/meta/llama-3.3-70b-instruct-fp8-fast
+groq/openai/gpt-oss-120b
+nvidia/nvidia/nemotron-3-ultra-550b-a55b
+kc/nvidia/nemotron-3-ultra-550b-a55b:free
+cf/@cf/mistralai/mistral-small-3.1-24b-instruct
+groq/qwen/qwen3.8-27b
+nvidia/nvidia/nemotron-3-nano-omni-30b-a3b-reasoning
+cf/@cf/meta/llama-3.2-3b-instruct
+groq/openai/gpt-oss-20b
+cf/@cf/zai-org/glm-4.7-flash
+groq/allam-2-7b
+nvidia/poolside/laguna-xs-2.1
+nvidia/nvidia/nemotron-3.5-lightning-30b-a3b
+nvidia/nvidia/nemotron-3.5-super-vl-120b-a12b
