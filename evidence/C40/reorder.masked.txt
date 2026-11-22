@@ -1,0 +1,2647 @@
+# Sắp xếp lại combo 9Router — BẢN TÊN THẬT (không đưa lên GitHub)
+# Thứ tự fallback: bước nhanh/ổn định trước; HANG ở cuối nhưng không xoá.
+
+## 9Router-Agent (230 bước)
+# hạng 1 — RELIABLE (p90 tăng dần)
+cf/@cf/meta/llama-3.2-3b-instruct
+groq/openai/gpt-oss-20b
+openrouter/openrouter/free
+nvidia/nvidia/ising-calibration-1.5-31b
+kc/nvidia/nemotron-3-ultra-550b-a55b:free
+cf/@cf/meta/llama-3.3-70b-instruct-fp8-fast
+groq/qwen/qwen3.8-27b
+openrouter/nvidia/nemotron-3.5-lightning:free
+nvidia/nvidia/riva-translate-4b-instruct-v2
+cf/@cf/mistralai/mistral-small-3.1-24b-instruct
+groq/allam-2-7b
+openrouter/nvidia/nemotron-3.5-super-vl:free
+nvidia/poolside/laguna-xs-2.1
+cf/@cf/zai-org/glm-4.7-flash
+groq/openai/gpt-oss-120b
+openrouter/nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free
+nvidia/nvidia/nemotron-3.5-lightning-30b-a3b
+openrouter/recursive/flint-v1.0:free
+nvidia/nvidia/nemotron-3-nano-omni-30b-a3b-reasoning
+openrouter/nvidia/nemotron-3-ultra-550b-a55b:free
+nvidia/nvidia/nemotron-3.5-super-vl-120b-a12b
+openrouter/baidu/ernie-5.5-flash-preview:free
+nvidia/nvidia/nemotron-3-ultra-550b-a55b
+openrouter/inclusionai/ling-3.2-flash:free
+
+# hạng 3 — RATE-LIMITED (quota; giữ lại khi quota hồi)
+oc/deepseek-v4.1-flash-free
+oc/tidepool-alpha-free
+oc/hy4-flash-free
+oc/mimo-v2.6-flash-free
+oc/nemotron-3.5-super-vl-free
+oc/iceman-free
+oc/big-pickle
+oc/longcat-2.5-free
+oc/nemotron-3.5-lightning-free
+
+# hạng 4 — chưa đo
+<private-2>/deepseek/deepseek-v4.1-flash-free
+<private-4>/z-ai/glm-5.3-free
+<private-2>/z-ai/glm-5.3-flash-free
+<private-2>/tencent/hy4-preview-free
+<private-2>/deepseek/deepseek-v4-flash-free
+<private-2>/<private-2>/free
+<private-2>/orca/orcaverify-text1.0-free
+<private-2>/tencent/hy3-free
+
+# hạng 5 — lỗi nhanh cứng (404/405/400/410)
+bai/gemini-4-hydrogen
+hf/deepseek-ai/DeepSeek-V4.1-Flash-1017
+bzl/beam-free
+cohere/c4ai-aya-expanse-32b
+oc/mimo-v2.5-free
+groq/canopylabs/orpheus-arabic-saudi
+hf/deepseek-ai/DeepSeek-V4.1-Flash
+bzl/deepseek/deepseek-v4-flash-0731free:free
+cohere/c4ai-aya-vision-32b
+oc/jev-1.13-free
+groq/canopylabs/orpheus-v1-english
+hf/zai-org/GLM-5.3-Flash
+bzl/qwen/qwen3.7-flash:free
+cohere/command-a-03-2025
+oc/qwen3.6-plus-free
+hf/zai-org/GLM-5.3-Flash-BF16
+bzl/auto:free
+cohere/command-a-plus-05-2026
+oc/nemotron-3-ultra-free
+hf/zai-org/GLM-5.3
+cohere/command-a-reasoning-08-2025
+oc/north-mini-code-free
+hf/zai-org/GLM-5.3-BF16
+cohere/command-a-translate-08-2025
+oc/deepseek-v4-flash-free
+hf/openai/gpt-oss-120b
+cohere/command-a-vision-07-2025
+oc/ling-3.0-flash-free
+hf/Qwen/Qwen3.8-27B
+cohere/command-r-08-2024
+oc/x-preview-f-free
+hf/Qwen/Qwen3.8-2.4T-A95B
+cohere/command-r-plus-08-2024
+oc/hy3-free
+hf/tencent/Hy4-preview
+cohere/command-r7b-12-2024
+oc/ling-3.0-flash-fin-free
+hf/moonshotai/Kimi-K3
+cohere/command-r7b-arabic-02-2025
+oc/muse-spark-1.2-contributor-free
+hf/XiaomiMiMo/MiMo-V2.6-Pro-RL
+oc/muse-spark-1.3-contributor-free
+hf/XiaomiMiMo/MiMo-V2.6-Flash-RL
+oc/step-5-preview-free
+hf/XiaomiMiMo/MiMo-V2.5-Pro
+oc/ling-3.1-flash-free
+hf/XiaomiMiMo/MiMo-V2.5
+oc/exo-free
+hf/deepseek-ai/DeepSeek-V4-Flash-Vision-Exp
+hf/deepseek-ai/DeepSeek-V4-Flash
+hf/deepseek-ai/DeepSeek-V4-Flash-0731
+hf/meta-models/Muse-Spark-Open-816B-A42B
+hf/nvidia/NVIDIA-Nemotron-3.5-Super-VL-120B-A12B-NVFP4
+hf/inclusionAI/Ling-3.1-flash
+hf/meta-llama/Llama-3.1-8B-Instruct
+hf/meta-models/Muse-Glimmer-30B
+hf/google/gemma-4-31B-it
+hf/Qwen/Qwen3.6-35B-A3B
+hf/Qwen/Qwen3.5-9B
+hf/google/gemma-4-26B-A4B-it
+hf/openai/gpt-oss-20b
+hf/deepseek-ai/DeepSeek-R1
+hf/meta-llama/Llama-3.3-70B-Instruct
+hf/moonshotai/Kimi-K2.6
+hf/Qwen/Qwen3-14B
+hf/speakleash/Bielik-11B-v3.0-Instruct
+hf/google/gemma-3-4b-it
+hf/moonshotai/Kimi-K2.5
+hf/microsoft/phi-4
+hf/google/gemma-3-12b-it
+hf/Qwen/Qwen3.5-35B-A3B
+hf/thinkingmachines/Inkling
+hf/zai-org/GLM-5.2
+hf/Sao10K/L3-8B-Stheno-v3.2
+hf/google/gemma-3-27b-it
+hf/zai-org/GLM-4.7-Flash
+hf/Qwen/Qwen3.5-27B
+hf/inclusionAI/Ling-3.0-flash
+hf/Qwen/Qwen3.5-397B-A17B
+hf/CohereLabs/tiny-aya-global
+hf/thinkingmachines/Inkling-Small
+hf/tencent/Hy3
+hf/ibm-granite/granite-4.2-3b
+hf/meta-llama/Llama-4-Scout-17B-16E-Instruct
+hf/Qwen/Qwen3.6-27B
+hf/moonshotai/Kimi-K2.7-Code
+hf/deepseek-ai/DeepSeek-R1-0528
+hf/zai-org/GLM-5
+hf/Qwen/Qwen3-30B-A3B
+hf/deepseek-ai/DeepSeek-V3.1-Terminus
+hf/Qwen/Qwen3-VL-30B-A3B-Instruct
+hf/zai-org/AutoGLM-Phone-9B-Multilingual
+hf/zai-org/GLM-4.5V
+hf/NousResearch/Hermes-3-Llama-3.1-70B
+hf/Qwen/Qwen3.5-122B-A10B
+hf/alpindale/WizardLM-2-8x22B
+hf/zai-org/GLM-4.6V
+hf/stepfun-ai/Step-3.7-Flash
+hf/moonshotai/Kimi-K2-Instruct
+hf/deepseek-ai/DeepSeek-V3
+hf/zai-org/GLM-4.5-Air
+hf/Qwen/Qwen3-32B
+hf/stepfun-ai/Step-3.5-Flash
+hf/zai-org/GLM-4.5
+hf/zai-org/GLM-5.2-FP8
+hf/CohereLabs/c4ai-command-r7b-12-2024
+hf/zai-org/GLM-4.7
+hf/Qwen/Qwen3-Next-80B-A3B-Instruct
+hf/deepseek-ai/DeepSeek-V3.2
+hf/zai-org/GLM-5.1
+hf/nvidia/NVIDIA-Nemotron-3-Ultra-550B-A55B-BF16
+hf/aisingapore/Gemma-SEA-LION-v4-27B-IT
+hf/CohereLabs/c4ai-command-r-08-2024
+hf/zai-org/GLM-4.5V-FP8
+hf/deepseek-ai/DeepSeek-V3-0324
+hf/swiss-ai/Apertus-8B-Instruct-2509
+hf/CohereLabs/aya-expanse-32b
+hf/zai-org/GLM-4.6V-Flash
+hf/deepseek-ai/DeepSeek-V3.1
+hf/aisingapore/Qwen-SEA-LION-v4-32B-IT
+hf/zai-org/GLM-4.6V-FP8
+hf/zai-org/GLM-4.6
+hf/CohereLabs/c4ai-command-a-03-2025
+hf/Qwen/Qwen3-VL-235B-A22B-Instruct
+hf/CohereLabs/command-a-reasoning-08-2025
+hf/moonshotai/Kimi-K2-Instruct-0905
+hf/inclusionAI/Ling-3.0-flash-Fin
+hf/inclusionAI/Ling-3.0-flash-VL
+hf/meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8
+hf/CohereLabs/command-a-translate-08-2025
+hf/Qwen/Qwen2.5-VL-72B-Instruct
+hf/zai-org/GLM-4.6-FP8
+hf/CohereLabs/aya-vision-32b
+hf/CohereLabs/tiny-aya-water
+hf/zai-org/GLM-4.7-FP8
+hf/CohereLabs/tiny-aya-earth
+hf/CohereLabs/tiny-aya-fire
+
+# hạng 6 — HANG / 503 chậm ≥2s (đặt cuối, KHÔNG xoá)
+# ocz/deepseek-v4.1-flash-free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 2 -> 178)
+ocz/deepseek-v4.1-flash-free
+# ds/deepseek-v4.1-flash: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 4 -> 179)
+ds/deepseek-v4.1-flash
+# nvidia/z-ai/glm-5.3-flash: HANG ok=0/6 p90=-ms (vị trí 5 -> 180)
+nvidia/z-ai/glm-5.3-flash
+# cf/@cf/zai-org/glm-5.2: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 8 -> 181)
+cf/@cf/zai-org/glm-5.2
+# openrouter/z-ai/glm-5.2:free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 9 -> 182)
+openrouter/z-ai/glm-5.2:free
+# gemini/gemini-4-argon: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 16 -> 183)
+gemini/gemini-4-argon
+# oc/inkling-2-small-free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 26 -> 184)
+oc/inkling-2-small-free
+# <private-gateway>/deepseek/deepseek-v4-flash-free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 58 -> 185)
+<private-gateway>/deepseek/deepseek-v4-flash-free
+# kc/cohere/north-mini-code:free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 67 -> 186)
+kc/cohere/north-mini-code:free
+# ocz/mimo-v2.6-flash-free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 12 -> 187)
+ocz/mimo-v2.6-flash-free
+# nvidia/meta/muse-glimmer-30b: HANG ok=0/6 p90=-ms (vị trí 61 -> 188)
+nvidia/meta/muse-glimmer-30b
+# cf/zai-org/glm-5.2: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 31 -> 189)
+cf/zai-org/glm-5.2
+# openrouter/thinkingmachines/inkling-2-small:free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 29 -> 190)
+openrouter/thinkingmachines/inkling-2-small:free
+# gemini/gemini-4-hydrogen: HANG ok=1/6 p90=17020ms (vị trí 17 -> 191)
+gemini/gemini-4-hydrogen
+# kc/poolside/laguna-xs.2:free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 75 -> 192)
+kc/poolside/laguna-xs.2:free
+# ocz/nemotron-3.5-super-vl-free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 15 -> 193)
+ocz/nemotron-3.5-super-vl-free
+# nvidia/google/codegemma-1.1-7b: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 77 -> 194)
+nvidia/google/codegemma-1.1-7b
+# cf/@cf/deepseek-ai/deepseek-r1-distill-qwen-32b: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 66 -> 195)
+cf/@cf/deepseek-ai/deepseek-r1-distill-qwen-32b
+# openrouter/cohere/north-mini-code:free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 30 -> 196)
+openrouter/cohere/north-mini-code:free
+# gemini/gemini-3.8-flash: HANG ok=0/6 p90=3777ms (vị trí 19 -> 197)
+gemini/gemini-3.8-flash
+# kc/nvidia/nemotron-3-super-120b-a12b:free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 83 -> 198)
+kc/nvidia/nemotron-3-super-120b-a12b:free
+# ocz/flint-40b-free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 60 -> 199)
+ocz/flint-40b-free
+# nvidia/google/diffusiongemma-26b-a4b-it: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 85 -> 200)
+nvidia/google/diffusiongemma-26b-a4b-it
+# cf/@cf/meta/llama-3.2-1b-instruct: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 82 -> 201)
+cf/@cf/meta/llama-3.2-1b-instruct
+# openrouter/google/gemma-4-31b-it:free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 46 -> 202)
+openrouter/google/gemma-4-31b-it:free
+# gemini/models/gemini-3.8-flash: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 20 -> 203)
+gemini/models/gemini-3.8-flash
+# ocz/beam-free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 69 -> 204)
+ocz/beam-free
+# nvidia/google/gemma-4-31b-it: HANG ok=0/6 p90=-ms (vị trí 92 -> 205)
+nvidia/google/gemma-4-31b-it
+# openrouter/google/gemma-4-26b-a4b-it:free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 49 -> 206)
+openrouter/google/gemma-4-26b-a4b-it:free
+# gemini/models/gemini-3.8-live: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 21 -> 207)
+gemini/models/gemini-3.8-live
+# nvidia/ibm/granite-34b-code-instruct: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 96 -> 208)
+nvidia/ibm/granite-34b-code-instruct
+# openrouter/dots-studio/dots-3-note-preview:free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 52 -> 209)
+openrouter/dots-studio/dots-3-note-preview:free
+# gemini/models/gemini-3.8-live-extended-thinking: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 22 -> 210)
+gemini/models/gemini-3.8-live-extended-thinking
+# nvidia/meta/llama-3.2-90b-vision-instruct: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 100 -> 211)
+nvidia/meta/llama-3.2-90b-vision-instruct
+# openrouter/xingchen-agi/xing4.0-29b-a4b:free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 53 -> 212)
+openrouter/xingchen-agi/xing4.0-29b-a4b:free
+# nvidia/mistralai/mistral-large-2-instruct: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 104 -> 213)
+nvidia/mistralai/mistral-large-2-instruct
+# openrouter/liquid/lfm-2.5-2.6b:free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 54 -> 214)
+openrouter/liquid/lfm-2.5-2.6b:free
+# nvidia/nvidia/ai-synthetic-video-detector: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 108 -> 215)
+nvidia/nvidia/ai-synthetic-video-detector
+# nvidia/nvidia/llama3-chatqa-1.5-70b: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 115 -> 216)
+nvidia/nvidia/llama3-chatqa-1.5-70b
+# nvidia/nvidia/mistral-nemo-minitron-8b-8k-instruct: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 118 -> 217)
+nvidia/nvidia/mistral-nemo-minitron-8b-8k-instruct
+# nvidia/nvidia/nemotron-3-super-120b-a12b: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 124 -> 218)
+nvidia/nvidia/nemotron-3-super-120b-a12b
+# nvidia/nvidia/nemotron-4-340b-instruct: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 136 -> 219)
+nvidia/nvidia/nemotron-4-340b-instruct
+# nvidia/nvidia/nemotron-4-340b-reward: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 139 -> 220)
+nvidia/nvidia/nemotron-4-340b-reward
+# nvidia/nvidia/nemotron-nano-3-30b-a3b: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 141 -> 221)
+nvidia/nvidia/nemotron-nano-3-30b-a3b
+# nvidia/nvidia/nemotron-parse: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 143 -> 222)
+nvidia/nvidia/nemotron-parse
+# nvidia/nvidia/nemotron-parse-2.0: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 145 -> 223)
+nvidia/nvidia/nemotron-parse-2.0
+# nvidia/nvidia/neva-22b: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 147 -> 224)
+nvidia/nvidia/neva-22b
+# nvidia/nvidia/riva-translate-4b-instruct: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 149 -> 225)
+nvidia/nvidia/riva-translate-4b-instruct
+# nvidia/nvidia/vila: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 153 -> 226)
+nvidia/nvidia/vila
+# nvidia/openai/gpt-oss-20b: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 155 -> 227)
+nvidia/openai/gpt-oss-20b
+# nvidia/stepfun-ai/step-5-preview: HANG ok=4/6 p90=5354ms (vị trí 157 -> 228)
+nvidia/stepfun-ai/step-5-preview
+# nvidia/moonshotai/kimi-k2.6: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 159 -> 229)
+nvidia/moonshotai/kimi-k2.6
+
+## 9Router-Agent-1 (230 bước)
+# hạng 1 — RELIABLE (p90 tăng dần)
+cf/@cf/meta/llama-3.2-3b-instruct
+groq/openai/gpt-oss-20b
+openrouter/openrouter/free
+nvidia/nvidia/ising-calibration-1.5-31b
+kc/nvidia/nemotron-3-ultra-550b-a55b:free
+cf/@cf/meta/llama-3.3-70b-instruct-fp8-fast
+groq/qwen/qwen3.8-27b
+openrouter/nvidia/nemotron-3.5-lightning:free
+nvidia/nvidia/riva-translate-4b-instruct-v2
+cf/@cf/mistralai/mistral-small-3.1-24b-instruct
+groq/allam-2-7b
+openrouter/nvidia/nemotron-3.5-super-vl:free
+nvidia/poolside/laguna-xs-2.1
+cf/@cf/zai-org/glm-4.7-flash
+groq/openai/gpt-oss-120b
+openrouter/nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free
+nvidia/nvidia/nemotron-3.5-lightning-30b-a3b
+openrouter/recursive/flint-v1.0:free
+nvidia/nvidia/nemotron-3-nano-omni-30b-a3b-reasoning
+openrouter/nvidia/nemotron-3-ultra-550b-a55b:free
+nvidia/nvidia/nemotron-3.5-super-vl-120b-a12b
+openrouter/baidu/ernie-5.5-flash-preview:free
+nvidia/nvidia/nemotron-3-ultra-550b-a55b
+openrouter/inclusionai/ling-3.2-flash:free
+
+# hạng 3 — RATE-LIMITED (quota; giữ lại khi quota hồi)
+oc/deepseek-v4.1-flash-free
+oc/tidepool-alpha-free
+oc/hy4-flash-free
+oc/mimo-v2.6-flash-free
+oc/nemotron-3.5-super-vl-free
+oc/iceman-free
+oc/big-pickle
+oc/longcat-2.5-free
+oc/nemotron-3.5-lightning-free
+
+# hạng 4 — chưa đo
+<private-2>/deepseek/deepseek-v4.1-flash-free
+<private-4>/z-ai/glm-5.3-free
+<private-2>/z-ai/glm-5.3-flash-free
+<private-2>/tencent/hy4-preview-free
+<private-2>/deepseek/deepseek-v4-flash-free
+<private-2>/<private-2>/free
+<private-2>/orca/orcaverify-text1.0-free
+<private-2>/tencent/hy3-free
+
+# hạng 5 — lỗi nhanh cứng (404/405/400/410)
+bai/gemini-4-hydrogen
+hf/deepseek-ai/DeepSeek-V4.1-Flash-1017
+bzl/beam-free
+cohere/c4ai-aya-expanse-32b
+oc/mimo-v2.5-free
+groq/canopylabs/orpheus-arabic-saudi
+hf/deepseek-ai/DeepSeek-V4.1-Flash
+bzl/deepseek/deepseek-v4-flash-0731free:free
+cohere/c4ai-aya-vision-32b
+oc/jev-1.13-free
+groq/canopylabs/orpheus-v1-english
+hf/zai-org/GLM-5.3-Flash
+bzl/qwen/qwen3.7-flash:free
+cohere/command-a-03-2025
+oc/qwen3.6-plus-free
+hf/zai-org/GLM-5.3-Flash-BF16
+bzl/auto:free
+cohere/command-a-plus-05-2026
+oc/nemotron-3-ultra-free
+hf/zai-org/GLM-5.3
+cohere/command-a-reasoning-08-2025
+oc/north-mini-code-free
+hf/zai-org/GLM-5.3-BF16
+cohere/command-a-translate-08-2025
+oc/deepseek-v4-flash-free
+hf/openai/gpt-oss-120b
+cohere/command-a-vision-07-2025
+oc/ling-3.0-flash-free
+hf/Qwen/Qwen3.8-27B
+cohere/command-r-08-2024
+oc/x-preview-f-free
+hf/Qwen/Qwen3.8-2.4T-A95B
+cohere/command-r-plus-08-2024
+oc/hy3-free
+hf/tencent/Hy4-preview
+cohere/command-r7b-12-2024
+oc/ling-3.0-flash-fin-free
+hf/moonshotai/Kimi-K3
+cohere/command-r7b-arabic-02-2025
+oc/muse-spark-1.2-contributor-free
+hf/XiaomiMiMo/MiMo-V2.6-Pro-RL
+oc/muse-spark-1.3-contributor-free
+hf/XiaomiMiMo/MiMo-V2.6-Flash-RL
+oc/step-5-preview-free
+hf/XiaomiMiMo/MiMo-V2.5-Pro
+oc/ling-3.1-flash-free
+hf/XiaomiMiMo/MiMo-V2.5
+oc/exo-free
+hf/deepseek-ai/DeepSeek-V4-Flash-Vision-Exp
+hf/deepseek-ai/DeepSeek-V4-Flash
+hf/deepseek-ai/DeepSeek-V4-Flash-0731
+hf/meta-models/Muse-Spark-Open-816B-A42B
+hf/nvidia/NVIDIA-Nemotron-3.5-Super-VL-120B-A12B-NVFP4
+hf/inclusionAI/Ling-3.1-flash
+hf/meta-llama/Llama-3.1-8B-Instruct
+hf/meta-models/Muse-Glimmer-30B
+hf/google/gemma-4-31B-it
+hf/Qwen/Qwen3.6-35B-A3B
+hf/Qwen/Qwen3.5-9B
+hf/google/gemma-4-26B-A4B-it
+hf/openai/gpt-oss-20b
+hf/deepseek-ai/DeepSeek-R1
+hf/meta-llama/Llama-3.3-70B-Instruct
+hf/moonshotai/Kimi-K2.6
+hf/Qwen/Qwen3-14B
+hf/speakleash/Bielik-11B-v3.0-Instruct
+hf/google/gemma-3-4b-it
+hf/moonshotai/Kimi-K2.5
+hf/microsoft/phi-4
+hf/google/gemma-3-12b-it
+hf/Qwen/Qwen3.5-35B-A3B
+hf/thinkingmachines/Inkling
+hf/zai-org/GLM-5.2
+hf/Sao10K/L3-8B-Stheno-v3.2
+hf/google/gemma-3-27b-it
+hf/zai-org/GLM-4.7-Flash
+hf/Qwen/Qwen3.5-27B
+hf/inclusionAI/Ling-3.0-flash
+hf/Qwen/Qwen3.5-397B-A17B
+hf/CohereLabs/tiny-aya-global
+hf/thinkingmachines/Inkling-Small
+hf/tencent/Hy3
+hf/ibm-granite/granite-4.2-3b
+hf/meta-llama/Llama-4-Scout-17B-16E-Instruct
+hf/Qwen/Qwen3.6-27B
+hf/moonshotai/Kimi-K2.7-Code
+hf/deepseek-ai/DeepSeek-R1-0528
+hf/zai-org/GLM-5
+hf/Qwen/Qwen3-30B-A3B
+hf/deepseek-ai/DeepSeek-V3.1-Terminus
+hf/Qwen/Qwen3-VL-30B-A3B-Instruct
+hf/zai-org/AutoGLM-Phone-9B-Multilingual
+hf/zai-org/GLM-4.5V
+hf/NousResearch/Hermes-3-Llama-3.1-70B
+hf/Qwen/Qwen3.5-122B-A10B
+hf/alpindale/WizardLM-2-8x22B
+hf/zai-org/GLM-4.6V
+hf/stepfun-ai/Step-3.7-Flash
+hf/moonshotai/Kimi-K2-Instruct
+hf/deepseek-ai/DeepSeek-V3
+hf/zai-org/GLM-4.5-Air
+hf/Qwen/Qwen3-32B
+hf/stepfun-ai/Step-3.5-Flash
+hf/zai-org/GLM-4.5
+hf/zai-org/GLM-5.2-FP8
+hf/CohereLabs/c4ai-command-r7b-12-2024
+hf/zai-org/GLM-4.7
+hf/Qwen/Qwen3-Next-80B-A3B-Instruct
+hf/deepseek-ai/DeepSeek-V3.2
+hf/zai-org/GLM-5.1
+hf/nvidia/NVIDIA-Nemotron-3-Ultra-550B-A55B-BF16
+hf/aisingapore/Gemma-SEA-LION-v4-27B-IT
+hf/CohereLabs/c4ai-command-r-08-2024
+hf/zai-org/GLM-4.5V-FP8
+hf/deepseek-ai/DeepSeek-V3-0324
+hf/swiss-ai/Apertus-8B-Instruct-2509
+hf/CohereLabs/aya-expanse-32b
+hf/zai-org/GLM-4.6V-Flash
+hf/deepseek-ai/DeepSeek-V3.1
+hf/aisingapore/Qwen-SEA-LION-v4-32B-IT
+hf/zai-org/GLM-4.6V-FP8
+hf/zai-org/GLM-4.6
+hf/CohereLabs/c4ai-command-a-03-2025
+hf/Qwen/Qwen3-VL-235B-A22B-Instruct
+hf/CohereLabs/command-a-reasoning-08-2025
+hf/moonshotai/Kimi-K2-Instruct-0905
+hf/inclusionAI/Ling-3.0-flash-Fin
+hf/inclusionAI/Ling-3.0-flash-VL
+hf/meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8
+hf/CohereLabs/command-a-translate-08-2025
+hf/Qwen/Qwen2.5-VL-72B-Instruct
+hf/zai-org/GLM-4.6-FP8
+hf/CohereLabs/aya-vision-32b
+hf/CohereLabs/tiny-aya-water
+hf/zai-org/GLM-4.7-FP8
+hf/CohereLabs/tiny-aya-earth
+hf/CohereLabs/tiny-aya-fire
+
+# hạng 6 — HANG / 503 chậm ≥2s (đặt cuối, KHÔNG xoá)
+# ocz/deepseek-v4.1-flash-free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 2 -> 178)
+ocz/deepseek-v4.1-flash-free
+# ds/deepseek-v4.1-flash: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 4 -> 179)
+ds/deepseek-v4.1-flash
+# nvidia/z-ai/glm-5.3-flash: HANG ok=0/6 p90=-ms (vị trí 5 -> 180)
+nvidia/z-ai/glm-5.3-flash
+# cf/@cf/zai-org/glm-5.2: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 8 -> 181)
+cf/@cf/zai-org/glm-5.2
+# openrouter/z-ai/glm-5.2:free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 9 -> 182)
+openrouter/z-ai/glm-5.2:free
+# gemini/gemini-4-argon: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 16 -> 183)
+gemini/gemini-4-argon
+# oc/inkling-2-small-free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 26 -> 184)
+oc/inkling-2-small-free
+# <private-gateway>/deepseek/deepseek-v4-flash-free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 58 -> 185)
+<private-gateway>/deepseek/deepseek-v4-flash-free
+# kc/cohere/north-mini-code:free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 67 -> 186)
+kc/cohere/north-mini-code:free
+# ocz/mimo-v2.6-flash-free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 12 -> 187)
+ocz/mimo-v2.6-flash-free
+# nvidia/meta/muse-glimmer-30b: HANG ok=0/6 p90=-ms (vị trí 61 -> 188)
+nvidia/meta/muse-glimmer-30b
+# cf/zai-org/glm-5.2: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 31 -> 189)
+cf/zai-org/glm-5.2
+# openrouter/thinkingmachines/inkling-2-small:free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 29 -> 190)
+openrouter/thinkingmachines/inkling-2-small:free
+# gemini/gemini-4-hydrogen: HANG ok=1/6 p90=17020ms (vị trí 17 -> 191)
+gemini/gemini-4-hydrogen
+# kc/poolside/laguna-xs.2:free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 75 -> 192)
+kc/poolside/laguna-xs.2:free
+# ocz/nemotron-3.5-super-vl-free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 15 -> 193)
+ocz/nemotron-3.5-super-vl-free
+# nvidia/google/codegemma-1.1-7b: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 77 -> 194)
+nvidia/google/codegemma-1.1-7b
+# cf/@cf/deepseek-ai/deepseek-r1-distill-qwen-32b: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 66 -> 195)
+cf/@cf/deepseek-ai/deepseek-r1-distill-qwen-32b
+# openrouter/cohere/north-mini-code:free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 30 -> 196)
+openrouter/cohere/north-mini-code:free
+# gemini/gemini-3.8-flash: HANG ok=0/6 p90=3777ms (vị trí 19 -> 197)
+gemini/gemini-3.8-flash
+# kc/nvidia/nemotron-3-super-120b-a12b:free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 83 -> 198)
+kc/nvidia/nemotron-3-super-120b-a12b:free
+# ocz/flint-40b-free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 60 -> 199)
+ocz/flint-40b-free
+# nvidia/google/diffusiongemma-26b-a4b-it: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 85 -> 200)
+nvidia/google/diffusiongemma-26b-a4b-it
+# cf/@cf/meta/llama-3.2-1b-instruct: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 82 -> 201)
+cf/@cf/meta/llama-3.2-1b-instruct
+# openrouter/google/gemma-4-31b-it:free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 46 -> 202)
+openrouter/google/gemma-4-31b-it:free
+# gemini/models/gemini-3.8-flash: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 20 -> 203)
+gemini/models/gemini-3.8-flash
+# ocz/beam-free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 69 -> 204)
+ocz/beam-free
+# nvidia/google/gemma-4-31b-it: HANG ok=0/6 p90=-ms (vị trí 92 -> 205)
+nvidia/google/gemma-4-31b-it
+# openrouter/google/gemma-4-26b-a4b-it:free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 49 -> 206)
+openrouter/google/gemma-4-26b-a4b-it:free
+# gemini/models/gemini-3.8-live: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 21 -> 207)
+gemini/models/gemini-3.8-live
+# nvidia/ibm/granite-34b-code-instruct: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 96 -> 208)
+nvidia/ibm/granite-34b-code-instruct
+# openrouter/dots-studio/dots-3-note-preview:free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 52 -> 209)
+openrouter/dots-studio/dots-3-note-preview:free
+# gemini/models/gemini-3.8-live-extended-thinking: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 22 -> 210)
+gemini/models/gemini-3.8-live-extended-thinking
+# nvidia/meta/llama-3.2-90b-vision-instruct: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 100 -> 211)
+nvidia/meta/llama-3.2-90b-vision-instruct
+# openrouter/xingchen-agi/xing4.0-29b-a4b:free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 53 -> 212)
+openrouter/xingchen-agi/xing4.0-29b-a4b:free
+# nvidia/mistralai/mistral-large-2-instruct: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 104 -> 213)
+nvidia/mistralai/mistral-large-2-instruct
+# openrouter/liquid/lfm-2.5-2.6b:free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 54 -> 214)
+openrouter/liquid/lfm-2.5-2.6b:free
+# nvidia/nvidia/ai-synthetic-video-detector: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 108 -> 215)
+nvidia/nvidia/ai-synthetic-video-detector
+# nvidia/nvidia/llama3-chatqa-1.5-70b: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 115 -> 216)
+nvidia/nvidia/llama3-chatqa-1.5-70b
+# nvidia/nvidia/mistral-nemo-minitron-8b-8k-instruct: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 118 -> 217)
+nvidia/nvidia/mistral-nemo-minitron-8b-8k-instruct
+# nvidia/nvidia/nemotron-3-super-120b-a12b: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 124 -> 218)
+nvidia/nvidia/nemotron-3-super-120b-a12b
+# nvidia/nvidia/nemotron-4-340b-instruct: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 136 -> 219)
+nvidia/nvidia/nemotron-4-340b-instruct
+# nvidia/nvidia/nemotron-4-340b-reward: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 139 -> 220)
+nvidia/nvidia/nemotron-4-340b-reward
+# nvidia/nvidia/nemotron-nano-3-30b-a3b: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 141 -> 221)
+nvidia/nvidia/nemotron-nano-3-30b-a3b
+# nvidia/nvidia/nemotron-parse: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 143 -> 222)
+nvidia/nvidia/nemotron-parse
+# nvidia/nvidia/nemotron-parse-2.0: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 145 -> 223)
+nvidia/nvidia/nemotron-parse-2.0
+# nvidia/nvidia/neva-22b: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 147 -> 224)
+nvidia/nvidia/neva-22b
+# nvidia/nvidia/riva-translate-4b-instruct: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 149 -> 225)
+nvidia/nvidia/riva-translate-4b-instruct
+# nvidia/nvidia/vila: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 153 -> 226)
+nvidia/nvidia/vila
+# nvidia/openai/gpt-oss-20b: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 155 -> 227)
+nvidia/openai/gpt-oss-20b
+# nvidia/stepfun-ai/step-5-preview: HANG ok=4/6 p90=5354ms (vị trí 157 -> 228)
+nvidia/stepfun-ai/step-5-preview
+# nvidia/moonshotai/kimi-k2.6: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 159 -> 229)
+nvidia/moonshotai/kimi-k2.6
+
+# 9Router-Agent-1: 6 bước HANG, vị trí cũ -> mới:
+#   nvidia/z-ai/glm-5.3-flash: 5 -> 180
+#   gemini/gemini-4-hydrogen: 17 -> 191
+#   gemini/gemini-3.8-flash: 19 -> 197
+#   nvidia/meta/muse-glimmer-30b: 61 -> 188
+#   nvidia/google/gemma-4-31b-it: 92 -> 205
+#   nvidia/stepfun-ai/step-5-preview: 157 -> 228
+# Không in predictedHeaderMs: mô hình cũ sai số tới 80.8% (C33).
+
+## 9Router-Agent-2 (230 bước)
+# hạng 1 — RELIABLE (p90 tăng dần)
+cf/@cf/meta/llama-3.2-3b-instruct
+groq/openai/gpt-oss-20b
+openrouter/openrouter/free
+nvidia/nvidia/ising-calibration-1.5-31b
+kc/nvidia/nemotron-3-ultra-550b-a55b:free
+cf/@cf/meta/llama-3.3-70b-instruct-fp8-fast
+groq/qwen/qwen3.8-27b
+openrouter/nvidia/nemotron-3.5-lightning:free
+nvidia/nvidia/riva-translate-4b-instruct-v2
+cf/@cf/mistralai/mistral-small-3.1-24b-instruct
+groq/allam-2-7b
+openrouter/nvidia/nemotron-3.5-super-vl:free
+nvidia/poolside/laguna-xs-2.1
+cf/@cf/zai-org/glm-4.7-flash
+groq/openai/gpt-oss-120b
+openrouter/nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free
+nvidia/nvidia/nemotron-3.5-lightning-30b-a3b
+openrouter/recursive/flint-v1.0:free
+nvidia/nvidia/nemotron-3-nano-omni-30b-a3b-reasoning
+openrouter/nvidia/nemotron-3-ultra-550b-a55b:free
+nvidia/nvidia/nemotron-3.5-super-vl-120b-a12b
+openrouter/baidu/ernie-5.5-flash-preview:free
+nvidia/nvidia/nemotron-3-ultra-550b-a55b
+openrouter/inclusionai/ling-3.2-flash:free
+
+# hạng 3 — RATE-LIMITED (quota; giữ lại khi quota hồi)
+oc/deepseek-v4.1-flash-free
+oc/tidepool-alpha-free
+oc/hy4-flash-free
+oc/mimo-v2.6-flash-free
+oc/nemotron-3.5-super-vl-free
+oc/iceman-free
+oc/big-pickle
+oc/longcat-2.5-free
+oc/nemotron-3.5-lightning-free
+
+# hạng 4 — chưa đo
+<private-2>/deepseek/deepseek-v4.1-flash-free
+<private-4>/z-ai/glm-5.3-free
+<private-2>/z-ai/glm-5.3-flash-free
+<private-2>/tencent/hy4-preview-free
+<private-2>/deepseek/deepseek-v4-flash-free
+<private-2>/<private-2>/free
+<private-2>/orca/orcaverify-text1.0-free
+<private-2>/tencent/hy3-free
+
+# hạng 5 — lỗi nhanh cứng (404/405/400/410)
+bai/gemini-4-hydrogen
+hf/deepseek-ai/DeepSeek-V4.1-Flash-1017
+bzl/beam-free
+cohere/c4ai-aya-expanse-32b
+oc/mimo-v2.5-free
+groq/canopylabs/orpheus-arabic-saudi
+hf/deepseek-ai/DeepSeek-V4.1-Flash
+bzl/deepseek/deepseek-v4-flash-0731free:free
+cohere/c4ai-aya-vision-32b
+oc/jev-1.13-free
+groq/canopylabs/orpheus-v1-english
+hf/zai-org/GLM-5.3-Flash
+bzl/qwen/qwen3.7-flash:free
+cohere/command-a-03-2025
+oc/qwen3.6-plus-free
+hf/zai-org/GLM-5.3-Flash-BF16
+bzl/auto:free
+cohere/command-a-plus-05-2026
+oc/nemotron-3-ultra-free
+hf/zai-org/GLM-5.3
+cohere/command-a-reasoning-08-2025
+oc/north-mini-code-free
+hf/zai-org/GLM-5.3-BF16
+cohere/command-a-translate-08-2025
+oc/deepseek-v4-flash-free
+hf/openai/gpt-oss-120b
+cohere/command-a-vision-07-2025
+oc/ling-3.0-flash-free
+hf/Qwen/Qwen3.8-27B
+cohere/command-r-08-2024
+oc/x-preview-f-free
+hf/Qwen/Qwen3.8-2.4T-A95B
+cohere/command-r-plus-08-2024
+oc/hy3-free
+hf/tencent/Hy4-preview
+cohere/command-r7b-12-2024
+oc/ling-3.0-flash-fin-free
+hf/moonshotai/Kimi-K3
+cohere/command-r7b-arabic-02-2025
+oc/muse-spark-1.2-contributor-free
+hf/XiaomiMiMo/MiMo-V2.6-Pro-RL
+oc/muse-spark-1.3-contributor-free
+hf/XiaomiMiMo/MiMo-V2.6-Flash-RL
+oc/step-5-preview-free
+hf/XiaomiMiMo/MiMo-V2.5-Pro
+oc/ling-3.1-flash-free
+hf/XiaomiMiMo/MiMo-V2.5
+oc/exo-free
+hf/deepseek-ai/DeepSeek-V4-Flash-Vision-Exp
+hf/deepseek-ai/DeepSeek-V4-Flash
+hf/deepseek-ai/DeepSeek-V4-Flash-0731
+hf/meta-models/Muse-Spark-Open-816B-A42B
+hf/nvidia/NVIDIA-Nemotron-3.5-Super-VL-120B-A12B-NVFP4
+hf/inclusionAI/Ling-3.1-flash
+hf/meta-llama/Llama-3.1-8B-Instruct
+hf/meta-models/Muse-Glimmer-30B
+hf/google/gemma-4-31B-it
+hf/Qwen/Qwen3.6-35B-A3B
+hf/Qwen/Qwen3.5-9B
+hf/google/gemma-4-26B-A4B-it
+hf/openai/gpt-oss-20b
+hf/deepseek-ai/DeepSeek-R1
+hf/meta-llama/Llama-3.3-70B-Instruct
+hf/moonshotai/Kimi-K2.6
+hf/Qwen/Qwen3-14B
+hf/speakleash/Bielik-11B-v3.0-Instruct
+hf/google/gemma-3-4b-it
+hf/moonshotai/Kimi-K2.5
+hf/microsoft/phi-4
+hf/google/gemma-3-12b-it
+hf/Qwen/Qwen3.5-35B-A3B
+hf/thinkingmachines/Inkling
+hf/zai-org/GLM-5.2
+hf/Sao10K/L3-8B-Stheno-v3.2
+hf/google/gemma-3-27b-it
+hf/zai-org/GLM-4.7-Flash
+hf/Qwen/Qwen3.5-27B
+hf/inclusionAI/Ling-3.0-flash
+hf/Qwen/Qwen3.5-397B-A17B
+hf/CohereLabs/tiny-aya-global
+hf/thinkingmachines/Inkling-Small
+hf/tencent/Hy3
+hf/ibm-granite/granite-4.2-3b
+hf/meta-llama/Llama-4-Scout-17B-16E-Instruct
+hf/Qwen/Qwen3.6-27B
+hf/moonshotai/Kimi-K2.7-Code
+hf/deepseek-ai/DeepSeek-R1-0528
+hf/zai-org/GLM-5
+hf/Qwen/Qwen3-30B-A3B
+hf/deepseek-ai/DeepSeek-V3.1-Terminus
+hf/Qwen/Qwen3-VL-30B-A3B-Instruct
+hf/zai-org/AutoGLM-Phone-9B-Multilingual
+hf/zai-org/GLM-4.5V
+hf/NousResearch/Hermes-3-Llama-3.1-70B
+hf/Qwen/Qwen3.5-122B-A10B
+hf/alpindale/WizardLM-2-8x22B
+hf/zai-org/GLM-4.6V
+hf/stepfun-ai/Step-3.7-Flash
+hf/moonshotai/Kimi-K2-Instruct
+hf/deepseek-ai/DeepSeek-V3
+hf/zai-org/GLM-4.5-Air
+hf/Qwen/Qwen3-32B
+hf/stepfun-ai/Step-3.5-Flash
+hf/zai-org/GLM-4.5
+hf/zai-org/GLM-5.2-FP8
+hf/CohereLabs/c4ai-command-r7b-12-2024
+hf/zai-org/GLM-4.7
+hf/Qwen/Qwen3-Next-80B-A3B-Instruct
+hf/deepseek-ai/DeepSeek-V3.2
+hf/zai-org/GLM-5.1
+hf/nvidia/NVIDIA-Nemotron-3-Ultra-550B-A55B-BF16
+hf/aisingapore/Gemma-SEA-LION-v4-27B-IT
+hf/CohereLabs/c4ai-command-r-08-2024
+hf/zai-org/GLM-4.5V-FP8
+hf/deepseek-ai/DeepSeek-V3-0324
+hf/swiss-ai/Apertus-8B-Instruct-2509
+hf/CohereLabs/aya-expanse-32b
+hf/zai-org/GLM-4.6V-Flash
+hf/deepseek-ai/DeepSeek-V3.1
+hf/aisingapore/Qwen-SEA-LION-v4-32B-IT
+hf/zai-org/GLM-4.6V-FP8
+hf/zai-org/GLM-4.6
+hf/CohereLabs/c4ai-command-a-03-2025
+hf/Qwen/Qwen3-VL-235B-A22B-Instruct
+hf/CohereLabs/command-a-reasoning-08-2025
+hf/moonshotai/Kimi-K2-Instruct-0905
+hf/inclusionAI/Ling-3.0-flash-Fin
+hf/inclusionAI/Ling-3.0-flash-VL
+hf/meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8
+hf/CohereLabs/command-a-translate-08-2025
+hf/Qwen/Qwen2.5-VL-72B-Instruct
+hf/zai-org/GLM-4.6-FP8
+hf/CohereLabs/aya-vision-32b
+hf/CohereLabs/tiny-aya-water
+hf/zai-org/GLM-4.7-FP8
+hf/CohereLabs/tiny-aya-earth
+hf/CohereLabs/tiny-aya-fire
+
+# hạng 6 — HANG / 503 chậm ≥2s (đặt cuối, KHÔNG xoá)
+# ocz/deepseek-v4.1-flash-free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 2 -> 178)
+ocz/deepseek-v4.1-flash-free
+# ds/deepseek-v4.1-flash: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 4 -> 179)
+ds/deepseek-v4.1-flash
+# nvidia/z-ai/glm-5.3-flash: HANG ok=0/6 p90=-ms (vị trí 5 -> 180)
+nvidia/z-ai/glm-5.3-flash
+# cf/@cf/zai-org/glm-5.2: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 8 -> 181)
+cf/@cf/zai-org/glm-5.2
+# openrouter/z-ai/glm-5.2:free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 9 -> 182)
+openrouter/z-ai/glm-5.2:free
+# gemini/gemini-4-argon: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 16 -> 183)
+gemini/gemini-4-argon
+# oc/inkling-2-small-free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 26 -> 184)
+oc/inkling-2-small-free
+# <private-gateway>/deepseek/deepseek-v4-flash-free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 58 -> 185)
+<private-gateway>/deepseek/deepseek-v4-flash-free
+# kc/cohere/north-mini-code:free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 67 -> 186)
+kc/cohere/north-mini-code:free
+# ocz/mimo-v2.6-flash-free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 12 -> 187)
+ocz/mimo-v2.6-flash-free
+# nvidia/meta/muse-glimmer-30b: HANG ok=0/6 p90=-ms (vị trí 61 -> 188)
+nvidia/meta/muse-glimmer-30b
+# cf/zai-org/glm-5.2: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 31 -> 189)
+cf/zai-org/glm-5.2
+# openrouter/thinkingmachines/inkling-2-small:free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 29 -> 190)
+openrouter/thinkingmachines/inkling-2-small:free
+# gemini/gemini-4-hydrogen: HANG ok=1/6 p90=17020ms (vị trí 17 -> 191)
+gemini/gemini-4-hydrogen
+# kc/poolside/laguna-xs.2:free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 75 -> 192)
+kc/poolside/laguna-xs.2:free
+# ocz/nemotron-3.5-super-vl-free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 15 -> 193)
+ocz/nemotron-3.5-super-vl-free
+# nvidia/google/codegemma-1.1-7b: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 77 -> 194)
+nvidia/google/codegemma-1.1-7b
+# cf/@cf/deepseek-ai/deepseek-r1-distill-qwen-32b: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 66 -> 195)
+cf/@cf/deepseek-ai/deepseek-r1-distill-qwen-32b
+# openrouter/cohere/north-mini-code:free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 30 -> 196)
+openrouter/cohere/north-mini-code:free
+# gemini/gemini-3.8-flash: HANG ok=0/6 p90=3777ms (vị trí 19 -> 197)
+gemini/gemini-3.8-flash
+# kc/nvidia/nemotron-3-super-120b-a12b:free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 83 -> 198)
+kc/nvidia/nemotron-3-super-120b-a12b:free
+# ocz/flint-40b-free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 60 -> 199)
+ocz/flint-40b-free
+# nvidia/google/diffusiongemma-26b-a4b-it: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 85 -> 200)
+nvidia/google/diffusiongemma-26b-a4b-it
+# cf/@cf/meta/llama-3.2-1b-instruct: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 82 -> 201)
+cf/@cf/meta/llama-3.2-1b-instruct
+# openrouter/google/gemma-4-31b-it:free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 46 -> 202)
+openrouter/google/gemma-4-31b-it:free
+# gemini/models/gemini-3.8-flash: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 20 -> 203)
+gemini/models/gemini-3.8-flash
+# ocz/beam-free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 69 -> 204)
+ocz/beam-free
+# nvidia/google/gemma-4-31b-it: HANG ok=0/6 p90=-ms (vị trí 92 -> 205)
+nvidia/google/gemma-4-31b-it
+# openrouter/google/gemma-4-26b-a4b-it:free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 49 -> 206)
+openrouter/google/gemma-4-26b-a4b-it:free
+# gemini/models/gemini-3.8-live: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 21 -> 207)
+gemini/models/gemini-3.8-live
+# nvidia/ibm/granite-34b-code-instruct: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 96 -> 208)
+nvidia/ibm/granite-34b-code-instruct
+# openrouter/dots-studio/dots-3-note-preview:free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 52 -> 209)
+openrouter/dots-studio/dots-3-note-preview:free
+# gemini/models/gemini-3.8-live-extended-thinking: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 22 -> 210)
+gemini/models/gemini-3.8-live-extended-thinking
+# nvidia/meta/llama-3.2-90b-vision-instruct: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 100 -> 211)
+nvidia/meta/llama-3.2-90b-vision-instruct
+# openrouter/xingchen-agi/xing4.0-29b-a4b:free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 53 -> 212)
+openrouter/xingchen-agi/xing4.0-29b-a4b:free
+# nvidia/mistralai/mistral-large-2-instruct: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 104 -> 213)
+nvidia/mistralai/mistral-large-2-instruct
+# openrouter/liquid/lfm-2.5-2.6b:free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 54 -> 214)
+openrouter/liquid/lfm-2.5-2.6b:free
+# nvidia/nvidia/ai-synthetic-video-detector: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 108 -> 215)
+nvidia/nvidia/ai-synthetic-video-detector
+# nvidia/nvidia/llama3-chatqa-1.5-70b: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 115 -> 216)
+nvidia/nvidia/llama3-chatqa-1.5-70b
+# nvidia/nvidia/mistral-nemo-minitron-8b-8k-instruct: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 118 -> 217)
+nvidia/nvidia/mistral-nemo-minitron-8b-8k-instruct
+# nvidia/nvidia/nemotron-3-super-120b-a12b: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 124 -> 218)
+nvidia/nvidia/nemotron-3-super-120b-a12b
+# nvidia/nvidia/nemotron-4-340b-instruct: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 136 -> 219)
+nvidia/nvidia/nemotron-4-340b-instruct
+# nvidia/nvidia/nemotron-4-340b-reward: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 139 -> 220)
+nvidia/nvidia/nemotron-4-340b-reward
+# nvidia/nvidia/nemotron-nano-3-30b-a3b: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 141 -> 221)
+nvidia/nvidia/nemotron-nano-3-30b-a3b
+# nvidia/nvidia/nemotron-parse: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 143 -> 222)
+nvidia/nvidia/nemotron-parse
+# nvidia/nvidia/nemotron-parse-2.0: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 145 -> 223)
+nvidia/nvidia/nemotron-parse-2.0
+# nvidia/nvidia/neva-22b: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 147 -> 224)
+nvidia/nvidia/neva-22b
+# nvidia/nvidia/riva-translate-4b-instruct: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 149 -> 225)
+nvidia/nvidia/riva-translate-4b-instruct
+# nvidia/nvidia/vila: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 153 -> 226)
+nvidia/nvidia/vila
+# nvidia/openai/gpt-oss-20b: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 155 -> 227)
+nvidia/openai/gpt-oss-20b
+# nvidia/stepfun-ai/step-5-preview: HANG ok=4/6 p90=5354ms (vị trí 157 -> 228)
+nvidia/stepfun-ai/step-5-preview
+# nvidia/moonshotai/kimi-k2.6: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 159 -> 229)
+nvidia/moonshotai/kimi-k2.6
+
+## 9Router-Coder-1 (229 bước)
+# hạng 1 — RELIABLE (p90 tăng dần)
+cf/@cf/meta/llama-3.2-3b-instruct
+groq/openai/gpt-oss-20b
+openrouter/openrouter/free
+nvidia/nvidia/ising-calibration-1.5-31b
+kc/nvidia/nemotron-3-ultra-550b-a55b:free
+cf/@cf/meta/llama-3.3-70b-instruct-fp8-fast
+groq/qwen/qwen3.8-27b
+openrouter/nvidia/nemotron-3.5-lightning:free
+nvidia/nvidia/riva-translate-4b-instruct-v2
+cf/@cf/mistralai/mistral-small-3.1-24b-instruct
+groq/allam-2-7b
+openrouter/nvidia/nemotron-3.5-super-vl:free
+nvidia/poolside/laguna-xs-2.1
+cf/@cf/zai-org/glm-4.7-flash
+groq/openai/gpt-oss-120b
+openrouter/nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free
+nvidia/nvidia/nemotron-3.5-lightning-30b-a3b
+openrouter/recursive/flint-v1.0:free
+nvidia/nvidia/nemotron-3-nano-omni-30b-a3b-reasoning
+openrouter/nvidia/nemotron-3-ultra-550b-a55b:free
+nvidia/nvidia/nemotron-3.5-super-vl-120b-a12b
+openrouter/baidu/ernie-5.5-flash-preview:free
+nvidia/nvidia/nemotron-3-ultra-550b-a55b
+openrouter/inclusionai/ling-3.2-flash:free
+
+# hạng 3 — RATE-LIMITED (quota; giữ lại khi quota hồi)
+oc/deepseek-v4.1-flash-free
+oc/tidepool-alpha-free
+oc/hy4-flash-free
+oc/mimo-v2.6-flash-free
+oc/nemotron-3.5-super-vl-free
+oc/iceman-free
+oc/big-pickle
+oc/longcat-2.5-free
+oc/nemotron-3.5-lightning-free
+
+# hạng 4 — chưa đo
+<private-2>/deepseek/deepseek-v4.1-flash-free
+<private-3>/qwen/qwen3-coder-plus:free
+<private-4>/z-ai/glm-5.3-free
+<private-2>/z-ai/glm-5.3-flash-free
+<private-2>/deepseek/deepseek-v4-flash-free
+<private-2>/tencent/hy4-preview-free
+<private-2>/<private-2>/free
+<private-2>/orca/orcaverify-text1.0-free
+<private-2>/tencent/hy3-free
+
+# hạng 5 — lỗi nhanh cứng (404/405/400/410)
+bai/gemini-4-hydrogen
+hf/deepseek-ai/DeepSeek-V4.1-Flash-1017
+bzl/deepseek/deepseek-v4-flash-0731free:free
+cohere/c4ai-aya-expanse-32b
+oc/deepseek-v4-flash-free
+groq/canopylabs/orpheus-arabic-saudi
+hf/deepseek-ai/DeepSeek-V4.1-Flash
+bzl/qwen/qwen3.7-flash:free
+cohere/c4ai-aya-vision-32b
+oc/mimo-v2.5-free
+groq/canopylabs/orpheus-v1-english
+hf/zai-org/GLM-5.3-Flash
+bzl/auto:free
+cohere/command-a-03-2025
+oc/jev-1.13-free
+hf/zai-org/GLM-5.3-Flash-BF16
+cohere/command-a-plus-05-2026
+oc/qwen3.6-plus-free
+hf/zai-org/GLM-5.3
+cohere/command-a-reasoning-08-2025
+oc/nemotron-3-ultra-free
+hf/zai-org/GLM-5.3-BF16
+cohere/command-a-translate-08-2025
+oc/north-mini-code-free
+hf/Qwen/Qwen3.8-27B
+cohere/command-a-vision-07-2025
+oc/ling-3.0-flash-free
+hf/Qwen/Qwen3.8-2.4T-A95B
+cohere/command-r-08-2024
+oc/x-preview-f-free
+hf/openai/gpt-oss-120b
+cohere/command-r-plus-08-2024
+oc/hy3-free
+hf/deepseek-ai/DeepSeek-V4-Flash-Vision-Exp
+cohere/command-r7b-12-2024
+oc/ling-3.0-flash-fin-free
+hf/deepseek-ai/DeepSeek-V4-Flash
+cohere/command-r7b-arabic-02-2025
+oc/muse-spark-1.2-contributor-free
+hf/deepseek-ai/DeepSeek-V4-Flash-0731
+oc/muse-spark-1.3-contributor-free
+hf/tencent/Hy4-preview
+oc/step-5-preview-free
+hf/XiaomiMiMo/MiMo-V2.6-Pro-RL
+oc/ling-3.1-flash-free
+hf/XiaomiMiMo/MiMo-V2.6-Flash-RL
+oc/exo-free
+hf/XiaomiMiMo/MiMo-V2.5-Pro
+hf/XiaomiMiMo/MiMo-V2.5
+hf/moonshotai/Kimi-K3
+hf/moonshotai/Kimi-K2.6
+hf/google/gemma-4-31B-it
+hf/meta-llama/Llama-3.3-70B-Instruct
+hf/meta-models/Muse-Spark-Open-816B-A42B
+hf/nvidia/NVIDIA-Nemotron-3.5-Super-VL-120B-A12B-NVFP4
+hf/inclusionAI/Ling-3.1-flash
+hf/meta-llama/Llama-3.1-8B-Instruct
+hf/meta-models/Muse-Glimmer-30B
+hf/Qwen/Qwen3.6-35B-A3B
+hf/Qwen/Qwen3.5-9B
+hf/google/gemma-4-26B-A4B-it
+hf/openai/gpt-oss-20b
+hf/deepseek-ai/DeepSeek-R1
+hf/Qwen/Qwen3-14B
+hf/speakleash/Bielik-11B-v3.0-Instruct
+hf/google/gemma-3-4b-it
+hf/moonshotai/Kimi-K2.5
+hf/microsoft/phi-4
+hf/google/gemma-3-12b-it
+hf/Qwen/Qwen3.5-35B-A3B
+hf/thinkingmachines/Inkling
+hf/zai-org/GLM-5.2
+hf/Sao10K/L3-8B-Stheno-v3.2
+hf/google/gemma-3-27b-it
+hf/zai-org/GLM-4.7-Flash
+hf/Qwen/Qwen3.5-27B
+hf/inclusionAI/Ling-3.0-flash
+hf/Qwen/Qwen3.5-397B-A17B
+hf/CohereLabs/tiny-aya-global
+hf/thinkingmachines/Inkling-Small
+hf/tencent/Hy3
+hf/ibm-granite/granite-4.2-3b
+hf/meta-llama/Llama-4-Scout-17B-16E-Instruct
+hf/Qwen/Qwen3.6-27B
+hf/moonshotai/Kimi-K2.7-Code
+hf/deepseek-ai/DeepSeek-R1-0528
+hf/zai-org/GLM-5
+hf/Qwen/Qwen3-30B-A3B
+hf/deepseek-ai/DeepSeek-V3.1-Terminus
+hf/Qwen/Qwen3-VL-30B-A3B-Instruct
+hf/zai-org/AutoGLM-Phone-9B-Multilingual
+hf/zai-org/GLM-4.5V
+hf/NousResearch/Hermes-3-Llama-3.1-70B
+hf/Qwen/Qwen3.5-122B-A10B
+hf/alpindale/WizardLM-2-8x22B
+hf/zai-org/GLM-4.6V
+hf/stepfun-ai/Step-3.7-Flash
+hf/moonshotai/Kimi-K2-Instruct
+hf/deepseek-ai/DeepSeek-V3
+hf/zai-org/GLM-4.5-Air
+hf/Qwen/Qwen3-32B
+hf/stepfun-ai/Step-3.5-Flash
+hf/zai-org/GLM-4.5
+hf/zai-org/GLM-5.2-FP8
+hf/CohereLabs/c4ai-command-r7b-12-2024
+hf/zai-org/GLM-4.7
+hf/Qwen/Qwen3-Next-80B-A3B-Instruct
+hf/deepseek-ai/DeepSeek-V3.2
+hf/zai-org/GLM-5.1
+hf/nvidia/NVIDIA-Nemotron-3-Ultra-550B-A55B-BF16
+hf/aisingapore/Gemma-SEA-LION-v4-27B-IT
+hf/CohereLabs/c4ai-command-r-08-2024
+hf/zai-org/GLM-4.5V-FP8
+hf/deepseek-ai/DeepSeek-V3-0324
+hf/swiss-ai/Apertus-8B-Instruct-2509
+hf/CohereLabs/aya-expanse-32b
+hf/zai-org/GLM-4.6V-Flash
+hf/deepseek-ai/DeepSeek-V3.1
+hf/aisingapore/Qwen-SEA-LION-v4-32B-IT
+hf/zai-org/GLM-4.6V-FP8
+hf/zai-org/GLM-4.6
+hf/CohereLabs/c4ai-command-a-03-2025
+hf/Qwen/Qwen3-VL-235B-A22B-Instruct
+hf/CohereLabs/command-a-reasoning-08-2025
+hf/moonshotai/Kimi-K2-Instruct-0905
+hf/inclusionAI/Ling-3.0-flash-Fin
+hf/inclusionAI/Ling-3.0-flash-VL
+hf/meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8
+hf/CohereLabs/command-a-translate-08-2025
+hf/Qwen/Qwen2.5-VL-72B-Instruct
+hf/zai-org/GLM-4.6-FP8
+hf/CohereLabs/aya-vision-32b
+hf/CohereLabs/tiny-aya-water
+hf/zai-org/GLM-4.7-FP8
+hf/CohereLabs/tiny-aya-earth
+hf/CohereLabs/tiny-aya-fire
+
+# hạng 6 — HANG / 503 chậm ≥2s (đặt cuối, KHÔNG xoá)
+# ocz/deepseek-v4.1-flash-free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 2 -> 178)
+ocz/deepseek-v4.1-flash-free
+# ds/deepseek-v4.1-flash: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 4 -> 179)
+ds/deepseek-v4.1-flash
+# nvidia/z-ai/glm-5.3-flash: HANG ok=0/6 p90=-ms (vị trí 5 -> 180)
+nvidia/z-ai/glm-5.3-flash
+# cf/@cf/zai-org/glm-5.2: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 8 -> 181)
+cf/@cf/zai-org/glm-5.2
+# openrouter/z-ai/glm-5.2:free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 9 -> 182)
+openrouter/z-ai/glm-5.2:free
+# gemini/gemini-4-argon: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 16 -> 183)
+gemini/gemini-4-argon
+# oc/inkling-2-small-free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 27 -> 184)
+oc/inkling-2-small-free
+# kc/cohere/north-mini-code:free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 66 -> 185)
+kc/cohere/north-mini-code:free
+# ocz/mimo-v2.6-flash-free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 12 -> 186)
+ocz/mimo-v2.6-flash-free
+# nvidia/google/gemma-4-31b-it: HANG ok=0/6 p90=-ms (vị trí 60 -> 187)
+nvidia/google/gemma-4-31b-it
+# cf/zai-org/glm-5.2: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 32 -> 188)
+cf/zai-org/glm-5.2
+# openrouter/thinkingmachines/inkling-2-small:free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 30 -> 189)
+openrouter/thinkingmachines/inkling-2-small:free
+# gemini/gemini-4-hydrogen: HANG ok=1/6 p90=17020ms (vị trí 17 -> 190)
+gemini/gemini-4-hydrogen
+# kc/poolside/laguna-xs.2:free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 75 -> 191)
+kc/poolside/laguna-xs.2:free
+# ocz/nemotron-3.5-super-vl-free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 15 -> 192)
+ocz/nemotron-3.5-super-vl-free
+# nvidia/moonshotai/kimi-k2.6: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 69 -> 193)
+nvidia/moonshotai/kimi-k2.6
+# cf/@cf/deepseek-ai/deepseek-r1-distill-qwen-32b: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 65 -> 194)
+cf/@cf/deepseek-ai/deepseek-r1-distill-qwen-32b
+# openrouter/cohere/north-mini-code:free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 31 -> 195)
+openrouter/cohere/north-mini-code:free
+# gemini/gemini-3.8-flash: HANG ok=0/6 p90=3777ms (vị trí 19 -> 196)
+gemini/gemini-3.8-flash
+# kc/nvidia/nemotron-3-super-120b-a12b:free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 82 -> 197)
+kc/nvidia/nemotron-3-super-120b-a12b:free
+# ocz/flint-40b-free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 59 -> 198)
+ocz/flint-40b-free
+# nvidia/meta/muse-glimmer-30b: HANG ok=0/6 p90=-ms (vị trí 77 -> 199)
+nvidia/meta/muse-glimmer-30b
+# cf/@cf/meta/llama-3.2-1b-instruct: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 81 -> 200)
+cf/@cf/meta/llama-3.2-1b-instruct
+# openrouter/google/gemma-4-31b-it:free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 45 -> 201)
+openrouter/google/gemma-4-31b-it:free
+# gemini/models/gemini-3.8-flash: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 20 -> 202)
+gemini/models/gemini-3.8-flash
+# ocz/beam-free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 68 -> 203)
+ocz/beam-free
+# nvidia/google/codegemma-1.1-7b: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 91 -> 204)
+nvidia/google/codegemma-1.1-7b
+# openrouter/google/gemma-4-26b-a4b-it:free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 49 -> 205)
+openrouter/google/gemma-4-26b-a4b-it:free
+# gemini/models/gemini-3.8-live: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 21 -> 206)
+gemini/models/gemini-3.8-live
+# nvidia/google/diffusiongemma-26b-a4b-it: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 95 -> 207)
+nvidia/google/diffusiongemma-26b-a4b-it
+# openrouter/dots-studio/dots-3-note-preview:free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 52 -> 208)
+openrouter/dots-studio/dots-3-note-preview:free
+# gemini/models/gemini-3.8-live-extended-thinking: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 22 -> 209)
+gemini/models/gemini-3.8-live-extended-thinking
+# nvidia/ibm/granite-34b-code-instruct: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 99 -> 210)
+nvidia/ibm/granite-34b-code-instruct
+# openrouter/xingchen-agi/xing4.0-29b-a4b:free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 53 -> 211)
+openrouter/xingchen-agi/xing4.0-29b-a4b:free
+# nvidia/meta/llama-3.2-90b-vision-instruct: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 103 -> 212)
+nvidia/meta/llama-3.2-90b-vision-instruct
+# openrouter/liquid/lfm-2.5-2.6b:free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 54 -> 213)
+openrouter/liquid/lfm-2.5-2.6b:free
+# nvidia/mistralai/mistral-large-2-instruct: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 107 -> 214)
+nvidia/mistralai/mistral-large-2-instruct
+# nvidia/nvidia/ai-synthetic-video-detector: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 111 -> 215)
+nvidia/nvidia/ai-synthetic-video-detector
+# nvidia/nvidia/llama3-chatqa-1.5-70b: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 117 -> 216)
+nvidia/nvidia/llama3-chatqa-1.5-70b
+# nvidia/nvidia/mistral-nemo-minitron-8b-8k-instruct: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 120 -> 217)
+nvidia/nvidia/mistral-nemo-minitron-8b-8k-instruct
+# nvidia/nvidia/nemotron-3-super-120b-a12b: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 126 -> 218)
+nvidia/nvidia/nemotron-3-super-120b-a12b
+# nvidia/nvidia/nemotron-4-340b-instruct: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 138 -> 219)
+nvidia/nvidia/nemotron-4-340b-instruct
+# nvidia/nvidia/nemotron-4-340b-reward: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 140 -> 220)
+nvidia/nvidia/nemotron-4-340b-reward
+# nvidia/nvidia/nemotron-nano-3-30b-a3b: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 142 -> 221)
+nvidia/nvidia/nemotron-nano-3-30b-a3b
+# nvidia/nvidia/nemotron-parse: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 144 -> 222)
+nvidia/nvidia/nemotron-parse
+# nvidia/nvidia/nemotron-parse-2.0: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 146 -> 223)
+nvidia/nvidia/nemotron-parse-2.0
+# nvidia/nvidia/neva-22b: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 148 -> 224)
+nvidia/nvidia/neva-22b
+# nvidia/nvidia/riva-translate-4b-instruct: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 150 -> 225)
+nvidia/nvidia/riva-translate-4b-instruct
+# nvidia/nvidia/vila: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 154 -> 226)
+nvidia/nvidia/vila
+# nvidia/openai/gpt-oss-20b: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 156 -> 227)
+nvidia/openai/gpt-oss-20b
+# nvidia/stepfun-ai/step-5-preview: HANG ok=4/6 p90=5354ms (vị trí 158 -> 228)
+nvidia/stepfun-ai/step-5-preview
+
+## 9Router-Coder-2 (230 bước)
+# hạng 1 — RELIABLE (p90 tăng dần)
+cf/@cf/meta/llama-3.2-3b-instruct
+groq/openai/gpt-oss-20b
+openrouter/openrouter/free
+nvidia/nvidia/ising-calibration-1.5-31b
+kc/nvidia/nemotron-3-ultra-550b-a55b:free
+cf/@cf/meta/llama-3.3-70b-instruct-fp8-fast
+groq/qwen/qwen3.8-27b
+openrouter/nvidia/nemotron-3.5-lightning:free
+nvidia/nvidia/riva-translate-4b-instruct-v2
+cf/@cf/mistralai/mistral-small-3.1-24b-instruct
+groq/allam-2-7b
+openrouter/nvidia/nemotron-3.5-super-vl:free
+nvidia/poolside/laguna-xs-2.1
+cf/@cf/zai-org/glm-4.7-flash
+groq/openai/gpt-oss-120b
+openrouter/nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free
+nvidia/nvidia/nemotron-3.5-lightning-30b-a3b
+openrouter/recursive/flint-v1.0:free
+nvidia/nvidia/nemotron-3-nano-omni-30b-a3b-reasoning
+openrouter/nvidia/nemotron-3-ultra-550b-a55b:free
+nvidia/nvidia/nemotron-3.5-super-vl-120b-a12b
+openrouter/baidu/ernie-5.5-flash-preview:free
+nvidia/nvidia/nemotron-3-ultra-550b-a55b
+openrouter/inclusionai/ling-3.2-flash:free
+
+# hạng 3 — RATE-LIMITED (quota; giữ lại khi quota hồi)
+oc/deepseek-v4.1-flash-free
+oc/tidepool-alpha-free
+oc/hy4-flash-free
+oc/mimo-v2.6-flash-free
+oc/nemotron-3.5-super-vl-free
+oc/iceman-free
+oc/big-pickle
+oc/longcat-2.5-free
+oc/nemotron-3.5-lightning-free
+
+# hạng 4 — chưa đo
+<private-2>/deepseek/deepseek-v4.1-flash-free
+<private-3>/qwen/qwen3-coder-plus:free
+<private-4>/z-ai/glm-5.3-free
+<private-2>/z-ai/glm-5.3-flash-free
+<private-2>/deepseek/deepseek-v4-flash-free
+<private-2>/tencent/hy4-preview-free
+<private-2>/<private-2>/free
+<private-2>/orca/orcaverify-text1.0-free
+<private-2>/tencent/hy3-free
+
+# hạng 5 — lỗi nhanh cứng (404/405/400/410)
+bai/gemini-4-hydrogen
+hf/deepseek-ai/DeepSeek-V4.1-Flash-1017
+bzl/deepseek/deepseek-v4-flash-0731free:free
+cohere/c4ai-aya-expanse-32b
+oc/deepseek-v4-flash-free
+groq/canopylabs/orpheus-arabic-saudi
+hf/deepseek-ai/DeepSeek-V4.1-Flash
+bzl/qwen/qwen3.7-flash:free
+cohere/c4ai-aya-vision-32b
+oc/mimo-v2.5-free
+groq/canopylabs/orpheus-v1-english
+hf/zai-org/GLM-5.3-Flash
+bzl/auto:free
+cohere/command-a-03-2025
+oc/jev-1.13-free
+hf/zai-org/GLM-5.3-Flash-BF16
+cohere/command-a-plus-05-2026
+oc/qwen3.6-plus-free
+hf/zai-org/GLM-5.3
+cohere/command-a-reasoning-08-2025
+oc/nemotron-3-ultra-free
+hf/zai-org/GLM-5.3-BF16
+cohere/command-a-translate-08-2025
+oc/north-mini-code-free
+hf/Qwen/Qwen3.8-27B
+cohere/command-a-vision-07-2025
+oc/ling-3.0-flash-free
+hf/Qwen/Qwen3.8-2.4T-A95B
+cohere/command-r-08-2024
+oc/x-preview-f-free
+hf/openai/gpt-oss-120b
+cohere/command-r-plus-08-2024
+oc/hy3-free
+hf/deepseek-ai/DeepSeek-V4-Flash-Vision-Exp
+cohere/command-r7b-12-2024
+oc/ling-3.0-flash-fin-free
+hf/deepseek-ai/DeepSeek-V4-Flash
+cohere/command-r7b-arabic-02-2025
+oc/muse-spark-1.2-contributor-free
+hf/deepseek-ai/DeepSeek-V4-Flash-0731
+oc/muse-spark-1.3-contributor-free
+hf/tencent/Hy4-preview
+oc/step-5-preview-free
+hf/XiaomiMiMo/MiMo-V2.6-Pro-RL
+oc/ling-3.1-flash-free
+hf/XiaomiMiMo/MiMo-V2.6-Flash-RL
+oc/exo-free
+hf/XiaomiMiMo/MiMo-V2.5-Pro
+hf/XiaomiMiMo/MiMo-V2.5
+hf/moonshotai/Kimi-K3
+hf/moonshotai/Kimi-K2.6
+hf/google/gemma-4-31B-it
+hf/meta-llama/Llama-3.3-70B-Instruct
+hf/meta-models/Muse-Spark-Open-816B-A42B
+hf/nvidia/NVIDIA-Nemotron-3.5-Super-VL-120B-A12B-NVFP4
+hf/inclusionAI/Ling-3.1-flash
+hf/meta-llama/Llama-3.1-8B-Instruct
+hf/meta-models/Muse-Glimmer-30B
+hf/Qwen/Qwen3.6-35B-A3B
+hf/Qwen/Qwen3.5-9B
+hf/google/gemma-4-26B-A4B-it
+hf/openai/gpt-oss-20b
+hf/deepseek-ai/DeepSeek-R1
+hf/Qwen/Qwen3-14B
+hf/speakleash/Bielik-11B-v3.0-Instruct
+hf/google/gemma-3-4b-it
+hf/moonshotai/Kimi-K2.5
+hf/microsoft/phi-4
+hf/google/gemma-3-12b-it
+hf/Qwen/Qwen3.5-35B-A3B
+hf/thinkingmachines/Inkling
+hf/zai-org/GLM-5.2
+hf/Sao10K/L3-8B-Stheno-v3.2
+hf/google/gemma-3-27b-it
+hf/zai-org/GLM-4.7-Flash
+hf/Qwen/Qwen3.5-27B
+hf/inclusionAI/Ling-3.0-flash
+hf/Qwen/Qwen3.5-397B-A17B
+hf/CohereLabs/tiny-aya-global
+hf/thinkingmachines/Inkling-Small
+hf/tencent/Hy3
+hf/ibm-granite/granite-4.2-3b
+hf/meta-llama/Llama-4-Scout-17B-16E-Instruct
+hf/Qwen/Qwen3.6-27B
+hf/moonshotai/Kimi-K2.7-Code
+hf/deepseek-ai/DeepSeek-R1-0528
+hf/zai-org/GLM-5
+hf/Qwen/Qwen3-30B-A3B
+hf/deepseek-ai/DeepSeek-V3.1-Terminus
+hf/Qwen/Qwen3-VL-30B-A3B-Instruct
+hf/zai-org/AutoGLM-Phone-9B-Multilingual
+hf/zai-org/GLM-4.5V
+hf/NousResearch/Hermes-3-Llama-3.1-70B
+hf/Qwen/Qwen3.5-122B-A10B
+hf/alpindale/WizardLM-2-8x22B
+hf/zai-org/GLM-4.6V
+hf/stepfun-ai/Step-3.7-Flash
+hf/moonshotai/Kimi-K2-Instruct
+hf/deepseek-ai/DeepSeek-V3
+hf/zai-org/GLM-4.5-Air
+hf/Qwen/Qwen3-32B
+hf/stepfun-ai/Step-3.5-Flash
+hf/zai-org/GLM-4.5
+hf/zai-org/GLM-5.2-FP8
+hf/CohereLabs/c4ai-command-r7b-12-2024
+hf/zai-org/GLM-4.7
+hf/Qwen/Qwen3-Next-80B-A3B-Instruct
+hf/deepseek-ai/DeepSeek-V3.2
+hf/zai-org/GLM-5.1
+hf/nvidia/NVIDIA-Nemotron-3-Ultra-550B-A55B-BF16
+hf/aisingapore/Gemma-SEA-LION-v4-27B-IT
+hf/CohereLabs/c4ai-command-r-08-2024
+hf/zai-org/GLM-4.5V-FP8
+hf/deepseek-ai/DeepSeek-V3-0324
+hf/swiss-ai/Apertus-8B-Instruct-2509
+hf/CohereLabs/aya-expanse-32b
+hf/zai-org/GLM-4.6V-Flash
+hf/deepseek-ai/DeepSeek-V3.1
+hf/aisingapore/Qwen-SEA-LION-v4-32B-IT
+hf/zai-org/GLM-4.6V-FP8
+hf/zai-org/GLM-4.6
+hf/CohereLabs/c4ai-command-a-03-2025
+hf/Qwen/Qwen3-VL-235B-A22B-Instruct
+hf/CohereLabs/command-a-reasoning-08-2025
+hf/moonshotai/Kimi-K2-Instruct-0905
+hf/inclusionAI/Ling-3.0-flash-Fin
+hf/inclusionAI/Ling-3.0-flash-VL
+hf/meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8
+hf/CohereLabs/command-a-translate-08-2025
+hf/Qwen/Qwen2.5-VL-72B-Instruct
+hf/zai-org/GLM-4.6-FP8
+hf/CohereLabs/aya-vision-32b
+hf/CohereLabs/tiny-aya-water
+hf/zai-org/GLM-4.7-FP8
+hf/CohereLabs/tiny-aya-earth
+hf/CohereLabs/tiny-aya-fire
+
+# hạng 6 — HANG / 503 chậm ≥2s (đặt cuối, KHÔNG xoá)
+# ocz/deepseek-v4.1-flash-free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 2 -> 178)
+ocz/deepseek-v4.1-flash-free
+# ds/deepseek-v4.1-flash: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 4 -> 179)
+ds/deepseek-v4.1-flash
+# nvidia/z-ai/glm-5.3-flash: HANG ok=0/6 p90=-ms (vị trí 5 -> 180)
+nvidia/z-ai/glm-5.3-flash
+# cf/@cf/zai-org/glm-5.2: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 8 -> 181)
+cf/@cf/zai-org/glm-5.2
+# openrouter/z-ai/glm-5.2:free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 9 -> 182)
+openrouter/z-ai/glm-5.2:free
+# gemini/gemini-4-argon: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 16 -> 183)
+gemini/gemini-4-argon
+# oc/inkling-2-small-free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 27 -> 184)
+oc/inkling-2-small-free
+# <private-gateway>/deepseek/deepseek-v4-flash-free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 58 -> 185)
+<private-gateway>/deepseek/deepseek-v4-flash-free
+# kc/cohere/north-mini-code:free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 67 -> 186)
+kc/cohere/north-mini-code:free
+# ocz/mimo-v2.6-flash-free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 12 -> 187)
+ocz/mimo-v2.6-flash-free
+# nvidia/google/gemma-4-31b-it: HANG ok=0/6 p90=-ms (vị trí 61 -> 188)
+nvidia/google/gemma-4-31b-it
+# cf/zai-org/glm-5.2: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 32 -> 189)
+cf/zai-org/glm-5.2
+# openrouter/thinkingmachines/inkling-2-small:free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 30 -> 190)
+openrouter/thinkingmachines/inkling-2-small:free
+# gemini/gemini-4-hydrogen: HANG ok=1/6 p90=17020ms (vị trí 17 -> 191)
+gemini/gemini-4-hydrogen
+# kc/poolside/laguna-xs.2:free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 76 -> 192)
+kc/poolside/laguna-xs.2:free
+# ocz/nemotron-3.5-super-vl-free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 15 -> 193)
+ocz/nemotron-3.5-super-vl-free
+# nvidia/moonshotai/kimi-k2.6: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 70 -> 194)
+nvidia/moonshotai/kimi-k2.6
+# cf/@cf/deepseek-ai/deepseek-r1-distill-qwen-32b: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 66 -> 195)
+cf/@cf/deepseek-ai/deepseek-r1-distill-qwen-32b
+# openrouter/cohere/north-mini-code:free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 31 -> 196)
+openrouter/cohere/north-mini-code:free
+# gemini/gemini-3.8-flash: HANG ok=0/6 p90=3777ms (vị trí 19 -> 197)
+gemini/gemini-3.8-flash
+# kc/nvidia/nemotron-3-super-120b-a12b:free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 83 -> 198)
+kc/nvidia/nemotron-3-super-120b-a12b:free
+# ocz/flint-40b-free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 60 -> 199)
+ocz/flint-40b-free
+# nvidia/meta/muse-glimmer-30b: HANG ok=0/6 p90=-ms (vị trí 78 -> 200)
+nvidia/meta/muse-glimmer-30b
+# cf/@cf/meta/llama-3.2-1b-instruct: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 82 -> 201)
+cf/@cf/meta/llama-3.2-1b-instruct
+# openrouter/google/gemma-4-31b-it:free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 45 -> 202)
+openrouter/google/gemma-4-31b-it:free
+# gemini/models/gemini-3.8-flash: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 20 -> 203)
+gemini/models/gemini-3.8-flash
+# ocz/beam-free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 69 -> 204)
+ocz/beam-free
+# nvidia/google/codegemma-1.1-7b: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 92 -> 205)
+nvidia/google/codegemma-1.1-7b
+# openrouter/google/gemma-4-26b-a4b-it:free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 49 -> 206)
+openrouter/google/gemma-4-26b-a4b-it:free
+# gemini/models/gemini-3.8-live: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 21 -> 207)
+gemini/models/gemini-3.8-live
+# nvidia/google/diffusiongemma-26b-a4b-it: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 96 -> 208)
+nvidia/google/diffusiongemma-26b-a4b-it
+# openrouter/dots-studio/dots-3-note-preview:free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 52 -> 209)
+openrouter/dots-studio/dots-3-note-preview:free
+# gemini/models/gemini-3.8-live-extended-thinking: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 22 -> 210)
+gemini/models/gemini-3.8-live-extended-thinking
+# nvidia/ibm/granite-34b-code-instruct: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 100 -> 211)
+nvidia/ibm/granite-34b-code-instruct
+# openrouter/xingchen-agi/xing4.0-29b-a4b:free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 53 -> 212)
+openrouter/xingchen-agi/xing4.0-29b-a4b:free
+# nvidia/meta/llama-3.2-90b-vision-instruct: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 104 -> 213)
+nvidia/meta/llama-3.2-90b-vision-instruct
+# openrouter/liquid/lfm-2.5-2.6b:free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 54 -> 214)
+openrouter/liquid/lfm-2.5-2.6b:free
+# nvidia/mistralai/mistral-large-2-instruct: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 108 -> 215)
+nvidia/mistralai/mistral-large-2-instruct
+# nvidia/nvidia/ai-synthetic-video-detector: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 112 -> 216)
+nvidia/nvidia/ai-synthetic-video-detector
+# nvidia/nvidia/llama3-chatqa-1.5-70b: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 118 -> 217)
+nvidia/nvidia/llama3-chatqa-1.5-70b
+# nvidia/nvidia/mistral-nemo-minitron-8b-8k-instruct: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 121 -> 218)
+nvidia/nvidia/mistral-nemo-minitron-8b-8k-instruct
+# nvidia/nvidia/nemotron-3-super-120b-a12b: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 127 -> 219)
+nvidia/nvidia/nemotron-3-super-120b-a12b
+# nvidia/nvidia/nemotron-4-340b-instruct: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 139 -> 220)
+nvidia/nvidia/nemotron-4-340b-instruct
+# nvidia/nvidia/nemotron-4-340b-reward: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 141 -> 221)
+nvidia/nvidia/nemotron-4-340b-reward
+# nvidia/nvidia/nemotron-nano-3-30b-a3b: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 143 -> 222)
+nvidia/nvidia/nemotron-nano-3-30b-a3b
+# nvidia/nvidia/nemotron-parse: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 145 -> 223)
+nvidia/nvidia/nemotron-parse
+# nvidia/nvidia/nemotron-parse-2.0: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 147 -> 224)
+nvidia/nvidia/nemotron-parse-2.0
+# nvidia/nvidia/neva-22b: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 149 -> 225)
+nvidia/nvidia/neva-22b
+# nvidia/nvidia/riva-translate-4b-instruct: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 151 -> 226)
+nvidia/nvidia/riva-translate-4b-instruct
+# nvidia/nvidia/vila: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 155 -> 227)
+nvidia/nvidia/vila
+# nvidia/openai/gpt-oss-20b: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 157 -> 228)
+nvidia/openai/gpt-oss-20b
+# nvidia/stepfun-ai/step-5-preview: HANG ok=4/6 p90=5354ms (vị trí 159 -> 229)
+nvidia/stepfun-ai/step-5-preview
+
+## 9Router-Coder-3 (230 bước)
+# hạng 1 — RELIABLE (p90 tăng dần)
+cf/@cf/meta/llama-3.2-3b-instruct
+groq/openai/gpt-oss-20b
+openrouter/openrouter/free
+nvidia/nvidia/ising-calibration-1.5-31b
+kc/nvidia/nemotron-3-ultra-550b-a55b:free
+cf/@cf/meta/llama-3.3-70b-instruct-fp8-fast
+groq/qwen/qwen3.8-27b
+openrouter/nvidia/nemotron-3.5-lightning:free
+nvidia/nvidia/riva-translate-4b-instruct-v2
+cf/@cf/mistralai/mistral-small-3.1-24b-instruct
+groq/allam-2-7b
+openrouter/nvidia/nemotron-3.5-super-vl:free
+nvidia/poolside/laguna-xs-2.1
+cf/@cf/zai-org/glm-4.7-flash
+groq/openai/gpt-oss-120b
+openrouter/nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free
+nvidia/nvidia/nemotron-3.5-lightning-30b-a3b
+openrouter/recursive/flint-v1.0:free
+nvidia/nvidia/nemotron-3-nano-omni-30b-a3b-reasoning
+openrouter/nvidia/nemotron-3-ultra-550b-a55b:free
+nvidia/nvidia/nemotron-3.5-super-vl-120b-a12b
+openrouter/baidu/ernie-5.5-flash-preview:free
+nvidia/nvidia/nemotron-3-ultra-550b-a55b
+openrouter/inclusionai/ling-3.2-flash:free
+
+# hạng 3 — RATE-LIMITED (quota; giữ lại khi quota hồi)
+oc/deepseek-v4.1-flash-free
+oc/tidepool-alpha-free
+oc/hy4-flash-free
+oc/mimo-v2.6-flash-free
+oc/nemotron-3.5-super-vl-free
+oc/iceman-free
+oc/big-pickle
+oc/longcat-2.5-free
+oc/nemotron-3.5-lightning-free
+
+# hạng 4 — chưa đo
+<private-2>/deepseek/deepseek-v4.1-flash-free
+<private-3>/qwen/qwen3-coder-plus:free
+<private-4>/z-ai/glm-5.3-free
+<private-2>/z-ai/glm-5.3-flash-free
+<private-2>/deepseek/deepseek-v4-flash-free
+<private-2>/tencent/hy4-preview-free
+<private-2>/<private-2>/free
+<private-2>/orca/orcaverify-text1.0-free
+<private-2>/tencent/hy3-free
+
+# hạng 5 — lỗi nhanh cứng (404/405/400/410)
+bai/gemini-4-hydrogen
+hf/deepseek-ai/DeepSeek-V4.1-Flash-1017
+bzl/deepseek/deepseek-v4-flash-0731free:free
+cohere/c4ai-aya-expanse-32b
+oc/deepseek-v4-flash-free
+groq/canopylabs/orpheus-arabic-saudi
+hf/deepseek-ai/DeepSeek-V4.1-Flash
+bzl/qwen/qwen3.7-flash:free
+cohere/c4ai-aya-vision-32b
+oc/mimo-v2.5-free
+groq/canopylabs/orpheus-v1-english
+hf/zai-org/GLM-5.3-Flash
+bzl/auto:free
+cohere/command-a-03-2025
+oc/jev-1.13-free
+hf/zai-org/GLM-5.3-Flash-BF16
+cohere/command-a-plus-05-2026
+oc/qwen3.6-plus-free
+hf/zai-org/GLM-5.3
+cohere/command-a-reasoning-08-2025
+oc/nemotron-3-ultra-free
+hf/zai-org/GLM-5.3-BF16
+cohere/command-a-translate-08-2025
+oc/north-mini-code-free
+hf/Qwen/Qwen3.8-27B
+cohere/command-a-vision-07-2025
+oc/ling-3.0-flash-free
+hf/Qwen/Qwen3.8-2.4T-A95B
+cohere/command-r-08-2024
+oc/x-preview-f-free
+hf/openai/gpt-oss-120b
+cohere/command-r-plus-08-2024
+oc/hy3-free
+hf/deepseek-ai/DeepSeek-V4-Flash-Vision-Exp
+cohere/command-r7b-12-2024
+oc/ling-3.0-flash-fin-free
+hf/deepseek-ai/DeepSeek-V4-Flash
+cohere/command-r7b-arabic-02-2025
+oc/muse-spark-1.2-contributor-free
+hf/deepseek-ai/DeepSeek-V4-Flash-0731
+oc/muse-spark-1.3-contributor-free
+hf/tencent/Hy4-preview
+oc/step-5-preview-free
+hf/XiaomiMiMo/MiMo-V2.6-Pro-RL
+oc/ling-3.1-flash-free
+hf/XiaomiMiMo/MiMo-V2.6-Flash-RL
+oc/exo-free
+hf/XiaomiMiMo/MiMo-V2.5-Pro
+hf/XiaomiMiMo/MiMo-V2.5
+hf/moonshotai/Kimi-K3
+hf/moonshotai/Kimi-K2.6
+hf/google/gemma-4-31B-it
+hf/meta-llama/Llama-3.3-70B-Instruct
+hf/meta-models/Muse-Spark-Open-816B-A42B
+hf/nvidia/NVIDIA-Nemotron-3.5-Super-VL-120B-A12B-NVFP4
+hf/inclusionAI/Ling-3.1-flash
+hf/meta-llama/Llama-3.1-8B-Instruct
+hf/meta-models/Muse-Glimmer-30B
+hf/Qwen/Qwen3.6-35B-A3B
+hf/Qwen/Qwen3.5-9B
+hf/google/gemma-4-26B-A4B-it
+hf/openai/gpt-oss-20b
+hf/deepseek-ai/DeepSeek-R1
+hf/Qwen/Qwen3-14B
+hf/speakleash/Bielik-11B-v3.0-Instruct
+hf/google/gemma-3-4b-it
+hf/moonshotai/Kimi-K2.5
+hf/microsoft/phi-4
+hf/google/gemma-3-12b-it
+hf/Qwen/Qwen3.5-35B-A3B
+hf/thinkingmachines/Inkling
+hf/zai-org/GLM-5.2
+hf/Sao10K/L3-8B-Stheno-v3.2
+hf/google/gemma-3-27b-it
+hf/zai-org/GLM-4.7-Flash
+hf/Qwen/Qwen3.5-27B
+hf/inclusionAI/Ling-3.0-flash
+hf/Qwen/Qwen3.5-397B-A17B
+hf/CohereLabs/tiny-aya-global
+hf/thinkingmachines/Inkling-Small
+hf/tencent/Hy3
+hf/ibm-granite/granite-4.2-3b
+hf/meta-llama/Llama-4-Scout-17B-16E-Instruct
+hf/Qwen/Qwen3.6-27B
+hf/moonshotai/Kimi-K2.7-Code
+hf/deepseek-ai/DeepSeek-R1-0528
+hf/zai-org/GLM-5
+hf/Qwen/Qwen3-30B-A3B
+hf/deepseek-ai/DeepSeek-V3.1-Terminus
+hf/Qwen/Qwen3-VL-30B-A3B-Instruct
+hf/zai-org/AutoGLM-Phone-9B-Multilingual
+hf/zai-org/GLM-4.5V
+hf/NousResearch/Hermes-3-Llama-3.1-70B
+hf/Qwen/Qwen3.5-122B-A10B
+hf/alpindale/WizardLM-2-8x22B
+hf/zai-org/GLM-4.6V
+hf/stepfun-ai/Step-3.7-Flash
+hf/moonshotai/Kimi-K2-Instruct
+hf/deepseek-ai/DeepSeek-V3
+hf/zai-org/GLM-4.5-Air
+hf/Qwen/Qwen3-32B
+hf/stepfun-ai/Step-3.5-Flash
+hf/zai-org/GLM-4.5
+hf/zai-org/GLM-5.2-FP8
+hf/CohereLabs/c4ai-command-r7b-12-2024
+hf/zai-org/GLM-4.7
+hf/Qwen/Qwen3-Next-80B-A3B-Instruct
+hf/deepseek-ai/DeepSeek-V3.2
+hf/zai-org/GLM-5.1
+hf/nvidia/NVIDIA-Nemotron-3-Ultra-550B-A55B-BF16
+hf/aisingapore/Gemma-SEA-LION-v4-27B-IT
+hf/CohereLabs/c4ai-command-r-08-2024
+hf/zai-org/GLM-4.5V-FP8
+hf/deepseek-ai/DeepSeek-V3-0324
+hf/swiss-ai/Apertus-8B-Instruct-2509
+hf/CohereLabs/aya-expanse-32b
+hf/zai-org/GLM-4.6V-Flash
+hf/deepseek-ai/DeepSeek-V3.1
+hf/aisingapore/Qwen-SEA-LION-v4-32B-IT
+hf/zai-org/GLM-4.6V-FP8
+hf/zai-org/GLM-4.6
+hf/CohereLabs/c4ai-command-a-03-2025
+hf/Qwen/Qwen3-VL-235B-A22B-Instruct
+hf/CohereLabs/command-a-reasoning-08-2025
+hf/moonshotai/Kimi-K2-Instruct-0905
+hf/inclusionAI/Ling-3.0-flash-Fin
+hf/inclusionAI/Ling-3.0-flash-VL
+hf/meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8
+hf/CohereLabs/command-a-translate-08-2025
+hf/Qwen/Qwen2.5-VL-72B-Instruct
+hf/zai-org/GLM-4.6-FP8
+hf/CohereLabs/aya-vision-32b
+hf/CohereLabs/tiny-aya-water
+hf/zai-org/GLM-4.7-FP8
+hf/CohereLabs/tiny-aya-earth
+hf/CohereLabs/tiny-aya-fire
+
+# hạng 6 — HANG / 503 chậm ≥2s (đặt cuối, KHÔNG xoá)
+# ocz/deepseek-v4.1-flash-free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 2 -> 178)
+ocz/deepseek-v4.1-flash-free
+# ds/deepseek-v4.1-flash: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 4 -> 179)
+ds/deepseek-v4.1-flash
+# nvidia/z-ai/glm-5.3-flash: HANG ok=0/6 p90=-ms (vị trí 5 -> 180)
+nvidia/z-ai/glm-5.3-flash
+# cf/@cf/zai-org/glm-5.2: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 8 -> 181)
+cf/@cf/zai-org/glm-5.2
+# openrouter/z-ai/glm-5.2:free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 9 -> 182)
+openrouter/z-ai/glm-5.2:free
+# gemini/gemini-4-argon: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 16 -> 183)
+gemini/gemini-4-argon
+# oc/inkling-2-small-free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 27 -> 184)
+oc/inkling-2-small-free
+# <private-gateway>/deepseek/deepseek-v4-flash-free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 58 -> 185)
+<private-gateway>/deepseek/deepseek-v4-flash-free
+# kc/cohere/north-mini-code:free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 67 -> 186)
+kc/cohere/north-mini-code:free
+# ocz/mimo-v2.6-flash-free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 12 -> 187)
+ocz/mimo-v2.6-flash-free
+# nvidia/google/gemma-4-31b-it: HANG ok=0/6 p90=-ms (vị trí 61 -> 188)
+nvidia/google/gemma-4-31b-it
+# cf/zai-org/glm-5.2: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 32 -> 189)
+cf/zai-org/glm-5.2
+# openrouter/thinkingmachines/inkling-2-small:free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 30 -> 190)
+openrouter/thinkingmachines/inkling-2-small:free
+# gemini/gemini-4-hydrogen: HANG ok=1/6 p90=17020ms (vị trí 17 -> 191)
+gemini/gemini-4-hydrogen
+# kc/poolside/laguna-xs.2:free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 76 -> 192)
+kc/poolside/laguna-xs.2:free
+# ocz/nemotron-3.5-super-vl-free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 15 -> 193)
+ocz/nemotron-3.5-super-vl-free
+# nvidia/moonshotai/kimi-k2.6: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 70 -> 194)
+nvidia/moonshotai/kimi-k2.6
+# cf/@cf/deepseek-ai/deepseek-r1-distill-qwen-32b: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 66 -> 195)
+cf/@cf/deepseek-ai/deepseek-r1-distill-qwen-32b
+# openrouter/cohere/north-mini-code:free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 31 -> 196)
+openrouter/cohere/north-mini-code:free
+# gemini/gemini-3.8-flash: HANG ok=0/6 p90=3777ms (vị trí 19 -> 197)
+gemini/gemini-3.8-flash
+# kc/nvidia/nemotron-3-super-120b-a12b:free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 83 -> 198)
+kc/nvidia/nemotron-3-super-120b-a12b:free
+# ocz/flint-40b-free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 60 -> 199)
+ocz/flint-40b-free
+# nvidia/meta/muse-glimmer-30b: HANG ok=0/6 p90=-ms (vị trí 78 -> 200)
+nvidia/meta/muse-glimmer-30b
+# cf/@cf/meta/llama-3.2-1b-instruct: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 82 -> 201)
+cf/@cf/meta/llama-3.2-1b-instruct
+# openrouter/google/gemma-4-31b-it:free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 45 -> 202)
+openrouter/google/gemma-4-31b-it:free
+# gemini/models/gemini-3.8-flash: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 20 -> 203)
+gemini/models/gemini-3.8-flash
+# ocz/beam-free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 69 -> 204)
+ocz/beam-free
+# nvidia/google/codegemma-1.1-7b: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 92 -> 205)
+nvidia/google/codegemma-1.1-7b
+# openrouter/google/gemma-4-26b-a4b-it:free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 49 -> 206)
+openrouter/google/gemma-4-26b-a4b-it:free
+# gemini/models/gemini-3.8-live: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 21 -> 207)
+gemini/models/gemini-3.8-live
+# nvidia/google/diffusiongemma-26b-a4b-it: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 96 -> 208)
+nvidia/google/diffusiongemma-26b-a4b-it
+# openrouter/dots-studio/dots-3-note-preview:free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 52 -> 209)
+openrouter/dots-studio/dots-3-note-preview:free
+# gemini/models/gemini-3.8-live-extended-thinking: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 22 -> 210)
+gemini/models/gemini-3.8-live-extended-thinking
+# nvidia/ibm/granite-34b-code-instruct: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 100 -> 211)
+nvidia/ibm/granite-34b-code-instruct
+# openrouter/xingchen-agi/xing4.0-29b-a4b:free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 53 -> 212)
+openrouter/xingchen-agi/xing4.0-29b-a4b:free
+# nvidia/meta/llama-3.2-90b-vision-instruct: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 104 -> 213)
+nvidia/meta/llama-3.2-90b-vision-instruct
+# openrouter/liquid/lfm-2.5-2.6b:free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 54 -> 214)
+openrouter/liquid/lfm-2.5-2.6b:free
+# nvidia/mistralai/mistral-large-2-instruct: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 108 -> 215)
+nvidia/mistralai/mistral-large-2-instruct
+# nvidia/nvidia/ai-synthetic-video-detector: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 112 -> 216)
+nvidia/nvidia/ai-synthetic-video-detector
+# nvidia/nvidia/llama3-chatqa-1.5-70b: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 118 -> 217)
+nvidia/nvidia/llama3-chatqa-1.5-70b
+# nvidia/nvidia/mistral-nemo-minitron-8b-8k-instruct: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 121 -> 218)
+nvidia/nvidia/mistral-nemo-minitron-8b-8k-instruct
+# nvidia/nvidia/nemotron-3-super-120b-a12b: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 127 -> 219)
+nvidia/nvidia/nemotron-3-super-120b-a12b
+# nvidia/nvidia/nemotron-4-340b-instruct: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 139 -> 220)
+nvidia/nvidia/nemotron-4-340b-instruct
+# nvidia/nvidia/nemotron-4-340b-reward: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 141 -> 221)
+nvidia/nvidia/nemotron-4-340b-reward
+# nvidia/nvidia/nemotron-nano-3-30b-a3b: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 143 -> 222)
+nvidia/nvidia/nemotron-nano-3-30b-a3b
+# nvidia/nvidia/nemotron-parse: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 145 -> 223)
+nvidia/nvidia/nemotron-parse
+# nvidia/nvidia/nemotron-parse-2.0: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 147 -> 224)
+nvidia/nvidia/nemotron-parse-2.0
+# nvidia/nvidia/neva-22b: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 149 -> 225)
+nvidia/nvidia/neva-22b
+# nvidia/nvidia/riva-translate-4b-instruct: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 151 -> 226)
+nvidia/nvidia/riva-translate-4b-instruct
+# nvidia/nvidia/vila: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 155 -> 227)
+nvidia/nvidia/vila
+# nvidia/openai/gpt-oss-20b: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 157 -> 228)
+nvidia/openai/gpt-oss-20b
+# nvidia/stepfun-ai/step-5-preview: HANG ok=4/6 p90=5354ms (vị trí 159 -> 229)
+nvidia/stepfun-ai/step-5-preview
+
+## 9Router-Coder-4 (230 bước)
+# hạng 1 — RELIABLE (p90 tăng dần)
+cf/@cf/meta/llama-3.2-3b-instruct
+groq/openai/gpt-oss-20b
+openrouter/openrouter/free
+nvidia/nvidia/ising-calibration-1.5-31b
+kc/nvidia/nemotron-3-ultra-550b-a55b:free
+cf/@cf/meta/llama-3.3-70b-instruct-fp8-fast
+groq/qwen/qwen3.8-27b
+openrouter/nvidia/nemotron-3.5-lightning:free
+nvidia/nvidia/riva-translate-4b-instruct-v2
+cf/@cf/mistralai/mistral-small-3.1-24b-instruct
+groq/allam-2-7b
+openrouter/nvidia/nemotron-3.5-super-vl:free
+nvidia/poolside/laguna-xs-2.1
+cf/@cf/zai-org/glm-4.7-flash
+groq/openai/gpt-oss-120b
+openrouter/nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free
+nvidia/nvidia/nemotron-3.5-lightning-30b-a3b
+openrouter/recursive/flint-v1.0:free
+nvidia/nvidia/nemotron-3-nano-omni-30b-a3b-reasoning
+openrouter/nvidia/nemotron-3-ultra-550b-a55b:free
+nvidia/nvidia/nemotron-3.5-super-vl-120b-a12b
+openrouter/baidu/ernie-5.5-flash-preview:free
+nvidia/nvidia/nemotron-3-ultra-550b-a55b
+openrouter/inclusionai/ling-3.2-flash:free
+
+# hạng 3 — RATE-LIMITED (quota; giữ lại khi quota hồi)
+oc/deepseek-v4.1-flash-free
+oc/tidepool-alpha-free
+oc/hy4-flash-free
+oc/mimo-v2.6-flash-free
+oc/nemotron-3.5-super-vl-free
+oc/iceman-free
+oc/big-pickle
+oc/longcat-2.5-free
+oc/nemotron-3.5-lightning-free
+
+# hạng 4 — chưa đo
+<private-2>/deepseek/deepseek-v4.1-flash-free
+<private-3>/qwen/qwen3-coder-plus:free
+<private-4>/z-ai/glm-5.3-free
+<private-2>/z-ai/glm-5.3-flash-free
+<private-2>/deepseek/deepseek-v4-flash-free
+<private-2>/tencent/hy4-preview-free
+<private-2>/<private-2>/free
+<private-2>/orca/orcaverify-text1.0-free
+<private-2>/tencent/hy3-free
+
+# hạng 5 — lỗi nhanh cứng (404/405/400/410)
+bai/gemini-4-hydrogen
+hf/deepseek-ai/DeepSeek-V4.1-Flash-1017
+bzl/deepseek/deepseek-v4-flash-0731free:free
+cohere/c4ai-aya-expanse-32b
+oc/deepseek-v4-flash-free
+groq/canopylabs/orpheus-arabic-saudi
+hf/deepseek-ai/DeepSeek-V4.1-Flash
+bzl/qwen/qwen3.7-flash:free
+cohere/c4ai-aya-vision-32b
+oc/mimo-v2.5-free
+groq/canopylabs/orpheus-v1-english
+hf/zai-org/GLM-5.3-Flash
+bzl/auto:free
+cohere/command-a-03-2025
+oc/jev-1.13-free
+hf/zai-org/GLM-5.3-Flash-BF16
+cohere/command-a-plus-05-2026
+oc/qwen3.6-plus-free
+hf/zai-org/GLM-5.3
+cohere/command-a-reasoning-08-2025
+oc/nemotron-3-ultra-free
+hf/zai-org/GLM-5.3-BF16
+cohere/command-a-translate-08-2025
+oc/north-mini-code-free
+hf/Qwen/Qwen3.8-27B
+cohere/command-a-vision-07-2025
+oc/ling-3.0-flash-free
+hf/Qwen/Qwen3.8-2.4T-A95B
+cohere/command-r-08-2024
+oc/x-preview-f-free
+hf/openai/gpt-oss-120b
+cohere/command-r-plus-08-2024
+oc/hy3-free
+hf/deepseek-ai/DeepSeek-V4-Flash-Vision-Exp
+cohere/command-r7b-12-2024
+oc/ling-3.0-flash-fin-free
+hf/deepseek-ai/DeepSeek-V4-Flash
+cohere/command-r7b-arabic-02-2025
+oc/muse-spark-1.2-contributor-free
+hf/deepseek-ai/DeepSeek-V4-Flash-0731
+oc/muse-spark-1.3-contributor-free
+hf/tencent/Hy4-preview
+oc/step-5-preview-free
+hf/XiaomiMiMo/MiMo-V2.6-Pro-RL
+oc/ling-3.1-flash-free
+hf/XiaomiMiMo/MiMo-V2.6-Flash-RL
+oc/exo-free
+hf/XiaomiMiMo/MiMo-V2.5-Pro
+hf/XiaomiMiMo/MiMo-V2.5
+hf/moonshotai/Kimi-K3
+hf/moonshotai/Kimi-K2.6
+hf/google/gemma-4-31B-it
+hf/meta-llama/Llama-3.3-70B-Instruct
+hf/meta-models/Muse-Spark-Open-816B-A42B
+hf/nvidia/NVIDIA-Nemotron-3.5-Super-VL-120B-A12B-NVFP4
+hf/inclusionAI/Ling-3.1-flash
+hf/meta-llama/Llama-3.1-8B-Instruct
+hf/meta-models/Muse-Glimmer-30B
+hf/Qwen/Qwen3.6-35B-A3B
+hf/Qwen/Qwen3.5-9B
+hf/google/gemma-4-26B-A4B-it
+hf/openai/gpt-oss-20b
+hf/deepseek-ai/DeepSeek-R1
+hf/Qwen/Qwen3-14B
+hf/speakleash/Bielik-11B-v3.0-Instruct
+hf/google/gemma-3-4b-it
+hf/moonshotai/Kimi-K2.5
+hf/microsoft/phi-4
+hf/google/gemma-3-12b-it
+hf/Qwen/Qwen3.5-35B-A3B
+hf/thinkingmachines/Inkling
+hf/zai-org/GLM-5.2
+hf/Sao10K/L3-8B-Stheno-v3.2
+hf/google/gemma-3-27b-it
+hf/zai-org/GLM-4.7-Flash
+hf/Qwen/Qwen3.5-27B
+hf/inclusionAI/Ling-3.0-flash
+hf/Qwen/Qwen3.5-397B-A17B
+hf/CohereLabs/tiny-aya-global
+hf/thinkingmachines/Inkling-Small
+hf/tencent/Hy3
+hf/ibm-granite/granite-4.2-3b
+hf/meta-llama/Llama-4-Scout-17B-16E-Instruct
+hf/Qwen/Qwen3.6-27B
+hf/moonshotai/Kimi-K2.7-Code
+hf/deepseek-ai/DeepSeek-R1-0528
+hf/zai-org/GLM-5
+hf/Qwen/Qwen3-30B-A3B
+hf/deepseek-ai/DeepSeek-V3.1-Terminus
+hf/Qwen/Qwen3-VL-30B-A3B-Instruct
+hf/zai-org/AutoGLM-Phone-9B-Multilingual
+hf/zai-org/GLM-4.5V
+hf/NousResearch/Hermes-3-Llama-3.1-70B
+hf/Qwen/Qwen3.5-122B-A10B
+hf/alpindale/WizardLM-2-8x22B
+hf/zai-org/GLM-4.6V
+hf/stepfun-ai/Step-3.7-Flash
+hf/moonshotai/Kimi-K2-Instruct
+hf/deepseek-ai/DeepSeek-V3
+hf/zai-org/GLM-4.5-Air
+hf/Qwen/Qwen3-32B
+hf/stepfun-ai/Step-3.5-Flash
+hf/zai-org/GLM-4.5
+hf/zai-org/GLM-5.2-FP8
+hf/CohereLabs/c4ai-command-r7b-12-2024
+hf/zai-org/GLM-4.7
+hf/Qwen/Qwen3-Next-80B-A3B-Instruct
+hf/deepseek-ai/DeepSeek-V3.2
+hf/zai-org/GLM-5.1
+hf/nvidia/NVIDIA-Nemotron-3-Ultra-550B-A55B-BF16
+hf/aisingapore/Gemma-SEA-LION-v4-27B-IT
+hf/CohereLabs/c4ai-command-r-08-2024
+hf/zai-org/GLM-4.5V-FP8
+hf/deepseek-ai/DeepSeek-V3-0324
+hf/swiss-ai/Apertus-8B-Instruct-2509
+hf/CohereLabs/aya-expanse-32b
+hf/zai-org/GLM-4.6V-Flash
+hf/deepseek-ai/DeepSeek-V3.1
+hf/aisingapore/Qwen-SEA-LION-v4-32B-IT
+hf/zai-org/GLM-4.6V-FP8
+hf/zai-org/GLM-4.6
+hf/CohereLabs/c4ai-command-a-03-2025
+hf/Qwen/Qwen3-VL-235B-A22B-Instruct
+hf/CohereLabs/command-a-reasoning-08-2025
+hf/moonshotai/Kimi-K2-Instruct-0905
+hf/inclusionAI/Ling-3.0-flash-Fin
+hf/inclusionAI/Ling-3.0-flash-VL
+hf/meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8
+hf/CohereLabs/command-a-translate-08-2025
+hf/Qwen/Qwen2.5-VL-72B-Instruct
+hf/zai-org/GLM-4.6-FP8
+hf/CohereLabs/aya-vision-32b
+hf/CohereLabs/tiny-aya-water
+hf/zai-org/GLM-4.7-FP8
+hf/CohereLabs/tiny-aya-earth
+hf/CohereLabs/tiny-aya-fire
+
+# hạng 6 — HANG / 503 chậm ≥2s (đặt cuối, KHÔNG xoá)
+# ocz/deepseek-v4.1-flash-free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 2 -> 178)
+ocz/deepseek-v4.1-flash-free
+# ds/deepseek-v4.1-flash: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 4 -> 179)
+ds/deepseek-v4.1-flash
+# nvidia/z-ai/glm-5.3-flash: HANG ok=0/6 p90=-ms (vị trí 5 -> 180)
+nvidia/z-ai/glm-5.3-flash
+# cf/@cf/zai-org/glm-5.2: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 8 -> 181)
+cf/@cf/zai-org/glm-5.2
+# openrouter/z-ai/glm-5.2:free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 9 -> 182)
+openrouter/z-ai/glm-5.2:free
+# gemini/gemini-4-argon: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 16 -> 183)
+gemini/gemini-4-argon
+# oc/inkling-2-small-free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 27 -> 184)
+oc/inkling-2-small-free
+# <private-gateway>/deepseek/deepseek-v4-flash-free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 58 -> 185)
+<private-gateway>/deepseek/deepseek-v4-flash-free
+# kc/cohere/north-mini-code:free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 67 -> 186)
+kc/cohere/north-mini-code:free
+# ocz/mimo-v2.6-flash-free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 12 -> 187)
+ocz/mimo-v2.6-flash-free
+# nvidia/google/gemma-4-31b-it: HANG ok=0/6 p90=-ms (vị trí 61 -> 188)
+nvidia/google/gemma-4-31b-it
+# cf/zai-org/glm-5.2: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 32 -> 189)
+cf/zai-org/glm-5.2
+# openrouter/thinkingmachines/inkling-2-small:free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 30 -> 190)
+openrouter/thinkingmachines/inkling-2-small:free
+# gemini/gemini-4-hydrogen: HANG ok=1/6 p90=17020ms (vị trí 17 -> 191)
+gemini/gemini-4-hydrogen
+# kc/poolside/laguna-xs.2:free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 76 -> 192)
+kc/poolside/laguna-xs.2:free
+# ocz/nemotron-3.5-super-vl-free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 15 -> 193)
+ocz/nemotron-3.5-super-vl-free
+# nvidia/moonshotai/kimi-k2.6: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 70 -> 194)
+nvidia/moonshotai/kimi-k2.6
+# cf/@cf/deepseek-ai/deepseek-r1-distill-qwen-32b: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 66 -> 195)
+cf/@cf/deepseek-ai/deepseek-r1-distill-qwen-32b
+# openrouter/cohere/north-mini-code:free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 31 -> 196)
+openrouter/cohere/north-mini-code:free
+# gemini/gemini-3.8-flash: HANG ok=0/6 p90=3777ms (vị trí 19 -> 197)
+gemini/gemini-3.8-flash
+# kc/nvidia/nemotron-3-super-120b-a12b:free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 83 -> 198)
+kc/nvidia/nemotron-3-super-120b-a12b:free
+# ocz/flint-40b-free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 60 -> 199)
+ocz/flint-40b-free
+# nvidia/meta/muse-glimmer-30b: HANG ok=0/6 p90=-ms (vị trí 78 -> 200)
+nvidia/meta/muse-glimmer-30b
+# cf/@cf/meta/llama-3.2-1b-instruct: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 82 -> 201)
+cf/@cf/meta/llama-3.2-1b-instruct
+# openrouter/google/gemma-4-31b-it:free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 45 -> 202)
+openrouter/google/gemma-4-31b-it:free
+# gemini/models/gemini-3.8-flash: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 20 -> 203)
+gemini/models/gemini-3.8-flash
+# ocz/beam-free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 69 -> 204)
+ocz/beam-free
+# nvidia/google/codegemma-1.1-7b: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 92 -> 205)
+nvidia/google/codegemma-1.1-7b
+# openrouter/google/gemma-4-26b-a4b-it:free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 49 -> 206)
+openrouter/google/gemma-4-26b-a4b-it:free
+# gemini/models/gemini-3.8-live: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 21 -> 207)
+gemini/models/gemini-3.8-live
+# nvidia/google/diffusiongemma-26b-a4b-it: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 96 -> 208)
+nvidia/google/diffusiongemma-26b-a4b-it
+# openrouter/dots-studio/dots-3-note-preview:free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 52 -> 209)
+openrouter/dots-studio/dots-3-note-preview:free
+# gemini/models/gemini-3.8-live-extended-thinking: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 22 -> 210)
+gemini/models/gemini-3.8-live-extended-thinking
+# nvidia/ibm/granite-34b-code-instruct: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 100 -> 211)
+nvidia/ibm/granite-34b-code-instruct
+# openrouter/xingchen-agi/xing4.0-29b-a4b:free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 53 -> 212)
+openrouter/xingchen-agi/xing4.0-29b-a4b:free
+# nvidia/meta/llama-3.2-90b-vision-instruct: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 104 -> 213)
+nvidia/meta/llama-3.2-90b-vision-instruct
+# openrouter/liquid/lfm-2.5-2.6b:free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 54 -> 214)
+openrouter/liquid/lfm-2.5-2.6b:free
+# nvidia/mistralai/mistral-large-2-instruct: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 108 -> 215)
+nvidia/mistralai/mistral-large-2-instruct
+# nvidia/nvidia/ai-synthetic-video-detector: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 112 -> 216)
+nvidia/nvidia/ai-synthetic-video-detector
+# nvidia/nvidia/llama3-chatqa-1.5-70b: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 118 -> 217)
+nvidia/nvidia/llama3-chatqa-1.5-70b
+# nvidia/nvidia/mistral-nemo-minitron-8b-8k-instruct: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 121 -> 218)
+nvidia/nvidia/mistral-nemo-minitron-8b-8k-instruct
+# nvidia/nvidia/nemotron-3-super-120b-a12b: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 127 -> 219)
+nvidia/nvidia/nemotron-3-super-120b-a12b
+# nvidia/nvidia/nemotron-4-340b-instruct: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 139 -> 220)
+nvidia/nvidia/nemotron-4-340b-instruct
+# nvidia/nvidia/nemotron-4-340b-reward: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 141 -> 221)
+nvidia/nvidia/nemotron-4-340b-reward
+# nvidia/nvidia/nemotron-nano-3-30b-a3b: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 143 -> 222)
+nvidia/nvidia/nemotron-nano-3-30b-a3b
+# nvidia/nvidia/nemotron-parse: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 145 -> 223)
+nvidia/nvidia/nemotron-parse
+# nvidia/nvidia/nemotron-parse-2.0: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 147 -> 224)
+nvidia/nvidia/nemotron-parse-2.0
+# nvidia/nvidia/neva-22b: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 149 -> 225)
+nvidia/nvidia/neva-22b
+# nvidia/nvidia/riva-translate-4b-instruct: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 151 -> 226)
+nvidia/nvidia/riva-translate-4b-instruct
+# nvidia/nvidia/vila: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 155 -> 227)
+nvidia/nvidia/vila
+# nvidia/openai/gpt-oss-20b: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 157 -> 228)
+nvidia/openai/gpt-oss-20b
+# nvidia/stepfun-ai/step-5-preview: HANG ok=4/6 p90=5354ms (vị trí 159 -> 229)
+nvidia/stepfun-ai/step-5-preview
+
+## 9Router-Coder-5 (230 bước)
+# hạng 1 — RELIABLE (p90 tăng dần)
+cf/@cf/meta/llama-3.2-3b-instruct
+groq/openai/gpt-oss-20b
+openrouter/openrouter/free
+nvidia/nvidia/ising-calibration-1.5-31b
+kc/nvidia/nemotron-3-ultra-550b-a55b:free
+cf/@cf/meta/llama-3.3-70b-instruct-fp8-fast
+groq/qwen/qwen3.8-27b
+openrouter/nvidia/nemotron-3.5-lightning:free
+nvidia/nvidia/riva-translate-4b-instruct-v2
+cf/@cf/mistralai/mistral-small-3.1-24b-instruct
+groq/allam-2-7b
+openrouter/nvidia/nemotron-3.5-super-vl:free
+nvidia/poolside/laguna-xs-2.1
+cf/@cf/zai-org/glm-4.7-flash
+groq/openai/gpt-oss-120b
+openrouter/nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free
+nvidia/nvidia/nemotron-3.5-lightning-30b-a3b
+openrouter/recursive/flint-v1.0:free
+nvidia/nvidia/nemotron-3-nano-omni-30b-a3b-reasoning
+openrouter/nvidia/nemotron-3-ultra-550b-a55b:free
+nvidia/nvidia/nemotron-3.5-super-vl-120b-a12b
+openrouter/baidu/ernie-5.5-flash-preview:free
+nvidia/nvidia/nemotron-3-ultra-550b-a55b
+openrouter/inclusionai/ling-3.2-flash:free
+
+# hạng 3 — RATE-LIMITED (quota; giữ lại khi quota hồi)
+oc/deepseek-v4.1-flash-free
+oc/tidepool-alpha-free
+oc/hy4-flash-free
+oc/mimo-v2.6-flash-free
+oc/nemotron-3.5-super-vl-free
+oc/iceman-free
+oc/big-pickle
+oc/longcat-2.5-free
+oc/nemotron-3.5-lightning-free
+
+# hạng 4 — chưa đo
+<private-2>/deepseek/deepseek-v4.1-flash-free
+<private-3>/qwen/qwen3-coder-plus:free
+<private-4>/z-ai/glm-5.3-free
+<private-2>/z-ai/glm-5.3-flash-free
+<private-2>/deepseek/deepseek-v4-flash-free
+<private-2>/tencent/hy4-preview-free
+<private-2>/<private-2>/free
+<private-2>/orca/orcaverify-text1.0-free
+<private-2>/tencent/hy3-free
+
+# hạng 5 — lỗi nhanh cứng (404/405/400/410)
+bai/gemini-4-hydrogen
+hf/deepseek-ai/DeepSeek-V4.1-Flash-1017
+bzl/deepseek/deepseek-v4-flash-0731free:free
+cohere/c4ai-aya-expanse-32b
+oc/deepseek-v4-flash-free
+groq/canopylabs/orpheus-arabic-saudi
+hf/deepseek-ai/DeepSeek-V4.1-Flash
+bzl/qwen/qwen3.7-flash:free
+cohere/c4ai-aya-vision-32b
+oc/mimo-v2.5-free
+groq/canopylabs/orpheus-v1-english
+hf/zai-org/GLM-5.3-Flash
+bzl/auto:free
+cohere/command-a-03-2025
+oc/jev-1.13-free
+hf/zai-org/GLM-5.3-Flash-BF16
+cohere/command-a-plus-05-2026
+oc/qwen3.6-plus-free
+hf/zai-org/GLM-5.3
+cohere/command-a-reasoning-08-2025
+oc/nemotron-3-ultra-free
+hf/zai-org/GLM-5.3-BF16
+cohere/command-a-translate-08-2025
+oc/north-mini-code-free
+hf/Qwen/Qwen3.8-27B
+cohere/command-a-vision-07-2025
+oc/ling-3.0-flash-free
+hf/Qwen/Qwen3.8-2.4T-A95B
+cohere/command-r-08-2024
+oc/x-preview-f-free
+hf/openai/gpt-oss-120b
+cohere/command-r-plus-08-2024
+oc/hy3-free
+hf/deepseek-ai/DeepSeek-V4-Flash-Vision-Exp
+cohere/command-r7b-12-2024
+oc/ling-3.0-flash-fin-free
+hf/deepseek-ai/DeepSeek-V4-Flash
+cohere/command-r7b-arabic-02-2025
+oc/muse-spark-1.2-contributor-free
+hf/deepseek-ai/DeepSeek-V4-Flash-0731
+oc/muse-spark-1.3-contributor-free
+hf/tencent/Hy4-preview
+oc/step-5-preview-free
+hf/XiaomiMiMo/MiMo-V2.6-Pro-RL
+oc/ling-3.1-flash-free
+hf/XiaomiMiMo/MiMo-V2.6-Flash-RL
+oc/exo-free
+hf/XiaomiMiMo/MiMo-V2.5-Pro
+hf/XiaomiMiMo/MiMo-V2.5
+hf/moonshotai/Kimi-K3
+hf/moonshotai/Kimi-K2.6
+hf/google/gemma-4-31B-it
+hf/meta-llama/Llama-3.3-70B-Instruct
+hf/meta-models/Muse-Spark-Open-816B-A42B
+hf/nvidia/NVIDIA-Nemotron-3.5-Super-VL-120B-A12B-NVFP4
+hf/inclusionAI/Ling-3.1-flash
+hf/meta-llama/Llama-3.1-8B-Instruct
+hf/meta-models/Muse-Glimmer-30B
+hf/Qwen/Qwen3.6-35B-A3B
+hf/Qwen/Qwen3.5-9B
+hf/google/gemma-4-26B-A4B-it
+hf/openai/gpt-oss-20b
+hf/deepseek-ai/DeepSeek-R1
+hf/Qwen/Qwen3-14B
+hf/speakleash/Bielik-11B-v3.0-Instruct
+hf/google/gemma-3-4b-it
+hf/moonshotai/Kimi-K2.5
+hf/microsoft/phi-4
+hf/google/gemma-3-12b-it
+hf/Qwen/Qwen3.5-35B-A3B
+hf/thinkingmachines/Inkling
+hf/zai-org/GLM-5.2
+hf/Sao10K/L3-8B-Stheno-v3.2
+hf/google/gemma-3-27b-it
+hf/zai-org/GLM-4.7-Flash
+hf/Qwen/Qwen3.5-27B
+hf/inclusionAI/Ling-3.0-flash
+hf/Qwen/Qwen3.5-397B-A17B
+hf/CohereLabs/tiny-aya-global
+hf/thinkingmachines/Inkling-Small
+hf/tencent/Hy3
+hf/ibm-granite/granite-4.2-3b
+hf/meta-llama/Llama-4-Scout-17B-16E-Instruct
+hf/Qwen/Qwen3.6-27B
+hf/moonshotai/Kimi-K2.7-Code
+hf/deepseek-ai/DeepSeek-R1-0528
+hf/zai-org/GLM-5
+hf/Qwen/Qwen3-30B-A3B
+hf/deepseek-ai/DeepSeek-V3.1-Terminus
+hf/Qwen/Qwen3-VL-30B-A3B-Instruct
+hf/zai-org/AutoGLM-Phone-9B-Multilingual
+hf/zai-org/GLM-4.5V
+hf/NousResearch/Hermes-3-Llama-3.1-70B
+hf/Qwen/Qwen3.5-122B-A10B
+hf/alpindale/WizardLM-2-8x22B
+hf/zai-org/GLM-4.6V
+hf/stepfun-ai/Step-3.7-Flash
+hf/moonshotai/Kimi-K2-Instruct
+hf/deepseek-ai/DeepSeek-V3
+hf/zai-org/GLM-4.5-Air
+hf/Qwen/Qwen3-32B
+hf/stepfun-ai/Step-3.5-Flash
+hf/zai-org/GLM-4.5
+hf/zai-org/GLM-5.2-FP8
+hf/CohereLabs/c4ai-command-r7b-12-2024
+hf/zai-org/GLM-4.7
+hf/Qwen/Qwen3-Next-80B-A3B-Instruct
+hf/deepseek-ai/DeepSeek-V3.2
+hf/zai-org/GLM-5.1
+hf/nvidia/NVIDIA-Nemotron-3-Ultra-550B-A55B-BF16
+hf/aisingapore/Gemma-SEA-LION-v4-27B-IT
+hf/CohereLabs/c4ai-command-r-08-2024
+hf/zai-org/GLM-4.5V-FP8
+hf/deepseek-ai/DeepSeek-V3-0324
+hf/swiss-ai/Apertus-8B-Instruct-2509
+hf/CohereLabs/aya-expanse-32b
+hf/zai-org/GLM-4.6V-Flash
+hf/deepseek-ai/DeepSeek-V3.1
+hf/aisingapore/Qwen-SEA-LION-v4-32B-IT
+hf/zai-org/GLM-4.6V-FP8
+hf/zai-org/GLM-4.6
+hf/CohereLabs/c4ai-command-a-03-2025
+hf/Qwen/Qwen3-VL-235B-A22B-Instruct
+hf/CohereLabs/command-a-reasoning-08-2025
+hf/moonshotai/Kimi-K2-Instruct-0905
+hf/inclusionAI/Ling-3.0-flash-Fin
+hf/inclusionAI/Ling-3.0-flash-VL
+hf/meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8
+hf/CohereLabs/command-a-translate-08-2025
+hf/Qwen/Qwen2.5-VL-72B-Instruct
+hf/zai-org/GLM-4.6-FP8
+hf/CohereLabs/aya-vision-32b
+hf/CohereLabs/tiny-aya-water
+hf/zai-org/GLM-4.7-FP8
+hf/CohereLabs/tiny-aya-earth
+hf/CohereLabs/tiny-aya-fire
+
+# hạng 6 — HANG / 503 chậm ≥2s (đặt cuối, KHÔNG xoá)
+# ocz/deepseek-v4.1-flash-free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 2 -> 178)
+ocz/deepseek-v4.1-flash-free
+# ds/deepseek-v4.1-flash: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 4 -> 179)
+ds/deepseek-v4.1-flash
+# nvidia/z-ai/glm-5.3-flash: HANG ok=0/6 p90=-ms (vị trí 5 -> 180)
+nvidia/z-ai/glm-5.3-flash
+# cf/@cf/zai-org/glm-5.2: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 8 -> 181)
+cf/@cf/zai-org/glm-5.2
+# openrouter/z-ai/glm-5.2:free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 9 -> 182)
+openrouter/z-ai/glm-5.2:free
+# gemini/gemini-4-argon: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 16 -> 183)
+gemini/gemini-4-argon
+# oc/inkling-2-small-free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 27 -> 184)
+oc/inkling-2-small-free
+# <private-gateway>/deepseek/deepseek-v4-flash-free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 58 -> 185)
+<private-gateway>/deepseek/deepseek-v4-flash-free
+# kc/cohere/north-mini-code:free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 67 -> 186)
+kc/cohere/north-mini-code:free
+# ocz/mimo-v2.6-flash-free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 12 -> 187)
+ocz/mimo-v2.6-flash-free
+# nvidia/google/gemma-4-31b-it: HANG ok=0/6 p90=-ms (vị trí 61 -> 188)
+nvidia/google/gemma-4-31b-it
+# cf/zai-org/glm-5.2: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 32 -> 189)
+cf/zai-org/glm-5.2
+# openrouter/thinkingmachines/inkling-2-small:free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 30 -> 190)
+openrouter/thinkingmachines/inkling-2-small:free
+# gemini/gemini-4-hydrogen: HANG ok=1/6 p90=17020ms (vị trí 17 -> 191)
+gemini/gemini-4-hydrogen
+# kc/poolside/laguna-xs.2:free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 76 -> 192)
+kc/poolside/laguna-xs.2:free
+# ocz/nemotron-3.5-super-vl-free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 15 -> 193)
+ocz/nemotron-3.5-super-vl-free
+# nvidia/moonshotai/kimi-k2.6: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 70 -> 194)
+nvidia/moonshotai/kimi-k2.6
+# cf/@cf/deepseek-ai/deepseek-r1-distill-qwen-32b: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 66 -> 195)
+cf/@cf/deepseek-ai/deepseek-r1-distill-qwen-32b
+# openrouter/cohere/north-mini-code:free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 31 -> 196)
+openrouter/cohere/north-mini-code:free
+# gemini/gemini-3.8-flash: HANG ok=0/6 p90=3777ms (vị trí 19 -> 197)
+gemini/gemini-3.8-flash
+# kc/nvidia/nemotron-3-super-120b-a12b:free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 83 -> 198)
+kc/nvidia/nemotron-3-super-120b-a12b:free
+# ocz/flint-40b-free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 60 -> 199)
+ocz/flint-40b-free
+# nvidia/meta/muse-glimmer-30b: HANG ok=0/6 p90=-ms (vị trí 78 -> 200)
+nvidia/meta/muse-glimmer-30b
+# cf/@cf/meta/llama-3.2-1b-instruct: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 82 -> 201)
+cf/@cf/meta/llama-3.2-1b-instruct
+# openrouter/google/gemma-4-31b-it:free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 45 -> 202)
+openrouter/google/gemma-4-31b-it:free
+# gemini/models/gemini-3.8-flash: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 20 -> 203)
+gemini/models/gemini-3.8-flash
+# ocz/beam-free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 69 -> 204)
+ocz/beam-free
+# nvidia/google/codegemma-1.1-7b: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 92 -> 205)
+nvidia/google/codegemma-1.1-7b
+# openrouter/google/gemma-4-26b-a4b-it:free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 49 -> 206)
+openrouter/google/gemma-4-26b-a4b-it:free
+# gemini/models/gemini-3.8-live: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 21 -> 207)
+gemini/models/gemini-3.8-live
+# nvidia/google/diffusiongemma-26b-a4b-it: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 96 -> 208)
+nvidia/google/diffusiongemma-26b-a4b-it
+# openrouter/dots-studio/dots-3-note-preview:free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 52 -> 209)
+openrouter/dots-studio/dots-3-note-preview:free
+# gemini/models/gemini-3.8-live-extended-thinking: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 22 -> 210)
+gemini/models/gemini-3.8-live-extended-thinking
+# nvidia/ibm/granite-34b-code-instruct: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 100 -> 211)
+nvidia/ibm/granite-34b-code-instruct
+# openrouter/xingchen-agi/xing4.0-29b-a4b:free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 53 -> 212)
+openrouter/xingchen-agi/xing4.0-29b-a4b:free
+# nvidia/meta/llama-3.2-90b-vision-instruct: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 104 -> 213)
+nvidia/meta/llama-3.2-90b-vision-instruct
+# openrouter/liquid/lfm-2.5-2.6b:free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 54 -> 214)
+openrouter/liquid/lfm-2.5-2.6b:free
+# nvidia/mistralai/mistral-large-2-instruct: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 108 -> 215)
+nvidia/mistralai/mistral-large-2-instruct
+# nvidia/nvidia/ai-synthetic-video-detector: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 112 -> 216)
+nvidia/nvidia/ai-synthetic-video-detector
+# nvidia/nvidia/llama3-chatqa-1.5-70b: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 118 -> 217)
+nvidia/nvidia/llama3-chatqa-1.5-70b
+# nvidia/nvidia/mistral-nemo-minitron-8b-8k-instruct: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 121 -> 218)
+nvidia/nvidia/mistral-nemo-minitron-8b-8k-instruct
+# nvidia/nvidia/nemotron-3-super-120b-a12b: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 127 -> 219)
+nvidia/nvidia/nemotron-3-super-120b-a12b
+# nvidia/nvidia/nemotron-4-340b-instruct: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 139 -> 220)
+nvidia/nvidia/nemotron-4-340b-instruct
+# nvidia/nvidia/nemotron-4-340b-reward: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 141 -> 221)
+nvidia/nvidia/nemotron-4-340b-reward
+# nvidia/nvidia/nemotron-nano-3-30b-a3b: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 143 -> 222)
+nvidia/nvidia/nemotron-nano-3-30b-a3b
+# nvidia/nvidia/nemotron-parse: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 145 -> 223)
+nvidia/nvidia/nemotron-parse
+# nvidia/nvidia/nemotron-parse-2.0: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 147 -> 224)
+nvidia/nvidia/nemotron-parse-2.0
+# nvidia/nvidia/neva-22b: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 149 -> 225)
+nvidia/nvidia/neva-22b
+# nvidia/nvidia/riva-translate-4b-instruct: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 151 -> 226)
+nvidia/nvidia/riva-translate-4b-instruct
+# nvidia/nvidia/vila: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 155 -> 227)
+nvidia/nvidia/vila
+# nvidia/openai/gpt-oss-20b: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 157 -> 228)
+nvidia/openai/gpt-oss-20b
+# nvidia/stepfun-ai/step-5-preview: HANG ok=4/6 p90=5354ms (vị trí 159 -> 229)
+nvidia/stepfun-ai/step-5-preview
+
+## 9Router-Dev (230 bước)
+# hạng 1 — RELIABLE (p90 tăng dần)
+cf/@cf/meta/llama-3.2-3b-instruct
+groq/openai/gpt-oss-20b
+openrouter/openrouter/free
+nvidia/nvidia/ising-calibration-1.5-31b
+kc/nvidia/nemotron-3-ultra-550b-a55b:free
+cf/@cf/meta/llama-3.3-70b-instruct-fp8-fast
+groq/qwen/qwen3.8-27b
+openrouter/nvidia/nemotron-3.5-lightning:free
+nvidia/nvidia/riva-translate-4b-instruct-v2
+cf/@cf/mistralai/mistral-small-3.1-24b-instruct
+groq/allam-2-7b
+openrouter/nvidia/nemotron-3.5-super-vl:free
+nvidia/poolside/laguna-xs-2.1
+cf/@cf/zai-org/glm-4.7-flash
+groq/openai/gpt-oss-120b
+openrouter/nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free
+nvidia/nvidia/nemotron-3.5-lightning-30b-a3b
+openrouter/recursive/flint-v1.0:free
+nvidia/nvidia/nemotron-3-nano-omni-30b-a3b-reasoning
+openrouter/nvidia/nemotron-3-ultra-550b-a55b:free
+nvidia/nvidia/nemotron-3.5-super-vl-120b-a12b
+openrouter/baidu/ernie-5.5-flash-preview:free
+nvidia/nvidia/nemotron-3-ultra-550b-a55b
+openrouter/inclusionai/ling-3.2-flash:free
+
+# hạng 3 — RATE-LIMITED (quota; giữ lại khi quota hồi)
+oc/deepseek-v4.1-flash-free
+oc/tidepool-alpha-free
+oc/hy4-flash-free
+oc/mimo-v2.6-flash-free
+oc/nemotron-3.5-super-vl-free
+oc/iceman-free
+oc/big-pickle
+oc/longcat-2.5-free
+oc/nemotron-3.5-lightning-free
+
+# hạng 4 — chưa đo
+<private-2>/deepseek/deepseek-v4.1-flash-free
+<private-4>/z-ai/glm-5.3-free
+<private-2>/z-ai/glm-5.3-flash-free
+<private-2>/tencent/hy4-preview-free
+<private-2>/deepseek/deepseek-v4-flash-free
+<private-2>/<private-2>/free
+<private-2>/orca/orcaverify-text1.0-free
+<private-2>/tencent/hy3-free
+
+# hạng 5 — lỗi nhanh cứng (404/405/400/410)
+bai/gemini-4-hydrogen
+hf/deepseek-ai/DeepSeek-V4.1-Flash-1017
+bzl/beam-free
+cohere/c4ai-aya-expanse-32b
+oc/mimo-v2.5-free
+groq/canopylabs/orpheus-arabic-saudi
+hf/deepseek-ai/DeepSeek-V4.1-Flash
+bzl/deepseek/deepseek-v4-flash-0731free:free
+cohere/c4ai-aya-vision-32b
+oc/jev-1.13-free
+groq/canopylabs/orpheus-v1-english
+hf/zai-org/GLM-5.3-Flash
+bzl/qwen/qwen3.7-flash:free
+cohere/command-a-03-2025
+oc/qwen3.6-plus-free
+hf/zai-org/GLM-5.3-Flash-BF16
+bzl/auto:free
+cohere/command-a-plus-05-2026
+oc/nemotron-3-ultra-free
+hf/zai-org/GLM-5.3
+cohere/command-a-reasoning-08-2025
+oc/north-mini-code-free
+hf/zai-org/GLM-5.3-BF16
+cohere/command-a-translate-08-2025
+oc/deepseek-v4-flash-free
+hf/openai/gpt-oss-120b
+cohere/command-a-vision-07-2025
+oc/ling-3.0-flash-free
+hf/Qwen/Qwen3.8-27B
+cohere/command-r-08-2024
+oc/x-preview-f-free
+hf/Qwen/Qwen3.8-2.4T-A95B
+cohere/command-r-plus-08-2024
+oc/hy3-free
+hf/tencent/Hy4-preview
+cohere/command-r7b-12-2024
+oc/ling-3.0-flash-fin-free
+hf/moonshotai/Kimi-K3
+cohere/command-r7b-arabic-02-2025
+oc/muse-spark-1.2-contributor-free
+hf/XiaomiMiMo/MiMo-V2.6-Pro-RL
+oc/muse-spark-1.3-contributor-free
+hf/XiaomiMiMo/MiMo-V2.6-Flash-RL
+oc/step-5-preview-free
+hf/XiaomiMiMo/MiMo-V2.5-Pro
+oc/ling-3.1-flash-free
+hf/XiaomiMiMo/MiMo-V2.5
+oc/exo-free
+hf/deepseek-ai/DeepSeek-V4-Flash-Vision-Exp
+hf/deepseek-ai/DeepSeek-V4-Flash
+hf/deepseek-ai/DeepSeek-V4-Flash-0731
+hf/meta-models/Muse-Spark-Open-816B-A42B
+hf/nvidia/NVIDIA-Nemotron-3.5-Super-VL-120B-A12B-NVFP4
+hf/inclusionAI/Ling-3.1-flash
+hf/meta-llama/Llama-3.1-8B-Instruct
+hf/meta-models/Muse-Glimmer-30B
+hf/google/gemma-4-31B-it
+hf/Qwen/Qwen3.6-35B-A3B
+hf/Qwen/Qwen3.5-9B
+hf/google/gemma-4-26B-A4B-it
+hf/openai/gpt-oss-20b
+hf/deepseek-ai/DeepSeek-R1
+hf/meta-llama/Llama-3.3-70B-Instruct
+hf/moonshotai/Kimi-K2.6
+hf/Qwen/Qwen3-14B
+hf/speakleash/Bielik-11B-v3.0-Instruct
+hf/google/gemma-3-4b-it
+hf/moonshotai/Kimi-K2.5
+hf/microsoft/phi-4
+hf/google/gemma-3-12b-it
+hf/Qwen/Qwen3.5-35B-A3B
+hf/thinkingmachines/Inkling
+hf/zai-org/GLM-5.2
+hf/Sao10K/L3-8B-Stheno-v3.2
+hf/google/gemma-3-27b-it
+hf/zai-org/GLM-4.7-Flash
+hf/Qwen/Qwen3.5-27B
+hf/inclusionAI/Ling-3.0-flash
+hf/Qwen/Qwen3.5-397B-A17B
+hf/CohereLabs/tiny-aya-global
+hf/thinkingmachines/Inkling-Small
+hf/tencent/Hy3
+hf/ibm-granite/granite-4.2-3b
+hf/meta-llama/Llama-4-Scout-17B-16E-Instruct
+hf/Qwen/Qwen3.6-27B
+hf/moonshotai/Kimi-K2.7-Code
+hf/deepseek-ai/DeepSeek-R1-0528
+hf/zai-org/GLM-5
+hf/Qwen/Qwen3-30B-A3B
+hf/deepseek-ai/DeepSeek-V3.1-Terminus
+hf/Qwen/Qwen3-VL-30B-A3B-Instruct
+hf/zai-org/AutoGLM-Phone-9B-Multilingual
+hf/zai-org/GLM-4.5V
+hf/NousResearch/Hermes-3-Llama-3.1-70B
+hf/Qwen/Qwen3.5-122B-A10B
+hf/alpindale/WizardLM-2-8x22B
+hf/zai-org/GLM-4.6V
+hf/stepfun-ai/Step-3.7-Flash
+hf/moonshotai/Kimi-K2-Instruct
+hf/deepseek-ai/DeepSeek-V3
+hf/zai-org/GLM-4.5-Air
+hf/Qwen/Qwen3-32B
+hf/stepfun-ai/Step-3.5-Flash
+hf/zai-org/GLM-4.5
+hf/zai-org/GLM-5.2-FP8
+hf/CohereLabs/c4ai-command-r7b-12-2024
+hf/zai-org/GLM-4.7
+hf/Qwen/Qwen3-Next-80B-A3B-Instruct
+hf/deepseek-ai/DeepSeek-V3.2
+hf/zai-org/GLM-5.1
+hf/nvidia/NVIDIA-Nemotron-3-Ultra-550B-A55B-BF16
+hf/aisingapore/Gemma-SEA-LION-v4-27B-IT
+hf/CohereLabs/c4ai-command-r-08-2024
+hf/zai-org/GLM-4.5V-FP8
+hf/deepseek-ai/DeepSeek-V3-0324
+hf/swiss-ai/Apertus-8B-Instruct-2509
+hf/CohereLabs/aya-expanse-32b
+hf/zai-org/GLM-4.6V-Flash
+hf/deepseek-ai/DeepSeek-V3.1
+hf/aisingapore/Qwen-SEA-LION-v4-32B-IT
+hf/zai-org/GLM-4.6V-FP8
+hf/zai-org/GLM-4.6
+hf/CohereLabs/c4ai-command-a-03-2025
+hf/Qwen/Qwen3-VL-235B-A22B-Instruct
+hf/CohereLabs/command-a-reasoning-08-2025
+hf/moonshotai/Kimi-K2-Instruct-0905
+hf/inclusionAI/Ling-3.0-flash-Fin
+hf/inclusionAI/Ling-3.0-flash-VL
+hf/meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8
+hf/CohereLabs/command-a-translate-08-2025
+hf/Qwen/Qwen2.5-VL-72B-Instruct
+hf/zai-org/GLM-4.6-FP8
+hf/CohereLabs/aya-vision-32b
+hf/CohereLabs/tiny-aya-water
+hf/zai-org/GLM-4.7-FP8
+hf/CohereLabs/tiny-aya-earth
+hf/CohereLabs/tiny-aya-fire
+
+# hạng 6 — HANG / 503 chậm ≥2s (đặt cuối, KHÔNG xoá)
+# ocz/deepseek-v4.1-flash-free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 2 -> 178)
+ocz/deepseek-v4.1-flash-free
+# ds/deepseek-v4.1-flash: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 4 -> 179)
+ds/deepseek-v4.1-flash
+# nvidia/z-ai/glm-5.3-flash: HANG ok=0/6 p90=-ms (vị trí 5 -> 180)
+nvidia/z-ai/glm-5.3-flash
+# cf/@cf/zai-org/glm-5.2: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 8 -> 181)
+cf/@cf/zai-org/glm-5.2
+# openrouter/z-ai/glm-5.2:free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 9 -> 182)
+openrouter/z-ai/glm-5.2:free
+# gemini/gemini-4-argon: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 16 -> 183)
+gemini/gemini-4-argon
+# oc/inkling-2-small-free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 26 -> 184)
+oc/inkling-2-small-free
+# <private-gateway>/deepseek/deepseek-v4-flash-free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 58 -> 185)
+<private-gateway>/deepseek/deepseek-v4-flash-free
+# kc/cohere/north-mini-code:free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 67 -> 186)
+kc/cohere/north-mini-code:free
+# ocz/mimo-v2.6-flash-free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 12 -> 187)
+ocz/mimo-v2.6-flash-free
+# nvidia/meta/muse-glimmer-30b: HANG ok=0/6 p90=-ms (vị trí 61 -> 188)
+nvidia/meta/muse-glimmer-30b
+# cf/zai-org/glm-5.2: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 31 -> 189)
+cf/zai-org/glm-5.2
+# openrouter/thinkingmachines/inkling-2-small:free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 29 -> 190)
+openrouter/thinkingmachines/inkling-2-small:free
+# gemini/gemini-4-hydrogen: HANG ok=1/6 p90=17020ms (vị trí 17 -> 191)
+gemini/gemini-4-hydrogen
+# kc/poolside/laguna-xs.2:free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 75 -> 192)
+kc/poolside/laguna-xs.2:free
+# ocz/nemotron-3.5-super-vl-free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 15 -> 193)
+ocz/nemotron-3.5-super-vl-free
+# nvidia/google/codegemma-1.1-7b: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 77 -> 194)
+nvidia/google/codegemma-1.1-7b
+# cf/@cf/deepseek-ai/deepseek-r1-distill-qwen-32b: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 66 -> 195)
+cf/@cf/deepseek-ai/deepseek-r1-distill-qwen-32b
+# openrouter/cohere/north-mini-code:free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 30 -> 196)
+openrouter/cohere/north-mini-code:free
+# gemini/gemini-3.8-flash: HANG ok=0/6 p90=3777ms (vị trí 19 -> 197)
+gemini/gemini-3.8-flash
+# kc/nvidia/nemotron-3-super-120b-a12b:free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 83 -> 198)
+kc/nvidia/nemotron-3-super-120b-a12b:free
+# ocz/flint-40b-free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 60 -> 199)
+ocz/flint-40b-free
+# nvidia/google/diffusiongemma-26b-a4b-it: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 85 -> 200)
+nvidia/google/diffusiongemma-26b-a4b-it
+# cf/@cf/meta/llama-3.2-1b-instruct: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 82 -> 201)
+cf/@cf/meta/llama-3.2-1b-instruct
+# openrouter/google/gemma-4-31b-it:free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 46 -> 202)
+openrouter/google/gemma-4-31b-it:free
+# gemini/models/gemini-3.8-flash: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 20 -> 203)
+gemini/models/gemini-3.8-flash
+# ocz/beam-free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 69 -> 204)
+ocz/beam-free
+# nvidia/google/gemma-4-31b-it: HANG ok=0/6 p90=-ms (vị trí 92 -> 205)
+nvidia/google/gemma-4-31b-it
+# openrouter/google/gemma-4-26b-a4b-it:free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 49 -> 206)
+openrouter/google/gemma-4-26b-a4b-it:free
+# gemini/models/gemini-3.8-live: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 21 -> 207)
+gemini/models/gemini-3.8-live
+# nvidia/ibm/granite-34b-code-instruct: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 96 -> 208)
+nvidia/ibm/granite-34b-code-instruct
+# openrouter/dots-studio/dots-3-note-preview:free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 52 -> 209)
+openrouter/dots-studio/dots-3-note-preview:free
+# gemini/models/gemini-3.8-live-extended-thinking: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 22 -> 210)
+gemini/models/gemini-3.8-live-extended-thinking
+# nvidia/meta/llama-3.2-90b-vision-instruct: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 100 -> 211)
+nvidia/meta/llama-3.2-90b-vision-instruct
+# openrouter/xingchen-agi/xing4.0-29b-a4b:free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 53 -> 212)
+openrouter/xingchen-agi/xing4.0-29b-a4b:free
+# nvidia/mistralai/mistral-large-2-instruct: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 104 -> 213)
+nvidia/mistralai/mistral-large-2-instruct
+# openrouter/liquid/lfm-2.5-2.6b:free: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 54 -> 214)
+openrouter/liquid/lfm-2.5-2.6b:free
+# nvidia/nvidia/ai-synthetic-video-detector: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 108 -> 215)
+nvidia/nvidia/ai-synthetic-video-detector
+# nvidia/nvidia/llama3-chatqa-1.5-70b: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 115 -> 216)
+nvidia/nvidia/llama3-chatqa-1.5-70b
+# nvidia/nvidia/mistral-nemo-minitron-8b-8k-instruct: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 118 -> 217)
+nvidia/nvidia/mistral-nemo-minitron-8b-8k-instruct
+# nvidia/nvidia/nemotron-3-super-120b-a12b: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 124 -> 218)
+nvidia/nvidia/nemotron-3-super-120b-a12b
+# nvidia/nvidia/nemotron-4-340b-instruct: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 136 -> 219)
+nvidia/nvidia/nemotron-4-340b-instruct
+# nvidia/nvidia/nemotron-4-340b-reward: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 139 -> 220)
+nvidia/nvidia/nemotron-4-340b-reward
+# nvidia/nvidia/nemotron-nano-3-30b-a3b: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 141 -> 221)
+nvidia/nvidia/nemotron-nano-3-30b-a3b
+# nvidia/nvidia/nemotron-parse: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 143 -> 222)
+nvidia/nvidia/nemotron-parse
+# nvidia/nvidia/nemotron-parse-2.0: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 145 -> 223)
+nvidia/nvidia/nemotron-parse-2.0
+# nvidia/nvidia/neva-22b: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 147 -> 224)
+nvidia/nvidia/neva-22b
+# nvidia/nvidia/riva-translate-4b-instruct: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 149 -> 225)
+nvidia/nvidia/riva-translate-4b-instruct
+# nvidia/nvidia/vila: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 153 -> 226)
+nvidia/nvidia/vila
+# nvidia/openai/gpt-oss-20b: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 155 -> 227)
+nvidia/openai/gpt-oss-20b
+# nvidia/stepfun-ai/step-5-preview: HANG ok=4/6 p90=5354ms (vị trí 157 -> 228)
+nvidia/stepfun-ai/step-5-preview
+# nvidia/moonshotai/kimi-k2.6: TIMEOUT-NO-HEADER/lỗi cứng ở ≥2 lượt (vị trí 159 -> 229)
+nvidia/moonshotai/kimi-k2.6
+

@@ -1,0 +1,7 @@
+cf/@cf/deepseek-ai/deepseek-r1-distill-qwen-32b	EOL-GONE	http=410	total=1315ms	usage=không có dòng usage
+cf/@cf/meta/llama-3.2-1b-instruct	EOL-GONE	http=410	total=118ms	usage=không có dòng usage
+cf/@cf/meta/llama-3.2-3b-instruct	OK	http=200	total=300ms	usage=không có dòng usage
+
+bắt đầu=2026-11-22T12:25:35.022Z tổng=3 EOL-GONE=2 OK=1
+requests=3/3 theo provider=cf:3
+dừng sớm: budget=3

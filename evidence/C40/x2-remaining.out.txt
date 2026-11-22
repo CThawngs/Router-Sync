@@ -1,0 +1,20 @@
+bước cần đo: 17 (giới hạn 70)
+oc/big-pickle	RATE-LIMITED	ok=0/1	p90=1597ms	quota=1
+openrouter/baidu/ernie-5.5-flash-preview:free	DEAD	ok=1/1	p90=3312ms
+oc/deepseek-v4.1-flash-free	RATE-LIMITED	ok=0/1	p90=449ms	quota=1
+openrouter/inclusionai/ling-3.2-flash:free	DEAD	ok=0/1	p90=5584ms
+oc/hy4-flash-free	RATE-LIMITED	ok=0/1	p90=791ms	quota=1
+openrouter/nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free	DEAD	ok=1/1	p90=994ms
+oc/iceman-free	RATE-LIMITED	ok=0/1	p90=457ms	quota=1
+openrouter/nvidia/nemotron-3-ultra-550b-a55b:free	DEAD	ok=1/1	p90=1274ms
+oc/longcat-2.5-free	RATE-LIMITED	ok=0/1	p90=417ms	quota=1
+openrouter/nvidia/nemotron-3.5-lightning:free	DEAD	ok=1/1	p90=872ms
+oc/mimo-v2.6-flash-free	RATE-LIMITED	ok=0/1	p90=2619ms	quota=1
+openrouter/nvidia/nemotron-3.5-super-vl:free	DEAD	ok=1/1	p90=901ms
+oc/nemotron-3.5-lightning-free	RATE-LIMITED	ok=0/1	p90=583ms	quota=1
+openrouter/openrouter/free	DEAD	ok=1/1	p90=845ms
+oc/nemotron-3.5-super-vl-free	RATE-LIMITED	ok=0/1	p90=2575ms	quota=1
+openrouter/recursive/flint-v1.0:free	DEAD	ok=1/1	p90=1219ms
+oc/tidepool-alpha-free	RATE-LIMITED	ok=0/1	p90=1854ms	quota=1
+requests=17/30 theo provider=oc:9,openrouter:8
+xong: 17 bước, chưa đo 0; requests=17/30 theo provider=oc:9,openrouter:8
