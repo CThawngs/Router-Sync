@@ -196,6 +196,14 @@ export interface ProbeOptions {
   state?: RouterDb | undefined;
   comboTimeoutMs?: number | undefined;
   stepTimeoutMs?: number | undefined;
+  /** C34 Q2: ghi MỌI dòng usage mới (mặc định chỉ dòng đầu). */
+  timeline?: boolean | undefined;
+  /** C34 Q2: max_tokens cho mỗi request (mặc định 8, tối đa 64). */
+  maxTokens?: number | undefined;
+  /** C34 Q2: tắt stream (mặc định bật). */
+  stream?: boolean | undefined;
+  /** C34 Q3: mode step, lặp lại mỗi bước n lần. */
+  repeat?: number | undefined;
   json?: boolean | undefined;
   fetchImpl?: typeof fetch;
   now?: () => number;
@@ -212,6 +220,20 @@ export const STEP_TIMEOUT_MS = 20_000;
 export const MAX_CONSECUTIVE_429 = 5;
 /** C33 N1: hỏi usageHistory mỗi 5 giây khi đang chờ combo. */
 export const USAGE_POLL_MS = 5_000;
+/** C34 Q2: hỏi dày hơn khi bật timeline. */
+export const TIMELINE_POLL_MS = 1_000;
+/** C34 Q2: trần max_tokens theo yêu cầu vòng này. */
+export const MAX_TOKENS_LIMIT = 64;
+export const DEFAULT_MAX_TOKENS = 8;
+
+/** C34 Q2: một dòng usageHistory rút gọn (không có khoá). */
+export interface UsageRow {
+  atMs: number;
+  provider: string;
+  model: string;
+  status: string | null;
+  completionTokens: number | null;
+}
 
 const defaultSleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
@@ -228,6 +250,8 @@ export interface ComboProbeRow {
   usageServedBy: string | null;
   /** C33 N1: when the first usageHistory row appeared during this attempt. */
   firstUsageMs?: number | null;
+  /** C34 Q2: mọi dòng usage mới trong lần gọi (chỉ khi bật timeline). */
+  usageRows?: UsageRow[] | undefined;
   startedAt?: string;
 }
 
@@ -349,19 +373,36 @@ export async function callComboWithUsage(
   usageCount: () => number,
   pollMs = USAGE_POLL_MS,
   sleepImpl: (ms: number) => Promise<void> = defaultSleep,
-  clock: () => number = Date.now
-): Promise<{ row: Omit<ComboProbeRow, 'combo'>; firstUsageMs: number | null }> {
+  clock: () => number = Date.now,
+  usageRows: (t0: number) => UsageRow[] = () => [],
+  timeline = false
+): Promise<{ row: Omit<ComboProbeRow, 'combo'>; firstUsageMs: number | null; usage: UsageRow[] }> {
   const startedAt = new Date().toISOString();
   const t0 = clock();
   const before = usageCount();
   let firstUsageMs: number | null = null;
   let stopped = false;
+  const usage: UsageRow[] = [];
+  const seen = new Set<number>();
+
+  const collect = (t0: number) => {
+    const rows = usageRows(t0);
+    for (const r of rows) {
+      if (seen.has(r.atMs)) continue;
+      seen.add(r.atMs);
+      usage.push(r);
+    }
+    if (usage.length > 0 && firstUsageMs === null) {
+      firstUsageMs = usage[0]?.atMs ?? clock() - t0;
+    }
+  };
 
   const poll = (async () => {
     while (!stopped) {
       await sleepImpl(pollMs);
       if (stopped) return;
-      if (usageCount() > before) {
+      if (timeline) collect(t0);
+      else if (usageCount() > before && firstUsageMs === null) {
         firstUsageMs = clock() - t0;
         return;
       }
@@ -372,9 +413,9 @@ export async function callComboWithUsage(
   const res = await sendAndRead(url, apiKey, body, timeoutMs, fetchImpl);
   stopped = true;
   await poll.catch(() => undefined);
-
-  const totalMs = res.totalMs;
+  if (timeline) collect(t0);
   if (firstUsageMs === null && usageCount() > before) firstUsageMs = clock() - t0;
+
   const after = usageCount();
   const usageRowAdded = after > before;
   const verdict = perComboConclusion({
@@ -391,13 +432,15 @@ export async function callComboWithUsage(
       httpStatus: res.status,
       headerMs: res.headerMs,
       firstByteMs: res.firstByteMs,
-      totalMs,
+      totalMs: res.totalMs,
       verdict,
       detail: redact(res.text, [apiKey]),
       usageServedBy: usageRowAdded ? usageDelta(before, after) : null,
       firstUsageMs,
+      usageRows: timeline ? usage : undefined,
     },
     firstUsageMs,
+    usage,
   };
 }
 
@@ -455,6 +498,7 @@ export async function runCombosProbeCommand(options: ProbeOptions = {}): Promise
   const baseUrl = options.baseUrl ?? process.env['ROUTERSYNC_9ROUTER_BASE_URL'] ?? DEFAULT_BASE_URL;
   const mode: ProbeMode = options.mode ?? 'combo';
   const comboTimeoutMs = comboTimeoutFor(options);
+  const maxTokens = Math.min(MAX_TOKENS_LIMIT, Math.max(1, Math.floor(options.maxTokens ?? DEFAULT_MAX_TOKENS)));
   const startedAt = new Date().toISOString();
 
   const state = options.state ?? readRouterState();
@@ -497,6 +541,37 @@ export async function runCombosProbeCommand(options: ProbeOptions = {}): Promise
       }
     });
 
+  // C34 Q2: đọc mọi dòng usage mới (provider, model, status, token ra).
+  const usageRows =
+    options.timeline === true
+      ? (t0: number): UsageRow[] => {
+          try {
+            const db = openRouterDb();
+            try {
+              const rows = db
+                .prepare(
+                  'SELECT timestamp, provider, model, status, completionTokens FROM usageHistory ORDER BY id DESC LIMIT 200'
+                )
+                .all() as Array<{ timestamp: string; provider: string; model: string; status: string | null; completionTokens: number | null }>;
+              return rows
+                .map((r) => ({
+                  atMs: Date.parse(r.timestamp) - t0,
+                  provider: r.provider,
+                  model: r.model,
+                  status: r.status ?? null,
+                  completionTokens: typeof r.completionTokens === 'number' ? r.completionTokens : null,
+                }))
+                .filter((r) => Number.isFinite(r.atMs) && r.atMs >= 0)
+                .sort((a, b) => a.atMs - b.atMs);
+            } finally {
+              db.close();
+            }
+          } catch {
+            return [];
+          }
+        }
+      : (_t0: number): UsageRow[] => [];
+
   const rows: ComboProbeRow[] = [];
   let consecutive429 = 0;
   let stoppedEarly: string | null = null;
@@ -518,26 +593,35 @@ export async function runCombosProbeCommand(options: ProbeOptions = {}): Promise
         {
           model: combo.name,
           messages: [{ role: 'user', content: 'Trả lời đúng một từ: ok' }],
-          max_tokens: 8,
-          stream: true,
+          max_tokens: maxTokens,
+          stream: options.stream !== false,
         },
         comboTimeoutMs,
         fetchImpl,
         usageCount,
-        options.stepTimeoutMs ? USAGE_POLL_MS : USAGE_POLL_MS,
+        options.timeline === true ? TIMELINE_POLL_MS : USAGE_POLL_MS,
         options.sleepImpl,
-        clock
+        clock,
+        usageRows,
+        options.timeline === true
       );
       if (result.row.httpStatus === 429) consecutive429 += 1;
       else consecutive429 = 0;
       rows.push({ combo: combo.name, ...result.row, model: combo.name });
+      if (options.timeline === true) {
+        for (const u of result.usage) {
+          log(`  usage@${u.atMs}ms ${u.provider}/${u.model} status=${u.status ?? '-'} tokens_out=${u.completionTokens ?? '-'}`);
+        }
+      }
       log(
         `${combo.name}\t${result.row.verdict}\thttp=${result.row.httpStatus ?? '-'}\theader=${result.row.headerMs ?? '-'}ms\tfirstByte=${result.row.firstByteMs ?? '-'}ms\ttotal=${result.row.totalMs}ms\tusageAt=${result.firstUsageMs ?? '-'}ms\tusage=${result.row.usageServedBy ?? 'không có dòng usage'}`
       );
     }
   } else {
     const steps = uniqueSteps(combos).filter((s) => (options.only ? new RegExp(options.only).test(s) : true));
+    const repeat = Math.min(10, Math.max(1, Math.floor(options.repeat ?? 1)));
     for (const step of steps) {
+      for (let attempt = 1; attempt <= repeat; attempt += 1) {
       if (clock() > deadline) {
         stoppedEarly = 'max-minutes';
         break;
@@ -552,8 +636,8 @@ export async function runCombosProbeCommand(options: ProbeOptions = {}): Promise
         {
           model: step,
           messages: [{ role: 'user', content: 'ping' }],
-          max_tokens: 1,
-          stream: true,
+          max_tokens: maxTokens,
+          stream: options.stream !== false,
         },
         options.stepTimeoutMs ?? STEP_TIMEOUT_MS,
         fetchImpl,
@@ -561,10 +645,11 @@ export async function runCombosProbeCommand(options: ProbeOptions = {}): Promise
       );
       if (result.row.verdict === 'RATE-LIMITED') consecutive429 += 1;
       else consecutive429 = 0;
-      rows.push({ combo: '(step)', ...result.row, model: step });
+      rows.push({ combo: '(step)', ...result.row, model: repeat > 1 ? `${step}#${attempt}` : step });
       log(
-        `${step}\t${result.row.verdict}\thttp=${result.row.httpStatus ?? '-'}\ttotal=${result.row.totalMs}ms\tusage=${result.row.usageServedBy ?? 'không có dòng usage'}`
+        `${repeat > 1 ? `${step}#${attempt}` : step}\t${result.row.verdict}\thttp=${result.row.httpStatus ?? '-'}\ttotal=${result.row.totalMs}ms\tusage=${result.row.usageServedBy ?? 'không có dòng usage'}`
       );
+      }
     }
   }
 
