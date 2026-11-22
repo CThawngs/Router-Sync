@@ -1,0 +1,5 @@
+oc/deepseek-v4.1-flash-free	RATE-LIMITED	http=429	total=390ms	usage=không có dòng usage
+ocz/deepseek-v4.1-flash-free	ERROR-5XX	http=503	total=8ms	usage=không có dòng usage
+<private-provider-10>/deepseek/deepseek-v4.1-flash-free	ERROR-5XX	http=503	total=3432ms	usage=không có dòng usage
+
+bắt đầu=2026-11-22T09:30:41.417Z tổng=3 RATE-LIMITED=1 ERROR-5XX=2

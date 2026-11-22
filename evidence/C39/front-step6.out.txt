@@ -1,0 +1,4 @@
+nvidia/z-ai/glm-5.3-flash	TIMEOUT-NO-HEADER	http=-	total=20017ms	usage=không có dòng usage
+<private-provider-10>/z-ai/glm-5.3-flash-free	ERROR-5XX	http=503	total=5173ms	usage=không có dòng usage
+
+bắt đầu=2026-11-22T09:31:04.867Z tổng=2 TIMEOUT-NO-HEADER=1 ERROR-5XX=1
