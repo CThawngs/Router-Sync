@@ -147,6 +147,87 @@ export function formatReorderBody(result: ReorderResult): string[] {
   return lines;
 }
 
+export interface OrderFile {
+  steps: string[];
+  comments: string[];
+  blankLines: number;
+}
+
+/** Mỗi dòng là một id đầy đủ; dòng bắt đầu `#` là chú thích. */
+export function parseOrderFile(text: string): OrderFile {
+  const steps: string[] = [];
+  const comments: string[] = [];
+  let blankLines = 0;
+  for (const line of text.split(/\r?\n/)) {
+    const trimmed = line.trim();
+    if (!trimmed) {
+      blankLines += 1;
+      continue;
+    }
+    if (trimmed.startsWith('#')) {
+      comments.push(trimmed);
+      continue;
+    }
+    if (!steps.includes(trimmed)) steps.push(trimmed);
+  }
+  return { steps, comments, blankLines };
+}
+
+export interface BlockedStep {
+  step: string;
+  reason: string;
+}
+
+export interface FileOrderResult extends ReorderResult {
+  blocked: BlockedStep[];
+  unknownLines: string[];
+  usedFile: boolean;
+}
+
+/**
+ * C40 giữ nguyên xếp hạng. Với `--order file`: bước trong tệp còn đủ điều kiện
+ * đứng đầu theo đúng thứ tự tệp; bước HANG/DEAD bị chặn và được báo, không âm
+ * thầm đưa lên đầu.
+ */
+export function reorderWithFile(
+  order: string[],
+  stats: Map<string, StepStat>,
+  rel: Map<string, ReliabilityInfo>,
+  orderFile: OrderFile | undefined
+): FileOrderResult {
+  const base = reorderCombo(order, stats, rel);
+  if (!orderFile || orderFile.steps.length === 0) {
+    return { ...base, blocked: [], unknownLines: [], usedFile: false };
+  }
+  const available = new Set(order);
+  const blocked: BlockedStep[] = [];
+  const unknownLines: string[] = [];
+  const promoted: string[] = [];
+
+  for (const step of orderFile.steps) {
+    if (!available.has(step)) {
+      unknownLines.push(step);
+      continue;
+    }
+    const details = base.details.get(step);
+    const label = rel.get(step)?.label;
+    if (label === 'HANG' || label === 'DEAD' || details?.reason.startsWith('HANG')) {
+      blocked.push({ step, reason: details?.reason ?? `nhãn độ ổn định = ${label ?? 'không rõ'}` });
+      continue;
+    }
+    promoted.push(step);
+  }
+
+  const rest = base.order.filter((s) => !promoted.includes(s));
+  const final = [...promoted, ...rest];
+  const details = new Map(base.details);
+  final.forEach((step, index) => {
+    const old = details.get(step);
+    if (old) details.set(step, { ...old, newIndex: index });
+  });
+  return { order: final, details, blocked, unknownLines, usedFile: true };
+}
+
 /** Kiểm tra bất biến: không mất, không nhân đôi bước nào. */
 export function sameSteps(before: string[], after: string[]): boolean {
   if (before.length !== after.length) return false;

@@ -80,6 +80,7 @@ export const COMMAND_CLASSES: Record<string, CommandClass> = {
   apps: 'short',
   'apps inspect': 'short',
   'apps drift': 'short',
+  'apps drift-model': 'short',
   agents: 'short',
   'agents discover': 'short',
   'agents dry-run': 'short',

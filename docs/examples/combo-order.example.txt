@@ -1,0 +1,9 @@
+# Tệp thứ tự combo — VÍ DỤ, TÊN ĐÃ CHE.
+# Chép sang .agent/combo-order.txt rồi thay bằng id thật (không đưa tệp thật lên GitHub).
+# Mỗi dòng một id đầy đủ. Dòng bắt đầu bằng # là chú thích, dòng trống bị bỏ qua.
+# Bước HANG hoặc DEAD có ghi vào đây vẫn bị chặn và được báo, không đưa lên đầu.
+
+groq/<model-lon-cua-provider>
+cf/<model-nhanh-cua-provider>
+nvidia/<model-trung-cua-provider>
+openrouter/<model-du-phong>:free

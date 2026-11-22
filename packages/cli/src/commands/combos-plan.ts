@@ -18,7 +18,15 @@ import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { basename, dirname } from 'node:path';
 import { locateRouterDb } from '@routersync/core';
 import { readRouterState } from './combos-probe.js';
-import { formatReorderBody, hangMoves, parseReliabilityText, reorderCombo, sameSteps } from './combos-reorder.js';
+import {
+  formatReorderBody,
+  hangMoves,
+  parseOrderFile,
+  parseReliabilityText,
+  reorderCombo,
+  reorderWithFile,
+  sameSteps,
+} from './combos-reorder.js';
 
 export type ProbeVerdict =
   | 'OK'
@@ -279,6 +287,10 @@ export interface PlanOptions {
   strategies?: Record<string, string> | undefined;
   /** C40 X1: ghi danh sách sắp xếp lại (tên thật) ra tệp này. */
   emitReorder?: string | undefined;
+  /** C41 Y1: thứ tự do chủ dự án cung cấp (mỗi dòng một id đầy đủ). */
+  orderFile?: string | undefined;
+  /** C41 Y1: `speed` (mặc định) hoặc `file`. */
+  orderMode?: 'speed' | 'file' | undefined;
 }
 
 /** C34 Q0.4: dự đoán chỉ tính phần trước bước phục vụ. */
@@ -339,19 +351,35 @@ export function runCombosPlan(options: PlanOptions): PlanFile {
         // Tệp không đọc được thì bỏ qua số đo Reliability.
       }
     }
+    const orderMode = options.orderMode ?? 'speed';
+    const orderFile = options.orderFile && orderMode === 'file' ? parseOrderFile(readFileSync(options.orderFile, 'utf8')) : undefined;
+    if (options.orderFile && orderMode !== 'file') {
+      log('--order-file chỉ có hiệu lực với --order file (mặc định --order speed)');
+    }
+    if (orderFile && orderFile.steps.length === 0) {
+      log('tệp thứ tự rỗng — dùng thứ tự speed');
+    }
     const lines = [
       '# Sắp xếp lại combo 9Router — BẢN TÊN THẬT (không đưa lên GitHub)',
-      '# Thứ tự fallback: bước nhanh/ổn định trước; HANG ở cuối nhưng không xoá.',
+      `# Thứ tự: ${orderMode}${orderFile ? ` (tệp có ${orderFile.steps.length} bước)` : ''}; HANG ở cuối nhưng không xoá.`,
       '',
     ];
     let totalBefore = 0;
     let totalAfter = 0;
     for (const c of state.combos) {
-      const result = reorderCombo(c.steps, stats, rel);
+      const result = reorderWithFile(c.steps, stats, rel, orderFile);
       if (!sameSteps(c.steps, result.order)) throw new Error(`sắp xếp lại làm mất/nhân đôi bước ở combo ${c.name}`);
       totalBefore += c.steps.length;
       totalAfter += result.order.length;
       lines.push(`## ${c.name} (${c.steps.length} bước)`, ...formatReorderBody(result));
+      for (const blocked of result.blocked) {
+        lines.push(`# BỊ LOẠI (có trong tệp nhưng ${blocked.reason}): ${blocked.step}`);
+        log(`${c.name}: bước trong tệp bị loại — ${blocked.step} (${blocked.reason})`);
+      }
+      for (const unknown of result.unknownLines) {
+        lines.push(`# DÒNG LẠ trong tệp (khớp bước nào): ${unknown}`);
+        log(`${c.name}: dòng trong tệp không khớp bước nào — ${unknown}`);
+      }
       if (c.name === '9Router-Agent-1') {
         const moves = hangMoves(result);
         lines.push(`# 9Router-Agent-1: ${moves.length} bước HANG, vị trí cũ -> mới:`);

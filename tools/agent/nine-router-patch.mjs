@@ -40,6 +40,57 @@ export function readVersion(packagePath) {
 }
 
 /**
+ * Y0.2: bản vá trong tệp chỉ có hiệu lực sau khi tiến trình router khởi động lại.
+ * So sánh thời điểm tiến trình bắt đầu với thời điểm tệp được sửa lần cuối.
+ */
+export function patchLoaded(processStartMs, fileModifiedMs) {
+  if (!Number.isFinite(processStartMs) || !Number.isFinite(fileModifiedMs)) return 'unknown';
+  return processStartMs > fileModifiedMs ? 'true' : 'false';
+}
+
+/** Thời điểm tiến trình bắt đầu (ms). Trả NaN khi không đọc được. */
+export function readProcessStartMs(pid) {
+  if (!Number.isInteger(pid) || pid <= 0) return Number.NaN;
+  try {
+    if (process.platform === 'win32') {
+      const out = execFileSync(
+        'powershell',
+        [
+          '-NoProfile',
+          '-Command',
+          `$p=Get-Process -Id ${pid} -ErrorAction SilentlyContinue; if($p){$p.StartTime.ToUniversalTime().ToString('o')}`,
+        ],
+        { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }
+      );
+      const ms = Date.parse(String(out).trim());
+      return Number.isFinite(ms) ? ms : Number.NaN;
+    }
+    const out = execFileSync('ps', ['-o', 'lstart=', '-p', String(pid)], {
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+    });
+    const ms = Date.parse(String(out).trim());
+    return Number.isFinite(ms) ? ms : Number.NaN;
+  } catch {
+    return Number.NaN;
+  }
+}
+
+/** Thời điểm sửa tệp cuối cùng (ms). Trả NaN khi không đọc được. */
+export function readFileModifiedMs(file) {
+  try {
+    const ms = fs.statSync(file).mtimeMs;
+    return Number.isFinite(ms) ? ms : Number.NaN;
+  } catch {
+    return Number.NaN;
+  }
+}
+
+function isoOrDash(ms) {
+  return Number.isFinite(ms) ? new Date(ms).toISOString() : 'không đọc được';
+}
+
+/**
  * Bản vá v2: cache khóa theo sha256(Authorization + query). Không có khóa trùng
  * thì request đi qua handler gốc — cổng xác thực của 9Router vẫn chạy.
  */
@@ -138,10 +189,23 @@ function main() {
   const hasV2 = source.includes(MARK_V2);
 
   if (cmd === 'status') {
+    const appData = process.env.APPDATA || path.join(os.homedir(), '.config');
+    let pid = Number.NaN;
+    try {
+      const parsed = JSON.parse(fs.readFileSync(path.join(appData, '9router', 'launcher.pid'), 'utf8'));
+      if (typeof parsed.serverPid === 'number') pid = parsed.serverPid;
+    } catch {
+      pid = Number.NaN;
+    }
+    const processStartMs = readProcessStartMs(pid);
+    const fileModifiedMs = readFileModifiedMs(target);
     console.log(`version=${version ?? 'không đọc được'}`);
     console.log(`patchV1=${hasV1} patchV2=${hasV2}`);
     console.log(`sha256=${sha256(source)}`);
     console.log(`target=9router/app/custom-server.js`);
+    console.log(`processStart=${isoOrDash(processStartMs)}`);
+    console.log(`fileModified=${isoOrDash(fileModifiedMs)}`);
+    console.log(`loaded=${patchLoaded(processStartMs, fileModifiedMs)}`);
     return;
   }
 

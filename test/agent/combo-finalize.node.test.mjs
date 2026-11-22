@@ -36,6 +36,12 @@ test('C40 X2: model chuyên dụng bị đưa vào danh sách cần xác nhận'
   assert.ok(result.max.every((s) => !specializedReason(s)));
 });
 
+test('C41 Y1: thứ tự do chủ dự án đứng trước p90', () => {
+  const result = finalize(current, [reliability], ['groq/b', 'cf/a']);
+  assert.deepEqual(result.fast.slice(0, 2), ['groq/b', 'cf/a']);
+  assert.deepEqual(result.max.slice(0, 2), ['groq/b', 'cf/a']);
+});
+
 test('C40 X2: bước nhanh đứng trước, provider xen kẽ', () => {
   const steps = ['cf/a', 'cf/c', 'groq/b', 'nvidia/d'];
   const rel = new Map([

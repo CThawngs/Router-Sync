@@ -1,0 +1,18 @@
+{
+  "instances": {
+    "openai-compat-5c7bdb86-5261-4ca7-b5e1-9413a85e6b92": {
+      "config": {
+        "model": "9Router-Agent-1",
+        "url": "http://localhost:20128/v1",
+        "apiKey": "<KEY>"
+      }
+    },
+    "openai-compat-aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee": {
+      "config": {
+        "model": "other-model",
+        "url": "http://localhost:9999/v1",
+        "token": "<TOKEN>"
+      }
+    }
+  }
+}

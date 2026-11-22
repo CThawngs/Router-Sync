@@ -69,6 +69,30 @@ nhất.
 Sau khi có thứ tự mới: mở dashboard 9Router, sửa thứ tự bước của combo rồi lưu.
 RouterSync không tự sửa combo.
 
+## Thứ tự do chủ dự án quyết định (C41 Y1)
+
+`--order speed` (mặc định) xếp theo p90 — nhanh nhất trước. Với bot agent, model
+nhỏ đứng đầu thường cho chất lượng thấp; bạn có thể tự chọn thứ tự:
+
+1. Chép `docs/examples/combo-order.example.txt` sang `.agent/combo-order.txt`
+   (**tệp thật không lên GitHub**), thay mỗi dòng bằng một id bước đầy đủ.
+2. Chạy:
+   ```
+   routersync combos plan \
+     --from <các tệp probe/reliability> \
+     --out combo-plan.json \
+     --emit-reorder reorder.real.txt \
+     --order file --order-file .agent/combo-order.txt
+   ```
+3. Các bước có trong tệp và còn đủ điều kiện đứng đầu theo **đúng thứ tự trong
+   tệp**; các bước còn lại giữ xếp hạng C40. Bước trong tệp nhưng đang `HANG` hoặc
+   `DEAD` bị chặn và in lý do — nó không được âm thầm đưa lên đầu. Dòng không khớp
+   bước nào cũng được báo riêng.
+
+Thứ tự đề xuất trong C41 chỉ suy ra từ **tên model** (lớn trước nhỏ trong cùng
+provider, xen kẽ provider) — không phải số đo chất lượng. Hãy chỉnh bằng tệp riêng
+của bạn.
+
 ## Giữ xoay vòng tài khoản, dùng fallback ở cấp combo
 
 - Giữ nguyên cấu hình provider/account (nhiều tài khoản mỗi provider) — đây là nơi xoay vòng khi hết quota.
