@@ -170,6 +170,8 @@ export interface PlanVariant {
   name: string;
   steps: string[];
   predictedHeaderMs: number | null;
+  /** C34 Q0.4 */
+  note?: string | undefined;
   removed: number;
   movedToEnd: number;
 }
@@ -208,6 +210,7 @@ export function buildComboPlan(combo: string, order: string[], stats: Map<string
       name: `${combo} (gọn)`,
       steps: planASteps,
       predictedHeaderMs: predictHeaderMs(planASteps, stats),
+      note: MODEL_CAVEAT,
       removed: remove.length,
       movedToEnd: moveEnd.length,
     },
@@ -215,6 +218,7 @@ export function buildComboPlan(combo: string, order: string[], stats: Map<string
       name: `${combo} (chỉ bước OK)`,
       steps: planBSteps,
       predictedHeaderMs: predictHeaderMs(planBSteps, stats),
+      note: MODEL_CAVEAT,
       removed: order.length - planBSteps.length,
       movedToEnd: 0,
     },
@@ -248,6 +252,8 @@ export interface PlanFile {
   probeRuns: Array<{ file: string; rows: number }>;
   minGapMinutes: number;
   counts: Record<PlanGroup, number>;
+  /** C34 Q0.4: cảnh báo về độ tin cậy của predictedHeaderMs. */
+  modelCaveat: string;
   combos: ComboPlan[];
   note: string;
 }
@@ -260,6 +266,10 @@ export interface PlanOptions {
   log?: (line: string) => void;
   readState?: () => { combos: Array<{ name: string; steps: string[] }>; dbPath?: string | undefined };
 }
+
+/** C34 Q0.4: dự đoán chỉ tính phần trước bước phục vụ. */
+export const MODEL_CAVEAT =
+  'predictedHeaderMs chỉ cộng thời gian các bước trước bước phục vụ, bỏ qua phần chờ sau khi usageHistory đã ghi (C34: 80–130 s). Vì vậy đây là cận dưới, không phải thời gian dự kiến. Sai số mô hình ở C33: trung vị 33.7%, tối đa 80.8%.';
 
 const NOTE =
   'Kế hoạch, không phải thay đổi. Không có lệnh nào ghi vào router ở đây. ' +
@@ -292,6 +302,7 @@ export function runCombosPlan(options: PlanOptions): PlanFile {
     probeRuns: runs.map((r) => ({ file: basename(r.file), rows: r.rows.length })),
     minGapMinutes: options.minGapMinutes ?? 1,
     counts,
+    modelCaveat: MODEL_CAVEAT,
     combos,
     note: NOTE,
   };

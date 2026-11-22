@@ -522,6 +522,10 @@ export function createCliProgram(): Command {
     .option('--max-minutes <n>', 'Wall-clock budget for a real run', '40')
     .option('--combo-timeout-sec <n>', 'Per-combo deadline in seconds (1..600, default 120)')
     .option('--only <regex>', 'Step mode: only probe steps matching this regex')
+    .option('--timeline', 'Record every new usageHistory row while waiting (1 s poll)')
+    .option('--max-tokens <n>', 'max_tokens per request (1..64, default 8)', '8')
+    .option('--no-stream', 'Send stream: false')
+    .option('--repeat <n>', 'Step mode: repeat each step n times', '1')
     .option('--json', 'Output result in JSON format')
     .action(
       async (opts: {
@@ -532,6 +536,10 @@ export function createCliProgram(): Command {
         maxMinutes?: string;
         comboTimeoutSec?: string;
         only?: string;
+        timeline?: boolean;
+        maxTokens?: string;
+        stream?: boolean;
+        repeat?: string;
         json?: boolean;
       }) => {
         const { runCombosProbeCommand } = await import('./commands/combos-probe.js');
@@ -543,6 +551,10 @@ export function createCliProgram(): Command {
           maxMinutes: Number(opts.maxMinutes ?? 40),
           comboTimeoutSec: opts.comboTimeoutSec === undefined ? undefined : Number(opts.comboTimeoutSec),
           only: opts.only,
+          timeline: opts.timeline,
+          maxTokens: opts.maxTokens === undefined ? undefined : Number(opts.maxTokens),
+          stream: opts.stream === false ? false : undefined,
+          repeat: opts.repeat === undefined ? undefined : Number(opts.repeat),
           json: opts.json,
         });
       }

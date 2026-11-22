@@ -80,6 +80,18 @@ xuất hiện so với header. Kết luận của mode combo:
 Ngưỡng 120 giây là hằng số `SLOW_THRESHOLD_MS`. Một dòng log có `usageAt=` cho
 biết dòng usage xuất hiện ở mili-giây thứ mấy.
 
+## C34: đo phần chờ sau usage
+
+| Cờ | Nghĩa |
+|---|---|
+| `--timeline` | Ghi MỌI dòng `usageHistory` mới trong lúc chờ (hỏi mỗi 1 giây), kèm `usageRows` trong JSON và dòng `usage@<ms> provider/model` trong log. |
+| `--max-tokens <n>` | `max_tokens` mỗi request, 1..64 (mặc định 8). |
+| `--no-stream` | Gửi `stream: false`. |
+| `--repeat <n>` | (mode step) lặp lại mỗi bước n lần, hậu tố `#1`, `#2`. |
+
+Dùng khi cần biết header về sau khi router đã ghi usage bao lâu, và router có thử
+nhiều bước liên tiếp hay không (mỗi bước thử là một dòng usage).
+
 ## `combos plan` — kế hoạch gọn combo (chỉ lập kế hoạch)
 
 ```
