@@ -190,6 +190,10 @@ export interface ProbeOptions {
   maxMinutes?: number | undefined;
   /** C33 N1: hạn cho mỗi combo, 1..600 giây. */
   comboTimeoutSec?: number | undefined;
+  /** W1: hạn cắt mỗi combo (giây), mặc định 120 theo luật vòng. */
+  stopAfterSec?: number | undefined;
+  /** W1: đính kèm chiến lược combo vào báo cáo. */
+  strategyReport?: boolean | undefined;
   /** C33 N2: chỉ thử các bước khớp regex. */
   only?: string | undefined;
   baseUrl?: string | undefined;
@@ -261,6 +265,8 @@ export interface ProbeReport {
   baseUrl: string;
   apiKeyName: string;
   comboTimeoutSec: number;
+  /** W1: chiến lược của từng combo (tên -> fallback|round-robin|mặc định). */
+  strategies?: Record<string, string> | undefined;
   stoppedEarly: string | null;
   combos: string[];
   uniqueSteps: number;
@@ -465,10 +471,33 @@ function uniqueSteps(combos: ComboInfo[]): string[] {
 }
 
 function comboTimeoutFor(options: ProbeOptions): number {
+  if (typeof options.stopAfterSec === 'number' && options.stopAfterSec > 0) return Math.floor(options.stopAfterSec) * 1000;
   if (typeof options.comboTimeoutMs === 'number') return options.comboTimeoutMs;
   const sec = options.comboTimeoutSec ?? COMBO_TIMEOUT_MS / 1000;
   const bounded = Math.min(MAX_COMBO_TIMEOUT_MS / 1000, Math.max(1, Math.floor(sec)));
   return bounded * 1000;
+}
+
+function readComboStrategies(): Record<string, string> {
+  try {
+    const db = openRouterDb();
+    try {
+      const combos = db.prepare('SELECT name FROM combos ORDER BY name').all() as Array<{ name: string }>;
+      const raw = db.prepare('SELECT data FROM settings WHERE id = 1').get() as { data?: string } | undefined;
+      const settings = raw?.data ? JSON.parse(raw.data) : {};
+      const map = settings.comboStrategies ?? {};
+      const out: Record<string, string> = {};
+      for (const c of combos) {
+        const v = map[c.name];
+        out[c.name] = v && typeof v === 'object' && v.fallbackStrategy ? String(v.fallbackStrategy) : 'mặc định';
+      }
+      return out;
+    } finally {
+      db.close();
+    }
+  } catch {
+    return {};
+  }
 }
 
 function printDryRun(
@@ -513,6 +542,7 @@ export async function runCombosProbeCommand(options: ProbeOptions = {}): Promise
       baseUrl,
       apiKeyName: state.apiKeyName,
       comboTimeoutSec: comboTimeoutMs / 1000,
+      strategies: options.strategyReport === true ? readComboStrategies() : undefined,
       stoppedEarly: 'dry-run',
       combos: combos.map((c) => c.name),
       uniqueSteps: uniqueSteps(combos).length,
@@ -659,6 +689,7 @@ export async function runCombosProbeCommand(options: ProbeOptions = {}): Promise
     baseUrl,
     apiKeyName: state.apiKeyName,
     comboTimeoutSec: comboTimeoutMs / 1000,
+    strategies: options.strategyReport === true ? readComboStrategies() : undefined,
     stoppedEarly,
     combos: combos.map((c) => c.name),
     uniqueSteps: uniqueSteps(combos).length,

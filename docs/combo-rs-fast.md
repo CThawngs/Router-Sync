@@ -32,6 +32,12 @@ giữ nguyên khả năng failover giữa các account/provider.
 Nếu không dùng, xóa combo trong dashboard. RouterSync không xóa giúp: mọi thao tác
 ghi vào router cần chủ dự án tự làm.
 
+## Giữ xoay vòng tài khoản, dùng fallback ở cấp combo
+
+- Giữ nguyên cấu hình provider/account (nhiều tài khoản mỗi provider) — đây là nơi xoay vòng khi hết quota.
+- Với `rs-fast` / `rs-max`, chọn **Fallback**; không copy chiến lược `round-robin` của `9Router-Agent` (combo treo lặp lại trong W1).
+- Nếu muốn thử `round-robin`, đổi trong dashboard rồi đo lại bằng `routersync combos probe --mode combo --combo <tên> --yes-spend-tokens`.
+
 ## Lưu ý
 
 - `rs-max` có nhiều bước hơn nhưng vẫn nằm trong một combo — router thử theo thứ tự.

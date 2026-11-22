@@ -6,6 +6,25 @@
  * hạn 30 s, max_tokens 8, stream bật, tuần tự.
  */
 import { perStepConclusion, type ComboProbeRow, type VerdictInput } from './combos-probe.js';
+import { createRequire } from 'node:module';
+import os from 'node:os';
+import path from 'node:path';
+const require = createRequire(import.meta.url);
+
+let cachedKey = '';
+function apiKey(): string {
+  if (cachedKey) return cachedKey;
+  try {
+    const Database = require('better-sqlite3');
+    const file = path.join(process.env.APPDATA || os.homedir(), '9router', 'db', 'data.sqlite');
+    const db = new Database(file, { readonly: true });
+    cachedKey = db.prepare('SELECT key FROM apiKeys WHERE isActive = 1 ORDER BY createdAt LIMIT 1').get().key;
+    db.close();
+  } catch {
+    cachedKey = '';
+  }
+  return cachedKey;
+}
 
 async function probeStep(
   step: string,
@@ -13,7 +32,7 @@ async function probeStep(
 ): Promise<ComboProbeRow> {
   const base = opts.baseUrl ?? process.env.ROUTERSYNC_9ROUTER_BASE_URL ?? 'http://127.0.0.1:20128';
   const fetchImpl = opts.fetchImpl ?? globalThis.fetch;
-  const apiKey = process.env.ROUTERSYNC_9ROUTER_KEY ?? '';
+  const key = apiKey();
   const t0 = Date.now();
   let headerMs: number | null = null;
   let status: number | null = null;
@@ -22,7 +41,7 @@ async function probeStep(
   try {
     const res = await fetchImpl(`${base}/v1/chat/completions`, {
       method: 'POST',
-      headers: { 'content-type': 'application/json', authorization: `Bearer ${apiKey}` },
+      headers: { 'content-type': 'application/json', authorization: `Bearer ${key}` },
       body: JSON.stringify({ model: step, messages: [{ role: 'user', content: 'ping' }], max_tokens: opts.maxTokens, stream: true }),
       signal: AbortSignal.timeout(opts.timeoutMs),
     });
@@ -35,7 +54,7 @@ async function probeStep(
   }
   const input: VerdictInput = {
     status,
-    body: text.replace(new RegExp(apiKey, 'g'), '<KEY>').slice(0, 200),
+    body: text.replace(new RegExp(key, 'g'), '<KEY>').slice(0, 200),
     headerReceived: headerMs !== null,
     usageRowAdded: false,
     timedOut,

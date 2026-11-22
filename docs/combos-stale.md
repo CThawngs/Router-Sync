@@ -81,6 +81,24 @@ does not reuse it: a combo must not be able to validate its own members.
 not be resolved, opened, or queried. In that case the command exits non-zero,
 prints the reason on the first line, and emits no rows.
 
+
+## C38 W2: chiến lược combo và xoay vòng tài khoản
+
+Kế hoạch (`combos plan`) ghi thêm trường `strategy` cho từng combo và cảnh báo
+`RISK-ROUND-ROBIN` kèm số đo W1 (số lần treo / số lần thử). Cảnh báo chỉ nêu dữ kiện,
+không tự đổi cấu hình router.
+
+**Không nhầm hai cấp chiến lược:**
+
+| cấp | nơi | tác dụng |
+|---|---|---|
+| provider / account | `settings.providerStrategies` | xoay vòng giữa các tài khoản của cùng provider — "hết quota account 1 thì sang account 2" |
+| combo | `settings.comboStrategies[<tên combo>]` | thứ tự giữa các bước model: `fallback` hoặc `round-robin` |
+
+Đổi chiến lược **cấp combo** không làm mất xoay vòng **cấp tài khoản**. Trên máy đo
+W0, `providerStrategies` đang **rỗng** — không khẳng định được hành vi mặc định;
+ghi "không rõ" cho tới khi có số liệu.
+
 ## Removal rule
 
 Never delete a model because it is `ABSENT` or `UNVERIFIABLE`.
