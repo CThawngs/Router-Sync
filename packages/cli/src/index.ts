@@ -580,12 +580,16 @@ export function createCliProgram(): Command {
     .option('--out <file>', 'Where to write the plan JSON', 'combo-plan.json')
     .option('--min-gap-minutes <n>', 'Minimum gap between two runs that must agree', '1')
     .option('--emit-reorder <file>', 'Write a reordered copy of every combo (real names; local only)')
+    .option('--order-file <file>', 'Owner-provided step order (one full id per line, # = comment)')
+    .option('--order <mode>', 'Order mode: speed (default) or file', 'speed')
     .action(async (opts: {
       router?: string;
       from?: string[];
       out?: string;
       minGapMinutes?: string;
       emitReorder?: string;
+      orderFile?: string;
+      order?: string;
     }) => {
       const { runCombosPlan } = await import('./commands/combos-plan.js');
       runCombosPlan({
@@ -594,6 +598,8 @@ export function createCliProgram(): Command {
         out: opts.out ?? 'combo-plan.json',
         minGapMinutes: Number(opts.minGapMinutes ?? 1),
         emitReorder: opts.emitReorder,
+        orderFile: opts.orderFile,
+        orderMode: opts.order === 'file' ? 'file' : 'speed',
       });
     });
 
@@ -1159,6 +1165,17 @@ export function createCliProgram(): Command {
         config: opts.config,
         json: opts.json,
       });
+    });
+
+  appsCmd
+    .command('drift-model')
+    .description('Đối chiếu model mà OpenMausBot trỏ tới với router (chỉ đọc)')
+    .option('--home <dir>', 'Custom user home directory')
+    .option('-c, --config <path>', 'Explicit OpenMausBot config file')
+    .option('--from <file>', 'Reliability result file (repeatable)', (v: string, prev: string[]) => [...prev, v], [] as string[])
+    .action(async (opts: { home?: string; config?: string; from?: string[] }) => {
+      const { runAppsDrift } = await import('./commands/apps-drift.js');
+      runAppsDrift({ homeDir: opts.home, configPath: opts.config, from: opts.from });
     });
 
   appsCmd

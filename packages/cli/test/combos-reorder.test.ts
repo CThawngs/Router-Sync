@@ -2,8 +2,10 @@ import { describe, expect, it } from 'vitest';
 import {
   formatReorderBody,
   hangMoves,
+  parseOrderFile,
   parseReliabilityText,
   reorderCombo,
+  reorderWithFile,
   sameSteps,
   stepRank,
   type ReliabilityInfo,
@@ -88,6 +90,52 @@ describe('C40 X1: sắp xếp lại combo', () => {
     expect(result.details.get('nvidia/unmeasured')?.rank).toBe(4);
     expect(result.details.get('hf/dead')?.rank).toBe(5);
     expect(formatReorderBody(result).join('\n')).toContain('hạng 6');
+  });
+
+  it('Y1: đọc tệp thứ tự, bỏ chú thích và dòng trống', () => {
+    const parsed = parseOrderFile('# tiêu đề\ngroq/a\n\ngroq/a\ncf/b\n');
+    expect(parsed.steps).toEqual(['groq/a', 'cf/b']);
+    expect(parsed.comments).toEqual(['# tiêu đề']);
+    expect(parsed.blankLines).toBe(2);
+  });
+
+  it('Y1: bước trong tệp đứng đầu đúng thứ tự', () => {
+    const order = ['cf/a', 'groq/b', 'nvidia/c', 'oc/d'];
+    const stats = new Map([
+      ['cf/a', stat('cf/a', 'KEEP', 100)],
+      ['groq/b', stat('groq/b', 'KEEP', 200)],
+      ['nvidia/c', stat('nvidia/c', 'KEEP', 300)],
+    ]);
+    const file = parseOrderFile('nvidia/c\ncf/a\n');
+    const result = reorderWithFile(order, stats, new Map(), file);
+    expect(result.order.slice(0, 2)).toEqual(['nvidia/c', 'cf/a']);
+    expect(sameSteps(order, result.order)).toBe(true);
+    expect(result.usedFile).toBe(true);
+  });
+
+  it('Y1: bước HANG trong tệp bị chặn, dòng lạ được báo', () => {
+    const order = ['cf/a', 'gemini/hang', 'groq/b'];
+    const relMap = new Map<string, ReliabilityInfo>([['gemini/hang', rel(null, 'HANG')]]);
+    const file = parseOrderFile('gemini/hang\ncf/a\nkhong/khop\n');
+    const result = reorderWithFile(order, new Map(), relMap, file);
+    expect(result.order[0]).toBe('cf/a');
+    expect(result.blocked).toHaveLength(1);
+    expect(result.blocked[0]?.step).toBe('gemini/hang');
+    expect(result.unknownLines).toEqual(['khong/khop']);
+  });
+
+  it('Y1: tệp rỗng thì dùng thứ tự speed', () => {
+    const order = ['cf/a', 'groq/b'];
+    const result = reorderWithFile(order, new Map(), new Map(), parseOrderFile('# chỉ chú thích\n'));
+    expect(result.usedFile).toBe(false);
+    expect(result.order).toEqual(order);
+  });
+
+  it('Y1: mutation — cho phép HANG đứng đầu thì đỏ', () => {
+    const order = ['cf/a', 'gemini/hang'];
+    const relMap = new Map<string, ReliabilityInfo>([['gemini/hang', rel(null, 'HANG')]]);
+    const result = reorderWithFile(order, new Map(), relMap, parseOrderFile('gemini/hang\n'));
+    expect(result.order[0] === 'gemini/hang').toBe(false);
   });
 
   it('in vị trí cũ -> mới của bước HANG', () => {

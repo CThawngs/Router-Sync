@@ -17,6 +17,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { parseDocument } from 'yaml';
+import { defaultOpenMausPath, readOpenMausConfig, ROUTER_PORT } from './openmausbot.js';
 import type {
   AgentAppAdapter,
   AgentAppCertainty,
@@ -31,7 +32,7 @@ import type {
 
 export const DEFAULT_MAX_BYTES = 4 * 1024 * 1024;
 
-export const AGENT_APP_IDS = ['hermes', 'dsh', 'opencode'] as const;
+export const AGENT_APP_IDS = ['hermes', 'dsh', 'opencode', 'openmausbot'] as const;
 export type AgentAppId = (typeof AGENT_APP_IDS)[number];
 
 export class AgentAppInspectError extends Error {
@@ -463,7 +464,58 @@ export const opencodeAdapter: AgentAppAdapter = {
   },
 };
 
-export const AGENT_APP_ADAPTERS: AgentAppAdapter[] = [hermesAdapter, dshAdapter, opencodeAdapter];
+// ---------------------------------------------------------------------------
+// OpenMausBot — <home>/.openmausbot/config.json (C41 Y2, chỉ đọc)
+// ---------------------------------------------------------------------------
+
+export const openmausbotAdapter: AgentAppAdapter = {
+  app: 'openmausbot',
+  format: 'json',
+  defaultConfigPath(homeDir: string): string {
+    return defaultOpenMausPath(homeDir);
+  },
+  async inspect(options: AgentAppInspectOptions = {}): Promise<AgentAppInspection> {
+    const homeDir = options.homeDir ?? os.homedir();
+    const configPath = options.configPath ?? this.defaultConfigPath(homeDir);
+    const read = readOpenMausConfig(configPath);
+    if (read.instances.length === 0) {
+      throw new AgentAppInspectError('ENOENT', read.notes[0] ?? 'không đọc được instance nào');
+    }
+    const providers: AgentAppProvider[] = [];
+    const models: AgentAppModel[] = [];
+    for (const instance of read.instances) {
+      providers.push({
+        id: instance.id,
+        kind: providerKind(instance.id, instance.url),
+        baseUrlPresent: true,
+        keyPresent: instance.keyPresent,
+      });
+      models.push({ provider: instance.id, id: instance.model, enabled: true });
+    }
+    const routerInstance = read.instances.find((i) => i.port === ROUTER_PORT) ?? read.instances[0];
+    const activeModel = routerInstance?.model ?? 'UNKNOWN';
+    const routerRef = routerInstance?.port === ROUTER_PORT ? '9router' : detectRouter(routerInstance?.url);
+    const warnings = [...read.notes];
+    if (routerRef === '9router') warnings.push('app trỏ tới router 9router');
+    return {
+      ...baseInspection('openmausbot', configPath),
+      format: 'json',
+      providers,
+      models,
+      activeModel,
+      routerRef,
+      certainty: 'A',
+      warnings,
+    };
+  },
+};
+
+export const AGENT_APP_ADAPTERS: AgentAppAdapter[] = [
+  hermesAdapter,
+  dshAdapter,
+  opencodeAdapter,
+  openmausbotAdapter,
+];
 
 export function getAgentAppAdapter(app: string): AgentAppAdapter | undefined {
   return AGENT_APP_ADAPTERS.find((adapter) => adapter.app === app);

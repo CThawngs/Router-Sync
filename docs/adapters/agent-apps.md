@@ -64,6 +64,24 @@ cấu hình.
 | hermes | `~/.hermes/config.yaml` | yaml | `model.provider`, `custom_providers[]` | `model.models[]` | `model.default` |
 | dsh | `~/.dsh/profiles/desktop/cordis.patch.yml` (dự phòng `~/.dsh/cordis.patch.yml`) | yaml | `llm-pi-ai.config.providers` | `providers[].models[]` | `agent-default-model.config.{provider,model}` |
 | opencode | `~/.config/opencode/opencode.json` | json | `provider` map | `provider[].models` | trường `model` cấp 1 nếu có, ngược lại UNKNOWN |
+| openmausbot | `<HOME>/.openmausbot/config.json` | json | `instances[].config` | `config.model` | từ instance trỏ cổng 20128, ngược lại instance đầu |
+
+OpenMausBot (C41 Y2) chỉ đọc. `id` instance dạng UUID được che thành
+`<prefix>-<uuid>`, URL có cổng khác 20128 bị che thành `http://<host>:<port>/...`;
+key/token chỉ được báo dưới dạng `keyPresent`. Không có đường dẫn ghi.
+
+Đối chiếu chi tiết (kết luận `OK` / `MISSING` / `RISK-HANG-BEFORE-FIRST-GOOD` /
+`UNVERIFIABLE`, kèm số bước, chiến lược và số bước HANG trước bước chạy được đầu
+tiên) dùng:
+
+```
+routersync apps drift-model --from <tệp reliability>
+```
+
+Lệnh này **không gọi router bằng request chat**, chỉ đọc cấu hình app và DB router
+(`query_only`). Nếu không tìm thấy tệp cấu hình, kết quả ghi "không tìm thấy" kèm
+các đường dẫn đã thử dạng `<HOME>/...`.
+
 
 DSH chấp nhận cả hai hình dạng tệp patch: mảng `{id,name,config}` và mảng
 `{insert:[{id,name,config}]}`. Tag tùy biến `!!js` chỉ sinh cảnh báo YAML, không phải lỗi.

@@ -4,7 +4,15 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, writeFileSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { applyPatch, revertPatch, sha256, EXPECTED_VERSION, MARK_V2 } from '../../tools/agent/nine-router-patch.mjs';
+import {
+  applyPatch,
+  revertPatch,
+  sha256,
+  EXPECTED_VERSION,
+  MARK_V2,
+  patchLoaded,
+  readFileModifiedMs,
+} from '../../tools/agent/nine-router-patch.mjs';
 
 const TEMPLATE = `"use strict";
 const http = require("http");
@@ -56,5 +64,37 @@ describe('V9: nine-router-patch', () => {
   test('sha256 ổn định 64 ký tự', () => {
     const h = sha256('abc');
     assert.match(h, /^[0-9a-f]{64}$/);
+  });
+
+  test('Y0.2: tiến trình bắt đầu sau lần sửa tệp thì đã nạp', () => {
+    const fileMs = Date.parse('2026-11-22T07:47:54.638Z');
+    assert.equal(patchLoaded(fileMs + 60_000, fileMs), 'true');
+    assert.equal(patchLoaded(fileMs - 60_000, fileMs), 'false');
+    assert.equal(patchLoaded(fileMs, fileMs), 'false');
+  });
+
+  test('Y0.2: thiếu một trong hai thời điểm thì unknown', () => {
+    assert.equal(patchLoaded(Number.NaN, 1000), 'unknown');
+    assert.equal(patchLoaded(2000, Number.NaN), 'unknown');
+  });
+
+  test('Y0.2: đọc thời điểm sửa tệp tạm (tiến trình giả)', () => {
+    const { file, dir } = tempFile(TEMPLATE);
+    try {
+      const ms = readFileModifiedMs(file);
+      assert.ok(Number.isFinite(ms));
+      assert.equal(patchLoaded(ms + 1000, ms), 'true');
+      assert.equal(patchLoaded(ms - 1000, ms), 'false');
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  test('Y0.2: mutation — đảo phép so sánh thì test đỏ', () => {
+    const fileMs = 1000;
+    const correct = patchLoaded(2000, fileMs);
+    const mutated = 2000 < fileMs ? 'true' : 'false';
+    assert.equal(correct, 'true');
+    assert.equal(mutated, 'false');
   });
 });

@@ -93,7 +93,7 @@ const adapters = { hermes: hermesAdapter, dsh: dshAdapter, opencode: opencodeAda
 
 describe('agent app inspection contract', () => {
   it('exposes exactly the supported apps and is read-only', () => {
-    expect(AGENT_APP_ADAPTERS.map((a) => a.app)).toEqual(['hermes', 'dsh', 'opencode']);
+    expect(AGENT_APP_ADAPTERS.map((a) => a.app)).toEqual(['hermes', 'dsh', 'opencode', 'openmausbot']);
     for (const adapter of AGENT_APP_ADAPTERS) {
       expect('write' in adapter).toBe(false);
       expect('apply' in adapter).toBe(false);

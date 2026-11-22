@@ -23,9 +23,14 @@ tên riêng hay đường dẫn cá nhân.
 ## 2. `/v1/models` đã hết nghẽn nhờ cache ngoài repo
 
 - **đo được** — `/v1/models` từng đốt 4–5 giây CPU và chặn request khác (C35/C36,
-  `e95507e`). Bản vá cache nằm ngoài repo, xem `tools/agent/nine-router-patch.mjs`;
-  bản v1 (cache 60 s) và v2 (khóa theo `Authorization` + query) đều đã áp, router
-  đã restart (C37 `323cf88` và `evidence/c37-apply` `8fe166e`).
+  `e95507e`). Bản vá cache nằm ngoài repo, xem `tools/agent/nine-router-patch.mjs`.
+  Bản **v1 đã chạy** (cache 60 s, đã restart trước C37 — `323cf88`). Bản **v2 đã được
+  ghi vào tệp** (`evidence/c37-apply` `8fe166e`), nhưng C37 ghi rõ router **chưa**
+  được khởi động lại sau lần ghi đó.
+- **đo được (C41 Y0)** — `nine-router-patch.mjs status` so sánh thời điểm tiến trình
+  bắt đầu với thời điểm tệp được sửa: `processStart=2026-11-22T15:29:07Z`,
+  `fileModified=2026-11-22T13:46:56Z` ⇒ `loaded=true`. Router đã nạp v2. Số đo trong
+  nhánh `evidence/c41`. Lệnh chỉ đọc; muốn tự kiểm chạy lại lệnh `status`.
 - **đo được** — Sau vá, 215 mẫu / 45 phút cho 9/9 combo OK, p50 header 2 163 ms,
   `/v1/models` p50 2 ms (cache hit); tuổi tiến trình 33–78 phút (C37 `323cf88`).
 - **suy luận** — Cache là lý do `/v1/models` hết nghẽn. Không đo được gì ở mốc 6/12/24

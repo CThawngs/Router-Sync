@@ -25,7 +25,13 @@ export function priority(step, rel) {
   return 5;
 }
 
-export function rankSteps(steps, rel) {
+export function rankSteps(steps, rel, orderSteps = []) {
+  const preferred = orderSteps.filter((step) => steps.includes(step));
+  const rest = steps.filter((step) => !preferred.includes(step));
+  return [...preferred, ...rankByReliability(rest, rel)];
+}
+
+function rankByReliability(steps, rel) {
   const groups = new Map();
   steps.forEach((step, index) => {
     const p = priority(step, rel);
@@ -52,7 +58,7 @@ export function splitLists(text) {
   };
 }
 
-export function finalize(currentText, reliabilityTexts) {
+export function finalize(currentText, reliabilityTexts, orderSteps = []) {
   const rel = new Map();
   for (const text of reliabilityTexts) {
     for (const [step, info] of parseReliabilityText(text)) rel.set(step, info);
@@ -68,20 +74,31 @@ export function finalize(currentText, reliabilityTexts) {
       }
       return true;
     });
-  const fastOrdered = rankSteps(clean(fast), rel).slice(0, 12);
-  const maxOrdered = rankSteps(clean(max), rel);
+  const fastOrdered = rankSteps(clean(fast), rel, orderSteps).slice(0, 12);
+  const maxOrdered = rankSteps(clean(max), rel, orderSteps);
   return { fast: fastOrdered, max: maxOrdered, needsConfirmation };
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  const [currentFile, outFile, ...reliabilityFiles] = process.argv.slice(2);
+  const args = process.argv.slice(2);
+  const orderIndex = args.indexOf('--order-file');
+  const orderSteps =
+    orderIndex >= 0 && args[orderIndex + 1]
+      ? readFileSync(args[orderIndex + 1], 'utf8')
+          .split(/\r?\n/)
+          .map((l) => l.trim())
+          .filter((l) => l.includes('/') && !l.startsWith('#'))
+      : [];
+  const cleanArgs = orderIndex >= 0 ? args.filter((_, i) => i !== orderIndex && i !== orderIndex + 1) : args;
+  const [currentFile, outFile, ...reliabilityFiles] = cleanArgs;
   if (!currentFile || !outFile || reliabilityFiles.length === 0) {
     console.error('dùng: node tools/agent/combo-finalize.mjs <current> <out> <reliability>...');
     process.exit(2);
   }
   const result = finalize(
     readFileSync(currentFile, 'utf8'),
-    reliabilityFiles.map((f) => readFileSync(f, 'utf8'))
+    reliabilityFiles.map((f) => readFileSync(f, 'utf8')),
+    orderSteps
   );
   mkdirSync(outFile.replace(/[\\/][^\\/]+$/, ''), { recursive: true });
   const lines = ['# rs-fast (bản thật, C40)', ...result.fast, '# rs-max (bản thật, C40)', ...result.max];
