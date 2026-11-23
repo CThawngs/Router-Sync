@@ -10,14 +10,14 @@
  *
  * Phân loại theo trạng thái router (đọc chỉ đọc qua readRouterModelState + readCombos):
  *   9Router:
- *     OK       : model có trong availableModels (tầng A — active) hoặc comboModels (combo)
+ *     OK       : tên combo trong comboNames, hoặc model có trong availableModels (tầng A — active)
  *     DISABLED : model có trong disabledModels (bị tắt)
- *     MISSING  : model không có trong bất kỳ tập nào
+ *     MISSING  : model/combo không có trong bất kỳ tập nào
  *     UNKNOWN  : versionMismatch hoặc không đọc được router
  *   OmniRoute:
- *     OK       : model có trong availableModels (synced, custom, alias, hoặc combo active) hoặc comboModels
+ *     OK       : tên combo trong comboNames, hoặc model có trong availableModels / comboModels
  *     DISABLED : model có trong disabledModels (bị tắt qua radar_local_model_state hoặc customModels ẩn)
- *     MISSING  : model không có trong disabledModels, availableModels hay comboModels
+ *     MISSING  : model/combo không có trong comboNames, disabledModels, availableModels hay comboModels
  *     UNKNOWN  : không đọc được router
  *   NOT-ROUTED : provider trực tiếp, không qua router
  *
@@ -39,6 +39,7 @@ import type {
 } from '@routersync/adapter-sdk';
 import {
   readRouterModelState,
+  type ReadRouterModelStateOptions,
   type RouterModelState,
   getProviderAliases,
 } from '@routersync/core';
@@ -71,7 +72,7 @@ export interface RouterDriftView {
   state: RouterModelState | undefined;
   /** Lỗi khi đọc router (nếu có). */
   error: string | undefined;
-  /** Tên combo (readCombos[].id / [].name). */
+  /** Tên combo (readCombos[].id / [].name và state.comboNames). */
   comboNames: Set<string>;
   /** Tên alias. */
   aliasNames: Set<string>;
@@ -155,14 +156,15 @@ function hasProviderPrefix(modelId: string): boolean {
   return modelId.includes('/') && modelId.indexOf('/') > 0;
 }
 
-/** Drift kind từ model id (đã strip prefix) so với combo/alias names. */
+/** Drift kind từ model id (bare hoặc kèm tiền tố provider) so với combo/alias names. */
 export function driftKindOf(
   modelId: string,
   comboNames: Set<string>,
   aliasNames: Set<string>
 ): 'combo' | 'alias' | 'model' {
-  if (comboNames.has(modelId)) return 'combo';
-  if (aliasNames.has(modelId)) return 'alias';
+  const strippedId = stripProviderPrefix(modelId);
+  if (comboNames.has(modelId) || comboNames.has(strippedId)) return 'combo';
+  if (aliasNames.has(modelId) || aliasNames.has(strippedId)) return 'alias';
   return 'model';
 }
 
@@ -193,12 +195,13 @@ export function extractAllIds(ids: Set<string>): Set<string> {
 /** Xây dựng view chỉ đọc của một router từ readRouterModelState + combos. */
 export async function buildRouterView(
   router: string,
-  combos: Array<{ id: string; name?: string; models?: string[] }>
+  combos: Array<{ id: string; name?: string; models?: string[] }>,
+  stateOptions?: ReadRouterModelStateOptions
 ): Promise<RouterDriftView> {
   let state: RouterModelState | undefined;
   let error: string | undefined;
   try {
-    state = await readRouterModelState(router);
+    state = await readRouterModelState(router, stateOptions);
   } catch (e) {
     error = String((e as Error)?.message ?? e);
   }
@@ -207,6 +210,11 @@ export async function buildRouterView(
   for (const c of combos) {
     if (c.id) comboNames.add(c.id);
     if (c.name) comboNames.add(c.name);
+  }
+  if (state?.comboNames) {
+    for (const name of state.comboNames) {
+      if (name) comboNames.add(name);
+    }
   }
   const aliasNames = new Set<string>();
 
@@ -248,8 +256,8 @@ export function loadLocalProviderAllowlist(): Set<string> {
 
 /**
  * Phân loại một model đơn lẻ đối với một router view.
- * Sử dụng availableIds/disabledIds/comboIds (đã trích xuất bare name) thay vì
- * state.classify() để tránh vấn đề định dạng id giữa alias/modelId và provider/id.
+ * Sử dụng comboNames + availableIds/disabledIds/comboIds (đã trích xuất bare name)
+ * thay vì state.classify() để tránh vấn đề định dạng id giữa alias/modelId và provider/id.
  */
 export function classifyModelDrift(
   modelId: string,
@@ -257,7 +265,7 @@ export function classifyModelDrift(
   view: RouterDriftView
 ): { entry: Omit<DriftEntry, 'app'>; matchedRouter: boolean } {
   const strippedId = stripProviderPrefix(modelId);
-  const kind = driftKindOf(strippedId, view.comboNames, view.aliasNames);
+  const kind = driftKindOf(modelId, view.comboNames, view.aliasNames);
   const router = view.router;
 
   if (!view.state || !view.availableIds || !view.disabledIds || !view.comboIds) {
@@ -293,6 +301,27 @@ export function classifyModelDrift(
         kind,
         status: 'UNKNOWN',
         reason: 'snapshot-version-mismatch',
+        inCombo,
+      },
+      matchedRouter: true,
+    };
+  }
+
+  // M1-03: Combo name match (bare or provider-prefixed) takes priority before disabledIds
+  if (view.comboNames.has(strippedId) || view.comboNames.has(modelId)) {
+    return {
+      entry: {
+        router,
+        name: modelId,
+        modelId: strippedId,
+        provider,
+        kind: 'combo',
+        status: 'OK',
+        reason: is9Router
+          ? 'Configured combo in 9Router'
+          : isOmniRoute
+            ? 'Configured combo in OmniRoute'
+            : 'Configured combo in router',
         inCombo,
       },
       matchedRouter: true,
@@ -569,7 +598,11 @@ export function checkIdFormatMismatch(
       for (const e of r.entries) {
         // Chỉ kiểm tra các model qua router (không phải NOT-ROUTED)
         if (e.kind === 'NOT-ROUTED') continue;
-        if (v.availableIds.has(e.modelId) || v.comboIds.has(e.modelId)) {
+        if (
+          v.availableIds.has(e.modelId) ||
+          v.comboIds.has(e.modelId) ||
+          (e.status === 'OK' && (v.comboNames.has(e.modelId) || v.comboNames.has(e.name)))
+        ) {
           anyMatch = true;
           break;
         }

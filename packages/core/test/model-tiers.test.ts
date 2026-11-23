@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { describe, it, expect } from 'vitest';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
@@ -11,6 +12,7 @@ import {
   PlanActionTypeSchema,
   readRouterModelState,
   openBetterSqlite3,
+  NINE_ROUTER_EXPECTED_APP_VERSION,
 } from '../src/index.js';
 
 describe('Model Tier Architecture (3-Tier Universe: R3)', () => {
@@ -253,6 +255,53 @@ describe('Model Tier Architecture (3-Tier Universe: R3)', () => {
       expect(c2.inCombo).toBe(false);
 
       fs.rmSync(tmpDir, { recursive: true, force: true });
+    });
+
+    it('M1-03: populates comboNames for 9Router from combos table, parsed JSON name, fallback id, and options without mutating DB sha256', () => {
+      const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'rs-m103-9r-'));
+      try {
+        const dbPath = path.join(tmpDir, 'router.sqlite');
+        const db = openBetterSqlite3(dbPath);
+        db.exec(`
+          CREATE TABLE _meta (key TEXT, value TEXT);
+          CREATE TABLE kv (scope TEXT, key TEXT, value TEXT);
+          CREATE TABLE combos (id TEXT PRIMARY KEY, name TEXT, models TEXT);
+        `);
+        db.prepare('INSERT INTO _meta (key, value) VALUES (?, ?)').run(
+          'appVersion',
+          NINE_ROUTER_EXPECTED_APP_VERSION
+        );
+        const insertCombo = db.prepare('INSERT INTO combos (id, name, models) VALUES (?, ?, ?)');
+        insertCombo.run('combo-uuid-1', ' 9Router-Coder-1 ', JSON.stringify(['gemini/gemini-2.5-pro']));
+        insertCombo.run(
+          'combo-obj-id',
+          '   ',
+          JSON.stringify({ name: ' 9Router-Json-Name ', models: ['gemini/gemini-2.5-flash'] })
+        );
+        insertCombo.run('combo-fallback-id', '', JSON.stringify(['gemini/gemini-2.5-flash']));
+        db.close();
+
+        const beforeSha = createHash('sha256').update(fs.readFileSync(dbPath)).digest('hex');
+        const state = readRouterModelState('9router', {
+          dbPath,
+          comboNames: [' Seeded-9Router-Combo ', '   '],
+        });
+        const afterSha = createHash('sha256').update(fs.readFileSync(dbPath)).digest('hex');
+
+        expect(afterSha).toBe(beforeSha);
+        expect(state.versionMismatch).toBe(false);
+        expect(state.comboNames).toBeInstanceOf(Set);
+        expect(state.comboNames.has('9Router-Coder-1')).toBe(true);
+        expect(state.comboNames.has('9Router-Json-Name')).toBe(true);
+        expect(state.comboNames.has('combo-obj-id')).toBe(true);
+        expect(state.comboNames.has('combo-fallback-id')).toBe(true);
+        expect(state.comboNames.has('Seeded-9Router-Combo')).toBe(true);
+        // When row.name is present, row.id is not used as a fallback combo name
+        expect(state.comboNames.has('combo-uuid-1')).toBe(false);
+        expect(state.comboNames.has('')).toBe(false);
+      } finally {
+        fs.rmSync(tmpDir, { recursive: true, force: true, maxRetries: 3, retryDelay: 50 });
+      }
     });
   });
 });

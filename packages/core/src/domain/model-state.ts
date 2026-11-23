@@ -70,6 +70,7 @@ export interface RouterModelStateOptions {
   catalogPath?: string | undefined;
   db?: SqliteDriver | undefined;
   comboModels?: string[] | Set<string> | undefined;
+  comboNames?: Iterable<string> | undefined;
   env?: NodeJS.ProcessEnv | undefined;
   platform?: NodeJS.Platform | undefined;
   catalogImpliesEnabled?: boolean | undefined;
@@ -99,6 +100,8 @@ export interface RouterModelStateOptions {
   excludeComboModelsFromAvailability?: boolean | undefined;
 }
 
+export type ReadRouterModelStateOptions = RouterModelStateOptions;
+
 export interface RouterModelDiagnostics {
   /** True when a database path was resolved (configured or auto-located). */
   dbResolved: boolean;
@@ -123,6 +126,7 @@ export interface RouterModelState {
   enabledModels: Set<string>;
   disabledModels: Set<string>;
   comboModels: Set<string>;
+  comboNames: Set<string>;
   customModels: Set<string>;
   catalogModels: Set<string>;
   /**
@@ -155,6 +159,7 @@ export function readRouterModelState(
   const enabledModels = new Set<string>();
   const disabledModels = new Set<string>();
   const comboModels = new Set<string>();
+  const comboNames = new Set<string>();
   const customModels = new Set<string>();
   const catalogModels = new Set<string>();
   const availableModels = new Set<string>();
@@ -177,6 +182,15 @@ export function readRouterModelState(
         } else {
           comboModels.add(m);
         }
+      }
+    }
+  }
+
+  // Seed comboNames if explicitly provided in options
+  if (options.comboNames) {
+    for (const name of options.comboNames) {
+      if (typeof name === 'string' && name.trim().length > 0) {
+        comboNames.add(name.trim());
       }
     }
   }
@@ -249,10 +263,23 @@ export function readRouterModelState(
         } else {
           const rows = db.prepare('SELECT * FROM combos').all() as Array<Record<string, unknown>>;
           for (const row of rows) {
+            const rawRowName = typeof row['name'] === 'string' ? row['name'].trim() : '';
+            if (rawRowName) {
+              comboNames.add(rawRowName);
+            } else if (typeof row['id'] === 'string' && row['id'].trim()) {
+              comboNames.add(row['id'].trim());
+            }
+
             const rawModels = (row['models'] ?? row['data']) as string | undefined;
             if (rawModels && typeof rawModels === 'string') {
               try {
                 const parsed = JSON.parse(rawModels);
+                if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+                  const parsedName = (parsed as Record<string, unknown>)['name'];
+                  if (typeof parsedName === 'string' && parsedName.trim()) {
+                    comboNames.add(parsedName.trim());
+                  }
+                }
                 const list = Array.isArray(parsed)
                   ? parsed
                   : Array.isArray((parsed as Record<string, unknown>)?.models)
@@ -771,6 +798,7 @@ export function readRouterModelState(
     enabledModels,
     disabledModels,
     comboModels,
+    comboNames,
     customModels,
     catalogModels,
     availableModels,

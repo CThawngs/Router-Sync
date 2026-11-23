@@ -15,7 +15,7 @@ import type {
   AgentAppModel,
   AgentAppProvider,
 } from '@routersync/adapter-sdk';
-import { readRouterModelState } from '@routersync/core';
+import { NINE_ROUTER_EXPECTED_APP_VERSION, readRouterModelState } from '@routersync/core';
 import {
   buildRouterView,
   buildDriftReport,
@@ -39,7 +39,13 @@ const provider = (id: string): AgentAppProvider => ({ id, kind: 'router' as cons
 const model = (provider: string, id: string): AgentAppModel => ({ provider, id, enabled: 'UNKNOWN' });
 
 // Tạo RouterModelState mock (không cần DB thật)
-function mockState(enabled: string[] = [], disabled: string[] = [], catalog: string[] = [], versionMismatch = false): any {
+function mockState(
+  enabled: string[] = [],
+  disabled: string[] = [],
+  catalog: string[] = [],
+  versionMismatch = false,
+  comboNames: string[] = []
+): any {
   const enabledSet = new Set(enabled);
   const disabledSet = new Set(disabled);
   const catalogSet = new Set(catalog);
@@ -50,6 +56,7 @@ function mockState(enabled: string[] = [], disabled: string[] = [], catalog: str
     enabledModels: enabledSet,
     disabledModels: disabledSet,
     comboModels: new Set<string>(),
+    comboNames: new Set<string>(comboNames),
     customModels: new Set<string>(),
     catalogModels: catalogSet,
     availableModels: availableSet,
@@ -77,7 +84,7 @@ const viewFromState = (router: string, state: any): RouterDriftView => ({
   router,
   state,
   error: undefined,
-  comboNames: new Set<string>(),
+  comboNames: new Set<string>(state.comboNames ?? []),
   aliasNames: new Set<string>(),
   availableIds: new Set([...state.availableModels].flatMap(id => [id, ...(id.includes('/') ? [id.slice(id.indexOf('/') + 1)] : [])])),
   disabledIds: new Set([...state.disabledModels].flatMap(id => [id, ...(id.includes('/') ? [id.slice(id.indexOf('/') + 1)] : [])])),
@@ -298,6 +305,274 @@ describe('classifyModelDrift & buildDriftReport — OmniRoute alignment (M1-02)'
     } finally {
       fs.rmSync(tmpDir, { recursive: true, force: true, maxRetries: 3, retryDelay: 50 });
     }
+  });
+});
+
+describe('M1-03: comboNames in RouterModelState & apps drift combo classification', () => {
+  it('(i) populates state.comboNames and view.comboNames from temp 9Router & OmniRoute SQLite DBs without mutating sha256', async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'rs-m103-sqlite-'));
+    try {
+      const nineDbPath = path.join(tmpDir, '9router.sqlite');
+      const nineDb = new Database(nineDbPath);
+      nineDb.exec(`
+        CREATE TABLE _meta (key TEXT, value TEXT);
+        CREATE TABLE kv (scope TEXT, key TEXT, value TEXT);
+        CREATE TABLE combos (id TEXT PRIMARY KEY, name TEXT, models TEXT);
+      `);
+      nineDb
+        .prepare('INSERT INTO _meta (key, value) VALUES (?, ?)')
+        .run('appVersion', NINE_ROUTER_EXPECTED_APP_VERSION);
+      nineDb
+        .prepare('INSERT INTO kv (scope, key, value) VALUES (?, ?, ?)')
+        .run('customModels', 'openai|custom-active-model|llm', JSON.stringify({ id: 'custom-active-model' }));
+      nineDb
+        .prepare('INSERT INTO combos (id, name, models) VALUES (?, ?, ?)')
+        .run('c-9r-1', '9Router-Coder-1', JSON.stringify(['openai/custom-active-model']));
+      nineDb.close();
+
+      const omniDbPath = path.join(tmpDir, 'omniroute.sqlite');
+      const omniDb = new Database(omniDbPath);
+      omniDb.exec(`
+        CREATE TABLE key_value (namespace TEXT, key TEXT, value TEXT);
+        CREATE TABLE combos (id TEXT PRIMARY KEY, name TEXT, data TEXT);
+      `);
+      omniDb
+        .prepare('INSERT INTO key_value (namespace, key, value) VALUES (?, ?, ?)')
+        .run('syncedAvailableModels', 'openai:conn-1', JSON.stringify([{ id: 'omni-synced-model' }]));
+      omniDb
+        .prepare('INSERT INTO combos (id, name, data) VALUES (?, ?, ?)')
+        .run(
+          'c-omni-1',
+          'OmniRoute-Coder-1',
+          JSON.stringify({
+            models: [{ id: 's1', kind: 'model', providerId: 'openai', model: 'omni-synced-model' }],
+          })
+        );
+      omniDb.close();
+
+      const nineBeforeSha = createHash('sha256').update(fs.readFileSync(nineDbPath)).digest('hex');
+      const omniBeforeSha = createHash('sha256').update(fs.readFileSync(omniDbPath)).digest('hex');
+
+      const nineState = readRouterModelState('9router', { dbPath: nineDbPath });
+      const omniState = readRouterModelState('omniroute', { dbPath: omniDbPath });
+
+      expect(nineState.versionMismatch).toBe(false);
+      expect(nineState.comboNames.has('9Router-Coder-1')).toBe(true);
+      expect(omniState.comboNames.has('OmniRoute-Coder-1')).toBe(true);
+
+      const view9 = await buildRouterView('9router', [], { dbPath: nineDbPath });
+      const viewOmni = await buildRouterView('omniroute', [], { dbPath: omniDbPath });
+
+      const nineAfterSha = createHash('sha256').update(fs.readFileSync(nineDbPath)).digest('hex');
+      const omniAfterSha = createHash('sha256').update(fs.readFileSync(omniDbPath)).digest('hex');
+
+      expect(nineAfterSha).toBe(nineBeforeSha);
+      expect(omniAfterSha).toBe(omniBeforeSha);
+      expect(view9.comboNames.has('9Router-Coder-1')).toBe(true);
+      expect(viewOmni.comboNames.has('OmniRoute-Coder-1')).toBe(true);
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true, maxRetries: 3, retryDelay: 50 });
+    }
+  });
+
+  it('(ii) classifies bare & prefixed combo names across hermes, dsh, opencode as OK (kind=combo), keeps non-existent combos MISSING, and avoids false idFormatMismatchSuspected', async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'rs-m103-drift-'));
+    try {
+      const nineDbPath = path.join(tmpDir, '9router.sqlite');
+      const nineDb = new Database(nineDbPath);
+      nineDb.exec(`
+        CREATE TABLE _meta (key TEXT, value TEXT);
+        CREATE TABLE kv (scope TEXT, key TEXT, value TEXT);
+        CREATE TABLE combos (id TEXT PRIMARY KEY, name TEXT, models TEXT);
+      `);
+      nineDb
+        .prepare('INSERT INTO _meta (key, value) VALUES (?, ?)')
+        .run('appVersion', NINE_ROUTER_EXPECTED_APP_VERSION);
+      nineDb
+        .prepare('INSERT INTO kv (scope, key, value) VALUES (?, ?, ?)')
+        .run('customModels', 'openai|custom-step-model|llm', JSON.stringify({ id: 'custom-step-model' }));
+      nineDb
+        .prepare('INSERT INTO combos (id, name, models) VALUES (?, ?, ?)')
+        .run('c-9r', '9Router-Coder-1', JSON.stringify(['openai/custom-step-model']));
+      nineDb.close();
+
+      const omniDbPath = path.join(tmpDir, 'omniroute.sqlite');
+      const omniDb = new Database(omniDbPath);
+      omniDb.exec(`
+        CREATE TABLE key_value (namespace TEXT, key TEXT, value TEXT);
+        CREATE TABLE combos (id TEXT PRIMARY KEY, name TEXT, data TEXT);
+      `);
+      omniDb
+        .prepare('INSERT INTO key_value (namespace, key, value) VALUES (?, ?, ?)')
+        .run('syncedAvailableModels', 'openai:conn-1', JSON.stringify([{ id: 'omni-step-model' }]));
+      omniDb
+        .prepare('INSERT INTO combos (id, name, data) VALUES (?, ?, ?)')
+        .run(
+          'c-omni',
+          'OmniRoute-Coder-1',
+          JSON.stringify({
+            models: [{ id: 's1', kind: 'model', providerId: 'openai', model: 'omni-step-model' }],
+          })
+        );
+      omniDb.close();
+
+      const view9 = await buildRouterView('9router', [], {
+        dbPath: nineDbPath,
+        providerModels: { openai: ['registry-step-model'] },
+      });
+      const viewOmni = await buildRouterView('omniroute', [], { dbPath: omniDbPath });
+
+      expect(view9.state?.availableModels.size).toBeGreaterThan(0);
+      expect(viewOmni.state?.availableModels.size).toBeGreaterThan(0);
+
+      // Bare and prefixed combo names in driftKindOf
+      expect(driftKindOf('9Router-Coder-1', view9.comboNames, view9.aliasNames)).toBe('combo');
+      expect(driftKindOf('9router/9Router-Coder-1', view9.comboNames, view9.aliasNames)).toBe('combo');
+      expect(driftKindOf('OmniRoute-Coder-1', viewOmni.comboNames, viewOmni.aliasNames)).toBe('combo');
+      expect(driftKindOf('omniroute/OmniRoute-Coder-1', viewOmni.comboNames, viewOmni.aliasNames)).toBe('combo');
+
+      // Direct classification of all 4 positive combo forms + negative forms
+      const bare9 = classifyModelDrift('9Router-Coder-1', '9router', view9);
+      const pref9 = classifyModelDrift('9router/9Router-Coder-1', '9router', view9);
+      const bareOmni = classifyModelDrift('OmniRoute-Coder-1', 'omniroute', viewOmni);
+      const prefOmni = classifyModelDrift('omniroute/OmniRoute-Coder-1', 'omniroute', viewOmni);
+
+      for (const res of [bare9, pref9]) {
+        expect(res.matchedRouter).toBe(true);
+        expect(res.entry.status).toBe('OK');
+        expect(res.entry.kind).toBe('combo');
+        expect(res.entry.reason).toBe('Configured combo in 9Router');
+      }
+      for (const res of [bareOmni, prefOmni]) {
+        expect(res.matchedRouter).toBe(true);
+        expect(res.entry.status).toBe('OK');
+        expect(res.entry.kind).toBe('combo');
+        expect(res.entry.reason).toBe('Configured combo in OmniRoute');
+      }
+
+      const missBare9 = classifyModelDrift('9Router-Khong-Ton-Tai', '9router', view9);
+      const missPref9 = classifyModelDrift('9router/9Router-Khong-Ton-Tai', '9router', view9);
+      const missBareOmni = classifyModelDrift('OmniRoute-Khong-Ton-Tai', 'omniroute', viewOmni);
+      const missPrefOmni = classifyModelDrift('omniroute/OmniRoute-Khong-Ton-Tai', 'omniroute', viewOmni);
+
+      for (const miss of [missBare9, missPref9, missBareOmni, missPrefOmni]) {
+        expect(miss.entry.status).toBe('MISSING');
+      }
+
+      // App simulation: hermes & dsh on 9Router (combo-only valid refs for hermes, mixed valid+missing for dsh), opencode on OmniRoute
+      const hermesEntries = ['9Router-Coder-1', '9router/9Router-Coder-1'].map((m) => ({
+        app: 'hermes',
+        ...classifyModelDrift(m, '9router', view9).entry,
+      }));
+      const hermesResult: DriftResult = {
+        app: 'hermes',
+        router: '9router',
+        entries: hermesEntries,
+        totals: computeTotalsFromEntries(hermesEntries),
+      };
+
+      const opencodeValidEntries = ['OmniRoute-Coder-1', 'omniroute/OmniRoute-Coder-1'].map((m) => ({
+        app: 'opencode',
+        ...classifyModelDrift(m, 'omniroute', viewOmni).entry,
+      }));
+      const opencodeValidResult: DriftResult = {
+        app: 'opencode',
+        router: 'omniroute',
+        entries: opencodeValidEntries,
+        totals: computeTotalsFromEntries(opencodeValidEntries),
+      };
+
+      // Format mismatch guard: referencing valid combo names ONLY yields OK > 0 and idFormatMismatchSuspected === false
+      const validOnlyReport = buildDriftReport(
+        [hermesResult, opencodeValidResult],
+        [view9, viewOmni],
+        new ProviderRedactor(),
+        new Set(['9router', 'omniroute']),
+        new Set(),
+        new Set(['9router', 'omniroute'])
+      );
+      expect(validOnlyReport.totals.OK).toBe(4);
+      expect(validOnlyReport.totals.MISSING).toBe(0);
+      expect(validOnlyReport.idFormatMismatchSuspected).toBe(false);
+
+      // Mixed simulation including dsh and missing combos
+      const dshEntries = ['nine-router/9Router-Coder-1', '9Router-Khong-Ton-Tai'].map((m) => ({
+        app: 'dsh',
+        ...classifyModelDrift(m, 'nine-router', view9).entry,
+      }));
+      const dshResult: DriftResult = {
+        app: 'dsh',
+        router: '9router',
+        entries: dshEntries,
+        totals: computeTotalsFromEntries(dshEntries),
+      };
+      const opencodeMixedEntries = ['OmniRoute-Coder-1', 'omniroute/OmniRoute-Khong-Ton-Tai'].map((m) => ({
+        app: 'opencode',
+        ...classifyModelDrift(m, 'omniroute', viewOmni).entry,
+      }));
+      const opencodeMixedResult: DriftResult = {
+        app: 'opencode',
+        router: 'omniroute',
+        entries: opencodeMixedEntries,
+        totals: computeTotalsFromEntries(opencodeMixedEntries),
+      };
+
+      const mixedReport = buildDriftReport(
+        [hermesResult, dshResult, opencodeMixedResult],
+        [view9, viewOmni],
+        new ProviderRedactor(),
+        new Set(['9router', 'nine-router', 'omniroute']),
+        new Set(),
+        new Set(['9router', 'nine-router', 'omniroute'])
+      );
+      expect(mixedReport.totals.OK).toBe(4);
+      expect(mixedReport.totals.MISSING).toBe(2);
+      expect(mixedReport.idFormatMismatchSuspected).toBe(false);
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true, maxRetries: 3, retryDelay: 50 });
+    }
+  });
+
+  it('(iii) prioritizes active comboNames over disabledIds when a combo bare name collides with a disabled single model', () => {
+    const nineState = mockState([], ['openai/Shared-Combo-Name'], [], false, ['Shared-Combo-Name']);
+    const view9 = viewFromState('9router', nineState);
+    expect(view9.disabledIds.has('Shared-Combo-Name')).toBe(true);
+    expect(view9.comboNames.has('Shared-Combo-Name')).toBe(true);
+
+    const r9Prefixed = classifyModelDrift('9router/Shared-Combo-Name', '9router', view9);
+    const r9Bare = classifyModelDrift('Shared-Combo-Name', '9router', view9);
+    expect(r9Prefixed.entry.status).toBe('OK');
+    expect(r9Prefixed.entry.kind).toBe('combo');
+    expect(r9Prefixed.matchedRouter).toBe(true);
+    expect(r9Bare.entry.status).toBe('OK');
+    expect(r9Bare.entry.kind).toBe('combo');
+    expect(r9Bare.matchedRouter).toBe(true);
+
+    const omniState = {
+      ...mockState([], ['openai/Shared-Combo-Name'], [], false, ['Shared-Combo-Name']),
+      router: 'omniroute',
+    };
+    const viewOmni = viewFromState('omniroute', omniState);
+    expect(viewOmni.disabledIds.has('Shared-Combo-Name')).toBe(true);
+    expect(viewOmni.comboNames.has('Shared-Combo-Name')).toBe(true);
+
+    const rOmniPrefixed = classifyModelDrift('omniroute/Shared-Combo-Name', 'omniroute', viewOmni);
+    const rOmniBare = classifyModelDrift('Shared-Combo-Name', 'omniroute', viewOmni);
+    expect(rOmniPrefixed.entry.status).toBe('OK');
+    expect(rOmniPrefixed.entry.kind).toBe('combo');
+    expect(rOmniPrefixed.matchedRouter).toBe(true);
+    expect(rOmniBare.entry.status).toBe('OK');
+    expect(rOmniBare.entry.kind).toBe('combo');
+    expect(rOmniBare.matchedRouter).toBe(true);
+
+    // Priority 2 check: 9Router versionMismatch still takes precedence over comboNames
+    const mismatchView = viewFromState(
+      '9router',
+      mockState([], [], [], true, ['Shared-Combo-Name'])
+    );
+    const mismatchRes = classifyModelDrift('9router/Shared-Combo-Name', '9router', mismatchView);
+    expect(mismatchRes.entry.status).toBe('UNKNOWN');
+    expect(mismatchRes.entry.reason).toBe('snapshot-version-mismatch');
   });
 });
 

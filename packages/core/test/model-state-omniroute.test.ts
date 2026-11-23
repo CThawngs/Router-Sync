@@ -6,6 +6,9 @@
  * respects disabled/tombstoned models, ignores malformed combo step entries,
  * preserves `excludeComboModelsFromAvailability: true` for stale checks,
  * and never mutates the SQLite file on disk.
+ *
+ * M1-03: Populates `comboNames` on `RouterModelState` from `combos` rows,
+ * non-array JSON `name`, fallback `id`, and `options.comboNames`.
  */
 
 import { createHash } from 'node:crypto';
@@ -149,5 +152,60 @@ describe('M1-02: OmniRoute readRouterModelState comboModels availability merge',
     expect(state.availableModels.size).toBe(0);
     expect(state.availabilityProviders.has('alpha')).toBe(false);
     expect(state.availabilityProviders.has('beta')).toBe(false);
+  });
+});
+
+describe('M1-03: OmniRoute readRouterModelState comboNames population', () => {
+  it('populates comboNames from combos row name, parsed data.name, fallback id, and options.comboNames while preserving DB sha256', () => {
+    const dir = createTempDir();
+    const dbPath = path.join(dir, 'storage.sqlite');
+    const db = openBetterSqlite3(dbPath);
+
+    db.exec(`
+      CREATE TABLE key_value (namespace TEXT, key TEXT, value TEXT);
+      CREATE TABLE combos (id TEXT PRIMARY KEY, name TEXT, data TEXT);
+    `);
+
+    const insertCombo = db.prepare('INSERT INTO combos (id, name, data) VALUES (?, ?, ?)');
+    insertCombo.run(
+      'omni-uuid-1',
+      ' OmniRoute-Coder-1 ',
+      JSON.stringify({
+        models: [{ id: 's1', kind: 'model', providerId: 'alpha', model: 'active-one' }],
+      })
+    );
+    insertCombo.run(
+      'omni-fallback-id',
+      null,
+      JSON.stringify({
+        name: ' OmniRoute-Json-Name ',
+        models: [{ id: 's2', kind: 'model', providerId: 'alpha', model: 'active-two' }],
+      })
+    );
+    insertCombo.run(
+      'omni-id-only',
+      '   ',
+      JSON.stringify({
+        models: [{ id: 's3', kind: 'model', providerId: 'alpha', model: 'active-three' }],
+      })
+    );
+    db.close();
+
+    const beforeHash = sha256File(dbPath);
+    const state = readRouterModelState('omniroute', {
+      dbPath,
+      comboNames: [' Seeded-Omni-Combo ', ''],
+    });
+    const afterHash = sha256File(dbPath);
+
+    expect(afterHash).toBe(beforeHash);
+    expect(state.comboNames).toBeInstanceOf(Set);
+    expect(state.comboNames.has('OmniRoute-Coder-1')).toBe(true);
+    expect(state.comboNames.has('OmniRoute-Json-Name')).toBe(true);
+    expect(state.comboNames.has('omni-fallback-id')).toBe(true);
+    expect(state.comboNames.has('omni-id-only')).toBe(true);
+    expect(state.comboNames.has('Seeded-Omni-Combo')).toBe(true);
+    expect(state.comboNames.has('omni-uuid-1')).toBe(false);
+    expect(state.comboNames.has('')).toBe(false);
   });
 });
