@@ -1,0 +1,38 @@
+
+> routersync@0.1.0 test:file <private-provider-2>
+> vitest run "packages/adapter-9router/test/ninerouter.test.ts" "packages/adapter-omniroute/test/omniroute.test.ts" "packages/cli/test/maintain-readback.test.ts" "packages/cli/test/status-down.test.ts" "test/acceptance/at-98.test.ts" "test/acceptance/at-101.test.ts" "test/acceptance/at-109.test.ts" "test/acceptance/at-113.test.ts" "test/acceptance/at-121-daemon-honesty.test.ts" "test/acceptance/at-125-daemon-probe-up.test.ts" "test/acceptance/at-157-status-unwritten.test.ts"
+
+
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.12 [39m[90m<HOME>/.openmausbot/task-workspaces/a03bf858-4951-41c9-986f-dd131949a60c/d24b1f4a-89fd-48d4-87f5-6894264f73eb/coo-ev-m2[39m
+
+ [32m✓[39m [30m[45m packages [49m[39m packages/adapter-9router/test/ninerouter.test.ts [2m([22m[2m8 tests[22m[2m)[22m[33m 1399[2mms[22m[39m
+     [33m[2m✓[22m[39m M2-03-T1: /v1/models delayed reflection is polled until the added/modified combos are served [33m 333[2mms[22m[39m
+     [33m[2m✓[22m[39m M2-03-T4: stale serving path triggers applier rollback and SQLite returns to the exact pre-apply snapshot [33m 370[2mms[22m[39m
+ [32m✓[39m [30m[45m packages [49m[39m packages/adapter-omniroute/test/omniroute.test.ts [2m([22m[2m7 tests[22m[2m)[22m[33m 1106[2mms[22m[39m
+     [33m[2m✓[22m[39m M2-03-T4: stale /api/combos (including stale models) triggers rollback and exact SQLite restore [32m 300[2mms[22m[39m
+ [32m✓[39m [30m[45m packages [49m[39m packages/cli/test/maintain-readback.test.ts [2m([22m[2m8 tests[22m[2m)[22m[33m 2909[2mms[22m[39m
+     [33m[2m✓[22m[39m M2-03-T1 CLI: 9Router delayed reflection ends in READBACK ok=yes [33m 595[2mms[22m[39m
+     [33m[2m✓[22m[39m M2-03-T2 CLI: OmniRoute apiKeyEnv + delayed reflection ends in READBACK ok=yes [33m 434[2mms[22m[39m
+     [33m[2m✓[22m[39m M2-03-T4 CLI: stale serving path exits 1 with rollback banner and restored SQLite [33m 594[2mms[22m[39m
+     [33m[2m✓[22m[39m M2-03-T5 CLI: isolated 9Router prints READBACK db-only, never ok=yes [33m 311[2mms[22m[39m
+ [32m✓[39m [30m[45m packages [49m[39m packages/cli/test/status-down.test.ts [2m([22m[2m4 tests[22m[2m)[22m[33m 826[2mms[22m[39m
+     [33m[2m✓[22m[39m D7: scan command also degrades readBackLevel when router is down [33m 382[2mms[22m[39m
+ [32m✓[39m [30m[45m root-tools [49m[39m test/acceptance/at-98.test.ts [2m([22m[2m8 tests[22m[2m)[22m[33m 1188[2mms[22m[39m
+[90mstdout[2m | test/acceptance/at-101.test.ts[2m > [22m[2mAcceptance Test AT-101: Existence-Only Read-Back with Client Key (Condition G0-5)[2m > [22m[2mstatus and scan commands report readBackLevel clearly for each router
+[22m[39m[routersync] Initialized configuration file at: <HOME>\.openmausbot\tmp\agy\b6b8c55bc87c\at101_cfg_1795465922820_ekn1t\config.yaml
+Edit this file or run `routersync scan` to verify your routers.
+
+ [32m✓[39m [30m[45m root-tools [49m[39m test/acceptance/at-157-status-unwritten.test.ts [2m([22m[2m6 tests[22m[2m)[22m[33m 604[2mms[22m[39m
+ [32m✓[39m [30m[45m root-tools [49m[39m test/acceptance/at-101.test.ts [2m([22m[2m6 tests[22m[2m)[22m[33m 1397[2mms[22m[39m
+     [33m[2m✓[22m[39m zero secret leak: API keys never appear in log output, ApplyResult, or snapshot [33m 579[2mms[22m[39m
+ [32m✓[39m [30m[45m root-tools [49m[39m test/acceptance/at-109.test.ts [2m([22m[2m4 tests[22m[2m)[22m[33m 347[2mms[22m[39m
+ [32m✓[39m [30m[45m root-tools [49m[39m test/acceptance/at-113.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 274[2mms[22m[39m
+ [32m✓[39m [30m[45m root-tools [49m[39m test/acceptance/at-125-daemon-probe-up.test.ts [2m([22m[2m6 tests[22m[2m)[22m[33m 1085[2mms[22m[39m
+     [33m[2m✓[22m[39m classifies response timeout as down [33m 812[2mms[22m[39m
+ [32m✓[39m [30m[45m root-tools [49m[39m test/acceptance/at-121-daemon-honesty.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 194[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m11 passed[39m[22m[90m (11)[39m
+[2m      Tests [22m [1m[32m62 passed[39m[22m[90m (62)[39m
+[2m   Start at [22m 03:31:55
+[2m   Duration [22m 10.76s[2m (transform 1.84s, setup 4.05s, import 2.19s, tests 11.33s, environment 1ms)[22m
+

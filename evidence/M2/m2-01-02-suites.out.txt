@@ -1,0 +1,62 @@
+
+> routersync@0.1.0 test:file <private-provider-2>
+> vitest run "packages/cli/test/maintain-grant-lifecycle.test.ts" "test/acceptance/at-165-daemon-threat-model-approval.test.ts" "test/docs/agent-docs.test.ts" "packages/cli/test/webhook-notify.test.ts" "packages/daemon/test/daemon.test.ts" "test/acceptance/at-118-daemon-isolation.test.ts" "test/acceptance/at-127-hermetic-guard.test.ts" "test/acceptance/at-164-sync-worker-fast-loop.test.ts" "test/acceptance/at-170-hermetic-daemon-network.test.ts"
+
+
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.12 [39m[90m<HOME>/.openmausbot/task-workspaces/a03bf858-4951-41c9-986f-dd131949a60c/d24b1f4a-89fd-48d4-87f5-6894264f73eb/coo-ev-m2[39m
+
+[90mstdout[2m | packages/cli/test/webhook-notify.test.ts[2m > [22m[2mM2-02: Outbound Webhook for Actionable Alerts (100% Fake Local 127.0.0.1:0 HTTP Target)[2m > [22m[2mM2-02-T1: delivers versioned actionable alert POST via options.env & config.webhook without leaking URL token
+[22m[39mTICK-SUMMARY mode=propose scanned=1 skipped=0 changed=1 unchanged=0 backoff=0 inbox_added=1
+  PROVIDER prefix=openai label=OK status=200 models=2 changed=yes added=0 grace=0 dead=0
+TICK requests=1 paid-requests=0 tokens=0 llm-calls=0
+
+ [32m✓[39m [30m[45m packages [49m[39m packages/cli/test/maintain-grant-lifecycle.test.ts [2m([22m[2m32 tests[22m[2m)[22m[33m 918[2mms[22m[39m
+       [33m[2m✓[22m[39m runs full authorize -> grant-status --json (zero-leak) -> apply -> scope/secret/MAC/expiry checks -> revoke lifecycle [33m 677[2mms[22m[39m
+[90mstdout[2m | packages/cli/test/webhook-notify.test.ts[2m > [22m[2mM2-02: Outbound Webhook for Actionable Alerts (100% Fake Local 127.0.0.1:0 HTTP Target)[2m > [22m[2mM2-02-T1: delivers versioned actionable alert POST via options.env & config.webhook without leaking URL token
+[22m[39mTICK-SUMMARY mode=propose scanned=1 skipped=0 changed=1 unchanged=0 backoff=0 inbox_added=1
+  PROVIDER prefix=openai label=OK status=200 models=2 changed=yes added=0 grace=0 dead=0
+TICK requests=1 paid-requests=0 tokens=0 llm-calls=0
+
+[90mstdout[2m | packages/cli/test/webhook-notify.test.ts[2m > [22m[2mM2-02: Outbound Webhook for Actionable Alerts (100% Fake Local 127.0.0.1:0 HTTP Target)[2m > [22m[2mM2-02-T2: enforces zero-noise suppression when alerts === 0 or webhook URL is unconfigured/disabled
+[22m[39mTICK-SUMMARY mode=propose scanned=1 skipped=0 changed=1 unchanged=0 backoff=0 inbox_added=0
+  PROVIDER prefix=openai label=OK status=200 models=1 changed=yes added=0 grace=0 dead=0
+TICK requests=1 paid-requests=0 tokens=0 llm-calls=0
+
+[90mstdout[2m | packages/cli/test/webhook-notify.test.ts[2m > [22m[2mM2-02: Outbound Webhook for Actionable Alerts (100% Fake Local 127.0.0.1:0 HTTP Target)[2m > [22m[2mM2-02-T2: enforces zero-noise suppression when alerts === 0 or webhook URL is unconfigured/disabled
+[22m[39mTICK-SUMMARY mode=propose scanned=1 skipped=0 changed=1 unchanged=0 backoff=0 inbox_added=1
+  PROVIDER prefix=openai label=OK status=200 models=2 changed=yes added=0 grace=0 dead=0
+TICK requests=1 paid-requests=0 tokens=0 llm-calls=0
+
+[90mstdout[2m | packages/cli/test/webhook-notify.test.ts[2m > [22m[2mM2-02: Outbound Webhook for Actionable Alerts (100% Fake Local 127.0.0.1:0 HTTP Target)[2m > [22m[2mM2-02-T3: handles HTTP 500, 80ms timeout against 400ms slow target, and 302 redirect non-fatally
+[22m[39mTICK-SUMMARY mode=propose scanned=1 skipped=0 changed=1 unchanged=0 backoff=0 inbox_added=1
+  PROVIDER prefix=openai label=OK status=200 models=2 changed=yes added=0 grace=0 dead=0
+TICK requests=1 paid-requests=0 tokens=0 llm-calls=0
+
+[90mstdout[2m | packages/cli/test/webhook-notify.test.ts[2m > [22m[2mM2-02: Outbound Webhook for Actionable Alerts (100% Fake Local 127.0.0.1:0 HTTP Target)[2m > [22m[2mM2-02-T3: handles HTTP 500, 80ms timeout against 400ms slow target, and 302 redirect non-fatally
+[22m[39mTICK-SUMMARY mode=propose scanned=1 skipped=0 changed=1 unchanged=0 backoff=0 inbox_added=1
+  PROVIDER prefix=openai label=OK status=200 models=2 changed=yes added=0 grace=0 dead=0
+TICK requests=1 paid-requests=0 tokens=0 llm-calls=0
+
+[90mstdout[2m | packages/cli/test/webhook-notify.test.ts[2m > [22m[2mM2-02: Outbound Webhook for Actionable Alerts (100% Fake Local 127.0.0.1:0 HTTP Target)[2m > [22m[2mM2-02-T3: handles HTTP 500, 80ms timeout against 400ms slow target, and 302 redirect non-fatally
+[22m[39mTICK-SUMMARY mode=propose scanned=1 skipped=0 changed=1 unchanged=0 backoff=0 inbox_added=1
+  PROVIDER prefix=openai label=OK status=200 models=2 changed=yes added=0 grace=0 dead=0
+TICK requests=1 paid-requests=0 tokens=0 llm-calls=0
+
+ [32m✓[39m [30m[45m packages [49m[39m packages/cli/test/webhook-notify.test.ts [2m([22m[2m5 tests[22m[2m)[22m[33m 1226[2mms[22m[39m
+     [33m[2m✓[22m[39m M2-02-T1: delivers versioned actionable alert POST via options.env & config.webhook without leaking URL token [33m 494[2mms[22m[39m
+     [33m[2m✓[22m[39m M2-02-T3: handles HTTP 500, 80ms timeout against 400ms slow target, and 302 redirect non-fatally [33m 445[2mms[22m[39m
+ [32m✓[39m [30m[45m packages [49m[39m packages/daemon/test/daemon.test.ts [2m([22m[2m11 tests[22m[2m)[22m[33m 541[2mms[22m[39m
+ [32m✓[39m [30m[45m root-tools [49m[39m test/acceptance/at-165-daemon-threat-model-approval.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 267[2mms[22m[39m
+ [32m✓[39m [30m[45m root-tools [49m[39m test/docs/agent-docs.test.ts [2m([22m[2m12 tests[22m[2m)[22m[33m 859[2mms[22m[39m
+     [33m[2m✓[22m[39m no publishable tracked or doc files contain dangerous git publish strings [33m 829[2mms[22m[39m
+ [32m✓[39m [30m[45m root-tools [49m[39m test/acceptance/at-127-hermetic-guard.test.ts [2m([22m[2m6 tests[22m[2m)[22m[33m 345[2mms[22m[39m
+ [32m✓[39m [30m[45m root-tools [49m[39m test/acceptance/at-118-daemon-isolation.test.ts [2m([22m[2m8 tests[22m[2m)[22m[33m 307[2mms[22m[39m
+ [32m✓[39m [30m[45m root-tools [49m[39m test/acceptance/at-164-sync-worker-fast-loop.test.ts [2m([22m[2m5 tests[22m[2m)[22m[33m 843[2mms[22m[39m
+ [32m✓[39m [30m[45m root-tools [49m[39m test/acceptance/at-170-hermetic-daemon-network.test.ts [2m([22m[2m1 test[22m[2m)[22m[33m 351[2mms[22m[39m
+     [33m[2m✓[22m[39m boots daemon and serves 6 GET routes with 0 external requests and 0 calls to ports 20128/30128/3128 [33m 349[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m9 passed[39m[22m[90m (9)[39m
+[2m      Tests [22m [1m[32m87 passed[39m[22m[90m (87)[39m
+[2m   Start at [22m 03:31:31
+[2m   Duration [22m 8.93s[2m (transform 3.09s, setup 3.86s, import 4.14s, tests 5.66s, environment 1ms)[22m
+

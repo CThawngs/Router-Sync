@@ -1,0 +1,16 @@
+window since 2026-11-17: runs=100 uniqueSha=75
+push on main (CI workflow) green first attempt: 29/33
+push on main consecutive green first attempt: 1 (firstSha=bc61436 lastSha=bc61436)
+our commits green first attempt: 65/75 (87%)
+pending runs (conclusion=null, excluded from sample): 0
+dependabot update runs (separated): 13
+red runs (ours): classified code=5 infra=0 unknown=3
+from C20 (d8233ba) since 2026-11-19: green=65/75
+red run 44957747580 sha=ac4abaf branch=feat/c33-combo-plan event=pull_request conclusion=failure kind=code evidence=Run Tests
+red run 44947759813 sha=987bd82 branch=feat/c32-combos-probe event=pull_request conclusion=failure kind=code evidence=Run Tests
+red run 44901432980 sha=d990e35 branch=fix/c28-h1-official-perid event=pull_request conclusion=failure kind=unknown evidence=UNKNOWN STEP
+red run 44880559648 sha=fa777bb branch=fix/c28-h1-official-perid event=workflow_dispatch conclusion=failure kind=code evidence=[E2E-DAEMON-HEALTH-SIGNAL]
+red run 44871175326 sha=1e7d49c branch=main event=workflow_dispatch conclusion=failure kind=code evidence=[E2E-DAEMON-HEALTH-SIGNAL]
+red run 44869539417 sha=262aaef branch=fix/c28-e2e-arm event=pull_request conclusion=failure kind=unknown evidence=UNKNOWN STEP
+red run 44775807066 sha=0271e22 branch=main event=push conclusion=failure kind=code evidence=Run Tests
+red run 44767365421 sha=f3410b9 branch=main event=push conclusion=failure kind=unknown evidence=UNKNOWN STEP
