@@ -1,11 +1,12 @@
 /**
  * packages/cli/src/commands/combos-reorder.ts
  *
- * C40 X1: reorder an existing 9Router combo without dropping a single step.
+ * C40 X1 / C43 R2: reorder an existing 9Router combo without dropping a single step.
  * Rank 6 (HANG / slow 503) goes last, never removed. Pure functions only.
  */
 import type { StepStat } from './combos-plan.js';
 import { interleaveProviders, providerOf } from './combos-budget.js';
+import { labelStep, type ReliabilityLabel } from './combos-reliability.js';
 
 export type ReorderRank = 1 | 2 | 3 | 4 | 5 | 6;
 
@@ -18,11 +19,29 @@ export const REORDER_HEADERS: Record<ReorderRank, string> = {
   6: '# hạng 6 — HANG / 503 chậm ≥2s (đặt cuối, KHÔNG xoá)',
 };
 
+const VALID_RELIABILITY_LABELS: ReadonlySet<string> = new Set([
+  'RELIABLE',
+  'SLOW',
+  'RATE-LIMITED',
+  'LOW-SAMPLE',
+  'HANG',
+  'DEAD',
+]);
+
 export interface ReliabilityInfo {
-  label: 'RELIABLE' | 'SLOW' | 'RATE-LIMITED' | 'HANG' | 'DEAD';
+  label: 'RELIABLE' | 'SLOW' | 'RATE-LIMITED' | 'LOW-SAMPLE' | 'HANG' | 'DEAD';
   p90Ms: number | null;
   ok: number;
   attempts: number;
+}
+
+export interface RelabelChange {
+  step: string;
+  from: string;
+  to: ReliabilityLabel;
+  ok: number;
+  attempts: number;
+  p90Ms: number | null;
 }
 
 /** Đọc output của `combos reliability` (khác định dạng với output probe). */
@@ -33,19 +52,56 @@ export function parseReliabilityText(text: string): Map<string, ReliabilityInfo>
     if (p.length < 3) continue;
     const label = p[1] ?? '';
     const step = p[0] ?? '';
-    if (!['RELIABLE', 'SLOW', 'RATE-LIMITED', 'HANG', 'DEAD'].includes(label)) continue;
+    if (!VALID_RELIABILITY_LABELS.has(label)) continue;
     if (!step.includes('/')) continue;
     const okText = p.find((x) => x.startsWith('ok=')) ?? '';
     const okParts = okText.slice(3).split('/').map(Number);
-    const p90 = Number.parseInt((p.find((x) => x.startsWith('p90=')) ?? '').slice(4), 10);
+    const p90Field = p.find((x) => x.startsWith('p90=')) ?? '';
+    const p90 = Number.parseInt(p90Field.slice(4), 10);
     out.set(step, {
       label: label as ReliabilityInfo['label'],
-      p90Ms: Number.isFinite(p90) && p[2] !== 'p90=-ms' ? p90 : null,
+      p90Ms: Number.isFinite(p90) && p90Field !== 'p90=-ms' ? p90 : null,
       ok: Number.isFinite(okParts[0]) ? (okParts[0] as number) : 0,
       attempts: Number.isFinite(okParts[1]) ? (okParts[1] as number) : 0,
     });
   }
   return out;
+}
+
+/**
+ * C43 R2: tính lại nhãn cho tệp log `combos reliability` sẵn có hoàn toàn ngoại tuyến (0 request mạng).
+ */
+export function relabelReliabilityText(text: string): { text: string; changes: RelabelChange[] } {
+  const eol = text.includes('\r\n') ? '\r\n' : '\n';
+  const changes: RelabelChange[] = [];
+  const updatedLines = text.split(/\r?\n/).map((line) => {
+    const parts = line.split('\t');
+    if (parts.length < 3) return line;
+    const step = (parts[0] ?? '').trim();
+    const oldLabel = (parts[1] ?? '').trim();
+    const okField = parts.find((x) => x.startsWith('ok='));
+    const p90Field = parts.find((x) => x.startsWith('p90='));
+    if (!step.includes('/') || !VALID_RELIABILITY_LABELS.has(oldLabel) || !okField || !p90Field) {
+      return line;
+    }
+    const okParts = okField.slice(3).split('/').map(Number);
+    const ok = Number.isFinite(okParts[0]) ? (okParts[0] as number) : 0;
+    const attempts = Number.isFinite(okParts[1]) ? (okParts[1] as number) : 0;
+    const p90Parsed = Number.parseInt(p90Field.slice(4), 10);
+    const p90Ms = Number.isFinite(p90Parsed) && p90Field !== 'p90=-ms' ? p90Parsed : null;
+
+    const timeoutOrNoHeader = oldLabel === 'HANG' ? Math.max(1, attempts - ok) : 0;
+    const rateLimited =
+      oldLabel === 'RATE-LIMITED' || line.includes('quota=1') ? Math.max(1, attempts - ok) : 0;
+    const newLabel = labelStep({ attempts, ok, rateLimited, timeoutOrNoHeader, p90Ms });
+    if (newLabel !== oldLabel) {
+      parts[1] = newLabel;
+      changes.push({ step, from: oldLabel, to: newLabel, ok, attempts, p90Ms });
+      return parts.join('\t');
+    }
+    return line;
+  });
+  return { text: updatedLines.join(eol), changes };
 }
 
 export interface RankInfo {
@@ -54,6 +110,7 @@ export interface RankInfo {
 }
 
 export function stepRank(step: string, stat: StepStat | undefined, rel: ReliabilityInfo | undefined): RankInfo {
+  void step;
   if (rel?.label === 'HANG') {
     return { rank: 6, reason: `HANG ok=${rel.ok}/${rel.attempts} p90=${rel.p90Ms ?? '-'}ms` };
   }
@@ -72,6 +129,9 @@ export function stepRank(step: string, stat: StepStat | undefined, rel: Reliabil
   }
   if (stat?.group === 'FAST-ERROR') {
     return { rank: 5, reason: '404/405/400 — lỗi nhanh cứng, giữ lại để xác nhận' };
+  }
+  if (rel?.label === 'LOW-SAMPLE') {
+    return { rank: 4, reason: `LOW-SAMPLE ok=${rel.ok}/${rel.attempts} p90=${rel.p90Ms ?? '-'}ms` };
   }
   return { rank: 4, reason: 'chưa đo' };
 }

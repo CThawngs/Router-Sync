@@ -527,7 +527,8 @@ export function createCliProgram(): Command {
     .option('--timeline', 'Record every new usageHistory row while waiting (1 s poll)')
     .option('--max-tokens <n>', 'max_tokens per request (1..64, default 8)', '8')
     .option('--no-stream', 'Send stream: false')
-    .option('--repeat <n>', 'Step mode: repeat each step n times', '1')
+    .option('--repeat <n>', 'Repeat each combo/step n times', '1')
+    .option('--concurrency <n>', 'Combo mode: concurrent requests per attempt (1 or 2)', '1')
     .option('--budget <n>', 'Max requests per run (default 40); stops and lists unmeasured steps')
     .option('--skip-quota-from <file>', 'Skip steps that returned 429/quota recently (repeatable)')
     .option('--json', 'Output result in JSON format')
@@ -546,6 +547,7 @@ export function createCliProgram(): Command {
         maxTokens?: string;
         stream?: boolean;
         repeat?: string;
+        concurrency?: string;
         budget?: string;
         skipQuotaFrom?: string[];
         json?: boolean;
@@ -565,6 +567,7 @@ export function createCliProgram(): Command {
           maxTokens: opts.maxTokens === undefined ? undefined : Number(opts.maxTokens),
           stream: opts.stream === false ? false : undefined,
           repeat: opts.repeat === undefined ? undefined : Number(opts.repeat),
+          concurrency: opts.concurrency === undefined ? undefined : Number(opts.concurrency),
           budget: opts.budget === undefined ? undefined : Number(opts.budget),
           skipQuotaFrom: opts.skipQuotaFrom,
           json: opts.json,

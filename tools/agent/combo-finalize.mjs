@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // tools/agent/combo-finalize.mjs
-// C40 X2: xếp lại rs-fast/rs-max theo độ ưu tiên fallback và tách model chuyên dụng.
+// C40 X2 / C43 R2: xếp lại rs-fast/rs-max theo độ ưu tiên fallback và tách model chuyên dụng.
 // Chỉ đọc file; ghi bản thật vào .agent/send-final/, bản che do mask-reorder lo.
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
@@ -18,7 +18,7 @@ export function specializedReason(step) {
 /** Hạng thấp = ưu tiên cao. */
 export function priority(step, rel) {
   const info = rel.get(step);
-  if (!info) return 4;
+  if (!info || info.label === 'LOW-SAMPLE') return 4;
   if (info.label === 'RELIABLE') return 1;
   if (info.label === 'SLOW') return 2;
   if (info.label === 'RATE-LIMITED') return 3;
@@ -50,12 +50,45 @@ function rankByReliability(steps, rel) {
 
 export function splitLists(text) {
   const raw = text.split(/\r?\n/).map((l) => l.trim());
-  const i = raw.indexOf('# rs-fast');
-  const j = raw.indexOf('# rs-max');
+  const i = raw.findIndex((l) => /^#\s*rs-fast\b/.test(l));
+  const j = raw.findIndex((l) => /^#\s*rs-max\b/.test(l));
+  const fastStart = i >= 0 ? i + 1 : 0;
+  const fastEnd = j >= 0 ? j : raw.length;
+  const maxStart = j >= 0 ? j + 1 : raw.length;
   return {
-    fast: raw.slice(i + 1, j).filter((s) => s.includes('/')),
-    max: raw.slice(j + 1).filter((s) => s.includes('/')),
+    fast: raw.slice(fastStart, fastEnd).filter((s) => s.includes('/') && !s.startsWith('#')),
+    max: raw.slice(maxStart).filter((s) => s.includes('/') && !s.startsWith('#')),
   };
+}
+
+/**
+ * C43 R2: trích danh sách các bước không chuyên dụng đạt LOW-SAMPLE, sắp theo p90Ms tăng dần.
+ */
+export function extractLowSampleCandidates(reliabilityTexts) {
+  const texts = Array.isArray(reliabilityTexts) ? reliabilityTexts : [reliabilityTexts];
+  const rel = new Map();
+  for (const text of texts) {
+    for (const [step, info] of parseReliabilityText(String(text ?? ''))) {
+      rel.set(step, info);
+    }
+  }
+  const candidates = [];
+  for (const [step, info] of rel.entries()) {
+    if (info.label !== 'LOW-SAMPLE') continue;
+    if (specializedReason(step)) continue;
+    candidates.push({
+      step,
+      p90Ms: info.p90Ms,
+      ok: info.ok,
+      attempts: info.attempts,
+    });
+  }
+  candidates.sort((a, b) => {
+    const pa = a.p90Ms ?? Number.POSITIVE_INFINITY;
+    const pb = b.p90Ms ?? Number.POSITIVE_INFINITY;
+    return pa - pb || a.step.localeCompare(b.step);
+  });
+  return candidates;
 }
 
 export function finalize(currentText, reliabilityTexts, orderSteps = []) {
