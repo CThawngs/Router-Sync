@@ -144,6 +144,7 @@ describe('K8.6: routersync commands cited in docs exist in CLI --help', () => {
     readRel('docs/SETUP.md'),
     readRel('docs/WORKFLOW.md'),
     readRel('docs/adr/ADR-MAINTAIN-02-apply-grant-lifecycle.md'),
+    readRel('docs/9router-combo-findings.md'),
   ];
 
   const cited = new Set<string>();
@@ -180,6 +181,7 @@ describe('K8.6: file paths cited in docs exist', () => {
     readRel('docs/SETUP.md'),
     readRel('docs/WORKFLOW.md'),
     readRel('docs/adr/ADR-MAINTAIN-02-apply-grant-lifecycle.md'),
+    readRel('docs/9router-combo-findings.md'),
   ];
 
   const cited = new Set<string>();
