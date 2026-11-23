@@ -1,0 +1,19 @@
+
+> routersync@0.1.0 test:file <private-provider-2>
+> vitest run "packages/core/test/model-tiers.test.ts" "packages/cli/test/apps-drift-y2.test.ts" "test/docs/agent-docs.test.ts" "test/docs/agent-ci-rules.test.ts"
+
+
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.12 [39m[90m<HOME>/<private-provider-8>/Projects/Router-Sync[39m
+
+ [32m✓[39m [30m[45m packages [49m[39m packages/cli/test/apps-drift-y2.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 19[2mms[22m[39m
+ [32m✓[39m [30m[45m packages [49m[39m packages/core/test/model-tiers.test.ts [2m([22m[2m8 tests[22m[2m)[22m[33m 799[2mms[22m[39m
+       [33m[2m✓[22m[39m grounds 9Router model tiers in catalog, disabledModels, customModels, and combos [33m 356[2mms[22m[39m
+ [32m✓[39m [30m[45m root-tools [49m[39m test/docs/agent-ci-rules.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 8[2mms[22m[39m
+ [32m✓[39m [30m[45m root-tools [49m[39m test/docs/agent-docs.test.ts [2m([22m[2m12 tests[22m[2m)[22m[33m 1652[2mms[22m[39m
+     [33m[2m✓[22m[39m no publishable tracked or doc files contain dangerous git publish strings [33m 1604[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m4 passed[39m[22m[90m (4)[39m
+[2m      Tests [22m [1m[32m33 passed[39m[22m[90m (33)[39m
+[2m   Start at [22m 16:25:57
+[2m   Duration [22m 7.51s[2m (transform 3.76s, setup 3.96s, import 2.71s, tests 2.48s, environment 1ms)[22m
+
