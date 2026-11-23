@@ -25,6 +25,40 @@ const INFRA_PATTERNS = [
   { key: 'operation-canceled', re: /The operation was canceled/i },
 ];
 
+/**
+ * M1-01: the daemon-health assertion in `test/e2e/e2e.test.ts` prints
+ * `daemon health failed; exited=<bool> exitCode=... stdout=... stderr=...`.
+ * The daemon did not answer its health check: that is a product signal, so it
+ * is always a code failure, never infra and never unknown, even when the same
+ * log also shows network or cache strings.
+ */
+const DAEMON_HEALTH_SIGNAL_RE = /daemon health failed; exited=/;
+export const DAEMON_HEALTH_SIGNAL_MARKER = '[E2E-DAEMON-HEALTH-SIGNAL]';
+
+/** True when a job log carries the expanded e2e daemon-health failure. */
+export function detectDaemonHealthSignal(log) {
+  const clean = (log ?? '').replace(/\u001b\[[0-9;]*m/g, '');
+  return DAEMON_HEALTH_SIGNAL_RE.test(clean);
+}
+
+/**
+ * The `gh` executable for a platform. Windows gets `gh.exe`, which the
+ * process loader finds on PATH without a shell.
+ */
+export function ghExecutable(platform = process.platform) {
+  return platform === 'win32' ? 'gh.exe' : 'gh';
+}
+
+/**
+ * Spawn options for `gh` called with an argument array. There is no `shell`
+ * option on purpose: a shell re-parses the arguments, and Node 24 prints
+ * `DEP0190` when an argument array is passed with the shell option on. stderr is
+ * piped (not inherited) so a failing `gh` call never writes to our stderr.
+ */
+export function ghSpawnOptions(maxBuffer) {
+  return { encoding: 'utf8', maxBuffer, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] };
+}
+
 /** Mask the same literals capture.mjs masks, so a shared log is safe to show. */
 export function maskText(text, extraNames = []) {
   const home = process.env.USERPROFILE ?? process.env.HOME ?? '';
@@ -122,6 +156,9 @@ function noStepsRan(job) {
 export function classifyJob(name, conclusion, log, runConclusion) {
   if (conclusion === 'success') return { job: name, conclusion, kind: 'ok', evidence: null };
   if (conclusion === 'skipped') return { job: name, conclusion, kind: 'skipped', evidence: null };
+  if (detectDaemonHealthSignal(log)) {
+    return { job: name, conclusion, kind: 'code', evidence: DAEMON_HEALTH_SIGNAL_MARKER, tail: maskText((log ?? '').split('\n').slice(-10).join('\n')) };
+  }
   if (conclusion === 'cancelled') {
     return { job: name, conclusion, kind: 'infra', evidence: 'no steps ran (capacity or runner loss)', tail: maskText((log ?? '').split('\n').slice(-10).join('\n')) };
   }
@@ -130,7 +167,7 @@ export function classifyJob(name, conclusion, log, runConclusion) {
 }
 
 function gh(args) {
-  const r = spawnSync('gh', args, { encoding: 'utf8', maxBuffer: 256 * 1024 * 1024, shell: process.platform === 'win32' });
+  const r = spawnSync(ghExecutable(), args, ghSpawnOptions(256 * 1024 * 1024));
   if (r.error) throw r.error;
   if (r.status !== 0) throw new Error((r.stderr || '').trim() || `gh exited ${r.status}`);
   return (r.stdout ?? '').replace(/\u001b\[[0-9;]*m/g, '');
@@ -198,7 +235,11 @@ export function summarize(jobs, logs) {
     const stepName = failedStepNames(job)[0] ?? stepNameFromLog(log);
     let kind;
     let evidence;
-    if (job.conclusion === 'cancelled' && noStepsRan(job)) {
+    if (detectDaemonHealthSignal(log)) {
+      // M1-01: the e2e daemon never answered its health check. Code, always.
+      kind = 'code';
+      evidence = DAEMON_HEALTH_SIGNAL_MARKER;
+    } else if (job.conclusion === 'cancelled' && noStepsRan(job)) {
       // A capacity or runner-loss cancel: the job never executed, that is infra.
       kind = 'infra';
       evidence = 'no steps ran (capacity or runner loss)';
@@ -224,6 +265,12 @@ export function summarize(jobs, logs) {
       tail: maskText(log.split('\n').slice(-10).join('\n')),
     };
   });
+}
+
+/** ` [evidence]` for a result line; a marker that is already bracketed is kept as is. */
+function formatEvidence(evidence) {
+  if (!evidence) return '';
+  return evidence.startsWith('[') ? ` ${evidence}` : ` [${evidence}]`;
 }
 
 export function exitCodeFor(results) {
@@ -271,7 +318,7 @@ export async function watch(options = {}) {
 
   log(`run=${run.id} attempt=${run.run_attempt} sha=${sha.slice(0, 7)} conclusion=${run.conclusion}`);
   for (const r of results) {
-    log(`  ${r.conclusion.padEnd(9)} ${r.kind.padEnd(7)} ${r.job}${r.evidence ? ` [${r.evidence}]` : ''}`);
+    log(`  ${r.conclusion.padEnd(9)} ${r.kind.padEnd(7)} ${r.job}${formatEvidence(r.evidence)}`);
   }
   if (masked.length > 0) {
     log('');
@@ -284,7 +331,7 @@ export async function watch(options = {}) {
   }
   if (failed.length > 0) {
     log('');
-    log(`CODE: ${failed.map((r) => r.job).join(', ')}`);
+    log(`CODE: ${failed.map((r) => `${r.job}${formatEvidence(r.evidence)}`).join(', ')}`);
     const first = failed[0];
     for (const s of first.stepNames ?? []) log(`  failStep=${s}`);
     if (first.context) log(`--- context ${first.job} ---`);

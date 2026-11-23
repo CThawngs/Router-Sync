@@ -9,10 +9,12 @@
  * `ci-stats-core.mjs` and are covered by `test/agent/ci-stats.node.test.mjs`.
  */
 import { execFileSync } from 'node:child_process';
-import { computeStats } from './ci-stats-core.mjs';
+import { computeStats, formatStreakLine } from './ci-stats-core.mjs';
+import { ghExecutable, ghSpawnOptions } from './ci-watch.mjs';
 
-const gh = (args) =>
-  execFileSync('gh', args, { encoding: 'utf8', maxBuffer: 128 * 1024 * 1024, shell: process.platform === 'win32' });
+// M1-01: no shell. `gh.exe` is found on PATH directly, so Node 24 prints no
+// DEP0190 warning and the argument array reaches gh unparsed.
+const gh = (args) => execFileSync(ghExecutable(), args, ghSpawnOptions(128 * 1024 * 1024));
 
 const args = process.argv.slice(2);
 const opt = (name, fallback) => {
@@ -51,6 +53,7 @@ const stats = computeStats(runs, { since, sinceC20, evidence });
 
 console.log(`window since ${since.slice(0, 10)}: runs=${stats.runs} uniqueSha=${stats.uniqueSha}`);
 console.log(`push on main (CI workflow) green first attempt: ${stats.pushGreen}/${stats.pushTotal}`);
+console.log(formatStreakLine(stats.pushMainStreak));
 if (stats.missingCIPush.length > 0) {
   console.log(`no CI push run for commit(s): ${stats.missingCIPush.join(', ')}`);
 }

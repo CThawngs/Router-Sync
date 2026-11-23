@@ -16,8 +16,17 @@
  *  4. A red step named `UNKNOWN STEP` (or with no log) is `unknown`, not
  *     `infra`. `infra` needs a real signal from the log or a cancelled job that
  *     never ran a step. A cancel caused by `concurrency` is not a red run.
+ *  5. (M1-01) A log with `daemon health failed; exited=` is `code`, with the
+ *     `[E2E-DAEMON-HEALTH-SIGNAL]` marker, whatever else the log shows.
+ *  6. (M1-01) `pushMainStreak` is the current run of consecutive `push`
+ *     commits on `main` whose CI run succeeded on attempt 1.
  */
-import { classifyLog, classifyStep } from './ci-watch.mjs';
+import {
+  classifyLog,
+  classifyStep,
+  detectDaemonHealthSignal,
+  DAEMON_HEALTH_SIGNAL_MARKER,
+} from './ci-watch.mjs';
 
 const DEPENDABOT_BRANCH_RE = /^dependabot\//;
 
@@ -63,6 +72,10 @@ export function classifyRed(run, log = '') {
   if (isConcurrencyCancel(run, log)) return { kind: 'not-red', evidence: 'concurrency cancel (superseded)' };
   const clean = (log ?? '').replace(/\u001b\[[0-9;]*m/g, '');
   const step = (clean.split('\n')[0] ?? '').split('\t').slice(1, -1).join(' ').trim();
+  if (detectDaemonHealthSignal(clean)) {
+    const knownStep = step && !/unknown step/i.test(step) ? ` ${step}` : '';
+    return { kind: 'code', evidence: `${DAEMON_HEALTH_SIGNAL_MARKER}${knownStep}` };
+  }
   if (clean.trim() === '') {
     return { kind: 'infra', evidence: 'no steps ran (capacity or runner loss)' };
   }
@@ -72,6 +85,35 @@ export function classifyRed(run, log = '') {
   const signal = classifyLog(clean);
   if (signal) return { kind: 'infra', evidence: `${step} (${signal})` };
   return { kind: classifyStep(step, clean), evidence: step };
+}
+
+const isFirstAttemptGreen = (run) => run.run_attempt === 1 && run.conclusion === 'success';
+const shortSha = (run) => run.head_sha?.slice(0, 7) ?? null;
+
+/**
+ * M1-01 (C43 §3.2): the current streak of consecutive `push` commits on
+ * `main` whose `CI` run succeeded on attempt 1, counted from the newest one
+ * backward. A red run, a rerun (attempt > 1) or a commit without a `CI` run
+ * ends the streak. Pending runs are not in the sample, so they neither extend
+ * nor end it. `firstSha` is the oldest commit in the streak, `lastSha` the
+ * newest; both are null when `count` is 0.
+ */
+export function computePushMainStreak(pushMainRuns) {
+  const newestFirst = [...pushMainRuns].sort(
+    (a, b) => Date.parse(b.created_at) - Date.parse(a.created_at) || (b.id ?? 0) - (a.id ?? 0)
+  );
+  const streak = [];
+  for (const run of newestFirst) {
+    if (run.name !== 'CI' || !isFirstAttemptGreen(run)) break;
+    streak.push(run);
+  }
+  if (streak.length === 0) return { count: 0, firstSha: null, lastSha: null };
+  return { count: streak.length, firstSha: shortSha(streak[streak.length - 1]), lastSha: shortSha(streak[0]) };
+}
+
+/** The exact line `ci-stats.mjs` prints for the streak (`-` when there is no SHA). */
+export function formatStreakLine({ count, firstSha, lastSha }) {
+  return `push on main consecutive green first attempt: ${count} (firstSha=${firstSha ?? '-'} lastSha=${lastSha ?? '-'})`;
 }
 
 /**
@@ -124,6 +166,7 @@ export function computeStats(runs, { since, sinceC20, evidence = {} } = {}) {
     greenFirst: greenFirst.length,
     pushGreen: pushGreen.length,
     pushTotal: pushMain.length,
+    pushMainStreak: computePushMainStreak(pushMain),
     missingCIPush: missingCIPush.map((r) => r.head_sha?.slice(0, 7)),
     classified,
     redLines,

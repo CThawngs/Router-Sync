@@ -47,7 +47,12 @@ describe('L2: docs/CI.md', () => {
     assert.match(text, /evidence\/c<N>/);
     assert.match(text, /NOTE\.md/);
     assert.match(text, /44788053023/);
-    assert.match(text, /e2e\.test\.ts:470/);
+    // M1-01: the line reference follows the daemon-health assertion itself.
+    const e2eLines = readFileSync(join(ROOT, 'test', 'e2e', 'e2e.test.ts'), 'utf8').split('\n');
+    const healthLine = e2eLines.findIndex((l) => l.includes('daemon health failed; ')) + 1;
+    assert.ok(healthLine > 0, 'e2e.test.ts must still print `daemon health failed; `');
+    assert.ok(text.includes(`e2e.test.ts:${healthLine}`), `docs/CI.md must cite e2e.test.ts:${healthLine}`);
+    assert.match(text, /\[E2E-DAEMON-HEALTH-SIGNAL\]/);
   });
 
   test('không chép lại AGENTS.md mà liên kết tới nó', () => {
