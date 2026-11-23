@@ -143,6 +143,7 @@ describe('K8.6: routersync commands cited in docs exist in CLI --help', () => {
     readRel('docs/ROADMAP.md'),
     readRel('docs/SETUP.md'),
     readRel('docs/WORKFLOW.md'),
+    readRel('docs/adr/ADR-MAINTAIN-02-apply-grant-lifecycle.md'),
   ];
 
   const cited = new Set<string>();
@@ -178,6 +179,7 @@ describe('K8.6: file paths cited in docs exist', () => {
     readRel('docs/ROADMAP.md'),
     readRel('docs/SETUP.md'),
     readRel('docs/WORKFLOW.md'),
+    readRel('docs/adr/ADR-MAINTAIN-02-apply-grant-lifecycle.md'),
   ];
 
   const cited = new Set<string>();
@@ -190,7 +192,7 @@ describe('K8.6: file paths cited in docs exist', () => {
 
   it('every cited doc path exists in the repo', () => {
     for (const p of cited) {
-      expect(existsRel(p)).toBe(true);
+      expect(existsRel(p), `Missing cited doc path: ${p}`).toBe(true);
     }
   });
 });

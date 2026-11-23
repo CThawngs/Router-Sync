@@ -1,14 +1,22 @@
 /**
  * packages/daemon/src/handlers/approval.ts
  *
- * Handler for POST /api/v1/changes/approve (Phase 3b / T3-DAEMON-SEC / SPEC §03).
+ * Handler for POST /api/v1/changes/approve (Phase 3b / T3-DAEMON-SEC / M2-01 / SPEC §03).
  *
- * Verifies human approval token and planHash before granting plan approval.
+ * Verifies human approval token HMAC signature and planHash before granting plan approval.
  */
 
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { sendJson } from '../security/network.js';
 import { verifyAndConsumeApprovalToken } from '../security/approval-token.js';
+
+const REJECTION_HTTP_STATUS: Record<string, number> = {
+  token_not_found: 401,
+  token_expired: 401,
+  invalid_signature: 403,
+  token_already_consumed: 403,
+  plan_hash_mismatch: 403,
+};
 
 export async function handleApprove(req: IncomingMessage, res: ServerResponse): Promise<void> {
   const nowIso = new Date().toISOString();
@@ -50,14 +58,16 @@ export async function handleApprove(req: IncomingMessage, res: ServerResponse): 
   const verification = verifyAndConsumeApprovalToken(token.trim(), planHash.trim());
 
   if (!verification.valid) {
-    const statusCode = verification.reason === 'token_not_found' || verification.reason === 'token_expired' ? 401 : 403;
+    const reason = verification.reason ?? 'unauthorized';
+    const statusCode = REJECTION_HTTP_STATUS[reason] ?? 403;
     sendJson(res, statusCode, {
       meta: {
         source: 'unavailable',
-        reason: verification.reason ?? 'unauthorized',
+        reason,
         generatedAt: nowIso,
       },
-      error: `Approval token rejected: ${verification.reason}`,
+      error: reason === 'invalid_signature' ? 'invalid_signature' : `Approval token rejected: ${reason}`,
+      message: `Approval token rejected: ${reason}`,
       approved: false,
     });
     return;

@@ -3,8 +3,8 @@
 - **Trạng thái:** ACCEPTED
 - **Ngày:** 2026-11-01
 - **Tác giả:** RouterSync Team
-- **Liên quan:** `maintain authorize`, `maintain apply`, `maintain grant-status`, `maintain revoke-grant`, Bất biến I1–I8, AT-114
-- **Mức độ kiểm chứng:** L3 (hợp đồng kiểm thử `tools/maintain/test-apply-grant.mjs` đạt ALL PASS)
+- **Liên quan:** `maintain authorize`, `maintain apply`, `maintain grant-status`, `maintain revoke-grant`, Bất biến I1–I8, AT-114, AT-165
+- **Mức độ kiểm chứng:** L3 (hợp đồng kiểm thử `packages/cli/test/maintain-grant-lifecycle.test.ts` và `test/acceptance/at-165-daemon-threat-model-approval.test.ts` đạt ALL PASS)
 
 ## 1. Ngữ cảnh và vấn đề
 
@@ -62,11 +62,11 @@ routersync maintain apply --router <r> --only <combos> --plan-hash <hash> [--age
 ### 2.3 Tra cứu trạng thái (Status)
 Lệnh:
 ```bash
-routersync maintain grant-status
+routersync maintain grant-status [--json]
 ```
-- Nếu có giấy phép hợp lệ: in dòng `GRANT id=<hex> combos=<list> agents=<list> expiresAt=<ISO> remaining_min=<phút>`.
-- Nếu không có giấy phép hoặc đã hết hạn: in dòng `GRANT none`.
-- Không in khóa bí mật.
+- Nếu có giấy phép hợp lệ: in dòng `GRANT id=<hex> combos=<list> agents=<list> expiresAt=<ISO> remaining_min=<phút>` (hoặc đối tượng JSON `{ active: true, id, combos, agents, createdAt, expiresAt, remainingMin }` khi bật `--json`).
+- Nếu không có giấy phép hoặc đã hết hạn: in dòng `GRANT none` (hoặc `{ active: false }` / `{ active: false, reason }` khi bật `--json`).
+- Không in khóa bí mật, `salt`, `secretHash` hay `mac`.
 
 ### 2.4 Thu hồi (Revocation)
 Lệnh:
@@ -92,11 +92,10 @@ Giới hạn bảo mật cần ghi rõ: **tiến trình có PTY gõ chữ vẫn 
 
 | Cổng ghi | Tệp và hàm bao quanh | TTY bắt buộc | Cụm từ xác nhận TTY | Nhánh grant khi không gõ lại | Tiến trình có PTY gõ chữ không có grant có qua được không? |
 |---|---|---|---|---|---|
-| `sync --apply` | `packages/cli/src/commands/sync/sync-cli.ts:190` (`runSyncCommand`) | Có (`isTTY`) | `chạy` (+ `planHash`) | Không | Có (PTY gõ `chạy` qua trực tiếp) |
-| `undo --apply` | `packages/cli/src/commands/sync/sync-cli.ts:323` (`runUndoCommand`) | Có (`isTTY`) | `chạy` | Không | Có (PTY gõ `chạy` qua trực tiếp) |
-| `apply --write` | `packages/cli/src/commands/apply.ts:96` (`runApplyCommand`) | Có (`isTTY`) | `chay` | Không | Có (PTY gõ `chay` qua trực tiếp) |
-| `maintain apply` | `packages/cli/src/commands/maintain.ts:575` (`runMaintainApplyCommand`) | Có (`isTTY`) | `chay` (+ `planHash`) | Có (chỉ cho `test-<n>`) | Có (PTY gõ `chay` vẫn qua khi không có tệp grant) |
-| `rollback --write` | `packages/cli/src/commands/rollback.ts:150` (`runRollbackCommand`) | Có (`isTTY`) | `chay` | Không | Có (PTY gõ `chay` qua trực tiếp) |
-| `maintain create` | `packages/cli/src/commands/maintain.ts:340` (`runMaintainCreateCommand`) | Có (`isTTY`) | `chay` | Có (chỉ cho `test-<n>`) | Có (PTY gõ `chay` vẫn qua khi không có tệp grant) |
-| `agents update` | `packages/cli/src/commands/agents.ts:453` (`applyAgentModelUpdate`) | Có (`isTTY`) | `chay` | Có (theo danh sách `--agents`) | Có (PTY gõ `chay` vẫn qua khi không có tệp grant) |
-
+| `sync --apply` | `packages/cli/src/commands/sync/sync-cli.ts:71` (`runSyncCommand`) | Có (`isTTY`) | `chạy` (+ `planHash`) | Không | Có (PTY gõ `chạy` qua trực tiếp) |
+| `undo --apply` | `packages/cli/src/commands/sync/sync-cli.ts:348` (`runUndoCommand`) | Có (`isTTY`) | `chạy` | Không | Có (PTY gõ `chạy` qua trực tiếp) |
+| `apply --write` | `packages/cli/src/commands/apply.ts:50` (`runApplyCommand`) | Có (`isTTY`) | `chay` | Không | Có (PTY gõ `chay` qua trực tiếp) |
+| `maintain apply` | `packages/cli/src/commands/maintain.ts:883` (`runMaintainApplyCommand`) | Có (`isTTY`) | `chay` (+ `planHash`) | Có (chỉ cho `test-<n>`) | Có (PTY gõ `chay` vẫn qua khi không có tệp grant) |
+| `rollback --write` | `packages/cli/src/commands/rollback.ts:50` (`runRollbackCommand`) | Có (`isTTY`) | `chay` | Không | Có (PTY gõ `chay` qua trực tiếp) |
+| `maintain create` | `packages/cli/src/commands/maintain.ts:646` (`runMaintainCreateCommand`) | Có (`isTTY`) | `chay` | Có (chỉ cho `test-<n>`) | Có (PTY gõ `chay` vẫn qua khi không có tệp grant) |
+| `agents update` | `packages/cli/src/commands/agents.ts:421` (`applyAgentModelUpdate`) | Có (`isTTY`) | `chay` | Có (theo danh sách `--agents`) | Có (PTY gõ `chay` vẫn qua khi không có tệp grant) |
