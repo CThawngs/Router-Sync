@@ -52,6 +52,10 @@ export interface MaintainAuthorizeOptions {
   hours?: string | undefined;
   agents?: string | undefined;
   stateDir?: string | undefined;
+  /** Programmatic test seam only — never exposed as CLI flag in index.ts */
+  isTTY?: boolean | undefined;
+  promptFn?: ((promptText: string) => Promise<string>) | undefined;
+  secretResolver?: (() => string | undefined) | undefined;
 }
 
 export interface MaintainGrantStatusOptions {
@@ -73,6 +77,10 @@ export interface MaintainCreateOptions {
   configPath?: string | undefined;
   stateDir?: string | undefined;
   json?: boolean | undefined;
+  /** Programmatic test seam only — never exposed as CLI flag in index.ts */
+  isTTY?: boolean | undefined;
+  promptFn?: ((promptText: string) => Promise<string>) | undefined;
+  secretResolver?: (() => string | undefined) | undefined;
 }
 
 export interface MaintainApplyOptions {
@@ -86,6 +94,54 @@ export interface MaintainApplyOptions {
   yes?: boolean | undefined;
   dryRun?: boolean | undefined;
   agents?: string | undefined;
+  /** Programmatic test seam only — never exposed as CLI flag in index.ts */
+  isTTY?: boolean | undefined;
+  promptFn?: ((promptText: string) => Promise<string>) | undefined;
+  secretResolver?: (() => string | undefined) | undefined;
+}
+
+const STRICT_ONLY_LIST_RE = /^test-\d+(,test-\d+)*$/;
+const STRICT_AGENT_SEGMENT_RE = /^(hermes|dsh)$/;
+
+function parseStrictOnlyCombos(only: string | undefined, commandLabel: string): string[] {
+  if (!only || only.trim() === '') {
+    console.error(`${commandLabel} requires --only <combo-name>`);
+    console.error('MAINTAIN-REFUSED reason=no-only');
+    process.exit(1);
+  }
+
+  const trimmedOnly = only.trim();
+  if (!STRICT_ONLY_LIST_RE.test(trimmedOnly)) {
+    console.error(
+      `${commandLabel} only permitted for test combos matching ^test-\\d+(,test-\\d+)*$, got '${only}'`
+    );
+    console.error('MAINTAIN-REFUSED reason=only-pattern');
+    process.exit(1);
+  }
+
+  return Array.from(new Set(trimmedOnly.split(',')));
+}
+
+function parseStrictAgents(rawAgents: string | undefined, commandLabel: string): string[] {
+  if (rawAgents === undefined) {
+    return [];
+  }
+
+  const trimmed = rawAgents.trim();
+  if (trimmed === '') {
+    console.error(`${commandLabel} --agents only accepts 'hermes' or 'dsh', got '${rawAgents}'`);
+    console.error('MAINTAIN-REFUSED reason=agents-invalid');
+    process.exit(1);
+  }
+
+  const rawSegments = trimmed.split(',');
+  if (rawSegments.some((seg) => !STRICT_AGENT_SEGMENT_RE.test(seg))) {
+    console.error(`${commandLabel} --agents only accepts 'hermes' or 'dsh', got '${rawAgents}'`);
+    console.error('MAINTAIN-REFUSED reason=agents-invalid');
+    process.exit(1);
+  }
+
+  return Array.from(new Set(rawSegments));
 }
 
 /**
@@ -419,24 +475,8 @@ async function promptForConfirmation(message: string): Promise<string> {
  * CLI command `routersync maintain authorize`
  */
 export async function runMaintainAuthorizeCommand(options: MaintainAuthorizeOptions): Promise<void> {
-  // Refusal guard 1: no-only
-  if (!options.only || options.only.trim() === '') {
-    console.error('maintain authorize requires --only <combo-name>');
-    console.error('MAINTAIN-REFUSED reason=no-only');
-    process.exit(1);
-  }
-
-  // Refusal guard 2: only-pattern
-  const targetComboNames = options.only
-    .split(',')
-    .map((s) => s.trim())
-    .filter(Boolean);
-
-  if (targetComboNames.length === 0 || targetComboNames.some((name) => !/^test-\d+$/.test(name))) {
-    console.error(`maintain authorize only permitted for test combos matching ^test-\\d+$, got '${options.only}'`);
-    console.error('MAINTAIN-REFUSED reason=only-pattern');
-    process.exit(1);
-  }
+  // Refusal guards 1 & 2: strict --only grammar
+  const targetComboNames = parseStrictOnlyCombos(options.only, 'maintain authorize');
 
   // Refusal guard 3: hours-range (1-8)
   let hours = 1;
@@ -450,23 +490,11 @@ export async function runMaintainAuthorizeCommand(options: MaintainAuthorizeOpti
     hours = parseInt(hTrim, 10);
   }
 
-  // Refusal guard 4: agents-invalid (hermes, dsh)
-  const allowedAgents = new Set(['hermes', 'dsh']);
-  let agents: string[] = [];
-  if (options.agents !== undefined && options.agents.trim() !== '') {
-    agents = options.agents
-      .split(',')
-      .map((s) => s.trim())
-      .filter(Boolean);
-    if (agents.length === 0 || agents.some((a) => !allowedAgents.has(a))) {
-      console.error(`maintain authorize --agents only accepts 'hermes' or 'dsh', got '${options.agents}'`);
-      console.error('MAINTAIN-REFUSED reason=agents-invalid');
-      process.exit(1);
-    }
-  }
+  // Refusal guard 4: strict --agents grammar (hermes, dsh)
+  const agents = parseStrictAgents(options.agents, 'maintain authorize');
 
-  // Refusal guard 5: no-tty (K1: grant issuance is TTY-only; no env bypass)
-  const isTTY = Boolean(process.stdin.isTTY);
+  // Refusal guard 5: no-tty (K1: grant issuance is TTY-only; programmatic seam is internal API only)
+  const isTTY = options.isTTY ?? Boolean(process.stdin.isTTY);
 
   if (!isTTY) {
     console.error('maintain authorize requires an interactive TTY');
@@ -474,10 +502,12 @@ export async function runMaintainAuthorizeCommand(options: MaintainAuthorizeOpti
     process.exit(1);
   }
 
-  let confirmWord = '';
-  confirmWord = await promptForConfirmation(
-      `Gõ 'chay' để xác nhận cấp giấy phép ghi cho combo '${options.only}' (${hours}h): `
-    );
+  const prompt = options.promptFn ?? promptForConfirmation;
+  const confirmWord = (
+    await prompt(
+      `Gõ 'chay' để xác nhận cấp giấy phép ghi cho combo '${targetComboNames.join(',')}' (${hours}h): `
+    )
+  ).trim();
 
   if (confirmWord !== 'chay') {
     console.error(`Xác nhận bị từ chối (nhập '${confirmWord}', yêu cầu 'chay'). Hủy cấp phép.`);
@@ -521,10 +551,18 @@ export async function runMaintainAuthorizeCommand(options: MaintainAuthorizeOpti
  */
 export async function runMaintainGrantStatusCommand(options: MaintainGrantStatusOptions): Promise<void> {
   const grantPath = getGrantFilePath(options.stateDir);
-  // Status is read-only: structure/expiry only, no secret needed.
+  // Status is read-only: structure/expiry only, no secret needed, zero secret/hash/MAC emitted.
   const validation = validateGrantFile(grantPath, undefined, { requireSecret: false });
 
   if (!validation.valid) {
+    if (options.json) {
+      if (validation.notFound) {
+        console.log(JSON.stringify({ active: false }));
+      } else {
+        console.log(JSON.stringify({ active: false, reason: validation.reason }));
+      }
+      return;
+    }
     console.log('GRANT none');
     return;
   }
@@ -532,6 +570,21 @@ export async function runMaintainGrantStatusCommand(options: MaintainGrantStatus
   const grant = validation.grant;
   const remainingMs = new Date(grant.expiresAt).getTime() - Date.now();
   const remainingMin = Math.max(0, Math.round(remainingMs / 60000));
+
+  if (options.json) {
+    console.log(
+      JSON.stringify({
+        active: true,
+        id: grant.id,
+        combos: grant.combos,
+        agents: grant.agents,
+        createdAt: grant.createdAt,
+        expiresAt: grant.expiresAt,
+        remainingMin,
+      })
+    );
+    return;
+  }
 
   console.log(
     `GRANT id=${grant.id} combos=${grant.combos.join(',')} agents=${grant.agents.join(',')} expiresAt=${grant.expiresAt} remaining_min=${remainingMin}`
@@ -607,18 +660,21 @@ export async function runMaintainCreateCommand(options: MaintainCreateOptions): 
     throw new Error(`maintain create requires at least 2 models, got ${modelList.length}`);
   }
 
-  const isTTY = Boolean(process.stdin.isTTY);
+  const isTTY = options.isTTY ?? Boolean(process.stdin.isTTY);
   // L3(b): env alone never bypasses production; needs injected allowTestBypass.
   const isTestBypass =
     options.allowTestBypass === true &&
     process.env.VITEST === 'true' &&
-    process.env.ROUTERSYNC_TEST_FAST === '1' && typeof process.env.ROUTERSYNC_TEST_CONFIRM === 'string';
+    process.env.ROUTERSYNC_TEST_FAST === '1' &&
+    typeof process.env.ROUTERSYNC_TEST_CONFIRM === 'string';
 
   const grantPath = getGrantFilePath(options.stateDir);
   let activeGrant: ApplyGrant | null = null;
 
   if (fs.existsSync(grantPath)) {
-    const grantSecret = isTestBypass ? undefined : resolveGrantSecret();
+    const grantSecret = isTestBypass
+      ? undefined
+      : resolveGrantSecret({ isTTY, secretResolver: options.secretResolver });
     const grantCheck = validateGrantFile(grantPath, grantSecret, {
       requireSecret: !isTestBypass,
     });
@@ -629,8 +685,8 @@ export async function runMaintainCreateCommand(options: MaintainCreateOptions): 
     }
     const scopeCheck = checkGrantScope(grantCheck.grant, [comboName], []);
     if (!scopeCheck.valid) {
-      console.error(`Grant scope check failed: ${scopeCheck.reason}`);
-      console.error(`MAINTAIN-REFUSED reason=${scopeCheck.reason}`);
+      console.error(`Grant scope check failed: ${scopeCheck.detail}`);
+      console.error(`MAINTAIN-REFUSED reason=${scopeCheck.reason} detail=${scopeCheck.detail}`);
       process.exit(1);
     }
     activeGrant = grantCheck.grant;
@@ -651,15 +707,14 @@ export async function runMaintainCreateCommand(options: MaintainCreateOptions): 
     }
   }
 
+  const prompt = options.promptFn ?? promptForConfirmation;
   let confirmWord = '';
   if (activeGrant) {
     confirmWord = 'chay';
   } else if (isTestBypass) {
     confirmWord = (process.env.ROUTERSYNC_TEST_CONFIRM ?? '').trim();
   } else {
-    confirmWord = await promptForConfirmation(
-      `Gõ 'chay' để xác nhận tạo combo '${comboName}': `
-    );
+    confirmWord = (await prompt(`Gõ 'chay' để xác nhận tạo combo '${comboName}': `)).trim();
   }
 
   if (confirmWord !== 'chay') {
@@ -826,24 +881,8 @@ export async function runMaintainCreateCommand(options: MaintainCreateOptions): 
  * 10. Read-back verification with rollback on mismatch
  */
 export async function runMaintainApplyCommand(options: MaintainApplyOptions): Promise<void> {
-  // Refusal guard 1: no-only
-  if (!options.only || options.only.trim() === '') {
-    console.error('maintain apply requires --only <combo-name>');
-    console.error('MAINTAIN-REFUSED reason=no-only');
-    process.exit(1);
-  }
-
-  // Refusal guard 2: only-pattern (comma-separated list, each matching ^test-\d+$)
-  const targetComboNames = options.only
-    .split(',')
-    .map((s) => s.trim())
-    .filter(Boolean);
-
-  if (targetComboNames.length === 0 || targetComboNames.some((name) => !/^test-\d+$/.test(name))) {
-    console.error(`maintain apply only permitted for test combos matching ^test-\\d+$, got '${options.only}'`);
-    console.error('MAINTAIN-REFUSED reason=only-pattern');
-    process.exit(1);
-  }
+  // Refusal guards 1 & 2: strict --only grammar
+  const targetComboNames = parseStrictOnlyCombos(options.only, 'maintain apply');
 
   // Refusal guard 3: yes-flag (cannot bypass with --yes or -y)
   if (options.yes) {
@@ -852,34 +891,25 @@ export async function runMaintainApplyCommand(options: MaintainApplyOptions): Pr
     process.exit(1);
   }
 
-  // Refusal guard 4: agents-invalid
-  const allowedAgents = new Set(['hermes', 'dsh']);
-  let targetAgents: string[] = [];
-  if (options.agents !== undefined && options.agents.trim() !== '') {
-    targetAgents = options.agents
-      .split(',')
-      .map((s) => s.trim())
-      .filter(Boolean);
-    if (targetAgents.length === 0 || targetAgents.some((a) => !allowedAgents.has(a))) {
-      console.error(`maintain apply --agents only accepts 'hermes' or 'dsh', got '${options.agents}'`);
-      console.error('MAINTAIN-REFUSED reason=agents-invalid');
-      process.exit(1);
-    }
-  }
+  // Refusal guard 4: strict --agents grammar
+  const targetAgents = parseStrictAgents(options.agents, 'maintain apply');
 
   // Refusal guard 5: Grant check & TTY check
-  const isTTY = Boolean(process.stdin.isTTY);
+  const isTTY = options.isTTY ?? Boolean(process.stdin.isTTY);
   // L3(b): env alone never bypasses production; needs injected allowTestBypass.
   const isTestBypass =
     options.allowTestBypass === true &&
     process.env.VITEST === 'true' &&
-    process.env.ROUTERSYNC_TEST_FAST === '1' && typeof process.env.ROUTERSYNC_TEST_CONFIRM === 'string';
+    process.env.ROUTERSYNC_TEST_FAST === '1' &&
+    typeof process.env.ROUTERSYNC_TEST_CONFIRM === 'string';
 
   const grantPath = getGrantFilePath(options.stateDir);
   let activeGrant: ApplyGrant | null = null;
 
   if (fs.existsSync(grantPath)) {
-    const grantSecret = isTestBypass ? undefined : resolveGrantSecret();
+    const grantSecret = isTestBypass
+      ? undefined
+      : resolveGrantSecret({ isTTY, secretResolver: options.secretResolver });
     const grantCheck = validateGrantFile(grantPath, grantSecret, {
       requireSecret: !isTestBypass,
     });
@@ -890,8 +920,8 @@ export async function runMaintainApplyCommand(options: MaintainApplyOptions): Pr
     }
     const scopeCheck = checkGrantScope(grantCheck.grant, targetComboNames, targetAgents);
     if (!scopeCheck.valid) {
-      console.error(`Grant scope check failed: ${scopeCheck.reason}`);
-      console.error(`MAINTAIN-REFUSED reason=${scopeCheck.reason}`);
+      console.error(`Grant scope check failed: ${scopeCheck.detail}`);
+      console.error(`MAINTAIN-REFUSED reason=${scopeCheck.reason} detail=${scopeCheck.detail}`);
       process.exit(1);
     }
     activeGrant = grantCheck.grant;
@@ -941,15 +971,16 @@ export async function runMaintainApplyCommand(options: MaintainApplyOptions): Pr
   }
 
   // Gate: Confirmation prompt: must type 'chay' (bypassed if valid grant)
+  const prompt = options.promptFn ?? promptForConfirmation;
   let confirmWord = '';
   if (activeGrant) {
     confirmWord = 'chay';
   } else if (isTestBypass) {
     confirmWord = (process.env.ROUTERSYNC_TEST_CONFIRM ?? '').trim();
   } else {
-    confirmWord = await promptForConfirmation(
-      `Gõ 'chay' để xác nhận áp dụng kế hoạch bảo trì cho combo '${options.only}': `
-    );
+    confirmWord = (
+      await prompt(`Gõ 'chay' để xác nhận áp dụng kế hoạch bảo trì cho combo '${targetComboNames.join(',')}': `)
+    ).trim();
   }
 
   if (confirmWord !== 'chay') {

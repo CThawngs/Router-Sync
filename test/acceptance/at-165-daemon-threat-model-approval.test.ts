@@ -7,6 +7,7 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import * as http from 'node:http';
 import type { AddressInfo } from 'node:net';
+import * as daemonPkg from '@routersync/daemon';
 import {
   createDaemonServer,
   createApprovalToken,
@@ -152,5 +153,86 @@ describe('AT-165: Daemon Threat Model & Plan Approval Tokens (T3-DAEMON-SEC)', (
     const replayBody = (await replayRes.json()) as any;
     expect(replayBody.meta?.reason).toBe('token_already_consumed');
     expect(replayBody.approved).toBe(false);
+  });
+
+  it('M2-01-T5: issues HMAC-signed <64hex>.<64hex> tokens, rejects flipped signature without consuming original token, and rejects forged unknown-nonce tokens with 403 invalid_signature', async () => {
+    const targetPlanHash = 'plan-hash-hmac-signed-m201';
+    const tokenRecord = createApprovalToken(targetPlanHash);
+
+    // 1. Structural <nonceHex>.<sigHex> format & zero signingKey leakage
+    expect(tokenRecord.token).toMatch(/^[0-9a-f]{64}\.[0-9a-f]{64}$/);
+    const ManagerCtor = (daemonPkg as Record<string, unknown>)['ApprovalTokenManager'] as
+      | (new () => Record<string, unknown>)
+      | undefined;
+    expect(typeof ManagerCtor).toBe('function');
+    const isolatedMgr = new ManagerCtor!();
+    expect(JSON.stringify(isolatedMgr)).not.toContain('signingKey');
+
+    // 2. Flip 1 hex character in sigHex -> 403 invalid_signature AND does NOT consume original token
+    const [nonceHex, sigHex] = tokenRecord.token.split('.') as [string, string];
+    const flippedFirstChar = sigHex[0] === '0' ? '1' : '0';
+    const tamperedToken = `${nonceHex}.${flippedFirstChar}${sigHex.slice(1)}`;
+
+    const tamperedRes = await fetch(`${baseUrl}/api/v1/changes/approve`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        planHash: targetPlanHash,
+        token: tamperedToken,
+      }),
+    });
+
+    expect(tamperedRes.status).toBe(403);
+    const rawTamperedText = await tamperedRes.text();
+    expect(rawTamperedText).not.toContain(sigHex);
+    expect(rawTamperedText).not.toContain(tamperedToken);
+    const tamperedBody = JSON.parse(rawTamperedText) as any;
+    expect(tamperedBody.error).toBe('invalid_signature');
+    expect(tamperedBody.meta?.reason).toBe('invalid_signature');
+    expect(tamperedBody.approved).toBe(false);
+
+    // 3. Forged <64hex>.<64hex> with unknown nonce -> 403 invalid_signature
+    const forgedUnknown = `${'a'.repeat(64)}.${'b'.repeat(64)}`;
+    const forgedRes = await fetch(`${baseUrl}/api/v1/changes/approve`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        planHash: targetPlanHash,
+        token: forgedUnknown,
+      }),
+    });
+
+    expect(forgedRes.status).toBe(403);
+    const forgedBody = (await forgedRes.json()) as any;
+    expect(forgedBody.error).toBe('invalid_signature');
+    expect(forgedBody.meta?.reason).toBe('invalid_signature');
+    expect(forgedBody.approved).toBe(false);
+
+    // 4. Malformed dot-containing token -> 403 invalid_signature
+    const malformedDotRes = await fetch(`${baseUrl}/api/v1/changes/approve`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        planHash: targetPlanHash,
+        token: 'short.sig',
+      }),
+    });
+    expect(malformedDotRes.status).toBe(403);
+    const malformedDotBody = (await malformedDotRes.json()) as any;
+    expect(malformedDotBody.error).toBe('invalid_signature');
+
+    // 5. Original unmodified token MUST remain valid and unconsumed!
+    const validRes = await fetch(`${baseUrl}/api/v1/changes/approve`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        planHash: targetPlanHash,
+        token: tokenRecord.token,
+      }),
+    });
+    expect(validRes.status).toBe(200);
+    const validBody = (await validRes.json()) as any;
+    expect(validBody.approved).toBe(true);
+    expect(validBody.planHash).toBe(targetPlanHash);
   });
 });

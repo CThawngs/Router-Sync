@@ -20,25 +20,49 @@ export interface GrantFile extends ApplyGrant {
 
 export const GRANT_FILE_NAME = 'apply-grant.json';
 
+const SALT_HEX_RE = /^[0-9a-f]{32}$/i;
+const SECRET_HASH_HEX_RE = /^[0-9a-f]{128}$/i;
+const MAC_HEX_RE = /^[0-9a-f]{64}$/i;
+const COMBO_NAME_RE = /^test-\d+$/;
+const ALLOWED_AGENTS = new Set(['hermes', 'dsh']);
+const MAX_ALLOWED_DURATION_MS = 8 * 3600 * 1000 + 1000;
+
 export function getGrantFilePath(stateDir?: string): string {
   const dir = stateDir || process.env.ROUTERSYNC_STATE_DIR || getStateDir();
   return path.join(dir, GRANT_FILE_NAME);
 }
 
+export type GrantFailureReason =
+  | 'grant-invalid'
+  | 'grant-expired'
+  | 'grant-secret-missing'
+  | 'grant-secret-wrong'
+  | 'grant-mac-invalid';
+
 export type GrantValidationResult =
   | { valid: true; grant: ApplyGrant }
   | {
       valid: false;
-      reason:
-        | 'grant-invalid'
-        | 'grant-expired'
-        | 'grant-secret-missing'
-        | 'grant-secret-wrong'
-        | 'grant-mac-invalid';
+      reason: GrantFailureReason;
       notFound?: boolean;
     };
 
-export function grantCanonical(grant: ApplyGrant): string {
+export type ReadGrantResult =
+  | { ok: true; grant: ApplyGrant; grantFile: GrantFile }
+  | { ok: false; reason: 'grant-invalid' | 'grant-expired'; notFound?: boolean };
+
+export type VerifyGrantSecretResult =
+  | { ok: true; valid: true }
+  | {
+      ok: false;
+      valid: false;
+      reason: 'grant-secret-missing' | 'grant-invalid' | 'grant-secret-wrong' | 'grant-mac-invalid';
+    };
+
+export function grantCanonical(
+  grant: ApplyGrant,
+  authFields?: { salt: string; secretHash: string }
+): string {
   return JSON.stringify({
     version: grant.version,
     id: grant.id,
@@ -46,6 +70,7 @@ export function grantCanonical(grant: ApplyGrant): string {
     agents: grant.agents,
     createdAt: grant.createdAt,
     expiresAt: grant.expiresAt,
+    ...(authFields ? { salt: authFields.salt, secretHash: authFields.secretHash } : {}),
   });
 }
 
@@ -57,38 +82,212 @@ export function createGrantFile(grant: ApplyGrant, secret: string): GrantFile {
   const salt = crypto.randomBytes(16).toString('hex');
   const secretHash = crypto.scryptSync(secret, salt + ':hash', 64).toString('hex');
   const macKey = crypto.scryptSync(secret, salt + ':mac', 32);
-  const mac = crypto.createHmac('sha256', macKey).update(grantCanonical(grant)).digest('hex');
+  const mac = crypto
+    .createHmac('sha256', macKey)
+    .update(grantCanonical(grant, { salt, secretHash }))
+    .digest('hex');
   return { ...grant, salt, secretHash, mac };
 }
 
-function safeEqualHex(a: string, b: string): boolean {
-  const ba = Buffer.from(a, 'hex');
-  const bb = Buffer.from(b, 'hex');
-  return ba.length === bb.length && crypto.timingSafeEqual(ba, bb);
+function parseApplyGrantFields(
+  raw: Record<string, unknown>
+): { ok: true; grant: ApplyGrant } | { ok: false; reason: 'grant-invalid' | 'grant-expired' } {
+  if (raw.version !== 1) {
+    return { ok: false, reason: 'grant-invalid' };
+  }
+
+  if (typeof raw.id !== 'string' || !/^[0-9a-f]+$/i.test(raw.id)) {
+    return { ok: false, reason: 'grant-invalid' };
+  }
+
+  if (!Array.isArray(raw.combos) || raw.combos.length === 0) {
+    return { ok: false, reason: 'grant-invalid' };
+  }
+
+  for (const c of raw.combos) {
+    if (typeof c !== 'string' || !COMBO_NAME_RE.test(c)) {
+      return { ok: false, reason: 'grant-invalid' };
+    }
+  }
+
+  if (!Array.isArray(raw.agents)) {
+    return { ok: false, reason: 'grant-invalid' };
+  }
+
+  for (const a of raw.agents) {
+    if (typeof a !== 'string' || !ALLOWED_AGENTS.has(a)) {
+      return { ok: false, reason: 'grant-invalid' };
+    }
+  }
+
+  if (typeof raw.createdAt !== 'string' || Number.isNaN(Date.parse(raw.createdAt))) {
+    return { ok: false, reason: 'grant-invalid' };
+  }
+
+  if (typeof raw.expiresAt !== 'string' || Number.isNaN(Date.parse(raw.expiresAt))) {
+    return { ok: false, reason: 'grant-invalid' };
+  }
+
+  const createdMs = new Date(raw.createdAt).getTime();
+  const expiresMs = new Date(raw.expiresAt).getTime();
+  const durationMs = expiresMs - createdMs;
+
+  if (durationMs <= 0 || durationMs > MAX_ALLOWED_DURATION_MS) {
+    return { ok: false, reason: 'grant-invalid' };
+  }
+
+  const now = Date.now();
+  if (expiresMs - now > MAX_ALLOWED_DURATION_MS) {
+    return { ok: false, reason: 'grant-invalid' };
+  }
+
+  if (expiresMs <= now) {
+    return { ok: false, reason: 'grant-expired' };
+  }
+
+  return {
+    ok: true,
+    grant: {
+      version: 1,
+      id: raw.id,
+      combos: raw.combos as string[],
+      agents: raw.agents as string[],
+      createdAt: raw.createdAt,
+      expiresAt: raw.expiresAt,
+    },
+  };
 }
 
-function verifyGrantSecret(
-  raw: Record<string, unknown>,
-  grant: ApplyGrant,
-  secret: string | undefined
-): GrantValidationResult | null {
-  const { salt, secretHash, mac } = raw;
-  if (typeof salt !== 'string' || typeof secretHash !== 'string' || typeof mac !== 'string') {
-    return { valid: false, reason: 'grant-secret-missing' };
+function hasValidCryptoHexFields(raw: Record<string, unknown>): raw is Record<string, unknown> & {
+  salt: string;
+  secretHash: string;
+  mac: string;
+} {
+  return (
+    typeof raw.salt === 'string' &&
+    SALT_HEX_RE.test(raw.salt) &&
+    typeof raw.secretHash === 'string' &&
+    SECRET_HASH_HEX_RE.test(raw.secretHash) &&
+    typeof raw.mac === 'string' &&
+    MAC_HEX_RE.test(raw.mac)
+  );
+}
+
+export function readGrant(filePath: string): ReadGrantResult {
+  if (!fs.existsSync(filePath)) {
+    return { ok: false, reason: 'grant-invalid', notFound: true };
   }
-  if (secret === undefined || secret === '') {
-    return { valid: false, reason: 'grant-secret-missing' };
+
+  let raw: unknown;
+  try {
+    raw = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+  } catch {
+    return { ok: false, reason: 'grant-invalid' };
   }
-  const computedHash = crypto.scryptSync(secret, salt + ':hash', 64).toString('hex');
-  if (!safeEqualHex(computedHash, secretHash)) {
-    return { valid: false, reason: 'grant-secret-wrong' };
+
+  if (raw === null || typeof raw !== 'object' || Array.isArray(raw)) {
+    return { ok: false, reason: 'grant-invalid' };
   }
-  const macKey = crypto.scryptSync(secret, salt + ':mac', 32);
-  const computedMac = crypto.createHmac('sha256', macKey).update(grantCanonical(grant)).digest('hex');
-  if (!safeEqualHex(computedMac, mac)) {
-    return { valid: false, reason: 'grant-mac-invalid' };
+
+  const record = raw as Record<string, unknown>;
+  if (!hasValidCryptoHexFields(record)) {
+    return { ok: false, reason: 'grant-invalid' };
   }
-  return null;
+
+  const parsed = parseApplyGrantFields(record);
+  if (!parsed.ok) {
+    return parsed;
+  }
+
+  return {
+    ok: true,
+    grant: parsed.grant,
+    grantFile: {
+      ...parsed.grant,
+      salt: record.salt,
+      secretHash: record.secretHash,
+      mac: record.mac,
+    },
+  };
+}
+
+export function verifyGrantSecret(
+  grantInput: GrantFile | Record<string, unknown>,
+  candidateSecret: string | undefined
+): VerifyGrantSecretResult {
+  if (typeof candidateSecret !== 'string' || candidateSecret.length === 0) {
+    return { ok: false, valid: false, reason: 'grant-secret-missing' };
+  }
+
+  if (grantInput === null || typeof grantInput !== 'object' || Array.isArray(grantInput)) {
+    return { ok: false, valid: false, reason: 'grant-invalid' };
+  }
+
+  const raw = grantInput as Record<string, unknown>;
+  if (raw.salt === undefined && raw.secretHash === undefined && raw.mac === undefined) {
+    return { ok: false, valid: false, reason: 'grant-secret-missing' };
+  }
+
+  if (!hasValidCryptoHexFields(raw)) {
+    return { ok: false, valid: false, reason: 'grant-invalid' };
+  }
+
+  if (
+    raw.version !== 1 ||
+    typeof raw.id !== 'string' ||
+    !Array.isArray(raw.combos) ||
+    !Array.isArray(raw.agents) ||
+    typeof raw.createdAt !== 'string' ||
+    typeof raw.expiresAt !== 'string'
+  ) {
+    return { ok: false, valid: false, reason: 'grant-invalid' };
+  }
+
+  const grant: ApplyGrant = {
+    version: 1,
+    id: raw.id,
+    combos: raw.combos as string[],
+    agents: raw.agents as string[],
+    createdAt: raw.createdAt,
+    expiresAt: raw.expiresAt,
+  };
+
+  const computedHashBuf = crypto.scryptSync(candidateSecret, raw.salt + ':hash', 64);
+  const expectedHashBuf = Buffer.from(raw.secretHash, 'hex');
+  if (
+    computedHashBuf.length !== expectedHashBuf.length ||
+    !crypto.timingSafeEqual(computedHashBuf, expectedHashBuf)
+  ) {
+    return { ok: false, valid: false, reason: 'grant-secret-wrong' };
+  }
+
+  const macKey = crypto.scryptSync(candidateSecret, raw.salt + ':mac', 32);
+  const expectedMacBuf = Buffer.from(raw.mac, 'hex');
+  const computedMacWithAuthBuf = crypto
+    .createHmac('sha256', macKey)
+    .update(grantCanonical(grant, { salt: raw.salt, secretHash: raw.secretHash }))
+    .digest();
+
+  if (
+    computedMacWithAuthBuf.length === expectedMacBuf.length &&
+    crypto.timingSafeEqual(computedMacWithAuthBuf, expectedMacBuf)
+  ) {
+    return { ok: true, valid: true };
+  }
+
+  // Backward-compatible fallback for grants whose canonical HMAC covered ApplyGrant fields only
+  const computedLegacyMacBuf = crypto
+    .createHmac('sha256', macKey)
+    .update(grantCanonical(grant))
+    .digest();
+  if (
+    computedLegacyMacBuf.length === expectedMacBuf.length &&
+    crypto.timingSafeEqual(computedLegacyMacBuf, expectedMacBuf)
+  ) {
+    return { ok: true, valid: true };
+  }
+
+  return { ok: false, valid: false, reason: 'grant-mac-invalid' };
 }
 
 export function validateGrantFile(
@@ -100,104 +299,71 @@ export function validateGrantFile(
     return { valid: false, reason: 'grant-invalid', notFound: true };
   }
 
-  let raw: any;
+  let raw: unknown;
   try {
     raw = JSON.parse(fs.readFileSync(filePath, 'utf8'));
   } catch {
     return { valid: false, reason: 'grant-invalid' };
   }
 
-  if (!raw || typeof raw !== 'object') {
+  if (raw === null || typeof raw !== 'object' || Array.isArray(raw)) {
     return { valid: false, reason: 'grant-invalid' };
   }
 
-  if (raw.version !== 1) {
+  const record = raw as Record<string, unknown>;
+  const hasAnyCryptoField =
+    record.salt !== undefined || record.secretHash !== undefined || record.mac !== undefined;
+  if (hasAnyCryptoField && !hasValidCryptoHexFields(record)) {
     return { valid: false, reason: 'grant-invalid' };
   }
 
-  if (typeof raw.id !== 'string' || !/^[0-9a-f]+$/i.test(raw.id)) {
-    return { valid: false, reason: 'grant-invalid' };
+  const parsed = parseApplyGrantFields(record);
+  if (!parsed.ok) {
+    return { valid: false, reason: parsed.reason };
   }
 
-  if (!Array.isArray(raw.combos) || raw.combos.length === 0) {
-    return { valid: false, reason: 'grant-invalid' };
-  }
-
-  for (const c of raw.combos) {
-    if (typeof c !== 'string' || !/^test-\d+$/.test(c)) {
+  if (options?.requireSecret === false) {
+    if (!hasValidCryptoHexFields(record)) {
       return { valid: false, reason: 'grant-invalid' };
     }
+    return { valid: true, grant: parsed.grant };
   }
 
-  if (!Array.isArray(raw.agents)) {
-    return { valid: false, reason: 'grant-invalid' };
+  const secretCheck = verifyGrantSecret(record, secret);
+  if (!secretCheck.ok) {
+    return { valid: false, reason: secretCheck.reason };
   }
 
-  for (const a of raw.agents) {
-    if (typeof a !== 'string' || !['hermes', 'dsh'].includes(a)) {
-      return { valid: false, reason: 'grant-invalid' };
-    }
-  }
-
-  if (typeof raw.createdAt !== 'string' || isNaN(Date.parse(raw.createdAt))) {
-    return { valid: false, reason: 'grant-invalid' };
-  }
-
-  if (typeof raw.expiresAt !== 'string' || isNaN(Date.parse(raw.expiresAt))) {
-    return { valid: false, reason: 'grant-invalid' };
-  }
-
-  const createdMs = new Date(raw.createdAt).getTime();
-  const expiresMs = new Date(raw.expiresAt).getTime();
-  const durationMs = expiresMs - createdMs;
-
-  // Max grant lifetime is 8 hours (with 1s clock tolerance for test suites)
-  const maxAllowedDurationMs = 8 * 3600 * 1000 + 1000;
-  if (durationMs <= 0 || durationMs > maxAllowedDurationMs) {
-    return { valid: false, reason: 'grant-invalid' };
-  }
-
-  const now = Date.now();
-  if (expiresMs - now > maxAllowedDurationMs) {
-    return { valid: false, reason: 'grant-invalid' };
-  }
-
-  if (expiresMs <= now) {
-    return { valid: false, reason: 'grant-expired' };
-  }
-
-  const grant: ApplyGrant = {
-    version: 1,
-    id: raw.id,
-    combos: raw.combos,
-    agents: raw.agents,
-    createdAt: raw.createdAt,
-    expiresAt: raw.expiresAt,
-  };
-
-  if (options?.requireSecret !== false) {
-    const secretFailure = verifyGrantSecret(raw, grant, secret);
-    if (secretFailure) {
-      return secretFailure;
-    }
-  }
-
-  return { valid: true, grant };
+  return { valid: true, grant: parsed.grant };
 }
 
-export function resolveGrantSecret(): string | undefined {
-  const fromEnv = process.env.ROUTERSYNC_GRANT_SECRET;
+export interface ResolveGrantSecretOptions {
+  isTTY?: boolean | undefined;
+  secretResolver?: (() => string | undefined) | undefined;
+}
+
+export function resolveGrantSecret(options?: ResolveGrantSecretOptions): string | undefined {
+  if (typeof options?.secretResolver === 'function') {
+    const injected = options.secretResolver();
+    return typeof injected === 'string' && injected !== '' ? injected : undefined;
+  }
+
+  const fromEnv =
+    process.env.ROUTERSYNC_GRANT_SECRET || process.env.ROUTERSYNC_APPLY_GRANT_SECRET;
   if (typeof fromEnv === 'string' && fromEnv !== '') {
     return fromEnv;
   }
-  if (!process.stdin.isTTY) {
+
+  if (!process.stdin.isTTY || options?.isTTY === false) {
     return undefined;
   }
+
   // Hidden TTY prompt: raw mode, byte-by-byte via readSync, echo '*'.
   const fd = 0;
-  const prevRaw = typeof (process.stdin as { setRawMode?: unknown }).setRawMode === 'function'
-    ? (process.stdin as { setRawMode: (m: boolean) => void }).setRawMode(true)
-    : undefined;
+  const prevRaw =
+    typeof (process.stdin as { setRawMode?: unknown }).setRawMode === 'function'
+      ? (process.stdin as { setRawMode: (m: boolean) => void }).setRawMode(true)
+      : undefined;
   process.stdout.write('Grant secret: ');
   let secret = '';
   const buf = Buffer.alloc(1);
@@ -225,21 +391,29 @@ export function resolveGrantSecret(): string | undefined {
   return secret === '' ? undefined : secret;
 }
 
+export type GrantScopeCheckResult =
+  | { valid: true }
+  | {
+      valid: false;
+      reason: 'grant-scope';
+      detail: 'grant-scope-combo' | 'grant-scope-agent';
+    };
+
 export function checkGrantScope(
   grant: ApplyGrant,
   requiredCombos: string[],
   requiredAgents?: string[]
-): { valid: true } | { valid: false; reason: 'grant-scope' } {
+): GrantScopeCheckResult {
   for (const combo of requiredCombos) {
     if (!grant.combos.includes(combo)) {
-      return { valid: false, reason: 'grant-scope' };
+      return { valid: false, reason: 'grant-scope', detail: 'grant-scope-combo' };
     }
   }
 
   if (requiredAgents && requiredAgents.length > 0) {
     for (const agent of requiredAgents) {
       if (!grant.agents.includes(agent)) {
-        return { valid: false, reason: 'grant-scope' };
+        return { valid: false, reason: 'grant-scope', detail: 'grant-scope-agent' };
       }
     }
   }
