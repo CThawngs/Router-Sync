@@ -16,7 +16,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as os from 'node:os';
 import { acquireLock, releaseLock, readRouterCombos } from '@routersync/daemon';
-import { locateRouterDb, openBetterSqlite3, readRouterModelState, getProviderAliases, type RouterModelState } from '@routersync/core';
+import { locateRouterDb, openBetterSqlite3, readRouterModelState, getProviderAliases, sendActionableWebhook, type ActionableWebhookAlert, type RouterModelState, type WebhookDeliveryResult } from '@routersync/core';
 import { loadConfigFile } from '../config/loader.js';
 import { buildViews } from './sync/sync-plan.js';
 import { fetchModelList, type ProviderTarget } from '../sync/providers.js';
@@ -159,6 +159,7 @@ export interface TickCommandOptions {
   maxShrinkRatio?: number | string | undefined;
   minScanIntervalMs?: number | undefined;
   webhookUrl?: string | undefined;
+  webhookTimeoutMs?: number | undefined;
   toast?: boolean | undefined;
   json?: boolean | undefined;
   stateDir?: string | undefined;
@@ -203,6 +204,7 @@ export interface TickRunSummary {
    * is nothing to remove from a combo.
    */
   absentNotInCombo?: Record<string, string[]>;
+  webhookDelivery?: WebhookDeliveryResult | undefined;
 }
 
 const BACKOFF_MIN_MS = 2 * 60 * 1000;       // 2m
@@ -1099,6 +1101,7 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
     }
 
     let inboxAdded = 0;
+    const newlyAddedInboxItems: TickInboxItem[] = [];
     if (effectiveMode === 'propose') {
       const existingInbox = loadInboxItems(inboxPath);
       const existingIds = new Set(existingInbox.map((i) => i.id));
@@ -1106,6 +1109,7 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
         if (!existingIds.has(item.id)) {
           existingInbox.unshift(item);
           existingIds.add(item.id);
+          newlyAddedInboxItems.push(item);
           inboxAdded++;
         }
       }
@@ -1138,6 +1142,38 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
       }
     }
 
+    const envSource = options.env ?? process.env;
+    const envWebhookUrl = envSource['ROUTERSYNC_WEBHOOK_URL'];
+    const configWebhookUrl =
+      config.webhook && config.webhook.enabled !== false ? config.webhook.url : undefined;
+    const resolvedWebhookUrl =
+      options.webhookUrl !== undefined && options.webhookUrl.trim() !== ''
+        ? options.webhookUrl
+        : envWebhookUrl !== undefined && envWebhookUrl.trim() !== ''
+          ? envWebhookUrl
+          : configWebhookUrl;
+    const resolvedWebhookTimeoutMs = options.webhookTimeoutMs ?? config.webhook?.timeoutMs;
+    const changedProviderNames = providerSummaries
+      .filter((p) => p.changed)
+      .map((p) => p.prefix);
+    const webhookAlerts: ActionableWebhookAlert[] = newlyAddedInboxItems.map((item) => ({
+      kind: 'inbox_item',
+      providerOrRouter: item.provider ?? 'unknown',
+      code: item.label ?? item.action ?? item.type,
+      message: `${item.title}: ${item.body}`,
+    }));
+
+    const webhookDelivery = await sendActionableWebhook({
+      url: resolvedWebhookUrl,
+      source: 'cli.tick',
+      timestamp: nowIso,
+      inboxAdded,
+      changedProviders: changedProviderNames,
+      alerts: webhookAlerts,
+      timeoutMs: resolvedWebhookTimeoutMs,
+      fetchImpl: options.fetchFn,
+    });
+
     const summary: TickRunSummary = {
       timestamp: nowIso,
       mode: requestedMode,
@@ -1155,26 +1191,13 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
       shrinkBlockReasons: Object.fromEntries(shrinkBlockReasons),
       // C4n/N6: missing models that no combo uses (reported, not proposed)
       absentNotInCombo: Object.fromEntries(absentNotInCombo),
+      webhookDelivery,
     };
 
     fs.writeFileSync(statusPath, JSON.stringify(summary, null, 2), 'utf8');
 
     const logLine = `${nowIso} mode=${effectiveMode} requests=${totalRequests} changed=${changedProviders} unchanged=${unchangedProviders} backoff=${backoffSkipped} inbox_added=${inboxAdded} paid-requests=0 tokens=0 llm-calls=0 shrink_blocks=${JSON.stringify(Object.fromEntries(shrinkBlockReasons))}\n`;
     fs.appendFileSync(tickLogPath, logLine, 'utf8');
-
-    const webhook = options.webhookUrl ?? process.env['ROUTERSYNC_WEBHOOK_URL'];
-    if (webhook && inboxAdded > 0) {
-      try {
-        await (options.fetchFn ?? globalThis.fetch)(webhook, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ timestamp: nowIso, inboxAdded, changedProviders }),
-          signal: AbortSignal.timeout(5_000),
-        });
-      } catch {
-        // Non-fatal webhook failure
-      }
-    }
 
     if (options.toast && inboxAdded > 0 && !options.json) {
       console.log(`[routersync toast] ${inboxAdded} đề xuất mới trong inbox.`);

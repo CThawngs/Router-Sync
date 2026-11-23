@@ -116,6 +116,17 @@ export const AdoptSpecSchema = z.object({
   mode: z.enum(['guard', 'full']).default('guard'),
 });
 
+/**
+ * M2-02: Optional declarative outbound webhook section.
+ * URL scheme/credential/port checks run in `validateWebhookUrl` so rejected URLs
+ * produce structured `rejected_url` metadata rather than crashing config load.
+ */
+export const WebhookConfigSchema = z.object({
+  enabled: z.boolean().optional(),
+  url: z.string().optional(),
+  timeoutMs: z.number().optional(),
+});
+
 export const RouterSyncConfigSchema = z
   .object({
     version: z.literal(1),
@@ -137,6 +148,10 @@ export const RouterSyncConfigSchema = z
      * All other R2 checks (two scans, catalog floor) still apply.
      */
     'trust-low-match': z.array(z.string()).default([]),
+    /**
+     * M2-02: Optional outbound webhook configuration for actionable alerts.
+     */
+    webhook: WebhookConfigSchema.optional(),
   })
   .superRefine((data, ctx) => {
     // C4o/O2: Each router in config.yaml must use a distinct adapter.
@@ -187,3 +202,4 @@ export type RouterSyncConfig = z.infer<typeof RouterSyncConfigSchema>;
 export type RouterConfig = z.infer<typeof RouterConfigSchema>;
 export type ComboSpec = z.infer<typeof ComboSpecSchema>;
 export type AdoptSpec = z.infer<typeof AdoptSpecSchema>;
+export type WebhookConfig = z.infer<typeof WebhookConfigSchema>;

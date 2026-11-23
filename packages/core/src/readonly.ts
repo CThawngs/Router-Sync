@@ -108,3 +108,20 @@ export {
   type RouterDbConfigEntry,
   type RouterDbConfigLike,
 } from './sqlite/router-paths.js';
+
+/**
+ * M2-02: Read-only safe outbound actionable webhook helpers (zero DB write capability).
+ */
+export {
+  validateWebhookUrl,
+  redactWebhookPayload,
+  sendActionableWebhook,
+  type WebhookUrlRejectionReason,
+  type WebhookUrlValidationResult,
+  type ActionableWebhookAlert,
+  type ActionableWebhookPayload,
+  type WebhookDeliveryStatus,
+  type WebhookDeliveryResult,
+  type RedactWebhookOptions,
+  type SendActionableWebhookInput,
+} from './notify/webhook.js';

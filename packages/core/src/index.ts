@@ -82,6 +82,5 @@ export * from './profile/questions.js';
 export * from './writers/model-writer.js';
 // Centralized Router Model State reader
 export * from './domain/model-state.js';
-
-
-
+// M2-02: Shared outbound actionable webhook notifier
+export * from './notify/webhook.js';
