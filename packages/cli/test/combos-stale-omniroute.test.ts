@@ -61,7 +61,11 @@ function makeOmniDb(options: { withKeyValue?: boolean; disabled?: string[] } = {
 }
 
 function readOmni(file: string) {
-  return readRouterModelState('omniroute', { dbPath: file, availabilitySource: 'direct' });
+  return readRouterModelState('omniroute', {
+    dbPath: file,
+    availabilitySource: 'direct',
+    excludeComboModelsFromAvailability: true,
+  });
 }
 
 afterEach(() => {
@@ -119,5 +123,39 @@ describe('C31 L1: bộ đọc trạng thái OmniRoute', () => {
     const file = makeOmniDb({ withKeyValue: false });
     const state = readOmni(file);
     expect(state.diagnostics?.missingTables.join(',')).toMatch(/key_value/);
+  });
+
+  it('M1-02: gộp comboModels vào availableModels khi excludeComboModelsFromAvailability mặc định / false, nhưng giữ nguyên stale-check khi true', () => {
+    const file = makeOmniDb({ disabled: ['alpha/model-one'] });
+
+    const stateDefault = readRouterModelState('omniroute', {
+      dbPath: file,
+      availabilitySource: 'direct',
+    });
+    const stateFalse = readRouterModelState('omniroute', {
+      dbPath: file,
+      availabilitySource: 'direct',
+      excludeComboModelsFromAvailability: false,
+    });
+    const stateStale = readRouterModelState('omniroute', {
+      dbPath: file,
+      availabilitySource: 'direct',
+      excludeComboModelsFromAvailability: true,
+    });
+
+    // Khi mặc định / false: combo step active được gộp vào availableModels, còn model bị tắt vẫn bị loại trừ.
+    for (const s of [stateDefault, stateFalse]) {
+      expect(s.availableModels.has('alpha/missing-model')).toBe(true);
+      expect(s.availableModels.has('delta/whatever')).toBe(true);
+      expect(s.availableModels.has('alpha/model-one')).toBe(false);
+      // Không được tạo bằng chứng giả cho provider chỉ xuất hiện trong combo.
+      expect(s.availabilityProviders.has('delta')).toBe(false);
+    }
+
+    // Khi excludeComboModelsFromAvailability = true (chế độ combos stale): combo không tự xác thực chính nó.
+    expect(stateStale.availableModels.has('alpha/missing-model')).toBe(false);
+    expect(stateStale.availableModels.has('delta/whatever')).toBe(false);
+    expect(classifyComboStep('alpha/missing-model', stateStale)).toBe('ABSENT');
+    expect(classifyComboStep('delta/whatever', stateStale)).toBe('UNVERIFIABLE');
   });
 });
