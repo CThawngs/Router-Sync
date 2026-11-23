@@ -54,15 +54,30 @@ Số in trực tiếp từ script, không gõ tay:
 node tools/agent/ci-stats.mjs
 ```
 
-Nền hiện tại (khi viết trang này):
+Nền hiện tại (lần chạy 2026-11-23, `main` = `c28b7fb`):
 
 | Chỉ số | Giá trị |
 |---|---|
-| Cửa sổ | 100 run gần nhất, từ 2026-11-17 |
-| `push` trên `main` xanh lần đầu | 17/22 |
-| Commit của mình xanh lần đầu | 39/50 (78%) |
-| Chạy dependabot (tách riêng) | 38 |
-| Đỏ của mình | code=2, infra=0, unknown=6 |
+| Cửa sổ | 100 run gần nhất, từ 2026-11-17 (65 commit) |
+| `push` trên `main` xanh lần đầu | 23/27 |
+| `push` trên `main` xanh lần đầu **liên tiếp** (chuỗi hiện tại) | 17 (`009d5b4` → `c28b7fb`) |
+| Commit của mình xanh lần đầu | 53/65 (82%) |
+| Run đang chờ (loại khỏi mẫu) | 0 |
+| Chạy dependabot (tách riêng) | 23 |
+| Đỏ của mình | code=6, infra=0, unknown=3 |
+
+Dòng chuỗi liên tiếp in đúng dạng:
+
+```
+push on main consecutive green first attempt: 17 (firstSha=009d5b4 lastSha=c28b7fb)
+```
+
+Chuỗi đếm từ `push` mới nhất trên `main` lùi về, dừng ở commit đầu tiên không
+xanh ở lần chạy 1 (đỏ, rerun `attempt` > 1, hoặc không có run `CI`); run đang
+chờ không cộng, không cắt chuỗi. `firstSha` là commit cũ nhất của chuỗi,
+`lastSha` là commit mới nhất. Chuỗi chỉ thấy trong cửa sổ đã tải. Script gọi
+`gh` không qua shell (`gh.exe` trên Windows), nên Node 24 không in cảnh báo
+`[DEP0190]`: `stderr` = 0 byte.
 
 Dùng con số của lần chạy gần nhất, đừng dùng bảng này làm hằng số.
 
@@ -85,10 +100,22 @@ Dùng con số của lần chạy gần nhất, đừng dùng bảng này làm h
 
 ## 8. Lỗi e2e còn treo
 
-Run `44788053023` attempt 1: `verify (ubuntu-24.04-arm, node 22)` đỏ tại
-`e2e.test.ts:470` (daemon không trả lời health sau 20 s). Run có `pnpm build`,
-khác với các lần đỏ của flake-hunt (thiếu `dist`). Chưa giải thích, chưa tái
-hiện.
+Run `44788053023` attempt 1: `verify (ubuntu-24.04-arm, node 22)` đỏ ở assertion
+health của daemon (daemon không trả lời health sau 20 s). Assertion đó hiện nằm ở
+`e2e.test.ts:503` (`` expect(ok, `daemon health failed; ${diag()}`) ``; lúc run
+đó chạy là dòng `470`). Run có `pnpm build`. Chưa giải thích, chưa tái hiện.
+
+Nhãn `[E2E-DAEMON-HEALTH-SIGNAL]`: khi log job đỏ có chuỗi
+`daemon health failed; exited=`, `ci-watch.mjs` và `ci-stats.mjs` luôn xếp
+`code` (không bao giờ `infra` hay `unknown`, kể cả khi log có thêm chuỗi mạng
+hay cache) và gắn nhãn này vào bằng chứng. Job `continue-on-error` vẫn là
+`masked` nhưng giữ nhãn.
+
+`flake-hunt` đã có (đọc từ log, không chạy lại trong M1-01): trên `main` ngày
+2026-11-21, run `44911110988` (`ubuntu-latest`) và `44911108149`
+(`ubuntu-24.04-arm`), node 22, `test/e2e/e2e.test.ts`, 100 lần: `red=0`.
+`ci-stats` ngày 2026-11-23 xếp hai run `flake-hunt` đỏ cũ hơn (`44880559648`,
+`44871175326`) là `code` với nhãn `[E2E-DAEMON-HEALTH-SIGNAL]`.
 
 Theo dõi: khi `e2e.test.ts` đỏ ở lần 1 của một run `main` mà `flake-hunt` vẫn
 `red=0`, đó là tín hiệu của lỗi này, không phải nhiễu.

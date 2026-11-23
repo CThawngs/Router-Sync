@@ -1,6 +1,9 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { classifyStep, classifyLog, exitCodeFor, summarize, failedStepNames, stepNameFromLog } from '../../tools/agent/ci-watch.mjs';
+// Namespace import: a symbol added by M1-01 is read as a property, so a missing
+// export fails only the test that needs it instead of the whole file.
+import * as watch from '../../tools/agent/ci-watch.mjs';
 
 const TEST_LOG = `verify (ubuntu-latest, node 22)\tRun Tests\t2026-11-19T10:00:00Z AssertionError: expected true to be false
 verify (ubuntu-latest, node 22)\tRun Tests\t2026-11-19T10:00:01Z  some test printed: ETIMEDOUT while probing upstream
@@ -110,5 +113,64 @@ describe('C25 B0: masked is unconditional, unknown when there is no job log', ()
     assert.equal(out[0].kind, 'unknown');
     assert.equal(out[0].evidence, 'no job log');
     assert.equal(exitCodeFor(out), 12);
+  });
+});
+
+describe('M1-01 (b): E2E-DAEMON-HEALTH-SIGNAL is always a code failure', () => {
+  const MARKER = /\[E2E-DAEMON-HEALTH-SIGNAL\]/;
+  const E2E_JOB = { id: 31, name: 'verify (ubuntu-24.04-arm, node 22)', conclusion: 'failure', continue_on_error: false, steps: [{ name: 'Slow tests (e2e)', conclusion: 'failure' }] };
+  // The expanded vitest message from test/e2e/e2e.test.ts, next to strings
+  // that would otherwise look like infrastructure (network reset, cache).
+  const HEALTH_LOG = [
+    'verify (ubuntu-24.04-arm, node 22)\tSlow tests (e2e)\t2026-11-20T10:00:00Z daemon health failed; exited=false exitCode=null stdout= stderr=',
+    'verify (ubuntu-24.04-arm, node 22)\tSlow tests (e2e)\t2026-11-20T10:00:01Z fetch failed: ECONNRESET',
+    'verify (ubuntu-24.04-arm, node 22)\tSlow tests (e2e)\t2026-11-20T10:00:02Z Failed to save: Cache service responded with 503',
+  ].join('\n');
+
+  test('summarize: code with the marker, exit 11, even with infra strings and no assertion marker', () => {
+    const out = summarize([E2E_JOB], { 31: HEALTH_LOG });
+    assert.equal(out[0].kind, 'code');
+    assert.match(String(out[0].evidence), MARKER);
+    assert.equal(exitCodeFor(out), 11);
+  });
+
+  test('summarize: a non-test step carrying the signal is still code, never infra', () => {
+    const job = { ...E2E_JOB, id: 32, steps: [{ name: 'Build', conclusion: 'failure' }] };
+    const out = summarize([job], { 32: HEALTH_LOG.replaceAll('Slow tests (e2e)', 'Build') });
+    assert.equal(out[0].kind, 'code');
+    assert.match(String(out[0].evidence), MARKER);
+  });
+
+  test('classifyJob: code with the marker', () => {
+    const out = watch.classifyJob(E2E_JOB.name, 'failure', HEALTH_LOG, 'failure');
+    assert.equal(out.kind, 'code');
+    assert.match(String(out.evidence), MARKER);
+  });
+
+  test('a continue-on-error job stays masked but keeps the marker', () => {
+    const arm = { ...E2E_JOB, id: 33, name: 'verify (windows-11-arm, node 22)', continue_on_error: true };
+    const out = summarize([arm], { 33: HEALTH_LOG });
+    assert.equal(out[0].kind, 'masked');
+    assert.match(String(out[0].evidence), MARKER);
+  });
+
+  test('detectDaemonHealthSignal needs the exact `daemon health failed; exited=` text', () => {
+    assert.equal(typeof watch.detectDaemonHealthSignal, 'function', 'detectDaemonHealthSignal must be exported');
+    assert.equal(watch.detectDaemonHealthSignal(HEALTH_LOG), true);
+    assert.equal(watch.detectDaemonHealthSignal('daemon health failed; ${diag()}'), false);
+    assert.equal(watch.detectDaemonHealthSignal('Failed to restore: Cache service responded with 400'), false);
+  });
+});
+
+describe('M1-01 (c): gh resolves without a shell', () => {
+  test('gh.exe on Windows, gh elsewhere; spawn options carry no shell', () => {
+    assert.equal(typeof watch.ghExecutable, 'function', 'ghExecutable must be exported');
+    assert.equal(watch.ghExecutable('win32'), 'gh.exe');
+    assert.equal(watch.ghExecutable('linux'), 'gh');
+    assert.equal(watch.ghExecutable('darwin'), 'gh');
+    const options = watch.ghSpawnOptions(1024);
+    assert.equal('shell' in options, false);
+    assert.equal(options.maxBuffer, 1024);
+    assert.equal(options.encoding, 'utf8');
   });
 });
