@@ -8,6 +8,10 @@
 import { loadConfigFile } from '../config/loader.js';
 import { createAdapterForRouter, getRouterReadBackInfo } from '../adapters.js';
 import { hasWrittenEvidence } from '@routersync/core';
+import {
+  normalizeReadBackLevel,
+  type CanonicalReadBackLevel,
+} from '@routersync/adapter-sdk';
 
 export interface StatusCommandOptions {
   configPath?: string;
@@ -25,6 +29,7 @@ export interface RouterStatusItem {
     message?: string | undefined;
   };
   readBackLevel: 'full' | 'existence-only' | 'db-only (degraded)';
+  canonicalReadBackLevel?: CanonicalReadBackLevel | undefined;
   degradedReason?: string | undefined;
   keyName?: string | undefined;
   keyScope?: 'client' | 'elevated' | undefined;
@@ -66,6 +71,7 @@ export async function runStatusCommand(options: StatusCommandOptions): Promise<v
     const readBackLevel: 'full' | 'existence-only' | 'db-only (degraded)' = isLiveHealthy
       ? readBackInfo.level
       : 'db-only (degraded)';
+    const canonicalReadBackLevel = normalizeReadBackLevel(readBackLevel);
 
     const degradedReason = isLiveHealthy
       ? readBackInfo.reason
@@ -102,6 +108,7 @@ export async function runStatusCommand(options: StatusCommandOptions): Promise<v
         message: health.message,
       },
       readBackLevel,
+      canonicalReadBackLevel,
       degradedReason,
       keyName: readBackInfo.keyName,
       keyScope: readBackInfo.keyScope,

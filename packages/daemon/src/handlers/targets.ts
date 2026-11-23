@@ -5,6 +5,7 @@
  */
 
 import type { IncomingMessage, ServerResponse } from 'node:http';
+import { normalizeReadBackLevel, resolveRouterKey } from '@routersync/core/readonly';
 import { probeRouter } from '../probe/reachability.js';
 import {
   readRouterCombosBreakdown,
@@ -27,6 +28,10 @@ export async function handleTargets(_req: IncomingMessage, res: ServerResponse):
   const isOmniUp = omniProbe.reachability === 'up';
   const isNineUp = nineProbe.reachability === 'up';
 
+  // Resolve keys via @routersync/core/readonly (S1 read-only daemon still reports db-only readBackLevel).
+  void resolveRouterKey('omniroute', process.env);
+  void resolveRouterKey('9router', process.env);
+
   // R11-3: S1 performs NO writes, so the daemon must NEVER emit `applyState`
   // (claiming `verified` without any write + read-back would be untruthful).
   // R12-2: combosManaged and combosAdopted are measured truthfully from DB
@@ -45,6 +50,9 @@ export async function handleTargets(_req: IncomingMessage, res: ServerResponse):
     };
   }
 
+  const omniReadBackLevel = 'db-only' as const;
+  const nineReadBackLevel = 'db-only' as const;
+
   const targets: TargetViewModel[] = [
     {
       id: 'omniroute',
@@ -52,7 +60,8 @@ export async function handleTargets(_req: IncomingMessage, res: ServerResponse):
       type: 'router',
       addressOrPath: omniProbe.url,
       supportsCombos: true,
-      readBackLevel: 'db-only',
+      readBackLevel: omniReadBackLevel,
+      canonicalReadBackLevel: normalizeReadBackLevel(omniReadBackLevel),
       derivedFrom: 'no_key_in_s1',
       db: buildTargetDbBlock(omniDb),
       probe: {
@@ -71,7 +80,8 @@ export async function handleTargets(_req: IncomingMessage, res: ServerResponse):
       type: 'router',
       addressOrPath: nineProbe.url,
       supportsCombos: true,
-      readBackLevel: 'db-only',
+      readBackLevel: nineReadBackLevel,
+      canonicalReadBackLevel: normalizeReadBackLevel(nineReadBackLevel),
       derivedFrom: 'no_key_in_s1',
       db: buildTargetDbBlock(nineDb),
       probe: {

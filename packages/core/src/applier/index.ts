@@ -5,6 +5,7 @@
  * Protocol: Dry-run -> Snapshot -> Write -> Read-back Verification -> Automatic Rollback.
  */
 
+import { normalizeReadBackLevel } from '@routersync/adapter-sdk';
 import type { RouterAdapter, ApplyResult, Plan } from '@routersync/adapter-sdk';
 
 export interface ApplySafeOptions {
@@ -115,6 +116,7 @@ async function executeSingleApply(
       planId: plan.id,
       readBackVerified: true,
       staleDetected: false,
+      canonicalReadBackLevel: 'db-only',
     };
   }
 
@@ -160,6 +162,14 @@ async function executeSingleApply(
   // 4. Execute Write
   const writeResult = await adapter.applyPlan(plan);
   if (!writeResult.success) {
+    let rollbackExecuted = false;
+    if (writeResult.staleDetected) {
+      try {
+        rollbackExecuted = await adapter.rollback(snapshot);
+      } catch {
+        rollbackExecuted = false;
+      }
+    }
     return {
       success: false,
       target: adapter.name,
@@ -167,7 +177,10 @@ async function executeSingleApply(
       planId: plan.id,
       readBackVerified: writeResult.readBackVerified ?? false,
       staleDetected: writeResult.staleDetected ?? false,
+      rollbackExecuted,
       readBackLevel: writeResult.readBackLevel,
+      canonicalReadBackLevel:
+        writeResult.canonicalReadBackLevel ?? normalizeReadBackLevel(writeResult.readBackLevel),
       degradedReason: writeResult.degradedReason,
       error: writeResult.error ?? 'Adapter write failed',
     };
@@ -252,6 +265,8 @@ async function executeSingleApply(
     readBackVerified: true,
     staleDetected: false,
     readBackLevel: writeResult.readBackLevel,
+    canonicalReadBackLevel:
+      writeResult.canonicalReadBackLevel ?? normalizeReadBackLevel(writeResult.readBackLevel),
     degradedReason: writeResult.degradedReason,
   };
 }

@@ -51,6 +51,7 @@ export interface TargetViewModel {
   combosManaged?: number | undefined;
   combosAdopted?: number | undefined;
   readBackLevel?: 'full' | 'existence-only' | 'db-only' | 'db-only (degraded)' | undefined;
+  canonicalReadBackLevel?: 'api-verified' | 'existence-only' | 'db-only' | undefined;
   derivedFrom?: string | undefined;
   // R11-3: `applyState` is intentionally ABSENT from the S1 view model.
   // The daemon performs no writes, so it can never truthfully report

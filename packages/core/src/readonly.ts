@@ -13,6 +13,13 @@
  */
 
 import { createRequire } from 'node:module';
+import {
+  resolveRouterKey as resolveBaseRouterKey,
+  ROUTER_KEY_CANDIDATES,
+  type ResolvedRouterKey,
+  type ResolveRouterKeyOptions,
+  type RouterKeyScope,
+} from './router-key.js';
 const require = createRequire(import.meta.url);
 
 export interface ReadOnlySqliteStatement {
@@ -125,3 +132,39 @@ export {
   type RedactWebhookOptions,
   type SendActionableWebhookInput,
 } from './notify/webhook.js';
+
+/**
+ * M2-03 G5: canonical read-back vocabulary, re-exported from adapter-sdk so the
+ * read-only entrypoint never needs to import the applier or a router database.
+ */
+export { normalizeReadBackLevel, type CanonicalReadBackLevel } from '@routersync/adapter-sdk';
+
+/**
+ * Centralized router key resolution, re-exported for read-only consumers
+ * (the daemon must import it from this entrypoint only).
+ */
+export { ROUTER_KEY_CANDIDATES };
+export type { RouterKeyScope, ResolvedRouterKey, ResolveRouterKeyOptions };
+
+/**
+ * Enhanced, read-only wrapper around the base resolver.
+ *
+ * A string third argument is a per-router `auth.apiKeyEnv` name: when that
+ * variable is set we report `{ name, scope: 'client' }` without ever reading or
+ * returning the secret value. Any other argument delegates to the base
+ * resolver unchanged.
+ */
+export function resolveRouterKey(
+  adapterId: string,
+  env: Record<string, string | undefined> = process.env,
+  optionsOrApiKeyEnv?: ResolveRouterKeyOptions | string
+): ResolvedRouterKey | null {
+  if (typeof optionsOrApiKeyEnv === 'string' && env[optionsOrApiKeyEnv]?.trim()) {
+    return { name: optionsOrApiKeyEnv, scope: 'client' };
+  }
+  return resolveBaseRouterKey(
+    adapterId,
+    env,
+    typeof optionsOrApiKeyEnv === 'string' ? undefined : optionsOrApiKeyEnv
+  );
+}

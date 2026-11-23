@@ -30,6 +30,7 @@ import type {
   RouterAdapter,
   Snapshot,
 } from '@routersync/adapter-sdk';
+import { normalizeReadBackLevel } from '@routersync/adapter-sdk';
 import {
   createSnapshotEntity,
   openBetterSqlite3,
@@ -381,6 +382,7 @@ export class NineRouterAdapter implements RouterAdapter {
         success: false, target: this.name, appliedAt, planId: plan.id,
         readBackVerified: false, staleDetected: false,
         readBackLevel: 'db-only', degradedReason: 'no-api-path',
+        canonicalReadBackLevel: normalizeReadBackLevel('db-only'),
         ttlStatus: NineRouterAdapter.TTL_STATUS,
         error: err instanceof Error ? err.message : String(err),
       };
@@ -395,6 +397,8 @@ export class NineRouterAdapter implements RouterAdapter {
     for (const add of plan.additions) recordManagedId(add.id, this.stateDir);
     for (const mod of plan.modifications) recordManagedId(mod.id, this.stateDir);
 
+    let lastHttpStatus: number | undefined;
+
     // AT-98: Try serving-path read-back via /v1/models (existence-only)
     // AT-113: probe the serving path unless EXPLICITLY isolated. `isolated: true`
     // means NEVER probe (any fetchFn); with the default fetch this is the real
@@ -404,14 +408,16 @@ export class NineRouterAdapter implements RouterAdapter {
       // write or the wait ceiling is reached. Gate L / AT-111 measured
       // serving-path reflection at 19,653–31,229 ms (n=3) — a single immediate
       // probe would mark a CORRECT live write STALE and roll it back wrongly.
-      // Poll interval 2 s; per-probe timeout 5 s; network errors keep polling
-      // until the ceiling (ceiling reached = STALE, never a silent success).
+      // Poll interval shrinks with short configured wait ceilings (tests use a
+      // short ceiling) but stays at 2 s for the production 60 s default.
       const headers: Record<string, string> = {};
       if (this.apiKey) {
         headers['Authorization'] = `Bearer ${this.apiKey}`;
       }
-      const pollIntervalMs = 2_000;
-      const deadline = Date.now() + this.servingWaitMs;
+      const defaultPollMs = 2_000;
+      const waitMs = this.servingWaitMs;
+      const pollIntervalMs = waitMs < defaultPollMs ? Math.max(25, Math.floor(waitMs / 4)) : defaultPollMs;
+      const deadline = Date.now() + waitMs;
       let lastReason = '';
       let servingPathUnreadable = false;
       for (;;) {
@@ -428,6 +434,7 @@ export class NineRouterAdapter implements RouterAdapter {
               listedIds = new Set(body.data.map((m) => m.id).filter(Boolean) as string[]);
             }
           } else {
+            lastHttpStatus = res.status;
             // Non-OK: serving path cannot be read right now → db-only degraded
             // (spec 5.2), NOT STALE. Retry next cycle; never a false STALE.
             servingPathUnreadable = true;
@@ -435,6 +442,7 @@ export class NineRouterAdapter implements RouterAdapter {
           }
         } catch {
           // Endpoint unreachable right now → db-only degraded, NOT STALE.
+          // No lastHttpStatus is recorded here: network errors stay 'no-api-path'.
           servingPathUnreadable = true;
           break;
         }
@@ -447,6 +455,15 @@ export class NineRouterAdapter implements RouterAdapter {
               allFound = false;
               missingItem = `Added "${add.name || add.id}" not listed in /v1/models`;
               break;
+            }
+          }
+          if (allFound) {
+            for (const mod of plan.modifications) {
+              if (!listedIds.has(mod.id) && !listedIds.has(mod.name)) {
+                allFound = false;
+                missingItem = `Modified "${mod.name || mod.id}" not listed in /v1/models`;
+                break;
+              }
             }
           }
           if (allFound) {
@@ -467,6 +484,7 @@ export class NineRouterAdapter implements RouterAdapter {
               readBackVerified: true,
               staleDetected: false,
               readBackLevel: 'existence-only',
+              canonicalReadBackLevel: 'existence-only',
               applyState: 'verified',
               ttlStatus: 'verified-immediate',
             };
@@ -491,6 +509,7 @@ export class NineRouterAdapter implements RouterAdapter {
           readBackVerified: false,
           staleDetected: true,
           readBackLevel: 'existence-only',
+          canonicalReadBackLevel: 'existence-only',
           ttlStatus: 'verified-delayed',
           error:
             `Serving-path read-back STALE after ${this.servingWaitMs} ms wait ceiling ` +
@@ -518,6 +537,16 @@ export class NineRouterAdapter implements RouterAdapter {
       if (!byId.has(add.id)) { verified = false; mismatchReason = `Added "${add.id}" not in DB`; break; }
     }
     if (verified) {
+      for (const mod of plan.modifications) {
+        const found = byId.get(mod.id);
+        if (!found || found.models.length !== mod.models.length || found.models.some((m, i) => m !== mod.models[i])) {
+          verified = false;
+          mismatchReason = `Modified "${mod.id}" models mismatch in DB`;
+          break;
+        }
+      }
+    }
+    if (verified) {
       for (const delId of plan.deletions) {
         if (byId.has(delId)) { verified = false; mismatchReason = `Deleted "${delId}" still in DB`; break; }
       }
@@ -529,7 +558,8 @@ export class NineRouterAdapter implements RouterAdapter {
       readBackVerified: verified,
       staleDetected: !verified,
       readBackLevel: 'db-only (degraded)',
-      degradedReason: 'no-api-path',
+      canonicalReadBackLevel: 'db-only',
+      degradedReason: lastHttpStatus !== undefined ? `serving-path-http-${lastHttpStatus}` : 'no-api-path',
       // Spec §33.3 / AT-109: db-only + serving-path unconfirmed → written-pending-reload
       applyState: verified ? 'written-pending-reload' : undefined,
       ttlStatus: NineRouterAdapter.TTL_STATUS,

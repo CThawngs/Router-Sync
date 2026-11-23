@@ -67,6 +67,20 @@ export interface Plan {
 export type ReadBackLevel = 'full' | 'existence-only' | 'db-only' | 'db-only (degraded)';
 
 /**
+ * Canonical read-back vocabulary shared by adapters, CLI and daemon.
+ * `full` is reported as `api-verified`; every degraded/unknown value is `db-only`.
+ */
+export type CanonicalReadBackLevel = 'api-verified' | 'existence-only' | 'db-only';
+
+export function normalizeReadBackLevel(
+  level: ReadBackLevel | 'db-only' | 'api-verified' | undefined
+): CanonicalReadBackLevel {
+  if (level === 'full' || level === 'api-verified') return 'api-verified';
+  if (level === 'existence-only') return 'existence-only';
+  return 'db-only';
+}
+
+/**
  * Apply state (Spec §33.3, AT-109):
  * - 'verified': write persisted AND serving-path reflection confirmed (full/existence-only).
  * - 'written-pending-reload': write persisted to DB but serving-path reflection is
@@ -87,6 +101,7 @@ export interface ApplyResult {
   readBackVerified: boolean;
   staleDetected: boolean;
   readBackLevel?: ReadBackLevel | undefined;
+  canonicalReadBackLevel?: CanonicalReadBackLevel | undefined;
   degradedReason?: string | undefined;
   applyState?: ApplyState | undefined;
   error?: string | undefined;

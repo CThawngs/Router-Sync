@@ -10,6 +10,8 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as os from 'node:os';
 import type { Plan } from '@routersync/adapter-sdk';
+import { applyPlanSafe } from '@routersync/core';
+import { FakeRouter } from '../../../test/harness/fake-router.js';
 
 const require = createRequire(import.meta.url);
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
@@ -254,5 +256,156 @@ describe('NineRouterAdapter (Tier 3 SQLite + Health)', () => {
     } finally {
       fs.rmSync(stateDir, { recursive: true, force: true });
     }
+  });
+});
+
+/**
+ * M2-03 Phase 1 — Red-Before serving-path read-back tests.
+ * Every assertion below targets behavior that does not exist on unpatched main.
+ */
+describe('M2-03: 9Router serving-path HTTP read-back', () => {
+  let tmpDbPath: string;
+
+  beforeEach(() => {
+    tmpDbPath = path.join(
+      os.tmpdir(),
+      `9router_m203_${Date.now()}_${Math.random().toString(36).substring(2, 7)}.sqlite`
+    );
+    const db = new DatabaseSync(tmpDbPath);
+    db.exec(`
+      CREATE TABLE combos (
+        id TEXT PRIMARY KEY,
+        name TEXT UNIQUE NOT NULL,
+        kind TEXT,
+        models TEXT NOT NULL,
+        createdAt TEXT NOT NULL,
+        updatedAt TEXT NOT NULL
+      );
+      CREATE TABLE settings (
+        id INTEGER PRIMARY KEY CHECK (id = 1),
+        data TEXT NOT NULL
+      );
+      INSERT INTO settings (id, data) VALUES (1, '{"comboStrategies":{}}');
+    `);
+    db.close();
+  });
+
+  afterEach(() => {
+    if (fs.existsSync(tmpDbPath)) fs.unlinkSync(tmpDbPath);
+  });
+
+  function seed(combo: { id: string; name: string; models: string[] }): void {
+    const now = new Date().toISOString();
+    const db = new DatabaseSync(tmpDbPath);
+    db.prepare(
+      'INSERT INTO combos (id, name, kind, models, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?)'
+    ).run(combo.id, combo.name, null, JSON.stringify(combo.models), now, now);
+    db.close();
+  }
+
+  function rows(): Array<{ id: string; models: string }> {
+    const db = new DatabaseSync(tmpDbPath);
+    try {
+      return db.prepare('SELECT id, models FROM combos ORDER BY id').all() as Array<{
+        id: string;
+        models: string;
+      }>;
+    } finally {
+      db.close();
+    }
+  }
+
+  function makePlan(additions: Plan['additions'], modifications: Plan['modifications']): Plan {
+    return {
+      id: `plan_m203_${Math.random().toString(36).substring(2, 9)}`,
+      target: '9router',
+      timestamp: new Date().toISOString(),
+      additions,
+      modifications,
+      deletions: [],
+      reasons: {},
+    };
+  }
+
+  it('M2-03-T1: /v1/models delayed reflection is polled until the added/modified combos are served', async () => {
+    const fake = new FakeRouter({ name: 'fake-nine-m203', reflectAfterPolls: 2 });
+    await fake.startServer();
+    try {
+      seed({ id: 'existing-9', name: 'existing-9', models: ['m0'] });
+      const initial = [
+        { id: 'existing-9', name: 'existing-9', strategy: 'fallback', models: ['m0'], managed: true },
+      ];
+      const added = { id: 'delayed-9', name: 'delayed-9', strategy: 'fallback', models: ['m1'], managed: true };
+      const modified = { ...initial[0]!, models: ['m0', 'm9'] };
+      fake.setPreApplySnapshot(initial as never);
+      fake.setReflectedCombos([modified, added] as never);
+      fake.resetCounters();
+
+      const adapter = new NineRouterAdapter({
+        dbPath: tmpDbPath,
+        clientApiKey: 'rs-m2-03-nine-test-key',
+        apiBaseUrl: fake.baseUrl,
+        servingWaitMs: 250,
+      });
+      const result = (await applyPlanSafe(adapter, makePlan([added], [modified]), {
+        dryRun: false,
+      })) as unknown as Record<string, unknown>;
+
+      expect(result['success']).toBe(true);
+      expect(result['readBackLevel']).toBe('existence-only');
+      expect(result['canonicalReadBackLevel']).toBe('existence-only');
+      expect(fake.modelsRequests).toBeGreaterThanOrEqual(2);
+    } finally {
+      await fake.stopServer();
+    }
+  });
+
+  it('M2-03-T4: stale serving path triggers applier rollback and SQLite returns to the exact pre-apply snapshot', async () => {
+    const fake = new FakeRouter({ name: 'fake-nine-stale', staleServingPath: true });
+    await fake.startServer();
+    try {
+      seed({ id: 'existing-9', name: 'existing-9', models: ['m0'] });
+      const initial = [
+        { id: 'existing-9', name: 'existing-9', strategy: 'fallback', models: ['m0'], managed: true },
+      ];
+      const added = { id: 'stale-9', name: 'stale-9', strategy: 'fallback', models: ['m1'], managed: true };
+      const modified = { ...initial[0]!, models: ['m0', 'm9'] };
+      fake.setPreApplySnapshot(initial as never);
+      fake.setReflectedCombos([modified, added] as never);
+      const before = rows();
+
+      const adapter = new NineRouterAdapter({
+        dbPath: tmpDbPath,
+        clientApiKey: 'rs-m2-03-nine-test-key',
+        apiBaseUrl: fake.baseUrl,
+        servingWaitMs: 200,
+      });
+      const result = (await applyPlanSafe(adapter, makePlan([added], [modified]), {
+        dryRun: false,
+      })) as unknown as Record<string, unknown>;
+
+      expect(result['success']).toBe(false);
+      expect(result['staleDetected']).toBe(true);
+      expect(result['rollbackExecuted']).toBe(true);
+      expect(rows()).toEqual(before);
+    } finally {
+      await fake.stopServer();
+    }
+  });
+
+  it('M2-03-T5: isolated NineRouter apply reports canonical db-only read-back', async () => {
+    seed({ id: 'existing-9', name: 'existing-9', models: ['m0'] });
+    const initial = [
+      { id: 'existing-9', name: 'existing-9', strategy: 'fallback', models: ['m0'], managed: true },
+    ];
+    const added = { id: 'isolated-9', name: 'isolated-9', strategy: 'fallback', models: ['m1'], managed: true };
+    const adapter = new NineRouterAdapter({ dbPath: tmpDbPath, isolated: true, servingWaitMs: 100 });
+    const result = (await applyPlanSafe(adapter, makePlan([added], []), {
+      dryRun: false,
+    })) as unknown as Record<string, unknown>;
+
+    expect(result['success']).toBe(true);
+    expect(result['readBackLevel']).toBe('db-only (degraded)');
+    expect(result['canonicalReadBackLevel']).toBe('db-only');
   });
 });

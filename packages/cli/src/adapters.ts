@@ -68,22 +68,36 @@ export function createAdapterForRouter(router: RouterConfig, stateDir?: string):
   const dbPath = resolveRouterDbPath(router);
 
   if (router.adapter === 'omniroute') {
+    // A per-router `auth.apiKeyEnv` takes precedence over the global candidate
+    // ladder. The enhanced resolver reports only the variable name, never the
+    // secret value. Without a custom name we fall back to the adapter id.
+    const keyArg = router.auth?.apiKeyEnv ?? router.adapter;
+    const customResolved = router.auth?.apiKeyEnv
+      ? resolveRouterKey(router.id, process.env, keyArg)
+      : null;
+    const customKey = customResolved ? process.env[customResolved.name] : undefined;
+
     const adminResolved = resolveRouterKey('omniroute', process.env, { scope: 'elevated' });
     const clientResolved = resolveRouterKey('omniroute', process.env, { scope: 'client' });
-    const adminKey = adminResolved ? process.env[adminResolved.name] : undefined;
-    const clientKey = clientResolved ? process.env[clientResolved.name] : undefined;
+    const adminKey = customKey ?? (adminResolved ? process.env[adminResolved.name] : undefined);
+    const clientKey = customKey ?? (clientResolved ? process.env[clientResolved.name] : undefined);
     return new OmniRouteAdapter({
       dbPath,
       healthUrl: router.baseUrl ? `${router.baseUrl}/api/health` : undefined,
       apiBaseUrl: router.baseUrl,
-      apiKey: adminKey ?? clientKey,
+      isolated: router.isolated,
+      servingWaitMs: router.servingWaitMs,
+      apiKey: customKey ?? adminKey ?? clientKey,
       adminApiKey: adminKey,
       clientApiKey: clientKey,
     });
   }
 
   if (router.adapter === '9router') {
-    const resolved = resolveRouterKey('9router', process.env);
+    const customResolved = router.auth?.apiKeyEnv
+      ? resolveRouterKey(router.id, process.env, router.auth.apiKeyEnv)
+      : null;
+    const resolved = customResolved ?? resolveRouterKey('9router', process.env);
     const clientKey = resolved ? process.env[resolved.name] : undefined;
     return new NineRouterAdapter({
       dbPath,
