@@ -1,19 +1,15 @@
 /**
  * packages/cli/src/commands/combos-probe.ts
  *
- * C32 M1 / C33 N1-N2: try a combo the way a real client does.
+ * C32 M1 / C33 N1-N2 / C43 R1.1: try a combo the way a real client does.
  *
  * The default run is a dry run: it prints what would be called and stops. A
  * real request needs `--yes-spend-tokens`, because every call costs the owner
  * tokens.
  *
  * Two modes:
- *   --mode combo  send one request per combo, model = combo name (like a client)
- *   --mode step   send one request per unique step, max_tokens = 1
- *
- * C33 N1: combo mode polls `usageHistory` while it waits, so "slow" (header
- * after 120 s) is separated from "hanging" (no header, with or without an
- * upstream usage row).
+ *   --mode combo  send requests per combo, model = combo name (like a client)
+ *   --mode step   send requests per unique step
  *
  * Nothing is written to the router: the 9Router database is opened read-only,
  * and the API key is read from it and never printed.
@@ -74,7 +70,6 @@ export const SLOW_THRESHOLD_MS = 120_000;
  */
 export function perStepConclusion(input: VerdictInput): StepVerdict {
   if (input.timedOut && !input.headerReceived) {
-    // The router answered nothing, but may still have done the upstream work.
     return input.usageRowAdded ? 'HANG-AFTER-USAGE' : 'TIMEOUT-NO-HEADER';
   }
   if (!input.headerReceived) {
@@ -104,11 +99,6 @@ export interface ComboConclusionInput {
 
 /**
  * C33 N1.3: split "slow" from "hanging".
- *
- * - header before the deadline: OK, or SLOW-OK when it took longer than the
- *   C32 threshold (120 s).
- * - no header by the deadline: HANG-AFTER-USAGE when upstream did the work
- *   (usage row seen) and HANG-NO-USAGE when it did not.
  */
 export function perComboConclusion(input: ComboConclusionInput): ComboVerdict {
   if (input.headerMs !== null) {
@@ -131,8 +121,9 @@ export interface RouterDb {
   apiKeyName: string;
 }
 
-function openRouterDb() {
-  const file = locateRouterDb('9router');
+function openRouterDb(dbPath?: string) {
+  const explicit = dbPath?.trim() || process.env['ROUTERSYNC_9ROUTER_DB']?.trim();
+  const file = explicit || locateRouterDb('9router');
   return openBetterSqlite3(file, { readOnly: true, busyTimeoutMs: 5000 });
 }
 
@@ -165,10 +156,10 @@ function parseSteps(raw: unknown): string[] {
 }
 
 /** Read combo steps and one usable API key. Read-only; the key is never printed. */
-export function readRouterState(): RouterDb {
+export function readRouterState(dbPath?: string): RouterDb {
   let db;
   try {
-    db = openRouterDb();
+    db = openRouterDb(dbPath);
   } catch (err) {
     throw new Error(
       `không mở được DB 9Router (${err instanceof Error ? err.message : String(err)}). Đặt ROUTERSYNC_9ROUTER_DB hoặc chạy trên máy có 9Router.`
@@ -208,6 +199,10 @@ export interface ProbeOptions {
   only?: string | undefined;
   baseUrl?: string | undefined;
   state?: RouterDb | undefined;
+  /** R1.1: đường dẫn DB SQLite của 9Router (hỗ trợ kiểm thử cô lập trong os.tmpdir()). */
+  dbPath?: string | undefined;
+  /** R1.1: số request đồng thời mỗi lượt ở mode combo (chỉ cho phép 1 hoặc 2, mặc định 1). */
+  concurrency?: number | undefined;
   comboTimeoutMs?: number | undefined;
   stepTimeoutMs?: number | undefined;
   /** C34 Q2: ghi MỌI dòng usage mới (mặc định chỉ dòng đầu). */
@@ -216,7 +211,7 @@ export interface ProbeOptions {
   maxTokens?: number | undefined;
   /** C34 Q2: tắt stream (mặc định bật). */
   stream?: boolean | undefined;
-  /** C34 Q3: mode step, lặp lại mỗi bước n lần. */
+  /** C34 Q3 / R1.1: lặp lại mỗi bước hoặc mỗi combo n lần. */
   repeat?: number | undefined;
   /** C40 X0: trần số request cho một lần chạy (mặc định 40). */
   budget?: number | undefined;
@@ -244,13 +239,19 @@ export const TIMELINE_POLL_MS = 1_000;
 export const MAX_TOKENS_LIMIT = 64;
 export const DEFAULT_MAX_TOKENS = 8;
 
-/** C34 Q2: một dòng usageHistory rút gọn (không có khoá). */
+/** C34 Q2 / R1.1: một dòng usageHistory rút gọn (không có khoá). */
 export interface UsageRow {
   atMs: number;
   provider: string;
   model: string;
   status: string | null;
+  promptTokens?: number | null | undefined;
   completionTokens: number | null;
+}
+
+interface SqliteUsageDeltaRow extends UsageRow {
+  id: number;
+  promptTokens: number | null;
 }
 
 const defaultSleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
@@ -266,6 +267,10 @@ export interface ComboProbeRow {
   verdict: StepVerdict | ComboVerdict;
   detail: string;
   usageServedBy: string | null;
+  /** R1.1: tổng promptTokens số học của các dòng usageHistory mới trong lượt gọi (hoặc null). */
+  promptTokens?: number | null | undefined;
+  /** R1.1: tổng completionTokens số học của các dòng usageHistory mới trong lượt gọi (hoặc null). */
+  completionTokens?: number | null | undefined;
   /** C33 N1: when the first usageHistory row appeared during this attempt. */
   firstUsageMs?: number | null;
   /** C34 Q2: mọi dòng usage mới trong lần gọi (chỉ khi bật timeline). */
@@ -301,10 +306,70 @@ function redact(text: string, secrets: string[]): string {
   return out.slice(0, 200);
 }
 
-function usageDelta(before: number, after: number): string | null {
+function readMaxUsageId(dbPath?: string): number | null {
+  try {
+    const db = openRouterDb(dbPath);
+    try {
+      const row = db
+        .prepare('SELECT COALESCE(MAX(id), 0) AS maxId FROM usageHistory')
+        .get() as { maxId?: number | null } | undefined;
+      return typeof row?.maxId === 'number' && Number.isFinite(row.maxId) ? row.maxId : 0;
+    } finally {
+      db.close();
+    }
+  } catch {
+    return null;
+  }
+}
+
+function readUsageSinceId(maxIdBefore: number, t0: number, dbPath?: string): SqliteUsageDeltaRow[] {
+  try {
+    const db = openRouterDb(dbPath);
+    try {
+      const rows = db
+        .prepare(
+          'SELECT id, timestamp, provider, model, status, promptTokens, completionTokens FROM usageHistory WHERE id > ? ORDER BY id ASC'
+        )
+        .all(maxIdBefore) as Array<{
+        id: number;
+        timestamp: string;
+        provider: string;
+        model: string;
+        status: string | null;
+        promptTokens: number | null;
+        completionTokens: number | null;
+      }>;
+      return rows.map((r) => {
+        const parsedTs = Date.parse(r.timestamp);
+        return {
+          id: r.id,
+          atMs: Number.isFinite(parsedTs) ? Math.max(0, parsedTs - t0) : 0,
+          provider: r.provider,
+          model: r.model,
+          status: r.status ?? null,
+          promptTokens: typeof r.promptTokens === 'number' && Number.isFinite(r.promptTokens) ? r.promptTokens : null,
+          completionTokens:
+            typeof r.completionTokens === 'number' && Number.isFinite(r.completionTokens) ? r.completionTokens : null,
+        };
+      });
+    } finally {
+      db.close();
+    }
+  } catch {
+    return [];
+  }
+}
+
+function sumNullableNumbers(values: Array<number | null | undefined>): number | null {
+  const nums = values.filter((v): v is number => typeof v === 'number' && Number.isFinite(v));
+  if (nums.length === 0) return null;
+  return nums.reduce((acc, v) => acc + v, 0);
+}
+
+function usageDelta(before: number, after: number, dbPath?: string): string | null {
   if (after <= before) return null;
   try {
-    const db = openRouterDb();
+    const db = openRouterDb(dbPath);
     try {
       const row = db
         .prepare('SELECT provider, model FROM usageHistory ORDER BY id DESC LIMIT 1')
@@ -357,7 +422,8 @@ async function callOnce(
   body: unknown,
   timeoutMs: number,
   fetchImpl: typeof fetch,
-  usageCount: () => number
+  usageCount: () => number,
+  dbPath?: string
 ): Promise<{ row: Omit<ComboProbeRow, 'combo'> }> {
   const startedAt = new Date().toISOString();
   const before = usageCount();
@@ -384,7 +450,7 @@ async function callOnce(
       verdict: classified.verdict as ComboProbeRow['verdict'],
       quota: classified.quota,
       detail,
-      usageServedBy: usageRowAdded ? usageDelta(before, after) : null,
+      usageServedBy: usageRowAdded ? usageDelta(before, after, dbPath) : null,
       firstUsageMs: null,
     },
   };
@@ -405,7 +471,8 @@ export async function callComboWithUsage(
   sleepImpl: (ms: number) => Promise<void> = defaultSleep,
   clock: () => number = Date.now,
   usageRows: (t0: number) => UsageRow[] = () => [],
-  timeline = false
+  timeline = false,
+  dbPath?: string | undefined
 ): Promise<{ row: Omit<ComboProbeRow, 'combo'>; firstUsageMs: number | null; usage: UsageRow[] }> {
   const startedAt = new Date().toISOString();
   const t0 = clock();
@@ -413,23 +480,49 @@ export async function callComboWithUsage(
   let firstUsageMs: number | null = null;
   let stopped = false;
   const usage: UsageRow[] = [];
-  const seen = new Set<number>();
+  const seen = new Set<string>();
 
-  const collect = (t0: number) => {
-    const rows = usageRows(t0);
+  const collect = (startMs: number) => {
+    const rows = usageRows(startMs);
     for (const r of rows) {
-      if (seen.has(r.atMs)) continue;
-      seen.add(r.atMs);
-      usage.push(r);
+      const maybeId = (r as Partial<SqliteUsageDeltaRow>).id;
+      const dedupeKey = typeof maybeId === 'number' ? `id:${maybeId}` : `at:${r.atMs}:${r.provider}/${r.model}`;
+      if (seen.has(dedupeKey)) continue;
+      seen.add(dedupeKey);
+      const cleanRow: UsageRow = {
+        atMs: r.atMs,
+        provider: r.provider,
+        model: r.model,
+        status: r.status,
+        completionTokens: r.completionTokens,
+        ...(r.promptTokens !== undefined ? { promptTokens: r.promptTokens } : {}),
+      };
+      usage.push(cleanRow);
     }
     if (usage.length > 0 && firstUsageMs === null) {
       firstUsageMs = usage[0]?.atMs ?? clock() - t0;
     }
   };
 
+  let wakePoll: (() => void) | null = null;
+  const waitPoll = (ms: number): Promise<void> => {
+    if (sleepImpl !== defaultSleep) return sleepImpl(ms);
+    return new Promise<void>((resolve) => {
+      const timer = setTimeout(() => {
+        wakePoll = null;
+        resolve();
+      }, ms);
+      wakePoll = () => {
+        clearTimeout(timer);
+        wakePoll = null;
+        resolve();
+      };
+    });
+  };
+
   const poll = (async () => {
     while (!stopped) {
-      await sleepImpl(pollMs);
+      await waitPoll(pollMs);
       if (stopped) return;
       if (timeline) collect(t0);
       else if (usageCount() > before && firstUsageMs === null) {
@@ -442,6 +535,7 @@ export async function callComboWithUsage(
 
   const res = await sendAndRead(url, apiKey, body, timeoutMs, fetchImpl);
   stopped = true;
+  if (wakePoll !== null) (wakePoll as () => void)();
   await poll.catch(() => undefined);
   if (timeline) collect(t0);
   if (firstUsageMs === null && usageCount() > before) firstUsageMs = clock() - t0;
@@ -465,7 +559,9 @@ export async function callComboWithUsage(
       totalMs: res.totalMs,
       verdict,
       detail: redact(res.text, [apiKey]),
-      usageServedBy: usageRowAdded ? usageDelta(before, after) : null,
+      usageServedBy: usageRowAdded ? usageDelta(before, after, dbPath) : null,
+      promptTokens: sumNullableNumbers(usage.map((u) => u.promptTokens)),
+      completionTokens: sumNullableNumbers(usage.map((u) => u.completionTokens)),
       firstUsageMs,
       usageRows: timeline ? usage : undefined,
     },
@@ -502,9 +598,9 @@ function comboTimeoutFor(options: ProbeOptions): number {
   return bounded * 1000;
 }
 
-function readComboStrategies(): Record<string, string> {
+function readComboStrategies(dbPath?: string): Record<string, string> {
   try {
-    const db = openRouterDb();
+    const db = openRouterDb(dbPath);
     try {
       const combos = db.prepare('SELECT name FROM combos ORDER BY name').all() as Array<{ name: string }>;
       const raw = db.prepare('SELECT data FROM settings WHERE id = 1').get() as { data?: string } | undefined;
@@ -547,6 +643,11 @@ function printDryRun(
 }
 
 export async function runCombosProbeCommand(options: ProbeOptions = {}): Promise<ProbeReport> {
+  const concurrency = options.concurrency === undefined ? 1 : options.concurrency;
+  if (concurrency !== 1 && concurrency !== 2) {
+    throw new Error('--concurrency must be 1 or 2');
+  }
+
   const log = options.log ?? ((line: string) => console.log(line));
   const baseUrl = options.baseUrl ?? process.env['ROUTERSYNC_9ROUTER_BASE_URL'] ?? DEFAULT_BASE_URL;
   const mode: ProbeMode = options.mode ?? 'combo';
@@ -554,7 +655,7 @@ export async function runCombosProbeCommand(options: ProbeOptions = {}): Promise
   const maxTokens = Math.min(MAX_TOKENS_LIMIT, Math.max(1, Math.floor(options.maxTokens ?? DEFAULT_MAX_TOKENS)));
   const startedAt = new Date().toISOString();
 
-  const state = options.state ?? readRouterState();
+  const state = options.state ?? readRouterState(options.dbPath);
   const combos = selectCombos(state, options);
   if (combos.length === 0) throw new Error('no combo selected');
 
@@ -577,7 +678,7 @@ export async function runCombosProbeCommand(options: ProbeOptions = {}): Promise
       baseUrl,
       apiKeyName: state.apiKeyName,
       comboTimeoutSec: comboTimeoutMs / 1000,
-      strategies: options.strategyReport === true ? readComboStrategies() : undefined,
+      strategies: options.strategyReport === true ? readComboStrategies(options.dbPath) : undefined,
       stoppedEarly: 'dry-run',
       combos: combos.map((c) => c.name),
       uniqueSteps: uniqueSteps(combos).length,
@@ -590,14 +691,16 @@ export async function runCombosProbeCommand(options: ProbeOptions = {}): Promise
   const clock = options.now ?? Date.now;
   const deadline = clock() + (options.maxMinutes ?? 40) * 60_000;
   const fetchImpl = options.fetchImpl ?? globalThis.fetch;
-  // Mặc định: đọc usageHistory của 9Router. Khi máy không có DB router (CI, hoặc
-  // người dùng ở máy khác), trả 0 thay vì ném lỗi: phần đối chiếu "ai phục vụ"
-  // chỉ là phụ, không được làm chết cả lần đo.
+  const hasDbSource = Boolean(
+    options.dbPath?.trim() || process.env['ROUTERSYNC_9ROUTER_DB']?.trim() || !options.state
+  );
+
   const usageCount =
     options.usageCount ??
     (() => {
+      if (!hasDbSource) return 0;
       try {
-        const db = openRouterDb();
+        const db = openRouterDb(options.dbPath);
         try {
           return (db.prepare('SELECT COUNT(*) n FROM usageHistory').get() as { n: number }).n;
         } finally {
@@ -608,37 +711,6 @@ export async function runCombosProbeCommand(options: ProbeOptions = {}): Promise
       }
     });
 
-  // C34 Q2: đọc mọi dòng usage mới (provider, model, status, token ra).
-  const usageRows =
-    options.timeline === true
-      ? (t0: number): UsageRow[] => {
-          try {
-            const db = openRouterDb();
-            try {
-              const rows = db
-                .prepare(
-                  'SELECT timestamp, provider, model, status, completionTokens FROM usageHistory ORDER BY id DESC LIMIT 200'
-                )
-                .all() as Array<{ timestamp: string; provider: string; model: string; status: string | null; completionTokens: number | null }>;
-              return rows
-                .map((r) => ({
-                  atMs: Date.parse(r.timestamp) - t0,
-                  provider: r.provider,
-                  model: r.model,
-                  status: r.status ?? null,
-                  completionTokens: typeof r.completionTokens === 'number' ? r.completionTokens : null,
-                }))
-                .filter((r) => Number.isFinite(r.atMs) && r.atMs >= 0)
-                .sort((a, b) => a.atMs - b.atMs);
-            } finally {
-              db.close();
-            }
-          } catch {
-            return [];
-          }
-        }
-      : (_t0: number): UsageRow[] => [];
-
   const rows: ComboProbeRow[] = [];
   let consecutive429 = 0;
   let stoppedEarly: string | null = null;
@@ -647,51 +719,145 @@ export async function runCombosProbeCommand(options: ProbeOptions = {}): Promise
   let lastProvider: string | null = null;
   let lastRequestAtMs: number | null = null;
 
-  if (mode === 'combo') {
-    for (const combo of combos) {
-      if (clock() > deadline) {
-        stoppedEarly = 'max-minutes';
-        break;
+  const applyDeltaRows = (
+    out: { row: ComboProbeRow; firstUsageMs: number | null; usage: UsageRow[] },
+    deltaRows: SqliteUsageDeltaRow[]
+  ) => {
+    out.row.promptTokens = sumNullableNumbers(deltaRows.map((r) => r.promptTokens));
+    out.row.completionTokens = sumNullableNumbers(deltaRows.map((r) => r.completionTokens));
+    const lastRow = deltaRows.at(-1);
+    out.row.usageServedBy = lastRow ? `${lastRow.provider}/${lastRow.model}` : null;
+    if (options.timeline === true) {
+      const clean = deltaRows.map(({ id: _id, ...rest }) => rest);
+      out.usage = clean;
+      out.row.usageRows = clean;
+    }
+  };
+
+  const invokeComboAttempt = async (comboName: string, skipDeltaQuery = false) => {
+    const attemptStartMs = clock();
+    const maxUsageIdBefore = hasDbSource ? readMaxUsageId(options.dbPath) : null;
+    const attemptUsageCount =
+      options.usageCount ??
+      (maxUsageIdBefore !== null ? () => readMaxUsageId(options.dbPath) ?? maxUsageIdBefore : usageCount);
+    const attemptUsageRows =
+      options.timeline === true && maxUsageIdBefore !== null
+        ? (t0: number): UsageRow[] => readUsageSinceId(maxUsageIdBefore, t0, options.dbPath)
+        : (_t0: number): UsageRow[] => [];
+
+    const result = await callComboWithUsage(
+      `${baseUrl}/v1/chat/completions`,
+      state.apiKey,
+      {
+        model: comboName,
+        messages: [{ role: 'user', content: 'Trả lời đúng một từ: ok' }],
+        max_tokens: maxTokens,
+        stream: options.stream !== false,
+      },
+      comboTimeoutMs,
+      fetchImpl,
+      attemptUsageCount,
+      options.timeline === true ? TIMELINE_POLL_MS : USAGE_POLL_MS,
+      options.sleepImpl,
+      clock,
+      attemptUsageRows,
+      options.timeline === true,
+      hasDbSource ? options.dbPath : undefined
+    );
+
+    let promptTokens = result.row.promptTokens ?? null;
+    let completionTokens = result.row.completionTokens ?? null;
+    let usageServedBy = result.row.usageServedBy;
+    let timelineUsage = result.usage;
+
+    if (maxUsageIdBefore !== null && !skipDeltaQuery) {
+      const deltaRows = readUsageSinceId(maxUsageIdBefore, attemptStartMs, options.dbPath);
+      promptTokens = sumNullableNumbers(deltaRows.map((r) => r.promptTokens));
+      completionTokens = sumNullableNumbers(deltaRows.map((r) => r.completionTokens));
+      const lastRow = deltaRows.at(-1);
+      if (lastRow) {
+        usageServedBy = `${lastRow.provider}/${lastRow.model}`;
       }
-      if (consecutive429 >= MAX_CONSECUTIVE_429) {
-        stoppedEarly = `${MAX_CONSECUTIVE_429} lần 429 liên tiếp`;
-        break;
-      }
-      if (!budget.reserve(combo.name)) {
-        stoppedEarly = `budget=${budget.limit}`;
-        break;
-      }
-      lastProvider = combo.name;
-      lastRequestAtMs = clock();
-      const result = await callComboWithUsage(
-        `${baseUrl}/v1/chat/completions`,
-        state.apiKey,
-        {
-          model: combo.name,
-          messages: [{ role: 'user', content: 'Trả lời đúng một từ: ok' }],
-          max_tokens: maxTokens,
-          stream: options.stream !== false,
-        },
-        comboTimeoutMs,
-        fetchImpl,
-        usageCount,
-        options.timeline === true ? TIMELINE_POLL_MS : USAGE_POLL_MS,
-        options.sleepImpl,
-        clock,
-        usageRows,
-        options.timeline === true
-      );
-      if (result.row.httpStatus === 429) consecutive429 += 1;
-      else consecutive429 = 0;
-      rows.push({ combo: combo.name, ...result.row, model: combo.name });
       if (options.timeline === true) {
-        for (const u of result.usage) {
-          log(`  usage@${u.atMs}ms ${u.provider}/${u.model} status=${u.status ?? '-'} tokens_out=${u.completionTokens ?? '-'}`);
+        timelineUsage = deltaRows.map(({ id: _id, ...rest }) => rest);
+      }
+    }
+
+    const row: ComboProbeRow = {
+      combo: comboName,
+      ...result.row,
+      model: comboName,
+      usageServedBy,
+      promptTokens,
+      completionTokens,
+      usageRows: options.timeline === true ? timelineUsage : undefined,
+    };
+    return { row, firstUsageMs: result.firstUsageMs, usage: timelineUsage };
+  };
+
+  const recordComboAttempt = (out: Awaited<ReturnType<typeof invokeComboAttempt>>) => {
+    if (out.row.httpStatus === 429) consecutive429 += 1;
+    else consecutive429 = 0;
+    rows.push(out.row);
+    if (options.timeline === true) {
+      for (const u of out.usage) {
+        log(
+          `  usage@${u.atMs}ms ${u.provider}/${u.model} status=${u.status ?? '-'} tokens_in=${u.promptTokens ?? '-'} tokens_out=${u.completionTokens ?? '-'}`
+        );
+      }
+    }
+    log(
+      `${out.row.combo}\t${out.row.verdict}\thttp=${out.row.httpStatus ?? '-'}\theader=${out.row.headerMs ?? '-'}ms\tfirstByte=${out.row.firstByteMs ?? '-'}ms\ttotal=${out.row.totalMs}ms\ttokens_in=${out.row.promptTokens ?? '-'}\tusageAt=${out.firstUsageMs ?? '-'}ms\tusage=${out.row.usageServedBy ?? 'không có dòng usage'}`
+    );
+  };
+
+  if (mode === 'combo') {
+    const comboRepeats = Math.min(20, Math.max(1, Math.floor(options.repeat ?? 1)));
+    for (const combo of combos) {
+      for (let rep = 1; rep <= comboRepeats; rep += 1) {
+        if (clock() > deadline) {
+          stoppedEarly = 'max-minutes';
+          break;
+        }
+        if (consecutive429 >= MAX_CONSECUTIVE_429) {
+          stoppedEarly = `${MAX_CONSECUTIVE_429} lần 429 liên tiếp`;
+          break;
+        }
+        if (concurrency === 2) {
+          if (budget.limit - budget.count < 2) {
+            stoppedEarly = `budget=${budget.limit}`;
+            break;
+          }
+          budget.reserve(combo.name);
+          budget.reserve(combo.name);
+          lastProvider = combo.name;
+          lastRequestAtMs = clock();
+          const pairStartMs = clock();
+          const pairMaxIdBefore = hasDbSource ? readMaxUsageId(options.dbPath) : null;
+          const [outA, outB] = await Promise.all([
+            invokeComboAttempt(combo.name, pairMaxIdBefore !== null),
+            invokeComboAttempt(combo.name, pairMaxIdBefore !== null),
+          ]);
+          if (pairMaxIdBefore !== null) {
+            const pairDelta = readUsageSinceId(pairMaxIdBefore, pairStartMs, options.dbPath);
+            const mid = pairDelta.length <= 1 ? pairDelta.length : Math.ceil(pairDelta.length / 2);
+            applyDeltaRows(outA, pairDelta.slice(0, mid));
+            applyDeltaRows(outB, pairDelta.slice(mid));
+          }
+          recordComboAttempt(outA);
+          recordComboAttempt(outB);
+        } else {
+          if (!budget.reserve(combo.name)) {
+            stoppedEarly = `budget=${budget.limit}`;
+            break;
+          }
+          lastProvider = combo.name;
+          lastRequestAtMs = clock();
+          const out = await invokeComboAttempt(combo.name);
+          recordComboAttempt(out);
         }
       }
-      log(
-        `${combo.name}\t${result.row.verdict}\thttp=${result.row.httpStatus ?? '-'}\theader=${result.row.headerMs ?? '-'}ms\tfirstByte=${result.row.firstByteMs ?? '-'}ms\ttotal=${result.row.totalMs}ms\tusageAt=${result.firstUsageMs ?? '-'}ms\tusage=${result.row.usageServedBy ?? 'không có dòng usage'}`
-      );
+      if (stoppedEarly) break;
     }
   } else {
     const selected = uniqueSteps(combos).filter((s) => (options.only ? new RegExp(options.only).test(s) : true));
@@ -731,7 +897,8 @@ export async function runCombosProbeCommand(options: ProbeOptions = {}): Promise
           },
           options.stepTimeoutMs ?? STEP_TIMEOUT_MS,
           fetchImpl,
-          usageCount
+          usageCount,
+          hasDbSource ? options.dbPath : undefined
         );
         if (result.row.verdict === 'RATE-LIMITED') consecutive429 += 1;
         else consecutive429 = 0;
@@ -752,7 +919,7 @@ export async function runCombosProbeCommand(options: ProbeOptions = {}): Promise
     baseUrl,
     apiKeyName: state.apiKeyName,
     comboTimeoutSec: comboTimeoutMs / 1000,
-    strategies: options.strategyReport === true ? readComboStrategies() : undefined,
+    strategies: options.strategyReport === true ? readComboStrategies(options.dbPath) : undefined,
     stoppedEarly,
     combos: combos.map((c) => c.name),
     uniqueSteps: uniqueSteps(combos).length,

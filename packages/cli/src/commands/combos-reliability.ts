@@ -1,7 +1,7 @@
 /**
  * packages/cli/src/commands/combos-reliability.ts
  *
- * C37 V3: độ ổn định từng bước, dựa trên `combos probe --mode step`.
+ * C37 V3 / C43 R2: độ ổn định từng bước, dựa trên `combos probe --mode step`.
  * Mỗi bước: `rounds` vòng, mỗi vòng `repeat` request, cách `gapSec` giây,
  * hạn 30 s, max_tokens 8, stream bật, tuần tự.
  */
@@ -88,7 +88,7 @@ async function probeStep(
   };
 }
 
-export type ReliabilityLabel = 'RELIABLE' | 'SLOW' | 'RATE-LIMITED' | 'HANG' | 'DEAD';
+export type ReliabilityLabel = 'RELIABLE' | 'SLOW' | 'RATE-LIMITED' | 'LOW-SAMPLE' | 'HANG' | 'DEAD';
 
 export const RELIABLE_OK_MIN = 5;
 export const SLOW_P90_MS = 5_000;
@@ -121,11 +121,11 @@ export function labelStep(input: {
   p90Ms: number | null;
 }): ReliabilityLabel {
   if (input.timeoutOrNoHeader > 0) return 'HANG';
-  if (input.ok < 3 && input.rateLimited === 0) return 'DEAD';
   // 429 nhanh không làm combo treo, nhưng vẫn được ghi riêng để xếp sau bước RELIABLE.
   if (input.rateLimited > 0) return 'RATE-LIMITED';
   if (input.ok >= RELIABLE_OK_MIN && input.p90Ms !== null && input.p90Ms < SLOW_P90_MS) return 'RELIABLE';
   if (input.ok >= RELIABLE_OK_MIN) return 'SLOW';
+  if (input.ok > 0 && input.attempts < RELIABLE_OK_MIN && input.ok === input.attempts) return 'LOW-SAMPLE';
   return 'DEAD';
 }
 
@@ -195,7 +195,7 @@ export async function runReliability(options: ReliabilityOptions): Promise<Relia
     try {
       for (const step of recentQuotaSteps(readFileSync(file, 'utf8'), Date.now())) skippedQuota.add(step);
     } catch {
-      //Không đọc được thì không bỏ qua bước nào.
+      // Không đọc được thì không bỏ qua bước nào.
     }
   }
   const steps = interleaveProviders(targetSteps);
