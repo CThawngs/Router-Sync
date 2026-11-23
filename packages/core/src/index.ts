@@ -62,15 +62,16 @@ export type {
   SchemaIssue,
 } from './fingerprint/index.js';
 // Centralized router key resolution (least privilege, SPEC §31 / G0-5)
-export {
-  resolveRouterKey,
-  ROUTER_KEY_CANDIDATES,
-} from './router-key.js';
+// The enhanced wrapper accepts both `{ scope }` and a custom `apiKeyEnv` string.
+export { resolveRouterKey } from './readonly.js';
+export { ROUTER_KEY_CANDIDATES } from './router-key.js';
 export type {
   RouterKeyScope,
   ResolvedRouterKey,
   ResolveRouterKeyOptions,
 } from './router-key.js';
+// M2-03 G5: canonical read-back vocabulary (also available from core/readonly).
+export { normalizeReadBackLevel, type CanonicalReadBackLevel } from '@routersync/adapter-sdk';
 // Phase 3a: Secure Credential Broker
 export * from './credentials/index.js';
 // Phase 3d: Cross-platform paths and atomic writes (SPEC §32 / D25)

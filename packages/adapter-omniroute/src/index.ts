@@ -28,6 +28,7 @@ import type {
   RouterAdapter,
   Snapshot,
 } from '@routersync/adapter-sdk';
+import { normalizeReadBackLevel } from '@routersync/adapter-sdk';
 import {
   createSnapshotEntity,
   openBetterSqlite3,
@@ -113,6 +114,13 @@ export interface OmniRouteAdapterOptions {
   adminApiKey?: string | undefined;
   clientApiKey?: string | undefined;
   readBackTtlWaitMs?: number | undefined;
+  /**
+   * AT-113: when true, never probe the HTTP serving path — used for fully
+   * isolated copies (tests, lab sandboxes). Reporting stays db-only.
+   */
+  isolated?: boolean | undefined;
+  /** Serving-path wait ceiling; overrides readBackTtlWaitMs when provided. */
+  servingWaitMs?: number | undefined;
   fetchFn?: typeof fetch | undefined;
   /** Inject a SqliteDriver factory for testing (default: openBetterSqlite3). */
   openDb?: OpenSqliteDriver | undefined;
@@ -133,6 +141,8 @@ export class OmniRouteAdapter implements RouterAdapter {
   private adminApiKey?: string | undefined;
   private clientApiKey?: string | undefined;
   private readBackTtlWaitMs?: number | undefined;
+  private isolated: boolean;
+  private servingWaitMs?: number | undefined;
   private isCustomDbPath: boolean;
   private fetchFn: typeof fetch;
   private openDb: OpenSqliteDriver;
@@ -144,6 +154,8 @@ export class OmniRouteAdapter implements RouterAdapter {
     this.adminApiKey = options.adminApiKey ?? options.apiKey;
     this.clientApiKey = options.clientApiKey ?? options.apiKey;
     this.readBackTtlWaitMs = options.readBackTtlWaitMs;
+    this.isolated = options.isolated ?? false;
+    this.servingWaitMs = options.servingWaitMs;
     this.isCustomDbPath = Boolean(options.dbPath);
     this.fetchFn    = options.fetchFn    ?? globalThis.fetch;
     this.openDb     = options.openDb     ?? openBetterSqlite3;
@@ -275,6 +287,7 @@ export class OmniRouteAdapter implements RouterAdapter {
         success: false, target: this.name, appliedAt, planId: plan.id,
         readBackVerified: false, staleDetected: false,
         readBackLevel: 'db-only',
+        canonicalReadBackLevel: normalizeReadBackLevel('db-only'),
         error: err instanceof Error ? err.message : String(err),
       };
     } finally {
@@ -450,19 +463,24 @@ export class OmniRouteAdapter implements RouterAdapter {
     const clientResolved = resolveRouterKey('omniroute', process.env, { scope: 'client' });
     const adminKey = this.adminApiKey ?? (this.isCustomDbPath ? undefined : (adminResolved ? process.env[adminResolved.name] : undefined));
     const clientKey = this.clientApiKey ?? (this.isCustomDbPath ? undefined : (clientResolved ? process.env[clientResolved.name] : adminKey));
+    // A client-only session may still serve /api/combos; use whichever key we have.
+    const servingKey = adminKey ?? clientKey;
+    const waitMs = this.servingWaitMs ?? this.readBackTtlWaitMs ?? 12_000;
+    const defaultPollMs = 500;
+    const pollIntervalMs = waitMs < defaultPollMs ? Math.max(25, Math.floor(waitMs / 4)) : defaultPollMs;
+    let lastHttpStatus: number | undefined;
 
-    if (adminKey) {
-      // 'full' level: poll until cache refreshes up to TTL wait (OmniRoute combo expansion TTL ≤ 12 s)
-      const maxWaitMs = this.readBackTtlWaitMs ?? 12_000;
-      const startPoll = Date.now();
-      let lastReason = '';
+    if (!this.isolated && servingKey && this.apiBaseUrl) {
+      // Step A — full verification via GET /api/combos.
+      const startCombosPoll = Date.now();
+      let combosLastReason = '';
       let apiCombosEverOk = false;
 
       do {
         try {
           const res = await this.fetchFn(`${this.apiBaseUrl}/api/combos`, {
             method: 'GET',
-            headers: { Authorization: `Bearer ${adminKey}` },
+            headers: { Authorization: `Bearer ${servingKey}` },
           });
           if (res.ok) {
             apiCombosEverOk = true;
@@ -473,91 +491,125 @@ export class OmniRouteAdapter implements RouterAdapter {
                 success: true, target: this.name, appliedAt, planId: plan.id,
                 readBackVerified: true, staleDetected: false,
                 readBackLevel: 'full',
+                canonicalReadBackLevel: 'api-verified',
                 applyState: 'verified',
               };
             }
-            lastReason = verified.reason ?? 'unknown';
+            combosLastReason = verified.reason ?? 'unknown';
           } else {
-            lastReason = `HTTP ${res.status}`;
+            lastHttpStatus = res.status;
+            combosLastReason = `HTTP ${res.status}`;
+            // Auth failures and 5xx cannot recover by polling this endpoint.
+            if (res.status === 401 || res.status === 403 || res.status === 404 || res.status >= 500) break;
           }
         } catch (err) {
-          lastReason = err instanceof Error ? err.message : String(err);
+          combosLastReason = err instanceof Error ? err.message : String(err);
+          break;
         }
-        if (maxWaitMs === 0) break;
-        await sleep(Math.min(500, maxWaitMs));
-      } while (Date.now() - startPoll <= maxWaitMs);
+        if (waitMs === 0) break;
+        await sleep(Math.min(pollIntervalMs, waitMs));
+      } while (Date.now() - startCombosPoll <= waitMs);
 
-      // If /api/combos responded 200, cache didn't reflect changes in time -> STALE
+      // /api/combos answered 200 but never reflected the write within the
+      // window: the serving path is stale (not merely unreadable).
       if (apiCombosEverOk) {
         return {
           success: false, target: this.name, appliedAt, planId: plan.id,
           readBackVerified: false, staleDetected: true,
           readBackLevel: 'full',
-          error: `Read-back STALE via API: ${lastReason}`,
+          canonicalReadBackLevel: 'api-verified',
+          error: `Read-back STALE via API: ${combosLastReason}`,
         };
       }
-      // Otherwise (/api/combos was 404, network error, etc.), fall through to existence-only
-    }
+      // Otherwise fall through to the existence-only ladder (Step B).
 
-    if (clientKey) {
-      // Try existence-only via /v1/models with client key
-      try {
-        const modelsRes = await this.fetchFn(`${this.apiBaseUrl}/v1/models`, {
-          method: 'GET',
-          headers: { Authorization: `Bearer ${clientKey}` },
-        });
-        if (modelsRes.ok) {
-          const body = (await modelsRes.json()) as { data?: Array<{ id?: string }> };
-          if (Array.isArray(body?.data)) {
-            const modelIds = new Set(body.data.map((m) => m.id).filter(Boolean));
-            let allFound = true;
-            let missingItem = '';
+      // Step B — existence-only via GET /v1/models (client key when available).
+      const modelsKey = clientKey ?? adminKey;
+      const startModelsPoll = Date.now();
+      let modelsEverOk = false;
+      let modelsLastReason = '';
+      do {
+        try {
+          const modelsRes = await this.fetchFn(`${this.apiBaseUrl}/v1/models`, {
+            method: 'GET',
+            headers: { Authorization: `Bearer ${modelsKey}` },
+          });
+          if (modelsRes.ok) {
+            modelsEverOk = true;
+            const body = (await modelsRes.json()) as { data?: Array<{ id?: string }> };
+            if (Array.isArray(body?.data)) {
+              const modelIds = new Set(body.data.map((m) => m.id).filter(Boolean) as string[]);
+              let allFound = true;
+              let missingItem = '';
 
-            for (const add of plan.additions) {
-              if (!modelIds.has(add.id) && !modelIds.has(add.name)) {
-                allFound = false;
-                missingItem = `Added "${add.name || add.id}" not listed in /v1/models`;
-                break;
-              }
-            }
-
-            if (allFound) {
-              for (const delId of plan.deletions) {
-                if (modelIds.has(delId)) {
+              for (const add of plan.additions) {
+                if (!modelIds.has(add.id) && !modelIds.has(add.name)) {
                   allFound = false;
-                  missingItem = `Deleted "${delId}" still listed in /v1/models`;
+                  missingItem = `Added "${add.name || add.id}" not listed in /v1/models`;
                   break;
                 }
               }
-            }
+              if (allFound) {
+                for (const mod of plan.modifications) {
+                  if (!modelIds.has(mod.id) && !modelIds.has(mod.name)) {
+                    allFound = false;
+                    missingItem = `Modified "${mod.name || mod.id}" not listed in /v1/models`;
+                    break;
+                  }
+                }
+              }
+              if (allFound) {
+                for (const delId of plan.deletions) {
+                  if (modelIds.has(delId)) {
+                    allFound = false;
+                    missingItem = `Deleted "${delId}" still listed in /v1/models`;
+                    break;
+                  }
+                }
+              }
 
-            if (allFound) {
-              return {
-                success: true,
-                target: this.name,
-                appliedAt,
-                planId: plan.id,
-                readBackVerified: true,
-                staleDetected: false,
-                readBackLevel: 'existence-only',
-                applyState: 'verified',
-              };
+              if (allFound) {
+                return {
+                  success: true,
+                  target: this.name,
+                  appliedAt,
+                  planId: plan.id,
+                  readBackVerified: true,
+                  staleDetected: false,
+                  readBackLevel: 'existence-only',
+                  canonicalReadBackLevel: 'existence-only',
+                  applyState: 'verified',
+                };
+              }
+              modelsLastReason = missingItem;
             } else {
-              return {
-                success: false,
-                target: this.name,
-                appliedAt,
-                planId: plan.id,
-                readBackVerified: false,
-                staleDetected: true,
-                readBackLevel: 'existence-only',
-                error: `Read-back STALE via /v1/models: ${missingItem}`,
-              };
+              modelsLastReason = '/v1/models response has no data array';
             }
+          } else {
+            lastHttpStatus = modelsRes.status;
+            modelsLastReason = `HTTP ${modelsRes.status}`;
+            break;
           }
+        } catch (err) {
+          modelsLastReason = err instanceof Error ? err.message : String(err);
+          break;
         }
-      } catch {
-        // /v1/models error — fall through to db-only
+        if (waitMs === 0) break;
+        await sleep(Math.min(pollIntervalMs, waitMs));
+      } while (Date.now() - startModelsPoll <= waitMs);
+
+      if (modelsEverOk) {
+        return {
+          success: false,
+          target: this.name,
+          appliedAt,
+          planId: plan.id,
+          readBackVerified: false,
+          staleDetected: true,
+          readBackLevel: 'existence-only',
+          canonicalReadBackLevel: 'existence-only',
+          error: `Read-back STALE via /v1/models: ${modelsLastReason}`,
+        };
       }
     }
 
@@ -570,13 +622,21 @@ export class OmniRouteAdapter implements RouterAdapter {
     const readBackCombos = await this.readCombos();
     const verified = this.verifyDbReadBack(readBackCombos, plan);
 
+    const degradedReason =
+      this.isolated || !servingKey || !this.apiBaseUrl
+        ? 'no-serving-path-credentials'
+        : lastHttpStatus !== undefined && lastHttpStatus >= 400
+          ? `serving-path-http-${lastHttpStatus}`
+          : 'no-api-path';
+
     return {
       success: verified.ok,
       target: this.name, appliedAt, planId: plan.id,
       readBackVerified: verified.ok,
       staleDetected: !verified.ok,
       readBackLevel: 'db-only (degraded)',
-      degradedReason: 'no-serving-path-credentials',
+      canonicalReadBackLevel: 'db-only',
+      degradedReason,
       // Spec §33.3 / AT-109: db-only + serving-path unconfirmed → written-pending-reload
       applyState: verified.ok ? 'written-pending-reload' : undefined,
       ...(verified.ok ? {} : { error: `DB read-back mismatch: ${verified.reason}` }),
@@ -613,6 +673,27 @@ export class OmniRouteAdapter implements RouterAdapter {
       }
     }
 
+    // Modifications must be reflected with the exact models list, otherwise a
+    // stale record with the right id/name would be falsely accepted as served.
+    for (const mod of plan.modifications) {
+      const found = items.some((item) => {
+        if (typeof item !== 'object' || item === null) return false;
+        const rec = item as Record<string, unknown>;
+        const identityMatch =
+          (typeof rec['id'] === 'string' && rec['id'] === mod.id) ||
+          (typeof rec['name'] === 'string' && rec['name'] === mod.name);
+        if (!identityMatch) return false;
+        if (Array.isArray(rec['models'])) {
+          const models = rec['models'] as unknown[];
+          return models.length === mod.models.length && models.every((m, i) => m === mod.models[i]);
+        }
+        return true;
+      });
+      if (!found) {
+        return { ok: false, reason: `Modified combo "${mod.id}" not found via API (or models mismatch)` };
+      }
+    }
+
     for (const delId of plan.deletions) {
       const found = items.some((item) => {
         if (typeof item !== 'object' || item === null) return false;
@@ -640,6 +721,12 @@ export class OmniRouteAdapter implements RouterAdapter {
     for (const add of plan.additions) {
       const found = byId.get(add.id);
       if (!found) return { ok: false, reason: `Added combo "${add.id}" not in DB` };
+    }
+    for (const mod of plan.modifications) {
+      const found = byId.get(mod.id);
+      if (!found || found.models.length !== mod.models.length || found.models.some((m, i) => m !== mod.models[i])) {
+        return { ok: false, reason: `Modified combo "${mod.id}" models mismatch in DB` };
+      }
     }
     for (const delId of plan.deletions) {
       if (byId.has(delId)) return { ok: false, reason: `Deleted combo "${delId}" still in DB` };

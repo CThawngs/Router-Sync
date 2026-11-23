@@ -43,7 +43,7 @@
   - Persistent `verify-status.json` and unified request accounting (`paidRequests=0`, `tokens=0`).
   - Inbox proposal and alert generation for newly discovered or deprecating models.
   - Read-only MCP server with 24 tools, each one reading a real state file, ledger, schema or documentation tree; a tool reports `missing`/`INVALID_JSON` instead of inventing a value.
-- [ ] **S2 Slice: Grant Lifecycle & Human Review:**
+- [x] **S2 Slice: Grant Lifecycle & Human Review:**
   - Interactive approval token exchange and grant lifecycle management (ADR-MAINTAIN-02).
   - Outbound webhook notifications for actionable alerts.
   - Serving-path read-back verification across all active routers.

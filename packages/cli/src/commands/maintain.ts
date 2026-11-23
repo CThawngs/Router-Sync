@@ -39,6 +39,7 @@ import {
 import { classifyFree } from '../track/free-classify.js';
 import { applyPlanSafe, saveSnapshot } from '@routersync/core';
 import type { Plan, ComboDefinition } from '@routersync/adapter-sdk';
+import { normalizeReadBackLevel } from '@routersync/adapter-sdk';
 
 export interface MaintainPlanOptions {
   configPath?: string | undefined;
@@ -77,6 +78,7 @@ export interface MaintainCreateOptions {
   configPath?: string | undefined;
   stateDir?: string | undefined;
   json?: boolean | undefined;
+  dryRun?: boolean | undefined;
   /** Programmatic test seam only — never exposed as CLI flag in index.ts */
   isTTY?: boolean | undefined;
   promptFn?: ((promptText: string) => Promise<string>) | undefined;
@@ -838,14 +840,29 @@ export async function runMaintainCreateCommand(options: MaintainCreateOptions): 
     },
   };
 
-  const applyResult = await applyPlanSafe(adapter, targetPlan, { dryRun: false });
+  const applyResult = await applyPlanSafe(adapter, targetPlan, { dryRun: Boolean(options.dryRun) });
+  if (!applyResult.success && applyResult.staleDetected) {
+    console.error(`READBACK stale=yes rollback=${applyResult.rollbackExecuted ? 'yes' : 'no'}`);
+    process.exit(1);
+  }
   if (!applyResult.success) {
     throw new Error(`maintain create write failed: ${applyResult.error}`);
   }
 
   const grantId = activeGrant ? activeGrant.id : '0000000000000000';
   console.log(`MAINTAIN-APPLY changed=1 combos=${comboName} snapshot=${snapshot.id} grant=${grantId}`);
-  console.log('READBACK ok=yes');
+  const canonicalCreate =
+    applyResult.canonicalReadBackLevel ?? normalizeReadBackLevel(applyResult.readBackLevel);
+  if (options.dryRun) {
+    console.log('READBACK dry-run');
+  } else if (
+    applyResult.readBackVerified &&
+    (canonicalCreate === 'api-verified' || canonicalCreate === 'existence-only')
+  ) {
+    console.log(`READBACK ok=yes level=${canonicalCreate}`);
+  } else {
+    console.log(`READBACK db-only reason=${applyResult.degradedReason ?? 'no-serving-path'}`);
+  }
 
   if (options.json) {
     console.log(
@@ -1052,6 +1069,10 @@ export async function runMaintainApplyCommand(options: MaintainApplyOptions): Pr
   }
 
   const applyResult = await applyPlanSafe(adapter, targetPlan, { dryRun: Boolean(options.dryRun) });
+  if (!applyResult.success && applyResult.staleDetected) {
+    console.error(`READBACK stale=yes rollback=${applyResult.rollbackExecuted ? 'yes' : 'no'}`);
+    process.exit(1);
+  }
   if (!applyResult.success) {
     throw new Error(`maintain apply write failed: ${applyResult.error}`);
   }
@@ -1062,7 +1083,18 @@ export async function runMaintainApplyCommand(options: MaintainApplyOptions): Pr
   console.log(`PLAN-HASH ${planResult.planHash}`);
   const grantId = activeGrant ? activeGrant.id : '0000000000000000';
   console.log(`MAINTAIN-APPLY changed=${modifications.length} combos=${targetComboNames.join(',')} snapshot=${snapshot.id} grant=${grantId}`);
-  console.log('READBACK ok=yes');
+  const canonicalApply =
+    applyResult.canonicalReadBackLevel ?? normalizeReadBackLevel(applyResult.readBackLevel);
+  if (options.dryRun) {
+    console.log('READBACK dry-run');
+  } else if (
+    applyResult.readBackVerified &&
+    (canonicalApply === 'api-verified' || canonicalApply === 'existence-only')
+  ) {
+    console.log(`READBACK ok=yes level=${canonicalApply}`);
+  } else {
+    console.log(`READBACK db-only reason=${applyResult.degradedReason ?? 'no-serving-path'}`);
+  }
   console.log(`[routersync] maintain apply succeeded for combo '${options.only}'. Read-back verified.`);
 
   if (options.json) {
