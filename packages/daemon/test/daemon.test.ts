@@ -5,11 +5,19 @@ import { buildScheduleArtifacts } from '../../cli/src/commands/schedule.js';
 import { createScheduler, jitteredDelay, backoffDelay, readJobLog, setPaused, isPaused } from '../src/scheduler.js';
 import { compareFingerprints, verdictAgainstBaseline, hashRows, canonicalRow, type DbFingerprint } from '../src/fence.js';
 import { createDaemonServer, checkBearerToken, tokenFileGuidance } from '../src/server.js';
-import { setupDaemonFixture } from '../../../test/harness/daemon-fixture.js';
+import { FastLoop, type FastLoopOptions } from '../src/loop/fast-loop.js';
+import { DAEMON_FIXTURE_ENV_KEYS, setupDaemonFixture } from '../../../test/harness/daemon-fixture.js';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import * as http from 'node:http';
+import { createRequire } from 'node:module';
+
+const require = createRequire(import.meta.url);
+const Database = require('better-sqlite3') as new (file: string) => {
+  exec(sql: string): void;
+  close(): void;
+};
 
 describe('W4 daemon/schedule/capability', () => {
   it('capability registry ids unique, required ids present', () => {
@@ -173,6 +181,150 @@ describe('W4 daemon/schedule/capability', () => {
 
     await new Promise<void>((resolve) => server.close(() => resolve()));
     } finally {
+      fixture.restore();
+    }
+  });
+});
+
+describe('M2-02: FastLoop actionable webhook & daemon-fixture env isolation', () => {
+  it('M2-02-T2 / AT-127: setupDaemonFixture clears ambient ROUTERSYNC_WEBHOOK_URL and restores on teardown without altering DAEMON_FIXTURE_ENV_KEYS', async () => {
+    expect(DAEMON_FIXTURE_ENV_KEYS).not.toContain('ROUTERSYNC_WEBHOOK_URL');
+    const prev = process.env['ROUTERSYNC_WEBHOOK_URL'];
+    process.env['ROUTERSYNC_WEBHOOK_URL'] = 'http://127.0.0.1:59999/ambient-shell-hook';
+    try {
+      const fixture = await setupDaemonFixture();
+      try {
+        expect(process.env['ROUTERSYNC_WEBHOOK_URL']).toBeUndefined();
+      } finally {
+        fixture.restore();
+      }
+      expect(process.env['ROUTERSYNC_WEBHOOK_URL']).toBe('http://127.0.0.1:59999/ambient-shell-hook');
+    } finally {
+      if (prev !== undefined) process.env['ROUTERSYNC_WEBHOOK_URL'] = prev;
+      else delete process.env['ROUTERSYNC_WEBHOOK_URL'];
+    }
+  });
+
+  it('M2-02-T1 & M2-02-T2: FastLoop emits webhook once on drift transition, suppresses consecutive identical drift, and fires again after recovery + new drift', async () => {
+    const fixture = await setupDaemonFixture();
+    const receivedBodies: Array<Record<string, unknown>> = [];
+    let serverStatus = 200;
+
+    const hookServer = http.createServer((req, res) => {
+      const chunks: Buffer[] = [];
+      req.on('data', (c: Buffer) => chunks.push(c));
+      req.on('end', () => {
+        if (req.method === 'POST') {
+          try {
+            receivedBodies.push(JSON.parse(Buffer.concat(chunks).toString('utf8')) as Record<string, unknown>);
+          } catch {
+            receivedBodies.push({});
+          }
+        }
+        res.writeHead(serverStatus, { 'content-type': 'application/json' });
+        res.end('{"ok":true}');
+      });
+    });
+
+    await new Promise<void>((resolve) => hookServer.listen(0, '127.0.0.1', resolve));
+    const hookPort = (hookServer.address() as { port: number }).port;
+
+    try {
+      const loop = new FastLoop({
+        intervalMs: 60_000,
+        webhookUrl: `http://127.0.0.1:${hookPort}/fast-hook`,
+        webhookTimeoutMs: 2_000,
+      } as unknown as FastLoopOptions);
+
+      // Tick 1: Baseline -> 0 alerts, 0 POSTs
+      const s1 = await loop.checkOnce();
+      expect(s1.driftDetected).toBe(false);
+      expect(receivedBodies).toHaveLength(0);
+
+      // Introduce external drift into OmniRoute fixture SQLite DB
+      const db1 = new Database(fixture.omniDbPath);
+      try {
+        db1.exec(
+          `INSERT INTO combos (id, name, data) VALUES ('external-drift-1', 'external-drift-1', '{"strategy":"priority","models":["m1","m2"],"managed":false}');`
+        );
+      } finally {
+        db1.close();
+      }
+
+      // Tick 2: Initial drift transition -> 1 POST with schemaVersion '1.0'
+      const s2 = await loop.checkOnce();
+      expect(s2.driftDetected).toBe(true);
+      expect(receivedBodies).toHaveLength(1);
+      expect(receivedBodies[0]!['schemaVersion']).toBe('1.0');
+      expect(receivedBodies[0]!['event']).toBe('routersync.actionable_alert');
+      expect(receivedBodies[0]!['source']).toBe('daemon.fast_loop');
+      const sum2 = receivedBodies[0]!['summary'] as Record<string, unknown>;
+      expect(Number(sum2['driftCount'])).toBeGreaterThanOrEqual(1);
+      const alerts2 = receivedBodies[0]!['alerts'] as Array<Record<string, unknown>>;
+      expect(alerts2.length).toBeGreaterThanOrEqual(1);
+      expect(alerts2[0]!['kind']).toBe('router_drift');
+
+      // Tick 3: Identical consecutive unresolved drift -> suppressed (0 duplicate POSTs)
+      const s3 = await loop.checkOnce();
+      expect(s3.driftDetected).toBe(true);
+      expect(receivedBodies).toHaveLength(1);
+
+      // Tick 4: Recovery back to baseline -> 0 POSTs, resets drift fingerprint
+      const dbRecover = new Database(fixture.omniDbPath);
+      try {
+        dbRecover.exec(`DELETE FROM combos WHERE id = 'external-drift-1';`);
+      } finally {
+        dbRecover.close();
+      }
+      const s4 = await loop.checkOnce();
+      expect(s4.driftDetected).toBe(false);
+      expect(receivedBodies).toHaveLength(1);
+
+      // Tick 5: New drift after recovery -> fires again (total POSTs === 2), even on HTTP 500 non-fatal check
+      serverStatus = 500;
+      const dbRedrift = new Database(fixture.omniDbPath);
+      try {
+        dbRedrift.exec(
+          `INSERT INTO combos (id, name, data) VALUES ('external-drift-2', 'external-drift-2', '{"strategy":"priority","models":["m3"],"managed":false}');`
+        );
+      } finally {
+        dbRedrift.close();
+      }
+      const s5 = await loop.checkOnce();
+      expect(s5.driftDetected).toBe(true);
+      expect(receivedBodies).toHaveLength(2);
+      const del5 = (s5 as unknown as Record<string, unknown>)['webhookDelivery'] as
+        | Record<string, unknown>
+        | undefined;
+      expect(del5?.['status']).toBe('failed');
+      expect(del5?.['reason']).toBe('http_500');
+
+      // M2-02-T4 in FastLoop: live router port 20128 is rejected with 0 sockets opened
+      let rejectedFetchCalls = 0;
+      const rejectedLoop = new FastLoop({
+        intervalMs: 60_000,
+        webhookUrl: 'http://127.0.0.1:20128/v1/models',
+        fetchFn: (async () => {
+          rejectedFetchCalls++;
+          throw new Error('Socket must never open for forbidden router port');
+        }) as unknown as typeof globalThis.fetch,
+      } as unknown as FastLoopOptions);
+      await rejectedLoop.checkOnce();
+      const dbReject = new Database(fixture.omniDbPath);
+      try {
+        dbReject.exec(`DELETE FROM combos WHERE id = 'external-drift-2';`);
+      } finally {
+        dbReject.close();
+      }
+      const sReject = await rejectedLoop.checkOnce();
+      const delReject = (sReject as unknown as Record<string, unknown>)['webhookDelivery'] as
+        | Record<string, unknown>
+        | undefined;
+      expect(delReject?.['status']).toBe('rejected_url');
+      expect(delReject?.['reason']).toBe('forbidden_router_port');
+      expect(rejectedFetchCalls).toBe(0);
+    } finally {
+      await new Promise<void>((resolve) => hookServer.close(() => resolve()));
       fixture.restore();
     }
   });

@@ -76,6 +76,11 @@ interface EnvSnapshotEntry {
   value?: string | undefined;
 }
 
+interface FullEnvSnapshot {
+  entries: Map<DaemonFixtureEnvKey, EnvSnapshotEntry>;
+  prevWebhookUrl: EnvSnapshotEntry;
+}
+
 /**
  * Returns true when `p` resolves inside `os.tmpdir()` (case-normalized via
  * realpath so Windows drive-letter casing and 8.3 names cannot fool it).
@@ -238,11 +243,15 @@ function snapshotAndApplyEnv(
   omniProbeUrl: string,
   nineProbeUrl: string,
   stateDir: string
-): Map<DaemonFixtureEnvKey, EnvSnapshotEntry> {
-  const snapshot = new Map<DaemonFixtureEnvKey, EnvSnapshotEntry>();
+): FullEnvSnapshot {
+  const entries = new Map<DaemonFixtureEnvKey, EnvSnapshotEntry>();
   for (const key of DAEMON_FIXTURE_ENV_KEYS) {
-    snapshot.set(key, { hadValue: process.env[key] !== undefined, value: process.env[key] });
+    entries.set(key, { hadValue: process.env[key] !== undefined, value: process.env[key] });
   }
+  const prevWebhookUrl: EnvSnapshotEntry = {
+    hadValue: process.env['ROUTERSYNC_WEBHOOK_URL'] !== undefined,
+    value: process.env['ROUTERSYNC_WEBHOOK_URL'],
+  };
 
   process.env['ROUTERSYNC_CONFIG'] = configPath;
   process.env['OMNIROUTE_DB_PATH'] = omniDbPath;
@@ -250,17 +259,24 @@ function snapshotAndApplyEnv(
   process.env['OMNIROUTE_URL'] = omniProbeUrl;
   process.env['NINEROUTER_URL'] = nineProbeUrl;
   process.env['ROUTERSYNC_STATE_DIR'] = stateDir;
-  return snapshot;
+  // M2-02 (AT-127 compatible): clear ambient webhook URL without altering DAEMON_FIXTURE_ENV_KEYS
+  delete process.env['ROUTERSYNC_WEBHOOK_URL'];
+  return { entries, prevWebhookUrl };
 }
 
-function restoreEnvFromSnapshot(snapshot: Map<DaemonFixtureEnvKey, EnvSnapshotEntry>): void {
+function restoreEnvFromSnapshot(snapshot: FullEnvSnapshot): void {
   for (const key of DAEMON_FIXTURE_ENV_KEYS) {
-    const entry = snapshot.get(key);
+    const entry = snapshot.entries.get(key);
     if (entry?.hadValue) {
       process.env[key] = entry.value;
     } else {
       delete process.env[key];
     }
+  }
+  if (snapshot.prevWebhookUrl.hadValue) {
+    process.env['ROUTERSYNC_WEBHOOK_URL'] = snapshot.prevWebhookUrl.value;
+  } else {
+    delete process.env['ROUTERSYNC_WEBHOOK_URL'];
   }
 }
 
