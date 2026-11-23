@@ -1,0 +1,31 @@
+R2_OFFLINE changes=7 keptDead=1 keptRateLimited=9 rsFastUnchanged=true lowSampleCandidates=7
+R2_CANDIDATE openrouter/openrouter/free	LOW-SAMPLE	ok=1/1	p90=845ms
+R2_CANDIDATE openrouter/nvidia/nemotron-3.5-lightning:free	LOW-SAMPLE	ok=1/1	p90=872ms
+R2_CANDIDATE openrouter/nvidia/nemotron-3.5-super-vl:free	LOW-SAMPLE	ok=1/1	p90=901ms
+R2_CANDIDATE openrouter/nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free	LOW-SAMPLE	ok=1/1	p90=994ms
+R2_CANDIDATE openrouter/recursive/flint-v1.0:free	LOW-SAMPLE	ok=1/1	p90=1219ms
+R2_CANDIDATE openrouter/nvidia/nemotron-3-ultra-550b-a55b:free	LOW-SAMPLE	ok=1/1	p90=1274ms
+R2_CANDIDATE openrouter/baidu/ernie-5.5-flash-preview:free	LOW-SAMPLE	ok=1/1	p90=3312ms
+R2_KEPT_DEAD openrouter/inclusionai/ling-3.2-flash:free	DEAD	ok=0/1	p90=5584ms
+R1_GATE version=0.5.123 patchV1=false patchV2=false patchV3=false loaded=true portListening=true ponytailEnabled=true hasAgent1=true hasRsFast=false
+R1_RS_FAST=chưa đo reason=combo_not_in_db
+R1_MATRIX_START combo=9Router-Agent-1 seed=1806245027 cells=12 maxTokens=8 timeoutMs=60000 gapMs=30000
+R1_ROW combo=9Router-Agent-1	cell=stream_off_c2	rep=2	slot=1	stream=false	concurrency=2	http=200	header=1632ms	total=1632ms	verdict=OK	tokens_in=826	tokens_out=2	usage=cloudflare-ai/@cf/meta/llama-3.3-70b-instruct-fp8-fast
+R1_ROW combo=9Router-Agent-1	cell=stream_off_c2	rep=2	slot=2	stream=false	concurrency=2	http=200	header=1194ms	total=1197ms	verdict=OK	tokens_in=826	tokens_out=2	usage=cloudflare-ai/@cf/meta/llama-3.3-70b-instruct-fp8-fast
+R1_ROW combo=9Router-Agent-1	cell=stream_on_c1	rep=3	slot=1	stream=true	concurrency=1	http=200	header=1365ms	total=1367ms	verdict=OK	tokens_in=-	tokens_out=-	usage=-
+R1_ROW combo=9Router-Agent-1	cell=stream_off_c2	rep=3	slot=1	stream=false	concurrency=2	http=200	header=768ms	total=769ms	verdict=OK	tokens_in=826	tokens_out=2	usage=cloudflare-ai/@cf/meta/llama-3.3-70b-instruct-fp8-fast
+R1_ROW combo=9Router-Agent-1	cell=stream_off_c2	rep=3	slot=2	stream=false	concurrency=2	http=200	header=785ms	total=786ms	verdict=OK	tokens_in=826	tokens_out=2	usage=cloudflare-ai/@cf/meta/llama-3.3-70b-instruct-fp8-fast
+R1_ROW combo=9Router-Agent-1	cell=stream_on_c2	rep=3	slot=1	stream=true	concurrency=2	http=200	header=981ms	total=982ms	verdict=OK	tokens_in=-	tokens_out=-	usage=-
+R1_ROW combo=9Router-Agent-1	cell=stream_on_c2	rep=3	slot=2	stream=true	concurrency=2	http=200	header=718ms	total=719ms	verdict=OK	tokens_in=-	tokens_out=-	usage=-
+R1_ROW combo=9Router-Agent-1	cell=stream_on_c1	rep=2	slot=1	stream=true	concurrency=1	http=200	header=653ms	total=654ms	verdict=OK	tokens_in=-	tokens_out=-	usage=-
+R1_ROW combo=9Router-Agent-1	cell=stream_off_c1	rep=3	slot=1	stream=false	concurrency=1	http=200	header=702ms	total=703ms	verdict=OK	tokens_in=826	tokens_out=4	usage=cloudflare-ai/@cf/meta/llama-3.3-70b-instruct-fp8-fast
+R1_ROW combo=9Router-Agent-1	cell=stream_on_c1	rep=1	slot=1	stream=true	concurrency=1	http=200	header=631ms	total=632ms	verdict=OK	tokens_in=-	tokens_out=-	usage=-
+R1_ROW combo=9Router-Agent-1	cell=stream_on_c2	rep=2	slot=1	stream=true	concurrency=2	http=200	header=712ms	total=713ms	verdict=OK	tokens_in=-	tokens_out=-	usage=-
+R1_ROW combo=9Router-Agent-1	cell=stream_on_c2	rep=2	slot=2	stream=true	concurrency=2	http=200	header=667ms	total=668ms	verdict=OK	tokens_in=-	tokens_out=-	usage=-
+R1_ROW combo=9Router-Agent-1	cell=stream_off_c1	rep=1	slot=1	stream=false	concurrency=1	http=200	header=741ms	total=741ms	verdict=OK	tokens_in=826	tokens_out=4	usage=cloudflare-ai/@cf/meta/llama-3.3-70b-instruct-fp8-fast
+R1_ROW combo=9Router-Agent-1	cell=stream_off_c1	rep=2	slot=1	stream=false	concurrency=1	http=200	header=834ms	total=835ms	verdict=OK	tokens_in=826	tokens_out=4	usage=cloudflare-ai/@cf/meta/llama-3.3-70b-instruct-fp8-fast
+R1_ROW combo=9Router-Agent-1	cell=stream_on_c2	rep=1	slot=1	stream=true	concurrency=2	http=200	header=680ms	total=680ms	verdict=OK	tokens_in=-	tokens_out=-	usage=-
+R1_ROW combo=9Router-Agent-1	cell=stream_on_c2	rep=1	slot=2	stream=true	concurrency=2	http=200	header=1067ms	total=1068ms	verdict=OK	tokens_in=-	tokens_out=-	usage=-
+R1_ROW combo=9Router-Agent-1	cell=stream_off_c2	rep=1	slot=1	stream=false	concurrency=2	http=200	header=699ms	total=700ms	verdict=OK	tokens_in=826	tokens_out=2	usage=cloudflare-ai/@cf/meta/llama-3.3-70b-instruct-fp8-fast
+R1_ROW combo=9Router-Agent-1	cell=stream_off_c2	rep=1	slot=2	stream=false	concurrency=2	http=200	header=716ms	total=717ms	verdict=OK	tokens_in=826	tokens_out=2	usage=cloudflare-ai/@cf/meta/llama-3.3-70b-instruct-fp8-fast
+R1_CLASSIFY combo=9Router-Agent-1 count=18 conclusion="không tái hiện trong 18 mẫu"
