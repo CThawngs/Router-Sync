@@ -5,21 +5,29 @@
  * Dữ liệu tổng hợp, không chứa khóa/URL riêng.
  */
 
+import { createHash } from 'node:crypto';
+import * as fs from 'node:fs';
+import * as os from 'node:os';
+import * as path from 'node:path';
+import Database from 'better-sqlite3';
 import { describe, expect, it } from 'vitest';
 import type {
   AgentAppModel,
   AgentAppProvider,
 } from '@routersync/adapter-sdk';
+import { readRouterModelState } from '@routersync/core';
 import {
   buildRouterView,
   buildDriftReport,
   classifyModelDrift,
   driftKindOf,
+  extractAllIds,
   providerToRouter,
   shouldRedactProvider,
   stripProviderPrefix,
   tierToStatus,
   type DriftReport,
+  type DriftResult,
   type RouterDriftView,
   ProviderRedactor,
   checkIdFormatMismatch,
@@ -173,6 +181,126 @@ describe('classifyModelDrift', () => {
   });
 });
 
+describe('classifyModelDrift & buildDriftReport — OmniRoute alignment (M1-02)', () => {
+  it('phân loại đối xứng OK / DISABLED / MISSING cho OmniRoute từ availableIds, disabledIds và comboIds', () => {
+    const state = {
+      ...mockState(),
+      router: 'omniroute',
+      availableModels: new Set(['openai/synced-only', 'openai/combo-active']),
+      disabledModels: new Set(['openai/disabled-only', 'openai/disabled-in-combo']),
+      comboModels: new Set(['openai/combo-active', 'openai/disabled-in-combo']),
+    };
+    const view = viewFromState('omniroute', state);
+
+    const syncedRes = classifyModelDrift('omniroute/synced-only', 'omniroute', view);
+    expect(syncedRes.entry.status).toBe('OK');
+    expect(syncedRes.entry.inCombo).toBe(false);
+
+    const comboRes = classifyModelDrift('omniroute/combo-active', 'omniroute', view);
+    expect(comboRes.entry.status).toBe('OK');
+    expect(comboRes.entry.inCombo).toBe(true);
+
+    const disabledRes = classifyModelDrift('omniroute/disabled-only', 'omniroute', view);
+    expect(disabledRes.entry.status).toBe('DISABLED');
+    expect(disabledRes.entry.inCombo).toBe(false);
+
+    const disabledInComboRes = classifyModelDrift('omniroute/disabled-in-combo', 'omniroute', view);
+    expect(disabledInComboRes.entry.status).toBe('DISABLED');
+    expect(disabledInComboRes.entry.inCombo).toBe(true);
+    expect(disabledInComboRes.entry.reason).toMatch(/disabled/i);
+
+    const missingRes = classifyModelDrift('omniroute/unknown-ghost', 'omniroute', view);
+    expect(missingRes.entry.status).toBe('MISSING');
+  });
+
+  it('tích hợp readRouterModelState(omniroute) + buildDriftReport trên SQLite tạm (read-only sha256)', () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'rs-omni-drift-'));
+    try {
+      const dbPath = path.join(tmpDir, 'storage.sqlite');
+      const db = new Database(dbPath);
+      db.exec(`
+        CREATE TABLE key_value (namespace TEXT, key TEXT, value TEXT);
+        CREATE TABLE combos (id TEXT PRIMARY KEY, name TEXT, data TEXT);
+        CREATE TABLE radar_local_model_state (
+          provider TEXT,
+          model_id TEXT,
+          enabled INTEGER,
+          tombstoned INTEGER
+        );
+      `);
+      const insertKv = db.prepare('INSERT INTO key_value (namespace, key, value) VALUES (?, ?, ?)');
+      insertKv.run('syncedAvailableModels', 'openai:conn-1', JSON.stringify([{ id: 'synced-model' }]));
+      insertKv.run('customModels', 'openai', JSON.stringify([{ id: 'custom-model' }]));
+      insertKv.run('modelAliases', 'fast-alias', JSON.stringify('openai/aliased-model'));
+      db.prepare(
+        'INSERT INTO radar_local_model_state (provider, model_id, enabled, tombstoned) VALUES (?, ?, 0, 0)'
+      ).run('openai', 'disabled-combo-model');
+      db.prepare('INSERT INTO combos (id, name, data) VALUES (?, ?, ?)').run(
+        'c1',
+        'combo-main',
+        JSON.stringify({
+          models: [
+            { id: 's1', kind: 'model', providerId: 'openai', model: 'combo-only-model' },
+            { id: 's2', kind: 'model', providerId: 'openai', model: 'disabled-combo-model' },
+          ],
+        })
+      );
+      db.close();
+
+      const beforeSha = createHash('sha256').update(fs.readFileSync(dbPath)).digest('hex');
+      const state = readRouterModelState('omniroute', { dbPath });
+      const afterSha = createHash('sha256').update(fs.readFileSync(dbPath)).digest('hex');
+      expect(afterSha).toBe(beforeSha);
+
+      const view: RouterDriftView = {
+        router: 'omniroute',
+        state,
+        error: undefined,
+        comboNames: new Set(['c1', 'combo-main']),
+        aliasNames: new Set(),
+        availableIds: extractAllIds(state.availableModels),
+        disabledIds: extractAllIds(state.disabledModels),
+        comboIds: extractAllIds(state.comboModels),
+      };
+
+      const rawModels = [
+        'omniroute/synced-model',
+        'omniroute/custom-model',
+        'omniroute/aliased-model',
+        'omniroute/combo-only-model',
+        'omniroute/disabled-combo-model',
+        'omniroute/non-existent-model',
+      ];
+      const entries = rawModels.map((m) => ({
+        app: 'opencode',
+        ...classifyModelDrift(m, 'omniroute', view).entry,
+      }));
+      const result: DriftResult = {
+        app: 'opencode',
+        router: 'omniroute',
+        entries,
+        totals: computeTotalsFromEntries(entries),
+      };
+
+      const report = buildDriftReport(
+        [result],
+        [view],
+        new ProviderRedactor(),
+        new Set(['omniroute', 'openai']),
+        new Set(),
+        new Set(['openai'])
+      );
+
+      expect(report.totals.OK).toBe(4);
+      expect(report.totals.DISABLED).toBe(1);
+      expect(report.totals.MISSING).toBe(1);
+      expect(report.idFormatMismatchSuspected).toBe(false);
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true, maxRetries: 3, retryDelay: 50 });
+    }
+  });
+});
+
 describe('buildRouterView', () => {
   it('trả về view có cấu trúc đúng', async () => {
     const view = await buildRouterView('9router', [
@@ -208,7 +336,7 @@ describe('buildDriftReport', () => {
     };
 
     // Tạo results thủ công
-    const r1: import('../src/apps/drift.js').DriftResult = {
+    const r1: DriftResult = {
       app: 'hermes',
       router: '9router',
       entries: [
@@ -217,7 +345,7 @@ describe('buildDriftReport', () => {
       ],
       totals: { OK: 1, DISABLED: 0, MISSING: 1, UNKNOWN: 0, 'NOT-ROUTED': 0 },
     };
-    const r2: import('../src/apps/drift.js').DriftResult = {
+    const r2: DriftResult = {
       app: 'dsh',
       router: 'omniroute',
       entries: [
@@ -228,7 +356,7 @@ describe('buildDriftReport', () => {
 
     // Chỉ 9router là provider đã kết nối (app hermes tham chiếu)
     const connectedProviders = new Set(['9router']);
-    const report = buildDriftReport([r1, r2], [view9, viewOmni], new ProviderRedactor(), new Set(), new Set(), connectedProviders);
+    const report: DriftReport = buildDriftReport([r1, r2], [view9, viewOmni], new ProviderRedactor(), new Set(), new Set(), connectedProviders);
     expect(report.totals.OK).toBe(2);
     expect(report.totals.MISSING).toBe(1);
     // B, C trong availableModels của 9router nhưng không được app tham chiếu ⇒ UNUSED
@@ -286,7 +414,7 @@ describe('shouldRedactProvider + ProviderRedactor', () => {
 
 describe('checkIdFormatMismatch', () => {
   it('không suspected khi có ít nhất 1 model khớp', () => {
-    const r1: import('../src/apps/drift.js').DriftResult = {
+    const r1: DriftResult = {
       app: 'hermes',
       router: '9router',
       entries: [
@@ -309,7 +437,7 @@ describe('checkIdFormatMismatch', () => {
   });
 
   it('suspected khi availableModels > 0 nhưng 0 khớp', () => {
-    const r1: import('../src/apps/drift.js').DriftResult = {
+    const r1: DriftResult = {
       app: 'hermes',
       router: '9router',
       entries: [
@@ -347,7 +475,7 @@ describe('driftKindOf', () => {
 // Đột biến: bỏ "+ 1" trong `computeTotalsFromEntries` nên test này phải ĐỎ.
 describe('totals assertion mutation', () => {
   it('tổng các trạng thái bằng tổng số model app liệt kê', () => {
-    const entries = [
+    const entries: DriftResult['entries'] = [
       { app: 'hermes', router: '9router', name: '9router/A', modelId: 'A', provider: '9router', kind: 'model', status: 'OK', reason: 'ok', inCombo: false },
       { app: 'hermes', router: '9router', name: '9router/Z', modelId: 'Z', provider: '9router', kind: 'model', status: 'MISSING', reason: 'missing', inCombo: false },
       { app: 'dsh', router: 'omniroute', name: 'omniroute/X', modelId: 'X', provider: 'omniroute', kind: 'model', status: 'OK', reason: 'ok', inCombo: false },

@@ -269,19 +269,25 @@ export function readRouterModelState(
                     } else if (m && typeof m === 'object') {
                       const rec = m as Record<string, unknown>;
                       const provider = (rec['providerId'] ?? rec['provider'] ?? rec['prefix']) as string | undefined;
-                      const model = (rec['model'] ?? rec['modelId'] ?? rec['id']) as string | undefined;
+                      const model = (rec['model'] ?? rec['modelId']) as string | undefined;
                       if (typeof provider === 'string' && provider.trim() && typeof model === 'string' && model.trim()) {
                         stepId = `${provider.trim()}/${model.trim()}`;
                       } else if (typeof model === 'string' && model.includes('/')) {
-                        stepId = model.trim();
+                        const trimmed = model.trim();
+                        const slash = trimmed.indexOf('/');
+                        if (slash > 0 && slash < trimmed.length - 1) {
+                          stepId = trimmed;
+                        }
                       }
                     }
                     if (!stepId) continue;
                     if (stepId.includes('/')) {
                       const slashIdx = stepId.indexOf('/');
-                      const prov = stepId.slice(0, slashIdx);
-                      const mId = stepId.slice(slashIdx + 1);
+                      const prov = stepId.slice(0, slashIdx).trim();
+                      const mId = stepId.slice(slashIdx + 1).trim();
+                      if (!prov || !mId) continue;
                       const normId = mId.startsWith('models/') ? mId.slice('models/'.length) : mId;
+                      if (!normId) continue;
                       for (const alias of getProviderAliases(prov)) {
                         comboModels.add(`${alias}/${mId}`);
                         comboModels.add(`${alias}/${normId}`);
@@ -657,8 +663,13 @@ export function readRouterModelState(
               const id = typeof model['id'] === 'string' ? model['id'] : undefined;
               if (!id) continue;
               if (model['isHidden'] === true || model['tombstoned'] === true) {
-                disabledModels.add(`${provider}/${id}`);
-                disabledModels.add(`${provider}/${id.startsWith('models/') ? id : `models/${id}`}`);
+                const cleanId = id.replace(/^models\//, '');
+                if (cleanId) {
+                  for (const alias of getProviderAliases(provider)) {
+                    disabledModels.add(`${alias}/${cleanId}`);
+                    disabledModels.add(`${alias}/models/${cleanId}`);
+                  }
+                }
                 continue;
               }
               addPair(provider, id);
@@ -698,8 +709,15 @@ export function readRouterModelState(
               .all() as Array<{ provider: string; model_id: string; enabled: number; tombstoned: number }>;
             for (const r of rows) {
               if (r.enabled === 0 || r.tombstoned === 1) {
-                disabledModels.add(`${r.provider}/${r.model_id}`);
-                disabledModels.add(`${r.provider}/models/${String(r.model_id).replace(/^models\//, '')}`);
+                const rawProv = String(r.provider ?? '').trim();
+                const rawModelId = String(r.model_id ?? '').trim();
+                const cleanId = rawModelId.replace(/^models\//, '');
+                if (rawProv && cleanId) {
+                  for (const alias of getProviderAliases(rawProv)) {
+                    disabledModels.add(`${alias}/${cleanId}`);
+                    disabledModels.add(`${alias}/models/${cleanId}`);
+                  }
+                }
               }
             }
           } catch {
@@ -712,6 +730,25 @@ export function readRouterModelState(
       // `direct` is the only honest source for OmniRoute: there is no registry
       // shipped with RouterSync that mirrors its provider pages. `snapshot`
       // therefore behaves like `direct` and says so in the report note.
+      // M1-02: Merge active comboModels into availableModels unless explicitly
+      // excluded for staleness checks (`combos stale` passes excludeComboModelsFromAvailability=true
+      // so combo steps never self-validate or fabricate provider evidence).
+      if (!options.excludeComboModelsFromAvailability) {
+        for (const m of comboModels) {
+          const slashIdx = m.indexOf('/');
+          if (slashIdx > 0) {
+            const provider = m.slice(0, slashIdx).trim();
+            const modelId = m.slice(slashIdx + 1).trim();
+            if (!provider || !modelId) continue;
+            const clean = modelId.startsWith('models/') ? modelId.slice('models/'.length) : modelId;
+            if (!clean) continue;
+            availableModels.add(`${provider}/${clean}`);
+            availableModels.add(`${provider}/${modelId}`);
+          } else if (m.trim()) {
+            availableModels.add(m.trim());
+          }
+        }
+      }
       for (const m of customModels) availableModels.add(m);
       for (const m of aliasModels) availableModels.add(m);
       // A model the router itself disabled must not be reported as present.

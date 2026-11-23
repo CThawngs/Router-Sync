@@ -15,9 +15,9 @@
  *     MISSING  : model không có trong bất kỳ tập nào
  *     UNKNOWN  : versionMismatch hoặc không đọc được router
  *   OmniRoute:
- *     OK       : model có trong comboModels (tên combo)
- *     DISABLED : UNKNOWN với lý do 'omniroute-no-disable-source' (không có nguồn biết model bị tắt)
- *     MISSING  : model không có trong comboModels
+ *     OK       : model có trong availableModels (synced, custom, alias, hoặc combo active) hoặc comboModels
+ *     DISABLED : model có trong disabledModels (bị tắt qua radar_local_model_state hoặc customModels ẩn)
+ *     MISSING  : model không có trong disabledModels, availableModels hay comboModels
  *     UNKNOWN  : không đọc được router
  *   NOT-ROUTED : provider trực tiếp, không qua router
  *
@@ -337,8 +337,28 @@ export function classifyModelDrift(
     };
   }
 
-  // OmniRoute: chỉ OK nếu trong comboModels
-  if (isOmniRoute && view.comboIds.has(strippedId)) {
+  // OmniRoute: kiểm tra disabled trước availableIds / comboIds
+  if (isOmniRoute && view.disabledIds.has(strippedId)) {
+    return {
+      entry: {
+        router,
+        name: modelId,
+        modelId: strippedId,
+        provider,
+        kind,
+        status: 'DISABLED',
+        reason: inCombo
+          ? 'Inconsistent: disabled in router state but configured in active combo'
+          : 'Disabled in router state',
+        inCombo,
+      },
+      matchedRouter: true,
+    };
+  }
+
+  // OmniRoute: OK nếu có trong availableIds hoặc comboIds
+  if (isOmniRoute && (view.availableIds.has(strippedId) || view.comboIds.has(strippedId))) {
+    const inAvailable = view.availableIds.has(strippedId);
     return {
       entry: {
         router,
@@ -347,7 +367,12 @@ export function classifyModelDrift(
         provider,
         kind,
         status: 'OK',
-        reason: 'Active in OmniRoute combo',
+        reason:
+          inAvailable && inCombo
+            ? 'Available in OmniRoute state and configured in active combo'
+            : inCombo
+              ? 'Active in OmniRoute combo'
+              : 'Available in OmniRoute state (synced, custom, or alias)',
         inCombo,
       },
       matchedRouter: true,
@@ -373,7 +398,7 @@ export function classifyModelDrift(
     };
   }
 
-  // OmniRoute: chỉ OK nếu trong comboModels; không có trong combo ⇒ MISSING
+  // OmniRoute: không có trong disabledIds, availableIds hay comboIds ⇒ MISSING
   // UNKNOWN chỉ dùng khi không đọc được router (xử lý ở trên)
   if (isOmniRoute) {
     return {
