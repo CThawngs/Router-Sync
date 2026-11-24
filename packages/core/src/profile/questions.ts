@@ -26,3 +26,5 @@ export const INTERVIEW_QUESTIONS: InterviewQuestion[] = [
   { id: 'scanCycle', prompt: 'Chu kỳ quét (hourly, daily, weekly, manual)?', default: 'daily', hint: 'Chỉ 4 giá trị: hourly | daily | weekly | manual.' },
   { id: 'timezone', prompt: 'Múi giờ của bạn?', default: Intl.DateTimeFormat().resolvedOptions().timeZone ?? 'Asia/Ho_Chi_Minh', hint: 'Định dạng IANA, ví dụ Asia/Ho_Chi_Minh.' },
 ];
+
+export * from './adaptive-interview.js';

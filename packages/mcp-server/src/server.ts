@@ -24,7 +24,6 @@ import { OmniRouteAdapter } from '@routersync/adapter-omniroute';
 import { NineRouterAdapter } from '@routersync/adapter-9router';
 import {
   ComboDefinitionSchema,
-  INTERVIEW_QUESTIONS,
   ModelCapabilitiesSchema,
   PlanSchema,
   ResearchValidationError,
@@ -51,6 +50,11 @@ import {
   type TieredModelEntry,
 } from '@routersync/core';
 import { registerApplyPlanTool } from './apply-plan.js';
+import {
+  buildListStrategiesPayload,
+  buildProfileInterviewPayload,
+  registerAdaptiveInterviewPrompt,
+} from './strategy-interview.js';
 import { paginateArray } from './pagination.js';
 import { sanitizeObject, sanitizeUntrustedString } from './sanitize.js';
 import { searchDocs } from './docs.js';
@@ -934,28 +938,16 @@ export function createRouterSyncMcpServer(options: ServerOptions = {}): McpServe
   // 13. list_strategies
   server.tool(
     'list_strategies',
-    'Lists the routing strategies currently used by live combos, with the combos that use each one',
-    {},
-    async () => {
+    'Lists routing strategies currently used by live combos plus canonical credential-pool and combo-routing capabilities for 9Router, OmniRoute, and LiteLLM',
+    {
+      routerKind: z
+        .enum(['9router', 'omniroute', 'litellm'])
+        .optional()
+        .describe('Optional router kind filter (9router, omniroute, or litellm)'),
+    },
+    async (args) => {
       const combos = await getAllCombos();
-      const byStrategy = new Map<string, { strategy: string; combos: string[] }>();
-
-      for (const combo of combos) {
-        const strategy = combo.strategy ?? 'unspecified';
-        const entry = byStrategy.get(strategy) ?? { strategy, combos: [] };
-        entry.combos.push(combo.name);
-        byStrategy.set(strategy, entry);
-      }
-
-      const strategies = [...byStrategy.values()]
-        .map((entry) => ({ ...entry, comboCount: entry.combos.length }))
-        .sort((a, b) => b.comboCount - a.comboCount);
-
-      return respond({
-        source: 'strategy field of each readable combo',
-        comboCount: combos.length,
-        strategies,
-      });
+      return respond(buildListStrategiesPayload(combos, args.routerKind));
     }
   );
 
@@ -1503,45 +1495,34 @@ export function createRouterSyncMcpServer(options: ServerOptions = {}): McpServe
   // 24. profile_interview
   server.tool(
     'profile_interview',
-    'Returns the profile interview questions shared with the CLI, plus any answers already recorded in profile.yaml',
-    {},
-    async () => {
-      const paths = resolveStatePaths();
-      const exists = fs.existsSync(paths.profile);
-
-      let answers: Record<string, unknown> | null = null;
-      let profileError: string | null = null;
-      if (exists) {
-        try {
-          const parsed = parseYaml(fs.readFileSync(paths.profile, 'utf8')) as unknown;
-          if (parsed !== null && typeof parsed === 'object' && !Array.isArray(parsed)) {
-            answers = parsed as Record<string, unknown>;
-          }
-        } catch (error) {
-          profileError = error instanceof Error ? error.message : String(error);
-        }
-      }
-
-      const answeredIds = answers === null ? [] : Object.keys(answers);
-      const pending = INTERVIEW_QUESTIONS.filter((question) => !answeredIds.includes(question.id));
-
-      return respond({
-        questionCount: INTERVIEW_QUESTIONS.length,
-        questions: INTERVIEW_QUESTIONS.map((question) => ({
-          id: question.id,
-          prompt: question.prompt,
-          default: question.default,
-          hint: question.hint,
-        })),
-        profilePath: paths.profile,
-        profilePresent: exists,
-        profileBytes: exists ? statFile(paths.profile).bytes ?? null : null,
-        answers,
-        pendingQuestionIds: pending.map((question) => question.id),
-        profileError,
-      });
+    'Returns the <= 12-question adaptive profile interview or validates answers in memory with explicit assumptions and zero disk writes',
+    {
+      mode: z
+        .enum(['questions', 'evaluate'])
+        .optional()
+        .describe('Optional mode: questions (default) or evaluate'),
+      answers: z
+        .record(z.string(), z.unknown())
+        .optional()
+        .describe('Optional map of interview answers to validate in memory (zero disk writes)'),
+      existingProfile: z
+        .record(z.string(), z.unknown())
+        .optional()
+        .describe('Optional existing profile object for non-destructive merge preview'),
+    },
+    async (args) => {
+      return respond(
+        buildProfileInterviewPayload({
+          mode: args.mode,
+          answers: args.answers,
+          existingProfile: args.existingProfile,
+        })
+      );
     }
   );
+
+  // Register MCP Prompt for conversational <= 12-question adaptive interview (C45-WP6)
+  registerAdaptiveInterviewPrompt(server);
 
   // 26. submit_research (Tier 1 Ledger-Append Tool — C45-WP3)
   server.tool(

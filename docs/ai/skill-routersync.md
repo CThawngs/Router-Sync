@@ -1,7 +1,6 @@
 # Skill: RouterSync Assistant (Agent Harness Guide)
 
 This guide documents the interaction model, tool protocol, and available commands for AI agents connected to RouterSync via Model Context Protocol (MCP) or CLI.
-
 ---
 
 ## 1. Safety Boundary & Invariant Rules
@@ -126,3 +125,70 @@ When calling `status` or evaluating sync execution:
 // Step 2: Review inbox items
 { "tool": "inbox_list", "arguments": { "limit": 10 } }
 ```
+
+---
+
+## 7. Adaptive User Interview (`<= 12` Questions & Explicit Assumptions)
+
+When onboarding or updating a user's `profile.yaml` (`C45 WP6`), use the `routersync_adaptive_interview` MCP prompt or call `profile_interview`:
+
+1. **Hard Ceiling `<= 12` Questions:**
+   - **Everyday Core Track (`8` questions):** Covers `purpose`, `harnesses`, `routers`, `keyedProviders`, `budget` (`free-only` | `paid`), `priority` (`speed`, `quality`, `long-context`), `automationLevel` (`propose` | `auto-safe` | `off`), and `scanCycle` (`daily` | `weekly` | `manual`).
+   - **Power-User Follow-Ups (`0..4` optional questions, total `<= 12`):** Only asked when the user names multiple routers/providers or explicitly requests custom `routerMode`, `limits`, `favorites`, or `blockList`.
+2. **Explicit `assumptions[]` & Zero Factual Fabrication:**
+   - Vague preference answers (`"idk"`, `"not sure"`, `"whatever"`) select conservative defaults (`budget: "free-only"`, `automationLevel: "propose"`, `scanCycle: "daily"`) and record each assumption in `profile.assumptions[]`.
+   - **Never fabricate** factual inventory (`harnesses`, `routers`, `keyedProviders`, `favorites`, `allowList`); unstated factual fields remain `[]`.
+3. **Read-Only In-Memory MCP Validation (`0` Disk Writes):**
+   ```json
+   {
+     "tool": "profile_interview",
+     "arguments": {
+       "answers": {
+         "purpose": "everyday coding",
+         "harnesses": "not sure",
+         "routers": "LiteLLM",
+         "keyedProviders": "not sure",
+         "budget": "free-only",
+         "priority": "speed, long-context",
+         "automationLevel": "propose",
+         "scanCycle": "daily"
+       }
+     }
+   }
+   ```
+   Persist to disk via CLI: `routersync profile interview --adaptive --answers <json> --write`.
+
+---
+
+## 8. Router Strategy Capabilities & LiteLLM Config Adapter
+
+Call `list_strategies` (optionally with `{ "routerKind": "9router" | "omniroute" | "litellm" }`) to inspect both credential-pool rotation and combo-level routing strategies:
+
+- **9Router:** Credential pool rotation across `provider_nodes` + combo strategies `fallback` (default) and `round-robin`.
+- **OmniRoute:** Credential pool backoff across `provider_connections` + combo strategies `priority` (default), `weighted`, and `round-robin`.
+- **LiteLLM:** Multi-key deployment pool sharing a `model_name` (`simple-shuffle`, `least-busy`, `latency-based-routing`, `usage-based-routing`) + ordered cross-provider failover via `router_settings.fallbacks` (`[{ "routersync-coding": ["backup-1", "backup-2"] }]`).
+- **Reliability-Driven Combo Selection Rules:**
+  - `12` steps default (`15` for `free-only`, minimum `2` steps per Invariant `I3`, hard max `15`).
+  - `0%` `DEAD` or `HANG` steps (strictly excluded even if listed in `favorites`, with an explicit warning).
+  - `0` non-chat specialist models (`embedding`, `audio`, `moderation`, `image-gen`, `rerank`).
+  - Cross-provider round-robin interleaving (`adjacentSameProviderCount === 0` whenever possible).
+- **Lossless LiteLLM CLI Adapter (`routersync litellm`):**
+  - `routersync litellm inspect|plan|apply|rollback --config <path>` edits only targeted YAML CST byte spans, preserving `#` comments, unmanaged `model_list` entries, `os.environ/...` references (rejecting any plaintext API key with `LITELLM_PLAINTEXT_SECRET_FORBIDDEN`), `general_settings`, and `litellm_settings`, backed by `.routersync.bak` and automatic read-back rollback.
+
+---
+
+## 9. Per-Harness Integration Guides (All 9 Matrix Harnesses)
+
+Each harness in `packages/core/src/harness/harness-matrix.json` has a dedicated integration guide in `docs/ai/harnesses/`:
+
+| Harness ID | Display Name | Direction A Mode | Guide |
+|---|---|---|---|
+| `hermes` | Hermes Agent (Nous Research) | `write-adapter` | [harnesses/hermes.md](harnesses/hermes.md) |
+| `claude-code` | Anthropic Claude Code | `report-only` | [harnesses/claude-code.md](harnesses/claude-code.md) |
+| `codex` | OpenAI Codex CLI / Desktop / IDE | `report-only` | [harnesses/codex.md](harnesses/codex.md) |
+| `antigravity` | Google Antigravity | `report-only` | [harnesses/antigravity.md](harnesses/antigravity.md) |
+| `opencode` | OpenCode | `write-adapter` | [harnesses/opencode.md](harnesses/opencode.md) |
+| `cursor` | Cursor IDE & Cursor CLI | `report-only` | [harnesses/cursor.md](harnesses/cursor.md) |
+| `grok-bot` | xAI Grok Bot (Cloud) + `grok-build` CLI | `report-only` | [harnesses/grok-bot.md](harnesses/grok-bot.md) |
+| `openmausbot` | OpenMausBot (`config.json` only; `bots.json`/`routines.json` untouched) | `write-adapter` | [harnesses/openmausbot.md](harnesses/openmausbot.md) |
+| `dsh` | DeepSeek Harness (`dsh`) | `write-adapter` | [harnesses/dsh.md](harnesses/dsh.md) |
