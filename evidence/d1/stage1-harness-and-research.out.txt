@@ -1,0 +1,41 @@
+
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.12 [39m[90m<HOME>/.openmausbot/tmp/agy/4c4db2442357/rs-c45-evidence-d1[39m
+
+ [32m✓[39m [30m[45m packages [49m[39m packages/core/test/model-tiers-ui-parity.test.ts [2m([22m[2m9 tests[22m[2m)[22m[33m 2950[2mms[22m[39m
+     [33m[2m✓[22m[39m marks exactly the models the 9Router UI lists as available as Tier A [33m 509[2mms[22m[39m
+     [33m[2m✓[22m[39m keeps direct router evidence separate from the shipped provider snapshot [33m 302[2mms[22m[39m
+     [33m[2m✓[22m[39m maps direct connection aliases to every equivalent provider prefix [33m 307[2mms[22m[39m
+     [33m[2m✓[22m[39m can exclude a custom-provider combo reference from stale diagnostics [33m 375[2mms[22m[39m
+     [33m[2m✓[22m[39m enforces 9Router appVersion check against 0.5.119 and classifies non-kv models as UNKNOWN on mismatch (Z2) [33m 413[2mms[22m[39m
+[90mstdout[2m | packages/core/test/assert-not-live.test.ts[2m > [22m[2mlive-DB safety rails (assertNotLiveRouterDb / isSameDbFile)[2m > [22m[2misSameDbFile[2m > [22m[2msymlink resolves to the same file (skipped: symlink creation not permitted on this environment (EPERM))
+[22m[39m[skip] symlink: symlink creation not permitted on this environment (EPERM)
+
+ [32m✓[39m [30m[45m packages [49m[39m packages/core/test/assert-not-live.test.ts [2m([22m[2m20 tests[22m[2m | [22m[33m1 skipped[39m[2m)[22m[33m 4841[2mms[22m[39m
+       [33m[2m✓[22m[39m never conflates distinct files that share a directory (win32 file index keeps full precision) [33m 2944[2mms[22m[39m
+ [32m✓[39m [30m[45m packages [49m[39m packages/core/test/model-writer.test.ts [2m([22m[2m13 tests[22m[2m)[22m[33m 1710[2mms[22m[39m
+ [32m✓[39m [30m[45m packages [49m[39m packages/core/test/model-tiers.test.ts [2m([22m[2m8 tests[22m[2m)[22m[33m 722[2mms[22m[39m
+ [32m✓[39m [30m[45m packages [49m[39m packages/mcp-server/test/mcp.test.ts [2m([22m[2m22 tests[22m[2m)[22m[33m 1422[2mms[22m[39m
+ [32m✓[39m [30m[45m packages [49m[39m packages/core/test/query-only.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 205[2mms[22m[39m
+ [32m✓[39m [30m[45m packages [49m[39m packages/core/test/sqlite-concurrency.test.ts [2m([22m[2m2 tests[22m[2m)[22m[33m 512[2mms[22m[39m
+     [33m[2m✓[22m[39m handles write contention safely with BEGIN IMMEDIATE without corrupting database [33m 397[2mms[22m[39m
+ [32m✓[39m [30m[45m packages [49m[39m packages/core/test/model-state-omniroute.test.ts [2m([22m[2m3 tests[22m[2m)[22m[33m 392[2mms[22m[39m
+ [32m✓[39m [30m[45m packages [49m[39m packages/core/test/fingerprint.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 219[2mms[22m[39m
+ [32m✓[39m [30m[45m packages [49m[39m packages/mcp-server/test/submit-research.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 178[2mms[22m[39m
+ [32m✓[39m [30m[45m packages [49m[39m packages/core/test/research-ledger.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 57[2mms[22m[39m
+ [32m✓[39m [30m[45m packages [49m[39m packages/mcp-server/test/at-109-mcp.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 136[2mms[22m[39m
+ [32m✓[39m [30m[45m packages [49m[39m packages/core/test/schema.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 19[2mms[22m[39m
+ [32m✓[39m [30m[45m packages [49m[39m packages/core/test/platform-paths.test.ts [2m([22m[2m16 tests[22m[2m)[22m[32m 20[2mms[22m[39m
+ [32m✓[39m [30m[45m packages [49m[39m packages/core/test/planner.test.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 14[2mms[22m[39m
+ [32m✓[39m [30m[45m packages [49m[39m packages/core/test/router-key.test.ts [2m([22m[2m19 tests[22m[2m)[22m[32m 12[2mms[22m[39m
+ [32m✓[39m [30m[45m packages [49m[39m packages/core/test/applier.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 8[2mms[22m[39m
+ [32m✓[39m [30m[45m packages [49m[39m packages/core/test/normalizer.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 11[2mms[22m[39m
+ [32m✓[39m [30m[45m packages [49m[39m packages/core/test/invariants.test.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 11[2mms[22m[39m
+ [32m✓[39m [30m[45m packages [49m[39m packages/core/test/path-inside-dir.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 8[2mms[22m[39m
+ [32m✓[39m [30m[45m root-tools [49m[39m test/docs/c45-wp0-spec.test.ts [2m([22m[2m9 tests[22m[2m)[22m[33m 431[2mms[22m[39m
+     [33m[2m✓[22m[39m applies 1.0.0-rc.1 version bump cleanly on an isolated os.tmpdir() copy and rejects invalid targets [33m 306[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m21 passed[39m[22m[90m (21)[39m
+[2m      Tests [22m [1m[32m176 passed[39m[22m[2m | [22m[33m1 skipped[39m[90m (177)[39m
+[2m   Start at [22m 02:15:33
+[2m   Duration [22m 20.82s[2m (transform 2.33s, setup 11.53s, import 3.91s, tests 13.88s, environment 4ms)[22m
+

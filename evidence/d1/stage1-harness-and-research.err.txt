@@ -1,0 +1,2 @@
+[routersync] SCHEMA WARNING combos.tags: Extra column "tags" found (nullable or has default) — ignored, not a write blocker.
+[routersync] SCHEMA WARNING combos.priority: Extra column "priority" found (nullable or has default) — ignored, not a write blocker.
