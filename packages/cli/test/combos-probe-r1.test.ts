@@ -1,7 +1,7 @@
-// R1.1: combos probe --concurrency <1|2>, promptTokens từ usageHistory trong os.tmpdir(), 0 chạm router thật.
+// R1.1 + W2: combos probe --concurrency <1|2>, promptTokens + đối chiếu usageHistory trong os.tmpdir(), 0 chạm router thật.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import http from 'node:http';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { AddressInfo } from 'node:net';
@@ -199,6 +199,135 @@ describe('R1.1: combos probe --concurrency <1|2> và promptTokens từ usageHist
       expect(totalHits).toBe(2);
       expect(report.rows).toHaveLength(2);
       expect(report.stoppedEarly).toBe('budget=3');
+    } finally {
+      await new Promise<void>((resolve) => server.close(() => resolve()));
+    }
+  });
+});
+
+describe('W2: stream=true ghi 0 dòng usageHistory, đếm ngân sách phía client, đối chiếu delta và SKIPPED-QUOTA mode combo', () => {
+  it('dừng đúng --budget khi stream=true ghi 0 dòng usageHistory, in quota=1 cho combo 429 FreeUsageLimitError và bỏ qua ở lần chạy sau', async () => {
+    const dbPath = makeTemp9RouterDb({
+      combos: [
+        { name: '9Router-Agent-1', models: ['cf/m1'] },
+        { name: 'rs-fast', models: ['oc/quota-step'] },
+      ],
+    });
+    const hits: Array<{ model: string; stream: boolean }> = [];
+
+    // Mô phỏng đúng hành vi 9router@0.5.123 (C44 §1.2):
+    // stream=true (200 OK hoặc 429) ghi 0 dòng vào usageHistory; stream=false ghi 1 dòng.
+    const server = http.createServer((req, res) => {
+      let raw = '';
+      req.on('data', (chunk) => {
+        raw += chunk;
+      });
+      req.on('end', () => {
+        const parsed = JSON.parse(raw) as { model: string; stream?: boolean };
+        const isStream = parsed.stream !== false;
+        hits.push({ model: parsed.model, stream: isStream });
+        if (!isStream) {
+          const db = openBetterSqlite3(dbPath);
+          try {
+            db.prepare(
+              'INSERT INTO usageHistory (timestamp, provider, model, status, promptTokens, completionTokens) VALUES (?, ?, ?, ?, ?, ?)'
+            ).run(new Date().toISOString(), 'cf', 'm1', 'ok', 18, 4);
+          } finally {
+            db.close();
+          }
+        }
+        if (parsed.model === 'rs-fast') {
+          res.writeHead(429, { 'content-type': 'application/json' });
+          res.end(JSON.stringify({ error: { message: 'FreeUsageLimitError: free usage limit reached' } }));
+          return;
+        }
+        res.writeHead(200, { 'content-type': isStream ? 'text/event-stream' : 'application/json' });
+        res.end(isStream ? 'data: {"choices":[{"delta":{"content":"ok"}}]}\n\ndata: [DONE]\n\n' : '{"choices":[{"message":{"content":"ok"}}]}');
+      });
+    });
+    await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+    const port = (server.address() as AddressInfo).port;
+    expect(port).not.toBe(20128);
+    expect(port).not.toBe(30128);
+    expect(port).not.toBe(3128);
+    const baseUrl = `http://127.0.0.1:${port}`;
+
+    try {
+      // Lượt 1: stream=true (0 dòng usageHistory), repeat=2 cho 2 combo (4 lượt tiềm năng), budget=3 -> dừng đúng ở 3.
+      const run1Logs: string[] = [];
+      const report1 = await runCombosProbeCommand({
+        mode: 'combo',
+        combos: ['9Router-Agent-1', 'rs-fast'],
+        repeat: 2,
+        budget: 3,
+        stream: true,
+        comboTimeoutMs: 5_000,
+        yesSpendTokens: true,
+        dbPath,
+        baseUrl,
+        log: (l) => run1Logs.push(l),
+      });
+
+      expect(hits).toHaveLength(3);
+      expect(report1.stoppedEarly).toBe('budget=3');
+      expect(report1.requests).toEqual({
+        total: 3,
+        limit: 3,
+        byProvider: { '9Router-Agent-1': 2, 'rs-fast': 1 },
+      });
+      expect(report1.reconciliation).toEqual({
+        sentRequests: 3,
+        usageHistoryRows: 0,
+        delta: 3,
+      });
+      const rsFastRow = report1.rows.find((r) => r.combo === 'rs-fast');
+      expect(rsFastRow?.httpStatus).toBe(429);
+      expect(rsFastRow?.quota).toBe(true);
+      expect(run1Logs.some((l) => l.startsWith('rs-fast\t') && l.includes('http=429') && l.includes('\tquota=1\tat='))).toBe(true);
+      expect(run1Logs.join('\n')).toContain('đối chiếu usage: sent=3 usageHistory=0 lệch=3');
+
+      // Lượt 2: lưu log lượt 1 và chạy lại với --skip-quota-from cho rs-fast -> 0 HTTP request được gửi!
+      const dir = mkdtempSync(join(tmpdir(), 'rs-probe-skip-'));
+      tempDirs.push(dir);
+      const priorLog = join(dir, 'run1.out.txt');
+      writeFileSync(priorLog, run1Logs.join('\n'), 'utf8');
+
+      const hitsBeforeRun2 = hits.length;
+      const run2Logs: string[] = [];
+      const report2 = await runCombosProbeCommand({
+        mode: 'combo',
+        combos: ['rs-fast'],
+        comboTimeoutMs: 5_000,
+        yesSpendTokens: true,
+        skipQuotaFrom: [priorLog],
+        dbPath,
+        baseUrl,
+        log: (l) => run2Logs.push(l),
+      });
+
+      expect(hits.length).toBe(hitsBeforeRun2);
+      expect(report2.requests?.total).toBe(0);
+      expect(report2.skippedQuota).toContain('rs-fast');
+      expect(run2Logs.some((l) => l.includes('rs-fast\tSKIPPED-QUOTA\thttp=-\ttotal=0ms\tusage=-\tquota=1'))).toBe(true);
+
+      // Lượt 3: stream=false ghi 1 dòng vào usageHistory -> đối chiếu delta = 0.
+      const run3Logs: string[] = [];
+      const report3 = await runCombosProbeCommand({
+        mode: 'combo',
+        combos: ['9Router-Agent-1'],
+        stream: false,
+        comboTimeoutMs: 5_000,
+        yesSpendTokens: true,
+        dbPath,
+        baseUrl,
+        log: (l) => run3Logs.push(l),
+      });
+      expect(report3.reconciliation).toEqual({
+        sentRequests: 1,
+        usageHistoryRows: 1,
+        delta: 0,
+      });
+      expect(run3Logs.join('\n')).toContain('đối chiếu usage: sent=1 usageHistory=1 lệch=0');
     } finally {
       await new Promise<void>((resolve) => server.close(() => resolve()));
     }
