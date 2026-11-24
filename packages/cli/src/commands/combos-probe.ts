@@ -1,7 +1,7 @@
 /**
  * packages/cli/src/commands/combos-probe.ts
  *
- * C32 M1 / C33 N1-N2 / C43 R1.1: try a combo the way a real client does.
+ * C32 M1 / C33 N1-N2 / C43 R1.1 / C44 W2: try a combo the way a real client does.
  *
  * The default run is a dry run: it prints what would be called and stops. A
  * real request needs `--yes-spend-tokens`, because every call costs the owner
@@ -14,16 +14,19 @@
  * Nothing is written to the router: the 9Router database is opened read-only,
  * and the API key is read from it and never printed.
  */
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { openBetterSqlite3, locateRouterDb } from '@routersync/core';
 import {
   classifyStep,
   interleaveProviders,
+  isQuotaBody,
   providerDelayMs,
   providerOf,
   recentQuotaSteps,
+  reconcileSentVsUsage,
   RequestBudget,
   DEFAULT_REQUEST_BUDGET,
+  type UsageReconciliation,
 } from './combos-budget.js';
 
 export type ProbeMode = 'combo' | 'step';
@@ -125,6 +128,20 @@ function openRouterDb(dbPath?: string) {
   const explicit = dbPath?.trim() || process.env['ROUTERSYNC_9ROUTER_DB']?.trim();
   const file = explicit || locateRouterDb('9router');
   return openBetterSqlite3(file, { readOnly: true, busyTimeoutMs: 5000 });
+}
+
+function resolveExistingDbPath(dbPath?: string, allowDefaultLocator = true): string | null {
+  const explicit = dbPath?.trim();
+  if (explicit) return existsSync(explicit) ? explicit : null;
+  const fromEnv = process.env['ROUTERSYNC_9ROUTER_DB']?.trim();
+  if (fromEnv) return existsSync(fromEnv) ? fromEnv : null;
+  if (!allowDefaultLocator) return null;
+  try {
+    const located = locateRouterDb('9router');
+    return located && existsSync(located) ? located : null;
+  } catch {
+    return null;
+  }
 }
 
 function parseSteps(raw: unknown): string[] {
@@ -296,6 +313,8 @@ export interface ProbeReport {
   requests?: { total: number; limit: number; byProvider: Record<string, number> } | undefined;
   /** C40 X0: bước bỏ qua vì đã 429/quota trong 30 phút qua. */
   skippedQuota?: string[] | undefined;
+  /** C44 W2: đối chiếu số request đã gửi phía client và số dòng usageHistory mới. */
+  reconciliation?: UsageReconciliation | undefined;
 }
 
 function redact(text: string, secrets: string[]): string {
@@ -457,8 +476,8 @@ async function callOnce(
 }
 
 /**
- * C33 N1.2: combo mode call that polls `usageHistory` every `pollMs` while it
- * waits, so the verdict can separate "slow" from "hanging".
+ * C33 N1.2 / C44 W2: combo mode call that polls `usageHistory` every `pollMs` while it
+ * waits, so the verdict can separate "slow" from "hanging", and preserves `quota` on HTTP 429.
  */
 export async function callComboWithUsage(
   url: string,
@@ -542,6 +561,8 @@ export async function callComboWithUsage(
 
   const after = usageCount();
   const usageRowAdded = after > before;
+  const detail = redact(res.text, [apiKey]);
+  const quota = res.status === 429 && isQuotaBody(detail);
   const verdict = perComboConclusion({
     headerMs: res.headerMs,
     deadlineMs: timeoutMs,
@@ -558,7 +579,8 @@ export async function callComboWithUsage(
       firstByteMs: res.firstByteMs,
       totalMs: res.totalMs,
       verdict,
-      detail: redact(res.text, [apiKey]),
+      quota,
+      detail,
       usageServedBy: usageRowAdded ? usageDelta(before, after, dbPath) : null,
       promptTokens: sumNullableNumbers(usage.map((u) => u.promptTokens)),
       completionTokens: sumNullableNumbers(usage.map((u) => u.completionTokens)),
@@ -659,7 +681,7 @@ export async function runCombosProbeCommand(options: ProbeOptions = {}): Promise
   const combos = selectCombos(state, options);
   if (combos.length === 0) throw new Error('no combo selected');
 
-  // C40 X0: bước đã 429/quota trong tệp kết quả gần đây thì không gửi lại.
+  // C40 X0: bước hoặc combo đã 429/quota trong tệp kết quả gần đây thì không gửi lại.
   const skipNow = (options.now ?? Date.now)();
   const skippedQuota = new Set<string>();
   for (const file of options.skipQuotaFrom ?? []) {
@@ -691,16 +713,16 @@ export async function runCombosProbeCommand(options: ProbeOptions = {}): Promise
   const clock = options.now ?? Date.now;
   const deadline = clock() + (options.maxMinutes ?? 40) * 60_000;
   const fetchImpl = options.fetchImpl ?? globalThis.fetch;
-  const hasDbSource = Boolean(
-    options.dbPath?.trim() || process.env['ROUTERSYNC_9ROUTER_DB']?.trim() || !options.state
-  );
+  const resolvedDbPath = resolveExistingDbPath(options.dbPath, !options.state);
+  const hasDbSource = resolvedDbPath !== null;
+  const canReconcileUsage = hasDbSource || typeof options.usageCount === 'function';
 
   const usageCount =
     options.usageCount ??
     (() => {
       if (!hasDbSource) return 0;
       try {
-        const db = openRouterDb(options.dbPath);
+        const db = openRouterDb(resolvedDbPath ?? options.dbPath);
         try {
           return (db.prepare('SELECT COUNT(*) n FROM usageHistory').get() as { n: number }).n;
         } finally {
@@ -711,6 +733,7 @@ export async function runCombosProbeCommand(options: ProbeOptions = {}): Promise
       }
     });
 
+  const usageTotalBefore = canReconcileUsage ? usageCount() : 0;
   const rows: ComboProbeRow[] = [];
   let consecutive429 = 0;
   let stoppedEarly: string | null = null;
@@ -734,15 +757,17 @@ export async function runCombosProbeCommand(options: ProbeOptions = {}): Promise
     }
   };
 
+  const dbTarget = resolvedDbPath ?? options.dbPath;
+
   const invokeComboAttempt = async (comboName: string, skipDeltaQuery = false) => {
     const attemptStartMs = clock();
-    const maxUsageIdBefore = hasDbSource ? readMaxUsageId(options.dbPath) : null;
+    const maxUsageIdBefore = hasDbSource ? readMaxUsageId(dbTarget) : null;
     const attemptUsageCount =
       options.usageCount ??
-      (maxUsageIdBefore !== null ? () => readMaxUsageId(options.dbPath) ?? maxUsageIdBefore : usageCount);
+      (maxUsageIdBefore !== null ? () => readMaxUsageId(dbTarget) ?? maxUsageIdBefore : usageCount);
     const attemptUsageRows =
       options.timeline === true && maxUsageIdBefore !== null
-        ? (t0: number): UsageRow[] => readUsageSinceId(maxUsageIdBefore, t0, options.dbPath)
+        ? (t0: number): UsageRow[] => readUsageSinceId(maxUsageIdBefore, t0, dbTarget)
         : (_t0: number): UsageRow[] => [];
 
     const result = await callComboWithUsage(
@@ -762,7 +787,7 @@ export async function runCombosProbeCommand(options: ProbeOptions = {}): Promise
       clock,
       attemptUsageRows,
       options.timeline === true,
-      hasDbSource ? options.dbPath : undefined
+      hasDbSource ? dbTarget : undefined
     );
 
     let promptTokens = result.row.promptTokens ?? null;
@@ -771,7 +796,7 @@ export async function runCombosProbeCommand(options: ProbeOptions = {}): Promise
     let timelineUsage = result.usage;
 
     if (maxUsageIdBefore !== null && !skipDeltaQuery) {
-      const deltaRows = readUsageSinceId(maxUsageIdBefore, attemptStartMs, options.dbPath);
+      const deltaRows = readUsageSinceId(maxUsageIdBefore, attemptStartMs, dbTarget);
       promptTokens = sumNullableNumbers(deltaRows.map((r) => r.promptTokens));
       completionTokens = sumNullableNumbers(deltaRows.map((r) => r.completionTokens));
       const lastRow = deltaRows.at(-1);
@@ -806,14 +831,23 @@ export async function runCombosProbeCommand(options: ProbeOptions = {}): Promise
         );
       }
     }
+    const quotaTail = out.row.quota === true ? `\tquota=1\tat=${out.row.startedAt ?? ''}` : '';
     log(
-      `${out.row.combo}\t${out.row.verdict}\thttp=${out.row.httpStatus ?? '-'}\theader=${out.row.headerMs ?? '-'}ms\tfirstByte=${out.row.firstByteMs ?? '-'}ms\ttotal=${out.row.totalMs}ms\ttokens_in=${out.row.promptTokens ?? '-'}\tusageAt=${out.firstUsageMs ?? '-'}ms\tusage=${out.row.usageServedBy ?? 'không có dòng usage'}`
+      `${out.row.combo}\t${out.row.verdict}\thttp=${out.row.httpStatus ?? '-'}\theader=${out.row.headerMs ?? '-'}ms\tfirstByte=${out.row.firstByteMs ?? '-'}ms\ttotal=${out.row.totalMs}ms\ttokens_in=${out.row.promptTokens ?? '-'}\tusageAt=${out.firstUsageMs ?? '-'}ms\tusage=${out.row.usageServedBy ?? 'không có dòng usage'}${quotaTail}`
     );
   };
 
   if (mode === 'combo') {
     const comboRepeats = Math.min(20, Math.max(1, Math.floor(options.repeat ?? 1)));
     for (const combo of combos) {
+      if (
+        skippedQuota.has(combo.name) ||
+        (combo.steps.length > 0 && combo.steps.every((s) => skippedQuota.has(s)))
+      ) {
+        skippedQuota.add(combo.name);
+        log(`${combo.name}\tSKIPPED-QUOTA\thttp=-\ttotal=0ms\tusage=-\tquota=1`);
+        continue;
+      }
       for (let rep = 1; rep <= comboRepeats; rep += 1) {
         if (clock() > deadline) {
           stoppedEarly = 'max-minutes';
@@ -833,13 +867,13 @@ export async function runCombosProbeCommand(options: ProbeOptions = {}): Promise
           lastProvider = combo.name;
           lastRequestAtMs = clock();
           const pairStartMs = clock();
-          const pairMaxIdBefore = hasDbSource ? readMaxUsageId(options.dbPath) : null;
+          const pairMaxIdBefore = hasDbSource ? readMaxUsageId(dbTarget) : null;
           const [outA, outB] = await Promise.all([
             invokeComboAttempt(combo.name, pairMaxIdBefore !== null),
             invokeComboAttempt(combo.name, pairMaxIdBefore !== null),
           ]);
           if (pairMaxIdBefore !== null) {
-            const pairDelta = readUsageSinceId(pairMaxIdBefore, pairStartMs, options.dbPath);
+            const pairDelta = readUsageSinceId(pairMaxIdBefore, pairStartMs, dbTarget);
             const mid = pairDelta.length <= 1 ? pairDelta.length : Math.ceil(pairDelta.length / 2);
             applyDeltaRows(outA, pairDelta.slice(0, mid));
             applyDeltaRows(outB, pairDelta.slice(mid));
@@ -898,7 +932,7 @@ export async function runCombosProbeCommand(options: ProbeOptions = {}): Promise
           options.stepTimeoutMs ?? STEP_TIMEOUT_MS,
           fetchImpl,
           usageCount,
-          hasDbSource ? options.dbPath : undefined
+          hasDbSource ? dbTarget : undefined
         );
         if (result.row.verdict === 'RATE-LIMITED') consecutive429 += 1;
         else consecutive429 = 0;
@@ -912,6 +946,11 @@ export async function runCombosProbeCommand(options: ProbeOptions = {}): Promise
       if (stoppedEarly) break;
     }
   }
+
+  const usageTotalAfter = canReconcileUsage ? usageCount() : 0;
+  const reconciliation = canReconcileUsage
+    ? reconcileSentVsUsage(budget.count, Math.max(0, usageTotalAfter - usageTotalBefore))
+    : undefined;
 
   const report: ProbeReport = {
     generatedAt: new Date().toISOString(),
@@ -928,13 +967,9 @@ export async function runCombosProbeCommand(options: ProbeOptions = {}): Promise
     requests: {
       total: budget.count,
       limit: budget.limit,
-      byProvider: Object.fromEntries(
-        [...new Set(rows.map((r) => providerOf(r.model)))].map((p) => [
-          p,
-          rows.filter((r) => providerOf(r.model) === p).length,
-        ])
-      ),
+      byProvider: budget.byProviderObject(),
     },
+    ...(reconciliation !== undefined ? { reconciliation } : {}),
   };
 
   if (options.json) {
@@ -946,6 +981,11 @@ export async function runCombosProbeCommand(options: ProbeOptions = {}): Promise
     log(`bắt đầu=${startedAt} tổng=${rows.length} ${[...tally.entries()].map(([k, v]) => `${k}=${v}`).join(' ')}`);
     if (skippedQuota.size > 0) log(`SKIPPED-QUOTA=${skippedQuota.size}`);
     log(budget.tally());
+    if (report.reconciliation) {
+      log(
+        `đối chiếu usage: sent=${report.reconciliation.sentRequests} usageHistory=${report.reconciliation.usageHistoryRows} lệch=${report.reconciliation.delta}`
+      );
+    }
     if (stoppedEarly) log(`dừng sớm: ${stoppedEarly}`);
   }
   void secrets;
