@@ -1,0 +1,85 @@
+[routersync] low-resource mode: auto: availableMem 1.7 GiB < 2 GiB
+[routersync] low-resource mode: auto: availableMem 1.6 GiB < 2 GiB
+[routersync] 9Router: WARNING — read-back is db-only (degraded). Cache TTL: immediate-assumed (unverified empirically — use CHECKPOINT-LIVE to confirm).
+[routersync] 9Router: applyState = written-pending-reload (Gate L / spec §33.3): serving-path reflection unconfirmed — combo visible on router only after reload/refresh. Gate L finding (COPY, Windows): combos with kind=null reflect on GET /v1/models at 19.7-31.2 s (n=3, AT-111); rows written with kind='custom' NEVER reflect.
+[routersync] 9Router: WARNING — read-back is db-only (degraded). Cache TTL: immediate-assumed (unverified empirically — use CHECKPOINT-LIVE to confirm).
+[routersync] 9Router: applyState = written-pending-reload (Gate L / spec §33.3): serving-path reflection unconfirmed — combo visible on router only after reload/refresh. Gate L finding (COPY, Windows): combos with kind=null reflect on GET /v1/models at 19.7-31.2 s (n=3, AT-111); rows written with kind='custom' NEVER reflect.
+[routersync] 9Router: WARNING — read-back is db-only (degraded). Cache TTL: immediate-assumed (unverified empirically — use CHECKPOINT-LIVE to confirm).
+[routersync] 9Router: applyState = written-pending-reload (Gate L / spec §33.3): serving-path reflection unconfirmed — combo visible on router only after reload/refresh. Gate L finding (COPY, Windows): combos with kind=null reflect on GET /v1/models at 19.7-31.2 s (n=3, AT-111); rows written with kind='custom' NEVER reflect.
+[routersync] 9Router: WARNING — read-back is db-only (degraded). Cache TTL: immediate-assumed (unverified empirically — use CHECKPOINT-LIVE to confirm).
+[routersync] 9Router: applyState = written-pending-reload (Gate L / spec §33.3): serving-path reflection unconfirmed — combo visible on router only after reload/refresh. Gate L finding (COPY, Windows): combos with kind=null reflect on GET /v1/models at 19.7-31.2 s (n=3, AT-111); rows written with kind='custom' NEVER reflect.
+[routersync] low-resource mode: auto: availableMem 1.6 GiB < 2 GiB
+[routersync] 9Router: WARNING — read-back is db-only (degraded). Cache TTL: immediate-assumed (unverified empirically — use CHECKPOINT-LIVE to confirm).
+[routersync] 9Router: applyState = written-pending-reload (Gate L / spec §33.3): serving-path reflection unconfirmed — combo visible on router only after reload/refresh. Gate L finding (COPY, Windows): combos with kind=null reflect on GET /v1/models at 19.7-31.2 s (n=3, AT-111); rows written with kind='custom' NEVER reflect.
+[routersync] 9Router: WARNING — read-back is db-only (degraded). Cache TTL: immediate-assumed (unverified empirically — use CHECKPOINT-LIVE to confirm).
+[routersync] 9Router: applyState = written-pending-reload (Gate L / spec §33.3): serving-path reflection unconfirmed — combo visible on router only after reload/refresh. Gate L finding (COPY, Windows): combos with kind=null reflect on GET /v1/models at 19.7-31.2 s (n=3, AT-111); rows written with kind='custom' NEVER reflect.
+[routersync] low-resource mode: auto: availableMem 1.6 GiB < 2 GiB
+[routersync] 9Router: WARNING — read-back is db-only (degraded). Cache TTL: immediate-assumed (unverified empirically — use CHECKPOINT-LIVE to confirm).
+[routersync] 9Router: applyState = written-pending-reload (Gate L / spec §33.3): serving-path reflection unconfirmed — combo visible on router only after reload/refresh. Gate L finding (COPY, Windows): combos with kind=null reflect on GET /v1/models at 19.7-31.2 s (n=3, AT-111); rows written with kind='custom' NEVER reflect.
+[routersync] 9Router: WARNING — read-back is db-only (degraded). Cache TTL: immediate-assumed (unverified empirically — use CHECKPOINT-LIVE to confirm).
+[routersync] 9Router: applyState = written-pending-reload (Gate L / spec §33.3): serving-path reflection unconfirmed — combo visible on router only after reload/refresh. Gate L finding (COPY, Windows): combos with kind=null reflect on GET /v1/models at 19.7-31.2 s (n=3, AT-111); rows written with kind='custom' NEVER reflect.
+[routersync] low-resource mode: auto: availableMem 1.7 GiB < 2 GiB
+[routersync] low-resource mode: auto: availableMem 1.6 GiB < 2 GiB
+[routersync] 9Router: WARNING — read-back is db-only (degraded). Cache TTL: immediate-assumed (unverified empirically — use CHECKPOINT-LIVE to confirm).
+[routersync] 9Router: applyState = written-pending-reload (Gate L / spec §33.3): serving-path reflection unconfirmed — combo visible on router only after reload/refresh. Gate L finding (COPY, Windows): combos with kind=null reflect on GET /v1/models at 19.7-31.2 s (n=3, AT-111); rows written with kind='custom' NEVER reflect.
+[routersync] 9Router: WARNING — read-back is db-only (degraded). Cache TTL: immediate-assumed (unverified empirically — use CHECKPOINT-LIVE to confirm).
+[routersync] 9Router: applyState = written-pending-reload (Gate L / spec §33.3): serving-path reflection unconfirmed — combo visible on router only after reload/refresh. Gate L finding (COPY, Windows): combos with kind=null reflect on GET /v1/models at 19.7-31.2 s (n=3, AT-111); rows written with kind='custom' NEVER reflect.
+[routersync] 9Router: WARNING — read-back is db-only (degraded). Cache TTL: immediate-assumed (unverified empirically — use CHECKPOINT-LIVE to confirm).
+[routersync] 9Router: applyState = written-pending-reload (Gate L / spec §33.3): serving-path reflection unconfirmed — combo visible on router only after reload/refresh. Gate L finding (COPY, Windows): combos with kind=null reflect on GET /v1/models at 19.7-31.2 s (n=3, AT-111); rows written with kind='custom' NEVER reflect.
+[routersync] OmniRoute: WARNING — read-back is db-only (degraded). Set OMNIROUTE_API_KEY with manage scope for full, or OMNIROUTE_CLIENT_KEY for existence-only read-back.
+[routersync] 9Router: WARNING — read-back is db-only (degraded). Cache TTL: immediate-assumed (unverified empirically — use CHECKPOINT-LIVE to confirm).
+[routersync] 9Router: applyState = written-pending-reload (Gate L / spec §33.3): serving-path reflection unconfirmed — combo visible on router only after reload/refresh. Gate L finding (COPY, Windows): combos with kind=null reflect on GET /v1/models at 19.7-31.2 s (n=3, AT-111); rows written with kind='custom' NEVER reflect.
+[routersync] 9Router: WARNING — read-back is db-only (degraded). Cache TTL: immediate-assumed (unverified empirically — use CHECKPOINT-LIVE to confirm).
+[routersync] 9Router: applyState = written-pending-reload (Gate L / spec §33.3): serving-path reflection unconfirmed — combo visible on router only after reload/refresh. Gate L finding (COPY, Windows): combos with kind=null reflect on GET /v1/models at 19.7-31.2 s (n=3, AT-111); rows written with kind='custom' NEVER reflect.
+[routersync] low-resource mode: auto: availableMem 1.7 GiB < 2 GiB
+[routersync] OmniRoute: WARNING — read-back is db-only (degraded). Set OMNIROUTE_API_KEY with manage scope for full, or OMNIROUTE_CLIENT_KEY for existence-only read-back.
+[routersync] OmniRoute: WARNING — read-back is db-only (degraded). Set OMNIROUTE_API_KEY with manage scope for full, or OMNIROUTE_CLIENT_KEY for existence-only read-back.
+[routersync] low-resource mode: auto: availableMem 1.7 GiB < 2 GiB
+[routersync] low-resource mode: auto: availableMem 1.6 GiB < 2 GiB
+[routersync] low-resource mode: auto: availableMem 1.7 GiB < 2 GiB
+[routersync] low-resource mode: auto: availableMem 1.7 GiB < 2 GiB
+[90mstderr[2m | packages/cli/test/cli.test.ts[2m > [22m[2mCLI Commands and Safety Rails (Condition A1 & AT-100)[2m > [22m[2mA1: apply rejects --yes flag strictly with security violation error
+[22m[39m[routersync] Error: Security Violation: The --yes flag is prohibited by security policy (Rule §28.1 / R11).
+RouterSync requires human-in-the-loop interactive review for all state modifications.
+
+[90mstderr[2m | packages/cli/test/cli.test.ts[2m > [22m[2mCLI Commands and Safety Rails (Condition A1 & AT-100)[2m > [22m[2mA1: apply --write in non-TTY environment is strictly rejected
+[22m[39m[routersync] Error: Write Execution Blocked: Running with --write requires an interactive TTY terminal (Condition A1).
+Non-interactive scripts or automated callers cannot bypass human confirmation.
+
+[90mstderr[2m | packages/cli/test/roundC3u.test.ts[2m > [22m[2mC3u U0b GATE-FLOW agents tty-confirm[2m > [22m[2mtyped=no -> authorized=no, tmp config unchanged
+[22m[39mAGENT-REFUSED reason=confirm-aborted
+
+[routersync] low-resource mode: auto: availableMem 1.5 GiB < 2 GiB
+[routersync] SCHEMA WARNING combos.tags: Extra column "tags" found (nullable or has default) — ignored, not a write blocker.
+[routersync] SCHEMA WARNING combos.priority: Extra column "priority" found (nullable or has default) — ignored, not a write blocker.
+msg
+msg
+[routersync] 9Router: WARNING — read-back is db-only (degraded). Cache TTL: immediate-assumed (unverified empirically — use CHECKPOINT-LIVE to confirm).
+[routersync] 9Router: applyState = written-pending-reload (Gate L / spec §33.3): serving-path reflection unconfirmed — combo visible on router only after reload/refresh. Gate L finding (COPY, Windows): combos with kind=null reflect on GET /v1/models at 19.7-31.2 s (n=3, AT-111); rows written with kind='custom' NEVER reflect.
+[routersync] OmniRoute: WARNING — read-back is db-only (degraded). Set OMNIROUTE_API_KEY with manage scope for full, or OMNIROUTE_CLIENT_KEY for existence-only read-back.
+[routersync] OmniRoute: WARNING — read-back is db-only (degraded). Set OMNIROUTE_API_KEY with manage scope for full, or OMNIROUTE_CLIENT_KEY for existence-only read-back.
+[routersync] 9Router: WARNING — read-back is db-only (degraded). Cache TTL: immediate-assumed (unverified empirically — use CHECKPOINT-LIVE to confirm).
+[routersync] 9Router: applyState = written-pending-reload (Gate L / spec §33.3): serving-path reflection unconfirmed — combo visible on router only after reload/refresh. Gate L finding (COPY, Windows): combos with kind=null reflect on GET /v1/models at 19.7-31.2 s (n=3, AT-111); rows written with kind='custom' NEVER reflect.
+[routersync] 9Router: WARNING — read-back is db-only (degraded). Cache TTL: immediate-assumed (unverified empirically — use CHECKPOINT-LIVE to confirm).
+[routersync] 9Router: applyState = written-pending-reload (Gate L / spec §33.3): serving-path reflection unconfirmed — combo visible on router only after reload/refresh. Gate L finding (COPY, Windows): combos with kind=null reflect on GET /v1/models at 19.7-31.2 s (n=3, AT-111); rows written with kind='custom' NEVER reflect.
+[routersync] 9Router: WARNING — read-back is db-only (degraded). Cache TTL: immediate-assumed (unverified empirically — use CHECKPOINT-LIVE to confirm).
+[routersync] 9Router: applyState = written-pending-reload (Gate L / spec §33.3): serving-path reflection unconfirmed — combo visible on router only after reload/refresh. Gate L finding (COPY, Windows): combos with kind=null reflect on GET /v1/models at 19.7-31.2 s (n=3, AT-111); rows written with kind='custom' NEVER reflect.
+[routersync] 9Router: WARNING — read-back is db-only (degraded). Cache TTL: immediate-assumed (unverified empirically — use CHECKPOINT-LIVE to confirm).
+[routersync] 9Router: applyState = written-pending-reload (Gate L / spec §33.3): serving-path reflection unconfirmed — combo visible on router only after reload/refresh. Gate L finding (COPY, Windows): combos with kind=null reflect on GET /v1/models at 19.7-31.2 s (n=3, AT-111); rows written with kind='custom' NEVER reflect.
+[routersync] 9Router: WARNING — read-back is db-only (degraded). Cache TTL: immediate-assumed (unverified empirically — use CHECKPOINT-LIVE to confirm).
+[routersync] 9Router: applyState = written-pending-reload (Gate L / spec §33.3): serving-path reflection unconfirmed — combo visible on router only after reload/refresh. Gate L finding (COPY, Windows): combos with kind=null reflect on GET /v1/models at 19.7-31.2 s (n=3, AT-111); rows written with kind='custom' NEVER reflect.
+[routersync] 9Router: WARNING — read-back is db-only (degraded). Cache TTL: immediate-assumed (unverified empirically — use CHECKPOINT-LIVE to confirm).
+[routersync] 9Router: applyState = written-pending-reload (Gate L / spec §33.3): serving-path reflection unconfirmed — combo visible on router only after reload/refresh. Gate L finding (COPY, Windows): combos with kind=null reflect on GET /v1/models at 19.7-31.2 s (n=3, AT-111); rows written with kind='custom' NEVER reflect.
+[routersync] OmniRoute: WARNING — read-back is db-only (degraded). Set OMNIROUTE_API_KEY with manage scope for full, or OMNIROUTE_CLIENT_KEY for existence-only read-back.
+[routersync] 9Router: WARNING — read-back is db-only (degraded). Cache TTL: immediate-assumed (unverified empirically — use CHECKPOINT-LIVE to confirm).
+[routersync] 9Router: applyState = written-pending-reload (Gate L / spec §33.3): serving-path reflection unconfirmed — combo visible on router only after reload/refresh. Gate L finding (COPY, Windows): combos with kind=null reflect on GET /v1/models at 19.7-31.2 s (n=3, AT-111); rows written with kind='custom' NEVER reflect.
+[90mstderr[2m | test/no-secrets-guard.test.mjs[2m > [22m[2mtools/guard/no-secrets.mjs - Security Guard & Personal Path Tests (R7B-4)[2m > [22m[2mJ3 - catches secrets in untracked files via git ls-files -co --exclude-standard
+[22m[39m[SECURITY GUARD VIOLATION] untracked-secret.txt:1: Detected OpenAI/Compatible API Key (sk-...)
+
+[routersync] 9Router: WARNING — read-back is db-only (degraded). Cache TTL: immediate-assumed (unverified empirically — use CHECKPOINT-LIVE to confirm).
+[routersync] 9Router: applyState = written-pending-reload (Gate L / spec §33.3): serving-path reflection unconfirmed — combo visible on router only after reload/refresh. Gate L finding (COPY, Windows): combos with kind=null reflect on GET /v1/models at 19.7-31.2 s (n=3, AT-111); rows written with kind='custom' NEVER reflect.
+[routersync] OmniRoute: WARNING — read-back is db-only (degraded). Set OMNIROUTE_API_KEY with manage scope for full, or OMNIROUTE_CLIENT_KEY for existence-only read-back.
+[routersync] low-resource mode: auto: availableMem 1.7 GiB < 2 GiB
+(node:37880) [DEP0190] DeprecationWarning: Passing args to a child process with shell option true can lead to security vulnerabilities, as the arguments are not escaped, only concatenated.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+[routersync-mcp] Server running on stdio (25 read-only + 1 ledger-append + 1 controlled-write tools active)
