@@ -407,7 +407,7 @@ describe('E2E - the installed package works end to end', () => {
     }
   });
 
-  it('serves the MCP server over stdio with 25 read-only tools', async () => {
+  it('serves the MCP server over stdio with 25 read-only + 1 ledger-append tools', async () => {
     const mcpServerPath = path.join(projectDir, 'node_modules', '@routersync', 'mcp-server', 'dist', 'index.js');
     expect(fs.existsSync(mcpServerPath), `fixture missing ${mcpServerPath}; npm install of the packed tarballs failed?`).toBe(true);
     const { Client } = requireFromRepo('@modelcontextprotocol/sdk/client/index.js');
@@ -423,7 +423,7 @@ describe('E2E - the installed package works end to end', () => {
     try {
       const listed = await client.listTools();
       const names = listed.tools.map((t: { name: string }) => t.name).sort();
-      expect(names).toHaveLength(25);
+      expect(names).toHaveLength(26);
       for (const name of names) {
         expect(name).not.toMatch(/write|apply|delete|update|approve|grant/i);
       }

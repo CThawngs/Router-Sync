@@ -2,19 +2,31 @@
 /**
  * packages/mcp-server/src/index.ts
  *
- * Entrypoint for RouterSync Read-Only MCP Server (Condition C1).
- * Exposes the read-only inspection tools listed in READ_ONLY_TOOL_NAMES via StdioServerTransport.
+ * Entrypoint for RouterSync MCP Server (Condition C1 & C45-WP3).
+ * Exposes the 25 strictly read-only tools in READ_ONLY_TOOL_NAMES plus the
+ * isolated evidence ledger tool in LEDGER_APPEND_TOOL_NAMES via StdioServerTransport.
  */
 
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
-import { createRouterSyncMcpServer, READ_ONLY_TOOL_NAMES } from './server.js';
+import {
+  createRouterSyncMcpServer,
+  READ_ONLY_TOOL_NAMES,
+  LEDGER_APPEND_TOOL_NAMES,
+  ALL_MCP_TOOL_NAMES,
+} from './server.js';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as os from 'node:os';
 import { fileURLToPath } from 'node:url';
 
-export { createRouterSyncMcpServer, READ_ONLY_TOOL_NAMES, StreamableHTTPServerTransport };
+export {
+  createRouterSyncMcpServer,
+  READ_ONLY_TOOL_NAMES,
+  LEDGER_APPEND_TOOL_NAMES,
+  ALL_MCP_TOOL_NAMES,
+  StreamableHTTPServerTransport,
+};
 export * from './pagination.js';
 export * from './sanitize.js';
 
@@ -94,7 +106,9 @@ export async function runServer(): Promise<void> {
   });
 
   await server.connect(transport);
-  process.stderr.write(`[routersync-mcp] Server running on stdio (${READ_ONLY_TOOL_NAMES.length} read-only tools active)\n`);
+  process.stderr.write(
+    `[routersync-mcp] Server running on stdio (${READ_ONLY_TOOL_NAMES.length} read-only + ${LEDGER_APPEND_TOOL_NAMES.length} ledger-append tools active)\n`
+  );
 }
 
 // Start the server when this file IS the entry point. Comparing the resolved

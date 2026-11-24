@@ -5,6 +5,13 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as crypto from 'node:crypto';
+import {
+  ResearchValidationError,
+  appendResearchEvidence,
+  atomicWriteFileSync,
+  mapConclusionToVerdict,
+  sanitizeUntrustedString,
+} from '@routersync/core';
 
 export interface ResearchOptions {
   subcommand?: 'run' | 'status' | 'evidence' | 'queue' | 'submit' | 'price-confirm' | undefined;
@@ -149,13 +156,14 @@ export async function runResearchCommand(options: ResearchOptions): Promise<void
       const orPrice = orRow ? priceOf('openrouter-models', orRow) : null;
       const liteKey = id;
       const litePrice = lite && typeof lite === 'object' ? priceOf('litellm-prices', (lite as Record<string, unknown>)[rawId] ?? (lite as Record<string, unknown>)[liteKey]) : null;
-      let mdPrice: number | null = null;
+      let mdPrice: number | null;
+      mdPrice = null;
       if (md && typeof md === 'object') {
         const op = (md as Record<string, unknown>)['opencode'] as Record<string, unknown> | undefined;
         const opModels = op?.['models'] as Record<string, unknown> | undefined;
         if (opModels && opModels[liteKey] != null) mdPrice = priceOf('models-dev', opModels[liteKey]);
         if (mdPrice == null) {
-          for (const [prov, info] of Object.entries(md as Record<string, unknown>)) {
+          for (const [, info] of Object.entries(md as Record<string, unknown>)) {
             const models = (info as Record<string, unknown>)?.['models'] as Record<string, unknown> | undefined;
             if (models && models[liteKey] != null) { mdPrice = priceOf('models-dev', models[liteKey]); break; }
           }
@@ -190,44 +198,62 @@ export async function runResearchCommand(options: ResearchOptions): Promise<void
     }
 
     const id = String(parsed['id'] ?? '').trim();
+    const provider = typeof parsed['provider'] === 'string' ? parsed['provider'].trim() : undefined;
+    const modelId = typeof parsed['modelId'] === 'string' ? parsed['modelId'].trim() : undefined;
     const conclusion = String(parsed['conclusion'] ?? parsed['kết luận'] ?? '').trim();
     const url = String(parsed['url'] ?? '').trim();
-    const rawSnippet = String(parsed['snippet'] ?? parsed['trích đoạn'] ?? '').trim();
+    const rawSnippet = String(parsed['quote'] ?? parsed['snippet'] ?? parsed['trích đoạn'] ?? '').trim();
     const accessedAt = String(parsed['accessedAt'] ?? parsed['ngày truy cập'] ?? new Date().toISOString().slice(0, 10)).trim();
+    const publishedAt = typeof parsed['publishedAt'] === 'string' ? parsed['publishedAt'].trim() : undefined;
+    const shutdownDate = typeof parsed['shutdownDate'] === 'string' ? parsed['shutdownDate'].trim() : undefined;
+    const replacementModelId = typeof parsed['replacementModelId'] === 'string' ? parsed['replacementModelId'].trim() : undefined;
+    const claimedSourceTier =
+      parsed['claimedSourceTier'] === 'official' || parsed['claimedSourceTier'] === 'secondary'
+        ? parsed['claimedSourceTier']
+        : undefined;
 
-    if (!id) throw new Error('Schema validation error: missing or empty "id" field');
-    if (!conclusion) throw new Error('Schema validation error: missing or empty "conclusion" field');
-    if (!url || (!url.startsWith('http://') && !url.startsWith('https://'))) {
-      throw new Error('Schema validation error: "url" must be a valid http or https URL');
+    if (!id && (!provider || !modelId)) {
+      throw new Error('Schema validation error: missing or empty "id" field');
     }
-    const snippet = rawSnippet.slice(0, 300);
+    if (!conclusion && typeof parsed['verdict'] !== 'string') {
+      throw new Error('Schema validation error: missing or empty "conclusion" field');
+    }
+    if (!url) {
+      throw new Error('Schema validation error: "url" must be a valid https URL');
+    }
 
     const sDir = options.stateDir ?? (process.env['ROUTERSYNC_STATE_DIR'] || path.join(process.cwd(), '.routersync'));
-    if (!fs.existsSync(sDir)) fs.mkdirSync(sDir, { recursive: true });
 
-    // 1. Store in research-evidence.json (untrusted payload)
-    const evidencePath = path.join(sDir, 'research-evidence.json');
-    let evidenceList: Array<Record<string, unknown>> = [];
-    if (fs.existsSync(evidencePath)) {
-      try {
-        const raw = JSON.parse(fs.readFileSync(evidencePath, 'utf8'));
-        if (Array.isArray(raw)) evidenceList = raw as Array<Record<string, unknown>>;
-      } catch { /* start clean */ }
+    let record;
+    try {
+      record = appendResearchEvidence(sDir, {
+        id: id || undefined,
+        provider,
+        modelId,
+        verdict:
+          typeof parsed['verdict'] === 'string'
+            ? (parsed['verdict'] as never)
+            : mapConclusionToVerdict(conclusion),
+        conclusion: conclusion || undefined,
+        url,
+        quote: rawSnippet,
+        accessedAt,
+        publishedAt,
+        shutdownDate,
+        replacementModelId,
+        claimedSourceTier,
+        submittedVia: 'cli',
+      });
+    } catch (err) {
+      if (err instanceof ResearchValidationError) {
+        throw new Error(`Schema validation error [${err.code}]: ${err.message}`);
+      }
+      throw err;
     }
-    const nowIso = new Date().toISOString();
-    const evidenceEntry = {
-      id,
-      conclusion,
-      url,
-      snippet,
-      accessedAt,
-      untrusted: true,
-      submittedAt: nowIso,
-    };
-    evidenceList.unshift(evidenceEntry);
-    fs.writeFileSync(evidencePath, JSON.stringify(evidenceList, null, 2), 'utf8');
 
-    // 2. Add inbox item
+    // 2. Preserve CLI's [RESEARCH-SUBMIT] inbox item via atomicWriteFileSync + sanitizeUntrustedString
+    //    (Never directly mutate verify-status.json on CLI submit; tick consumes verified official evidence.)
+    const nowIso = record.submittedAt;
     const inboxPath = path.join(sDir, 'inbox.json');
     let inboxObj: { updatedAt: string; items: Array<Record<string, unknown>> } = { updatedAt: nowIso, items: [] };
     if (fs.existsSync(inboxPath)) {
@@ -240,45 +266,26 @@ export async function runResearchCommand(options: ResearchOptions): Promise<void
         }
       } catch { /* start clean */ }
     }
+    const safeIdLabel = sanitizeUntrustedString(record.id, 120);
+    const safeConclusion = record.conclusion;
+    const safeSnippet = record.snippet;
     inboxObj.items.unshift({
-      id: `research-${id.replace(/[^a-zA-Z0-9_-]/g, '_')}-${Date.now()}`,
-      title: `[RESEARCH-SUBMIT] ${id}: ${conclusion}`,
+      id: `research-${record.id.replace(/[^a-zA-Z0-9_-]/g, '_')}-${Date.now()}`,
+      title: `[RESEARCH-SUBMIT] ${safeIdLabel}: ${safeConclusion}`,
       type: 'proposal',
       timestamp: nowIso,
-      body: `Nghiên cứu web cho model ${id} (nguồn: ${url}): "${snippet}" (ngày truy cập: ${accessedAt}).`,
-      label: conclusion,
+      body: `Nghiên cứu web cho model ${safeIdLabel} (nguồn ${record.sourceTier}: ${record.url}): "${safeSnippet}" (ngày truy cập: ${record.accessedAt}).`,
+      label: safeConclusion,
+      sourceTier: record.sourceTier,
+      domainVerified: record.domainVerified,
       proposed_by: { kind: 'user', source: 'research-submit' },
     });
     inboxObj.updatedAt = nowIso;
-    fs.writeFileSync(inboxPath, JSON.stringify(inboxObj, null, 2), 'utf8');
+    atomicWriteFileSync(inboxPath, JSON.stringify(inboxObj, null, 2));
 
-    // 3. Update verify-status.json label if record matches
-    const verifyStatusPath = path.join(sDir, 'verify-status.json');
-    if (fs.existsSync(verifyStatusPath)) {
-      try {
-        const vRaw = JSON.parse(fs.readFileSync(verifyStatusPath, 'utf8')) as {
-          records?: Array<{ id: string; label: string; flags?: string[] }>;
-        };
-        if (Array.isArray(vRaw.records)) {
-          let updated = false;
-          for (const rec of vRaw.records) {
-            if (rec.id === id || rec.id.endsWith(`/${id}`)) {
-              rec.label = conclusion.toUpperCase().includes('NGỪNG') || conclusion.toLowerCase().includes('deprecat')
-                ? 'ĐÃ-XÁC-NHẬN-NGỪNG'
-                : 'ĐÃ-XÁC-NHẬN-CÒN';
-              if (!rec.flags) rec.flags = [];
-              rec.flags.push('BẰNG-CHỨNG-RESEARCH-SUBMIT');
-              updated = true;
-            }
-          }
-          if (updated) {
-            fs.writeFileSync(verifyStatusPath, JSON.stringify(vRaw, null, 2), 'utf8');
-          }
-        }
-      } catch { /* skip */ }
-    }
-
-    console.log(`RESEARCH-SUBMIT id=${id} conclusion=${conclusion} url=${url} snippet_len=${snippet.length} status=ACCEPTED (untrusted evidence saved, zero router writes)`);
+    console.log(
+      `RESEARCH-SUBMIT id=${record.id} conclusion=${record.conclusion} sourceTier=${record.sourceTier} url=${record.url} snippet_len=${record.snippet.length} status=ACCEPTED (untrusted evidence saved, zero router writes)`
+    );
     return;
   }
 }

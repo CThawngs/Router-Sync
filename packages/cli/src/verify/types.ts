@@ -3,7 +3,7 @@
  *
  * Types for the multi-layer web verification ladder (L1 -> L2 -> L3),
  * 6 canonical verification labels (Round C4b F3b), ABSENT-STABLE classification (F4),
- * NEW-CANDIDATE proposals (F5), and optional BYOK LLM batch with hard token budget.
+ * NEW-CANDIDATE proposals (F5), and C45-WP3 removal guards + detectionLatencyMs telemetry.
  */
 
 export type VerificationLabel =
@@ -80,7 +80,7 @@ export interface ModelVerificationRecord {
     noticeTitle?: string | undefined;
     url?: string | undefined;
   };
-  flags: string[]; // e.g. ['ẨN-GIÁ-0', 'CÒN-Ở-NGUỒN-NGOÀI']
+  flags: string[]; // e.g. ['ẨN-GIÁ-0', 'CÒN-Ở-NGUỒN-NGOÀI', 'BẰNG-CHỨNG-OFFICIAL', 'BẰNG-CHỨNG-SECONDARY']
   verifiedAt: string;
 }
 
@@ -136,4 +136,25 @@ export interface VerifyPhaseSummary {
   accounting: VerifyAccounting;
   /** C14 (b): true when the 60 s deadline fired before verification finished. */
   incomplete?: boolean;
+}
+
+export interface DetectionLatencyInput {
+  planCreatedAt: string;
+  sourcePublishedAt?: string | null | undefined;
+  sourceFirstChangedAt?: string | null | undefined;
+}
+
+export interface DetectionLatencySummary {
+  measuredCount: number;
+  minMs: number | null;
+  maxMs: number | null;
+  p50Ms: number | null;
+}
+
+export interface ShrinkCapEvaluation {
+  allowed: boolean;
+  shrinkRatio: number;
+  remainingCount: number;
+  minRemainingRequired: number;
+  reason?: string | undefined;
 }

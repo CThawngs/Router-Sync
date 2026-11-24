@@ -1,9 +1,9 @@
 /**
  * packages/mcp-server/test/mcp.test.ts
  *
- * Tests for the RouterSync read-only MCP surface (Conditions C1, AT-89, AT-90, T2-46).
+ * Tests for the RouterSync MCP surface (Conditions C1, AT-89, AT-90, T2-46 + C45-WP3).
  *
- * The second half of this file is a variance test: the same 24 tools are called
+ * The second half of this file is a variance test: the same read-only tools are called
  * twice against two throwaway state directories that differ in
  * status.json / tick-catalog.json / verify-status.json / inbox.json /
  * profile.yaml / autopilot.yaml / plans. A tool that returns a constant, or a
@@ -26,6 +26,8 @@ import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 import {
   createRouterSyncMcpServer,
   READ_ONLY_TOOL_NAMES,
+  LEDGER_APPEND_TOOL_NAMES,
+  ALL_MCP_TOOL_NAMES,
   paginateArray,
   sanitizeUntrustedString,
   sanitizeObject,
@@ -34,7 +36,7 @@ import type { ComboDefinition, ModelInfo } from '@routersync/core';
 
 describe('RouterSync Read-Only MCP Server', () => {
   // T2-46 / AT-87 variant: Snapshot test of exact tool set
-  it('registers exactly the 25 verified read-only tools with zero write tools', () => {
+  it('registers exactly the 25 verified read-only tools + 1 ledger-append tool with zero router/harness write tools', () => {
     const expectedTools = [
       'detect_routers',
       'get_config',
@@ -67,9 +69,12 @@ describe('RouterSync Read-Only MCP Server', () => {
     expect(actualTools).toEqual(expectedTools);
     expect(actualTools).toHaveLength(25);
 
-    // Verify ZERO write or approval tools exist
+    expect(LEDGER_APPEND_TOOL_NAMES).toEqual(['submit_research']);
+    expect(ALL_MCP_TOOL_NAMES).toHaveLength(26);
+
+    // Verify ZERO write or approval tools exist across all 26 MCP tools
     const forbiddenKeywords = ['write', 'apply', 'delete', 'modify', 'update', 'approve', 'grant'];
-    for (const tool of actualTools) {
+    for (const tool of ALL_MCP_TOOL_NAMES) {
       for (const forbidden of forbiddenKeywords) {
         expect(tool).not.toBe(forbidden);
         expect(tool).not.toContain(`_${forbidden}`);
@@ -77,18 +82,19 @@ describe('RouterSync Read-Only MCP Server', () => {
     }
   });
 
-  // G5: bidirectional listTools() vs READ_ONLY_TOOL_NAMES parity
-  it('lists tools via client.listTools() matching READ_ONLY_TOOL_NAMES both directions', async () => {
+  // G5: bidirectional listTools() vs ALL_MCP_TOOL_NAMES parity
+  it('lists tools via client.listTools() matching ALL_MCP_TOOL_NAMES both directions', async () => {
     const a = await connect({ mockCombos: MOCK_COMBOS, mockCatalog: MOCK_CATALOG });
     try {
       const listed = await a.listTools();
       const listedNames = listed.map((t) => t.name).sort();
-      const registered = [...READ_ONLY_TOOL_NAMES].sort();
+      const registered = [...ALL_MCP_TOOL_NAMES].sort();
+      expect(listedNames).toHaveLength(26);
       // No extra tools in listTools()
       for (const name of listedNames) {
         expect(registered).toContain(name);
       }
-      // No missing tools from READ_ONLY_TOOL_NAMES
+      // No missing tools from ALL_MCP_TOOL_NAMES
       for (const name of registered) {
         expect(listedNames).toContain(name);
       }
