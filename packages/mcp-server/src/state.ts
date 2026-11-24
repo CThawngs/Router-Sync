@@ -12,7 +12,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as os from 'node:os';
-import { getConfigDir } from '@routersync/core';
+import { getConfigDir, resolveControlStateDir } from '@routersync/core';
 
 export interface TickProviderSnapshot {
   prefix: string;
@@ -119,17 +119,16 @@ export interface FileStat {
 }
 
 /**
- * Mirrors `resolveTickStateDir` in packages/cli/src/commands/tick.ts so the
- * MCP surface reads exactly the directory the daemon writes.
+ * Mirrors `resolveControlStateDir` (`packages/core/src/consent/types.ts`) and
+ * `resolveTickStateDir` (`packages/cli/src/commands/tick.ts`) so CLI, Daemon,
+ * `tick`, and MCP tools share the exact same `<stateDir>`.
  */
 export function resolveMcpStateDir(env: NodeJS.ProcessEnv = process.env): string {
-  const override = env['ROUTERSYNC_STATE_DIR'];
-  if (override && override.trim().length > 0) return path.resolve(override.trim());
-  return path.join(os.homedir(), '.routersync');
+  return resolveControlStateDir(undefined, env);
 }
 
 /**
- * Mirrors `stateDir()` in packages/cli/src/commands/autopilot.ts, which writes
+ * Mirrors `stateDir()` in `packages/cli/src/commands/autopilot.ts`, which writes
  * plans under <LOCALAPPDATA>/routersync/state/plans.
  */
 export function resolvePlansDir(env: NodeJS.ProcessEnv = process.env): string {
@@ -141,6 +140,7 @@ export interface StatePaths {
   stateDir: string;
   configDir: string;
   plansDir: string;
+  statePlansDir: string;
   inbox: string;
   verifyStatus: string;
   researchEvidence: string;
@@ -152,15 +152,23 @@ export interface StatePaths {
   l3Cache: string;
   profile: string;
   autopilotPolicy: string;
+  standingConsent: string;
+  freezeState: string;
+  applyHistory: string;
+  approvalTokens: string;
+  tickPlan: string;
 }
 
 export function resolveStatePaths(env: NodeJS.ProcessEnv = process.env): StatePaths {
   const stateDir = resolveMcpStateDir(env);
   const configDir = getConfigDir(env);
+  const plansDir = resolvePlansDir(env);
+  const statePlansDir = path.join(stateDir, 'plans');
   return {
     stateDir,
     configDir,
-    plansDir: resolvePlansDir(env),
+    plansDir,
+    statePlansDir,
     inbox: path.join(stateDir, 'inbox.json'),
     verifyStatus: path.join(stateDir, 'verify-status.json'),
     researchEvidence: path.join(stateDir, 'research-evidence.json'),
@@ -172,6 +180,11 @@ export function resolveStatePaths(env: NodeJS.ProcessEnv = process.env): StatePa
     l3Cache: path.join(stateDir, 'l3-cache.json'),
     profile: path.join(configDir, 'profile.yaml'),
     autopilotPolicy: path.join(configDir, 'autopilot.yaml'),
+    standingConsent: path.join(stateDir, 'standing-consent.json'),
+    freezeState: path.join(stateDir, 'freeze.json'),
+    applyHistory: path.join(stateDir, 'apply-history.json'),
+    approvalTokens: path.join(stateDir, 'approval-tokens.json'),
+    tickPlan: path.join(statePlansDir, 'tick-plan.json'),
   };
 }
 

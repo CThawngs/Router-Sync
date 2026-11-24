@@ -407,11 +407,43 @@ describe('E2E - the installed package works end to end', () => {
     }
   });
 
-  it('serves the MCP server over stdio with 25 read-only + 1 ledger-append tools', async () => {
+  it('serves the MCP server over stdio with 25 read-only + 1 ledger-append + 1 controlled-write tools', async () => {
     const mcpServerPath = path.join(projectDir, 'node_modules', '@routersync', 'mcp-server', 'dist', 'index.js');
     expect(fs.existsSync(mcpServerPath), `fixture missing ${mcpServerPath}; npm install of the packed tarballs failed?`).toBe(true);
     const { Client } = requireFromRepo('@modelcontextprotocol/sdk/client/index.js');
     const { StdioClientTransport } = requireFromRepo('@modelcontextprotocol/sdk/client/stdio.js');
+
+    const plansDir = path.join(tmpRoot, 'state', 'plans');
+    fs.mkdirSync(plansDir, { recursive: true });
+    const dummyRouterActions = [
+      {
+        router: '9router',
+        comboName: 'combo-1',
+        provider: 'fake',
+        modelId: 'model-c',
+        action: 'ADD_MODEL',
+      },
+    ];
+    const canonicalPlan = JSON.stringify({
+      routerActions: dummyRouterActions,
+      harnessActions: [],
+    });
+    const dummyPlanHash = crypto.createHash('sha256').update(canonicalPlan).digest('hex').slice(0, 16);
+    fs.writeFileSync(
+      path.join(plansDir, 'tick-plan.json'),
+      JSON.stringify(
+        {
+          version: 1,
+          mode: 'propose',
+          planHash: dummyPlanHash,
+          routerActions: dummyRouterActions,
+          harnessActions: [],
+        },
+        null,
+        2
+      ),
+      'utf8'
+    );
 
     const transport = new StdioClientTransport({
       command: process.execPath,
@@ -423,10 +455,26 @@ describe('E2E - the installed package works end to end', () => {
     try {
       const listed = await client.listTools();
       const names = listed.tools.map((t: { name: string }) => t.name).sort();
-      expect(names).toHaveLength(26);
-      for (const name of names) {
+      expect(names).toHaveLength(27);
+      expect(names).toContain('apply_plan');
+      for (const name of names.filter((n: string) => n !== 'apply_plan')) {
         expect(name).not.toMatch(/write|apply|delete|update|approve|grant/i);
       }
+      for (const name of names) {
+        expect(name).not.toMatch(/delete|approve|grant/i);
+      }
+
+      // Calling apply_plan without standing consent or approvalToken must fail closed with zero mutations.
+      const denied = await client.callTool({
+        name: 'apply_plan',
+        arguments: {
+          planHash: dummyPlanHash,
+          targets: ['router:9router/combo-1'],
+        },
+      });
+      expect(denied.isError).toBe(true);
+      expect(sha256File(nineDbPath)).toBe(hashAfterCreate.nine);
+      expect(sha256File(omniDbPath)).toBe(hashAfterCreate.omni);
 
       // Five read-only calls must answer with a JSON payload.
       for (const [tool, args] of [

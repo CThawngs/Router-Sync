@@ -1,7 +1,8 @@
 /**
  * packages/cli/test/maintain-grant-lifecycle.test.ts
  *
- * M2-01 (ADR-MAINTAIN-02): Grant Lifecycle, strict --only / --agents allowlist
+ * M2-01 (ADR-MAINTAIN-02) + C45-WP4 (§3.2.2): Grant Lifecycle, policy-scoped
+ * standing-consent combo allowlist (default []), strict --agents allowlist
  * grammar, programmatic non-PTY test seams, grant-status --json zero-leak output,
  * and grant cryptographic/schema corruption hardening.
  *
@@ -13,6 +14,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as os from 'node:os';
 import { createRequire } from 'node:module';
+import { upsertStandingConsentTarget } from '@routersync/core';
 import {
   runMaintainAuthorizeCommand,
   runMaintainGrantStatusCommand,
@@ -53,6 +55,16 @@ function makeTempWorkspace(prefix: string): string {
   return fs.mkdtempSync(path.join(os.tmpdir(), prefix));
 }
 
+function seedStandingConsentCombos(stateDir: string, combos: string[]): void {
+  for (const combo of combos) {
+    upsertStandingConsentTarget(stateDir, {
+      target: `router:nine/${combo}`,
+      level: 'propose',
+      ttlDays: 30,
+    });
+  }
+}
+
 function makeIsolatedRouterFixture(dir: string): { dbPath: string; configPath: string } {
   const dbPath = path.join(dir, 'data.sqlite');
   const now = new Date().toISOString();
@@ -62,6 +74,7 @@ function makeIsolatedRouterFixture(dir: string): { dbPath: string; configPath: s
       'CREATE TABLE settings (id INTEGER, data TEXT);' +
       `INSERT INTO combos VALUES ('test-1','test-1',NULL,'${JSON.stringify(['p1/m1', 'p1/m2', 'p1/m3'])}','${now}','${now}');` +
       `INSERT INTO combos VALUES ('test-2','test-2',NULL,'${JSON.stringify(['p1/m1', 'p1/m2'])}','${now}','${now}');` +
+      `INSERT INTO combos VALUES ('coding-main','coding-main',NULL,'${JSON.stringify(['p1/m1', 'p1/m2'])}','${now}','${now}');` +
       "INSERT INTO settings VALUES (1,'{}');"
   );
   db.close();
@@ -87,6 +100,10 @@ function makeIsolatedRouterFixture(dir: string): { dbPath: string; configPath: s
       '      - nine',
       '    size: 3',
       '  - name: test-2',
+      '    routers:',
+      '      - nine',
+      '    size: 2',
+      '  - name: coding-main',
       '    routers:',
       '      - nine',
       '    size: 2',
@@ -139,7 +156,7 @@ function extractRefusalReason(stderr: string[]): string | undefined {
   return joined.match(/MAINTAIN-REFUSED reason=(\S+)/)?.[1];
 }
 
-describe('M2-01 Grant Lifecycle & Strict Allowlist Grammar (ADR-MAINTAIN-02)', () => {
+describe('M2-01 Grant Lifecycle & Policy-Scoped Allowlist Grammar (ADR-MAINTAIN-02 + C45-WP4)', () => {
   const tempDirs: string[] = [];
   let savedGrantSecret: string | undefined;
   let savedApplyGrantSecret: string | undefined;
@@ -175,7 +192,7 @@ describe('M2-01 Grant Lifecycle & Strict Allowlist Grammar (ADR-MAINTAIN-02)', (
     }
   });
 
-  describe('M2-01-T1: Strict --only allowlist grammar in authorize and apply', () => {
+  describe('M2-01-T1: Strict --only grammar & default [] standing-consent policy in authorize and apply', () => {
     const invalidPatterns: Array<{ input: string; expectedReason: string }> = [
       { input: '', expectedReason: 'no-only' },
       { input: '   ', expectedReason: 'no-only' },
@@ -183,11 +200,12 @@ describe('M2-01 Grant Lifecycle & Strict Allowlist Grammar (ADR-MAINTAIN-02)', (
       { input: ',test-1', expectedReason: 'only-pattern' },
       { input: 'test-1,,test-2', expectedReason: 'only-pattern' },
       { input: 'test-1, test-2', expectedReason: 'only-pattern' },
+      { input: 'test-1', expectedReason: 'only-pattern' },
       { input: 'prod-1', expectedReason: 'only-pattern' },
     ];
 
     for (const { input, expectedReason } of invalidPatterns) {
-      it(`rejects --only ${JSON.stringify(input)} in maintain authorize with ${expectedReason}`, async () => {
+      it(`rejects --only ${JSON.stringify(input)} when standing-consent.json is absent in maintain authorize with ${expectedReason}`, async () => {
         const stateDir = makeTempWorkspace('rs-m201-t1-auth-');
         tempDirs.push(stateDir);
 
@@ -205,7 +223,7 @@ describe('M2-01 Grant Lifecycle & Strict Allowlist Grammar (ADR-MAINTAIN-02)', (
         expect(fs.existsSync(getGrantFilePath(stateDir))).toBe(false);
       });
 
-      it(`rejects --only ${JSON.stringify(input)} in maintain apply with ${expectedReason}`, async () => {
+      it(`rejects --only ${JSON.stringify(input)} when standing-consent.json is absent in maintain apply with ${expectedReason}`, async () => {
         const stateDir = makeTempWorkspace('rs-m201-t1-apply-');
         tempDirs.push(stateDir);
 
@@ -268,10 +286,11 @@ describe('M2-01 Grant Lifecycle & Strict Allowlist Grammar (ADR-MAINTAIN-02)', (
   });
 
   describe('M2-01-T3: Full grant lifecycle via programmatic seams & grant-status --json zero-leak', () => {
-    it('refuses non-TTY authorize, create, and apply with reason=no-tty when no grant exists', async () => {
+    it('refuses non-TTY authorize, create, and apply with reason=no-tty when policy consent exists but no grant exists', async () => {
       const stateDir = makeTempWorkspace('rs-m201-t3-notty-');
       tempDirs.push(stateDir);
       const { configPath } = makeIsolatedRouterFixture(stateDir);
+      seedStandingConsentCombos(stateDir, ['test-1', 'test-9']);
 
       const authRes = await captureRun(() =>
         runMaintainAuthorizeCommand({
@@ -312,17 +331,18 @@ describe('M2-01 Grant Lifecycle & Strict Allowlist Grammar (ADR-MAINTAIN-02)', (
       expect(extractRefusalReason(applyRes.stderr)).toBe('no-tty');
     });
 
-    it('runs full authorize -> grant-status --json (zero-leak) -> apply -> scope/secret/MAC/expiry checks -> revoke lifecycle', async () => {
+    it('runs full authorize -> grant-status --json (zero-leak) -> apply -> scope/secret/MAC/expiry checks -> revoke lifecycle (including real combo coding-main)', async () => {
       const stateDir = makeTempWorkspace('rs-m201-t3-full-');
       tempDirs.push(stateDir);
       process.env['ROUTERSYNC_STATE_DIR'] = stateDir;
       const { configPath } = makeIsolatedRouterFixture(stateDir);
+      seedStandingConsentCombos(stateDir, ['test-1', 'coding-main']);
 
       // 1. Issue grant via programmatic TTY + promptFn seam (deduplicates test-1,test-1 and hermes,hermes)
       const authRes = await captureRun(() =>
         runMaintainAuthorizeCommand({
-          only: 'test-1,test-1',
-          agents: 'hermes,hermes',
+          only: 'test-1,test-1,coding-main',
+          agents: 'hermes,hermes,opencode',
           hours: '2',
           stateDir,
           isTTY: true,
@@ -338,8 +358,8 @@ describe('M2-01 Grant Lifecycle & Strict Allowlist Grammar (ADR-MAINTAIN-02)', (
       const grantPath = getGrantFilePath(stateDir);
       expect(fs.existsSync(grantPath)).toBe(true);
       const rawDiskGrant = JSON.parse(fs.readFileSync(grantPath, 'utf8')) as Record<string, unknown>;
-      expect(rawDiskGrant['combos']).toEqual(['test-1']);
-      expect(rawDiskGrant['agents']).toEqual(['hermes']);
+      expect(rawDiskGrant['combos']).toEqual(['test-1', 'coding-main']);
+      expect(rawDiskGrant['agents']).toEqual(['hermes', 'opencode']);
 
       // 2. grant-status --json active output + strict zero-leak verification
       const statusActive = await captureRun(() =>
@@ -352,8 +372,8 @@ describe('M2-01 Grant Lifecycle & Strict Allowlist Grammar (ADR-MAINTAIN-02)', (
       expect(parsedStatus).toMatchObject({
         active: true,
         id: rawDiskGrant['id'],
-        combos: ['test-1'],
-        agents: ['hermes'],
+        combos: ['test-1', 'coding-main'],
+        agents: ['hermes', 'opencode'],
         createdAt: rawDiskGrant['createdAt'],
         expiresAt: rawDiskGrant['expiresAt'],
       });
@@ -375,24 +395,26 @@ describe('M2-01 Grant Lifecycle & Strict Allowlist Grammar (ADR-MAINTAIN-02)', (
       const planObj = JSON.parse(planRes.stdout.join('\n')) as { planHash: string };
       expect(planObj.planHash).toMatch(/^[0-9a-f]{16}$/);
 
-      // 4. Non-TTY apply succeeds when valid grant + secretResolver match scope
-      const applyOk = await captureRun(() =>
-        runMaintainApplyCommand({
-          only: 'test-1',
-          agents: 'hermes',
-          planHash: planObj.planHash,
-          configPath,
-          router: 'nine',
-          stateDir,
-          dryRun: true,
-          isTTY: false,
-          secretResolver: () => issuedSecret,
-        } as MaintainApplyOptions)
-      );
-      expect(applyOk.exitCode).toBe(0);
-      expect(applyOk.stdout.join('\n')).toContain(`grant=${String(rawDiskGrant['id'])}`);
+      // 4. Non-TTY apply succeeds for both test-1 AND real combo coding-main when valid grant matches scope
+      for (const comboTarget of ['test-1', 'coding-main']) {
+        const applyOk = await captureRun(() =>
+          runMaintainApplyCommand({
+            only: comboTarget,
+            agents: 'hermes',
+            planHash: planObj.planHash,
+            configPath,
+            router: 'nine',
+            stateDir,
+            dryRun: true,
+            isTTY: false,
+            secretResolver: () => issuedSecret,
+          } as MaintainApplyOptions)
+        );
+        expect(applyOk.exitCode).toBe(0);
+        expect(applyOk.stdout.join('\n')).toContain(`grant=${String(rawDiskGrant['id'])}`);
+      }
 
-      // 5. Out-of-scope combo (test-2 when grant only covers test-1) refuses grant-scope / grant-scope-combo
+      // 5. Out-of-scope combo (test-2 when grant only covers test-1,coding-main) refuses grant-scope / grant-scope-combo
       const outCombo = await captureRun(() =>
         runMaintainApplyCommand({
           only: 'test-2',
@@ -410,7 +432,7 @@ describe('M2-01 Grant Lifecycle & Strict Allowlist Grammar (ADR-MAINTAIN-02)', (
       expect(extractRefusalReason(outCombo.stderr)).toBe('grant-scope');
       expect(outCombo.stderr.join('\n')).toContain('grant-scope-combo');
 
-      // 6. Out-of-scope agent (dsh when grant only covers hermes) refuses grant-scope / grant-scope-agent
+      // 6. Out-of-scope agent (dsh when grant only covers hermes,opencode) refuses grant-scope / grant-scope-agent
       const outAgent = await captureRun(() =>
         runMaintainApplyCommand({
           only: 'test-1',

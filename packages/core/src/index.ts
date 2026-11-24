@@ -89,3 +89,5 @@ export * from './notify/webhook.js';
 export * from './harness/matrix.js';
 // C45-WP3: Official Provider Domain Registry & Sanitized Research Evidence Ledger (S1, S3, S7)
 export * from './research/index.js';
+// C45-WP4: Controlled Automation — Standing Consent, Freeze, Apply History & Approval Tokens (S3, S4, S9)
+export * from './consent/index.js';

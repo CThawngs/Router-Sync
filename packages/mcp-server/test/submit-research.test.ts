@@ -21,6 +21,7 @@ import {
   createRouterSyncMcpServer,
   READ_ONLY_TOOL_NAMES,
   LEDGER_APPEND_TOOL_NAMES,
+  CONTROLLED_WRITE_TOOL_NAMES,
   ALL_MCP_TOOL_NAMES,
 } from '../src/index.js';
 
@@ -103,10 +104,11 @@ describe('C45-WP3 Part 2: MCP submit_research, research_queue & research_evidenc
     };
   }
 
-  it('exports separated READ_ONLY_TOOL_NAMES (25), LEDGER_APPEND_TOOL_NAMES (1), and ALL_MCP_TOOL_NAMES (26)', () => {
+  it('exports separated READ_ONLY_TOOL_NAMES (25), LEDGER_APPEND_TOOL_NAMES (1), CONTROLLED_WRITE_TOOL_NAMES (1), and ALL_MCP_TOOL_NAMES (27)', () => {
     expect(READ_ONLY_TOOL_NAMES).toHaveLength(25);
     expect(LEDGER_APPEND_TOOL_NAMES).toEqual(['submit_research']);
-    expect(ALL_MCP_TOOL_NAMES).toHaveLength(26);
+    expect(CONTROLLED_WRITE_TOOL_NAMES).toEqual(['apply_plan']);
+    expect(ALL_MCP_TOOL_NAMES).toHaveLength(27);
   });
 
   it('accepts official URL, writes ONLY research-evidence.json, and touches zero router/harness/inbox/verify files', async () => {

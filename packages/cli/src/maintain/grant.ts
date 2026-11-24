@@ -23,8 +23,8 @@ export const GRANT_FILE_NAME = 'apply-grant.json';
 const SALT_HEX_RE = /^[0-9a-f]{32}$/i;
 const SECRET_HASH_HEX_RE = /^[0-9a-f]{128}$/i;
 const MAC_HEX_RE = /^[0-9a-f]{64}$/i;
-const COMBO_NAME_RE = /^test-\d+$/;
-const ALLOWED_AGENTS = new Set(['hermes', 'dsh']);
+export const SAFE_COMBO_SLUG_RE = /^[a-zA-Z0-9][a-zA-Z0-9._-]{0,127}$/;
+export const ALLOWED_AGENTS = new Set(['hermes', 'openmausbot', 'opencode', 'dsh']);
 const MAX_ALLOWED_DURATION_MS = 8 * 3600 * 1000 + 1000;
 
 export function getGrantFilePath(stateDir?: string): string {
@@ -105,7 +105,7 @@ function parseApplyGrantFields(
   }
 
   for (const c of raw.combos) {
-    if (typeof c !== 'string' || !COMBO_NAME_RE.test(c)) {
+    if (typeof c !== 'string' || !SAFE_COMBO_SLUG_RE.test(c)) {
       return { ok: false, reason: 'grant-invalid' };
     }
   }

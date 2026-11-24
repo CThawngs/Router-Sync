@@ -1,7 +1,7 @@
 /**
  * packages/cli/src/commands/autopilot.ts
  *
- * Unified auto-maintenance plan per router (propose-only, NO writes at R62).
+ * Unified auto-maintenance plan per router.
  * Combines: (i) drop dead models per R1-R6 (two scans 60s apart);
  * (ii) add FREE-BY-SUFFIX / FREE-BY-PRICE candidates from discover;
  * (iii) reorder per ranking.yaml, plus health-demote if enabled.
@@ -14,7 +14,7 @@
  * Writes autopilot-plan.json (with planHash + blocked field) + human-readable
  * text to %LOCALAPPDATA%\routersync\state\plans\ and prints the path.
  *
- * Config: autonomy: observe | propose (default propose). 'auto-safe' rejected.
+ * Config: autonomy: observe | propose | auto-safe (default propose; auto-safe gated per target by standing-consent.json).
  * Pins:   pins: { "<router>/<combo>": [id, …] } — pinned steps stay at head.
  */
 
@@ -86,7 +86,7 @@ function stableHash(value: unknown): string {
   return createHash('sha256').update(JSON.stringify(value)).digest('hex').slice(0, 16);
 }
 
-function loadAutonomy(): { mode: 'observe' | 'propose' } {
+export function loadAutonomy(): { mode: 'observe' | 'propose' | 'auto-safe' } {
   try {
     const appData = process.env['APPDATA'] ?? path.join(os.homedir(), 'AppData', 'Roaming');
     const file = path.join(appData, 'routersync', 'autopilot.yaml');
@@ -95,7 +95,7 @@ function loadAutonomy(): { mode: 'observe' | 'propose' } {
     const parsed = parse(fs.readFileSync(file, 'utf8'));
     const mode = parsed?.autonomy;
     if (mode === 'auto-safe') {
-      throw new Error('chua ho tro, xem docs/DESIGN-AUTOPILOT.md');
+      return { mode: 'auto-safe' };
     }
     return { mode: mode === 'observe' ? 'observe' : 'propose' };
   } catch {
@@ -516,7 +516,6 @@ export async function runAutopilotPlanCommand(options: { json?: boolean; out?: s
     const stepsMap = currentSteps.get(router)!;
     for (const [comboName, models] of [...stepsMap.entries()].sort()) {
       const pinKey = `${router}/${comboName}`;
-      const pinList = pins.get(pinKey);
       txtLines.push(`  ${router}/${comboName}: ${models.slice(0, 8).join(', ')}${pins.has(pinKey) ? ' [co pin]' : ''}`);
     }
   }

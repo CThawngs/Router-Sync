@@ -1,7 +1,7 @@
 /**
  * packages/mcp-server/test/mcp.test.ts
  *
- * Tests for the RouterSync MCP surface (Conditions C1, AT-89, AT-90, T2-46 + C45-WP3).
+ * Tests for the RouterSync MCP surface (Conditions C1, AT-89, AT-90, T2-46 + C45-WP3 + C45-WP4).
  *
  * The second half of this file is a variance test: the same read-only tools are called
  * twice against two throwaway state directories that differ in
@@ -27,6 +27,7 @@ import {
   createRouterSyncMcpServer,
   READ_ONLY_TOOL_NAMES,
   LEDGER_APPEND_TOOL_NAMES,
+  CONTROLLED_WRITE_TOOL_NAMES,
   ALL_MCP_TOOL_NAMES,
   paginateArray,
   sanitizeUntrustedString,
@@ -35,8 +36,8 @@ import {
 import type { ComboDefinition, ModelInfo } from '@routersync/core';
 
 describe('RouterSync Read-Only MCP Server', () => {
-  // T2-46 / AT-87 variant: Snapshot test of exact tool set
-  it('registers exactly the 25 verified read-only tools + 1 ledger-append tool with zero router/harness write tools', () => {
+  // T2-46 / AT-87 variant + C45-WP4: Snapshot test of exact 3-tier tool split
+  it('registers exactly the 25 verified read-only tools + 1 ledger-append tool + 1 controlled-write tool with zero approval/grant tools', () => {
     const expectedTools = [
       'detect_routers',
       'get_config',
@@ -70,14 +71,25 @@ describe('RouterSync Read-Only MCP Server', () => {
     expect(actualTools).toHaveLength(25);
 
     expect(LEDGER_APPEND_TOOL_NAMES).toEqual(['submit_research']);
-    expect(ALL_MCP_TOOL_NAMES).toHaveLength(26);
+    expect(CONTROLLED_WRITE_TOOL_NAMES).toEqual(['apply_plan']);
+    expect(ALL_MCP_TOOL_NAMES).toHaveLength(27);
 
-    // Verify ZERO write or approval tools exist across all 26 MCP tools
+    // Every non-controlled-write tool (26 tools) must forbid all write/apply/approval keywords
+    const nonControlledTools = ALL_MCP_TOOL_NAMES.filter((t) => t !== 'apply_plan');
     const forbiddenKeywords = ['write', 'apply', 'delete', 'modify', 'update', 'approve', 'grant'];
-    for (const tool of ALL_MCP_TOOL_NAMES) {
+    for (const tool of nonControlledTools) {
       for (const forbidden of forbiddenKeywords) {
         expect(tool).not.toBe(forbidden);
+        expect(tool).not.toContain(`${forbidden}_`);
         expect(tool).not.toContain(`_${forbidden}`);
+      }
+    }
+
+    // Zero tools in the entire MCP server may ever match delete, approve, or grant
+    for (const tool of ALL_MCP_TOOL_NAMES) {
+      for (const strictlyForbidden of ['delete', 'approve', 'grant']) {
+        expect(tool).not.toBe(strictlyForbidden);
+        expect(tool).not.toContain(strictlyForbidden);
       }
     }
   });
@@ -89,7 +101,7 @@ describe('RouterSync Read-Only MCP Server', () => {
       const listed = await a.listTools();
       const listedNames = listed.map((t) => t.name).sort();
       const registered = [...ALL_MCP_TOOL_NAMES].sort();
-      expect(listedNames).toHaveLength(26);
+      expect(listedNames).toHaveLength(27);
       // No extra tools in listTools()
       for (const name of listedNames) {
         expect(registered).toContain(name);
@@ -698,6 +710,8 @@ describe('MCP tools read their real source (state A vs state B)', () => {
       const autopilot = await a.call('autopilot_status');
       expect(autopilot['policyPresent']).toBe(true);
       expect(autopilot['mode']).toBe('propose');
+      expect(autopilot['frozen']).toBe(false);
+      expect(autopilot['consentTargets']).toEqual([]);
       expect(autopilot['newestPlan'].planHash).toBe('hash-a');
 
       const interview = await a.call('profile_interview');
@@ -716,6 +730,7 @@ describe('MCP tools read their real source (state A vs state B)', () => {
 
       const autopilot = await b.call('autopilot_status');
       expect(autopilot['mode']).toBe('observe');
+      expect(autopilot['frozen']).toBe(false);
       expect(autopilot['newestPlan'].planHash).toBe('hash-b');
 
       const interview = await b.call('profile_interview');

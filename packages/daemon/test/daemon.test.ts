@@ -5,7 +5,13 @@ import { buildScheduleArtifacts } from '../../cli/src/commands/schedule.js';
 import { createScheduler, jitteredDelay, backoffDelay, readJobLog, setPaused, isPaused } from '../src/scheduler.js';
 import { compareFingerprints, verdictAgainstBaseline, hashRows, canonicalRow, type DbFingerprint } from '../src/fence.js';
 import { createDaemonServer, checkBearerToken, tokenFileGuidance } from '../src/server.js';
+import { createApprovalToken, verifyAndConsumeApprovalToken, resetTokenRegistry } from '../src/security/approval-token.js';
 import { FastLoop, type FastLoopOptions } from '../src/loop/fast-loop.js';
+import {
+  activateFreeze,
+  deactivateFreeze,
+  verifyAndConsumePersistentApprovalToken,
+} from '@routersync/core';
 import { DAEMON_FIXTURE_ENV_KEYS, setupDaemonFixture } from '../../../test/harness/daemon-fixture.js';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
@@ -326,6 +332,66 @@ describe('M2-02: FastLoop actionable webhook & daemon-fixture env isolation', ()
     } finally {
       await new Promise<void>((resolve) => hookServer.close(() => resolve()));
       fixture.restore();
+    }
+  });
+});
+
+describe('C45-WP4: Cross-Process Approval Token Persistence & Freeze Enforcement', () => {
+  it('mirrors daemon approval tokens to <stateDir>/approval-tokens.json and blocks POST /api/v1/changes/approve with 403 write_frozen', async () => {
+    const fixture = await setupDaemonFixture();
+    const stateDir = fs.mkdtempSync(path.join(os.tmpdir(), 'rs-wp4-daemon-state-'));
+    const prevState = process.env['ROUTERSYNC_STATE_DIR'];
+    process.env['ROUTERSYNC_STATE_DIR'] = stateDir;
+    resetTokenRegistry();
+
+    const server = createDaemonServer({ host: '127.0.0.1' });
+    await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+    const port = (server.address() as { port: number }).port;
+
+    try {
+      const issued = createApprovalToken('plan-hash-wp4-cross-proc');
+      expect(fs.existsSync(path.join(stateDir, 'approval-tokens.json'))).toBe(true);
+
+      // Consume cross-process via @routersync/core store -> subsequent daemon verify must detect replay!
+      const crossConsume = verifyAndConsumePersistentApprovalToken(
+        stateDir,
+        issued.token,
+        'plan-hash-wp4-cross-proc'
+      );
+      expect(crossConsume).toEqual({ valid: true });
+      expect(verifyAndConsumeApprovalToken(issued.token, 'plan-hash-wp4-cross-proc')).toEqual({
+        valid: false,
+        reason: 'token_already_consumed',
+      });
+
+      // Freeze blocks HTTP approval endpoint with 403 write_frozen
+      const issued2 = createApprovalToken('plan-hash-wp4-frozen');
+      activateFreeze(stateDir, 'daemon-freeze-check');
+      const resFrozen = await fetch(`http://127.0.0.1:${port}/api/v1/changes/approve`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ planHash: 'plan-hash-wp4-frozen', token: issued2.token }),
+      });
+      expect(resFrozen.status).toBe(403);
+      const bodyFrozen = (await resFrozen.json()) as Record<string, any>;
+      expect(bodyFrozen['meta']?.['reason']).toBe('write_frozen');
+      expect(bodyFrozen['approved']).toBe(false);
+
+      // Unfreeze restores token usability (not consumed while frozen!)
+      deactivateFreeze(stateDir);
+      const resOk = await fetch(`http://127.0.0.1:${port}/api/v1/changes/approve`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ planHash: 'plan-hash-wp4-frozen', token: issued2.token }),
+      });
+      expect(resOk.status).toBe(200);
+    } finally {
+      resetTokenRegistry();
+      await new Promise<void>((resolve) => server.close(() => resolve()));
+      if (prevState !== undefined) process.env['ROUTERSYNC_STATE_DIR'] = prevState;
+      else delete process.env['ROUTERSYNC_STATE_DIR'];
+      fixture.restore();
+      fs.rmSync(stateDir, { recursive: true, force: true });
     }
   });
 });

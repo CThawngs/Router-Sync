@@ -6,7 +6,7 @@
  */
 
 import { normalizeReadBackLevel } from '@routersync/adapter-sdk';
-import type { RouterAdapter, ApplyResult, Plan } from '@routersync/adapter-sdk';
+import type { RouterAdapter, ApplyResult, Plan, Snapshot } from '@routersync/adapter-sdk';
 
 export interface ApplySafeOptions {
   dryRun?: boolean;
@@ -159,16 +159,14 @@ async function executeSingleApply(
     touchedComboIds,
   };
 
-  // 4. Execute Write
+  // 4. Execute Write (unconditional rollback on ANY write failure — C45-WP4 M5)
   const writeResult = await adapter.applyPlan(plan);
   if (!writeResult.success) {
     let rollbackExecuted = false;
-    if (writeResult.staleDetected) {
-      try {
-        rollbackExecuted = await adapter.rollback(snapshot);
-      } catch {
-        rollbackExecuted = false;
-      }
+    try {
+      rollbackExecuted = await adapter.rollback(snapshot);
+    } catch {
+      rollbackExecuted = false;
     }
     return {
       success: false,
@@ -268,5 +266,36 @@ async function executeSingleApply(
     canonicalReadBackLevel:
       writeResult.canonicalReadBackLevel ?? normalizeReadBackLevel(writeResult.readBackLevel),
     degradedReason: writeResult.degradedReason,
+  };
+}
+
+/**
+ * Centralized router snapshot rollback helper so callers outside @routersync/core
+ * delegate rollback through the core applier boundary.
+ */
+export async function rollbackRouterSnapshot(
+  adapter: RouterAdapter,
+  snapshot: Snapshot
+): Promise<boolean> {
+  try {
+    return await adapter.rollback(snapshot);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Test-only read-back fault wrapper used strictly when VITEST === 'true'.
+ */
+export function withEmptyReadBackAdapter(adapter: RouterAdapter): RouterAdapter {
+  return {
+    name: adapter.name,
+    tier: adapter.tier,
+    checkHealth: () => adapter.checkHealth(),
+    readCombos: async () => [],
+    readCatalog: () => adapter.readCatalog(),
+    createSnapshot: () => adapter.createSnapshot(),
+    applyPlan: (p) => adapter.applyPlan(p),
+    rollback: (s) => adapter.rollback(s),
   };
 }
