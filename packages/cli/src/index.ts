@@ -147,8 +147,9 @@ export function createCliProgram(): Command {
     const opts = actionCommand.opts() as { config?: string; configPath?: string };
     const isAgents = actionCommand.name() === 'agents' || actionCommand.parent?.name() === 'agents';
     const isAppsConfig = actionCommand.parent?.name() === 'apps' && actionCommand.name() !== 'drift';
-    const cfg = actionCommand.name() === 'rank' || isAgents || isAppsConfig
-      ? undefined // rank's -c is ranking.yaml, agents' -c is agent config, not routersync.yaml
+    const isLiteLLM = actionCommand.name() === 'litellm' || actionCommand.parent?.name() === 'litellm';
+    const cfg = actionCommand.name() === 'rank' || isAgents || isAppsConfig || isLiteLLM
+      ? undefined // rank's -c is ranking.yaml, agents'/apps'/litellm's -c is target config, not routersync.yaml
       : (opts.configPath ?? opts.config);
     installConfiguredRouterDbPaths(cfg);
   });
@@ -1183,15 +1184,121 @@ export function createCliProgram(): Command {
 
   profileCmd
     .command('interview')
-    .description('Show W2 profile interview questions (12, Vietnamese)')
+    .description('Run or inspect the <= 12-question adaptive user interview (or legacy W2 interview)')
     .option('-p, --path <path>', 'Custom profile file path')
-    .action(async (opts: { path?: string }) => {
-      await (await import('./commands/profile.js')).runProfileCommand({ subcommand: 'interview', ...opts });
-    });
+    .option('--adaptive', 'Use the C45 WP6 <= 12-question adaptive interview flow')
+    .option('--answers <jsonOrFile>', 'Evaluate answers from JSON string or file path')
+    .option('--write', 'Persist validated adaptive profile to profile.yaml')
+    .option('--json', 'Output in JSON format')
+    .action(
+      async (opts: {
+        path?: string;
+        adaptive?: boolean;
+        answers?: string;
+        write?: boolean;
+        json?: boolean;
+      }) => {
+        await (await import('./commands/profile.js')).runProfileCommand({
+          subcommand: 'interview',
+          ...opts,
+        });
+      }
+    );
 
   profileCmd.action(async () => {
     await (await import('./commands/profile.js')).runProfileCommand({ subcommand: 'show' });
   });
+
+  // litellm command group (C45 WP5: Lossless LiteLLM YAML CST Config Adapter)
+  const litellmCmd = program
+    .command('litellm')
+    .description('Lossless LiteLLM Proxy config.yaml adapter (inspect | plan | apply | rollback)');
+
+  litellmCmd
+    .command('inspect')
+    .description('Inspect LiteLLM config.yaml deployments, credential pools, and fallbacks (read-only)')
+    .requiredOption('-c, --config <path>', 'Path to LiteLLM config.yaml')
+    .option('--json', 'Output result in JSON format')
+    .action(async (opts: { config: string; json?: boolean }) => {
+      const { runLiteLLMCommand } = await import('./commands/litellm.js');
+      runLiteLLMCommand({ subcommand: 'inspect', config: opts.config, json: opts.json });
+    });
+
+  litellmCmd
+    .command('plan')
+    .description('Plan lossless YAML CST sync for a LiteLLM combo without modifying disk')
+    .requiredOption('-c, --config <path>', 'Path to LiteLLM config.yaml')
+    .option('-u, --profile <path>', 'Optional user profile.yaml path')
+    .option('--combo <alias>', 'Target primary model_name alias (default: routersync-default)')
+    .option('--models <csv>', 'Comma-separated <provider>/<modelId> steps (at least 2)')
+    .option('--strategy <strategy>', 'Routing strategy: fallbacks | simple-shuffle | least-busy')
+    .option('--json', 'Output plan in JSON format')
+    .action(
+      async (opts: {
+        config: string;
+        profile?: string;
+        combo?: string;
+        models?: string;
+        strategy?: 'fallbacks' | 'simple-shuffle' | 'least-busy';
+        json?: boolean;
+      }) => {
+        const { runLiteLLMCommand } = await import('./commands/litellm.js');
+        runLiteLLMCommand({ subcommand: 'plan', ...opts });
+      }
+    );
+
+  litellmCmd
+    .command('apply')
+    .description('Apply lossless YAML CST sync to a sandbox LiteLLM config.yaml with .routersync.bak + read-back')
+    .requiredOption('-c, --config <path>', 'Path to sandbox LiteLLM config.yaml')
+    .option('-u, --profile <path>', 'Optional user profile.yaml path')
+    .option('--combo <alias>', 'Target primary model_name alias (default: routersync-default)')
+    .option('--models <csv>', 'Comma-separated <provider>/<modelId> steps (at least 2)')
+    .option('--strategy <strategy>', 'Routing strategy: fallbacks | simple-shuffle | least-busy')
+    .option('--plan-hash <hash>', 'Optional expected SHA-256 planHash')
+    .option('--backup <path>', 'Optional custom backup path (default: <config>.routersync.bak)')
+    .option('--json', 'Output apply result in JSON format')
+    .action(
+      async (opts: {
+        config: string;
+        profile?: string;
+        combo?: string;
+        models?: string;
+        strategy?: 'fallbacks' | 'simple-shuffle' | 'least-busy';
+        planHash?: string;
+        backup?: string;
+        json?: boolean;
+      }) => {
+        const { runLiteLLMCommand } = await import('./commands/litellm.js');
+        runLiteLLMCommand({
+          subcommand: 'apply',
+          config: opts.config,
+          profile: opts.profile,
+          combo: opts.combo,
+          models: opts.models,
+          strategy: opts.strategy,
+          expectedPlanHash: opts.planHash,
+          backup: opts.backup,
+          json: opts.json,
+        });
+      }
+    );
+
+  litellmCmd
+    .command('rollback')
+    .description('Restore LiteLLM config.yaml byte-for-byte from .routersync.bak')
+    .requiredOption('-c, --config <path>', 'Path to LiteLLM config.yaml')
+    .option('--backup <path>', 'Optional custom backup path (default: <config>.routersync.bak)')
+    .option('--json', 'Output rollback result in JSON format')
+    .action(async (opts: { config: string; backup?: string; json?: boolean }) => {
+      const { runLiteLLMCommand } = await import('./commands/litellm.js');
+      runLiteLLMCommand({
+        subcommand: 'rollback',
+        config: opts.config,
+        backup: opts.backup,
+        json: opts.json,
+      });
+    });
 
   const exportCmd = program
     .command('export')

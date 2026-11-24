@@ -3,7 +3,8 @@
  *
  * Deterministic gating filters:
  * 1. Blacklist check (space-bunny, union-alpha, minimax-m3.1, deepseek-v4-pro, etc.)
- * 2. Non-chat check (embeddings, tts, whisper, image generation, moderation, audio, guard)
+ * 2. Non-chat specialist check across all 5 non-chat families (embedding, audio,
+ *    moderation/guard, image-gen, rerank) + vision-only
  * 3. Price classification (FREE, PRICE_UNVERIFIED, PAID) with zero-payment-providers list
  * 4. Model catalog enrichment from %APPDATA%\9router\model-catalog.json
  */
@@ -25,6 +26,23 @@ export interface CatalogMetadata {
   [key: string]: unknown;
 }
 
+export type NonChatSpecialistKind =
+  | 'embedding'
+  | 'audio'
+  | 'moderation'
+  | 'image-gen'
+  | 'rerank'
+  | 'vision-only';
+
+export interface NonChatClassifierInput {
+  modelId: string;
+  type?: string | undefined;
+  mode?: string | undefined;
+  capabilities?: readonly string[] | undefined;
+  inputModalities?: readonly string[] | undefined;
+  outputModalities?: readonly string[] | undefined;
+}
+
 export const DEFAULT_ZERO_PAYMENT_PROVIDERS: readonly string[] = [
   'gemini',
   'groq',
@@ -43,22 +61,149 @@ export const DEFAULT_ZERO_PAYMENT_PROVIDERS: readonly string[] = [
 export const DEFAULT_NON_CHAT_PATTERNS: readonly string[] = [
   'embed',
   'text-embedding',
+  'nomic-embed',
+  'jina-embeddings',
+  'voyage-',
   'tts',
+  'playai-tts',
+  'kokoro',
+  'canary-',
   'whisper',
+  'transcribe',
   'dall-e',
+  'gpt-image',
+  'imagen',
   'flux',
   'sdxl',
   'midjourney',
   'stable-diffusion',
+  'recraft',
+  'ideogram',
   'moderation',
+  'omni-moderation',
+  'llama-guard',
+  'prompt-guard',
+  'shieldgemma',
+  'safeguard',
   'clip',
   'rerank',
   'bge-',
   'guard',
-  'safeguard',
-  'prompt-guard',
-  'transcribe',
+  'vision-only',
+  'ocr-only',
 ];
+
+const RERANK_PATTERNS: readonly RegExp[] = [
+  /\brerank(?:er)?\b/i,
+  /bge-reranker/i,
+  /jina-reranker/i,
+];
+
+const EMBEDDING_PATTERNS: readonly RegExp[] = [
+  /\bembed(?:ding|dings)?\b/i,
+  /text-embedding/i,
+  /(?:^|[/._:-])(?:bge|e5)-(?:small|base|large|m3|en|multilingual|mistral)/i,
+  /nomic-embed/i,
+  /jina-embeddings/i,
+  /voyage-(?:large|code|finance|law|multilingual|\d)/i,
+];
+
+const AUDIO_PATTERNS: readonly RegExp[] = [
+  /(?:^|[/._:-])tts(?:$|[/._:-])/i,
+  /whisper/i,
+  /transcribe/i,
+  /(?:^|[/._:-])audio(?:$|[/._:-])/i,
+  /(?:^|[/._:-])speech(?:$|[/._:-])/i,
+  /kokoro/i,
+  /playai-tts/i,
+  /canary-\d/i,
+  /(?:^|[/._:-])stt(?:$|[/._:-])/i,
+];
+
+const MODERATION_PATTERNS: readonly RegExp[] = [
+  /moderation/i,
+  /omni-moderation/i,
+  /llama-guard/i,
+  /prompt-guard/i,
+  /shieldgemma/i,
+  /safeguard/i,
+];
+
+const IMAGE_GEN_PATTERNS: readonly RegExp[] = [
+  /dall-e/i,
+  /gpt-image/i,
+  /(?:^|[/._:-])imagen(?:$|[/._:-\d])/i,
+  /(?:^|[/._:-])flux(?:$|[/._:-\d])/i,
+  /(?:^|[/._:-])sdxl(?:$|[/._:-])/i,
+  /stable-diffusion/i,
+  /midjourney/i,
+  /recraft/i,
+  /ideogram/i,
+];
+
+const VISION_ONLY_PATTERNS: readonly RegExp[] = [
+  /vision-only/i,
+  /ocr-only/i,
+];
+
+/**
+ * Deterministically classifies specialist non-chat models across all 5 C45 WP5
+ * non-chat model families (`embedding`, `audio`, `moderation`, `image-gen`, `rerank`)
+ * plus `vision-only`, using both explicit metadata (`mode`, `type`, `capabilities`,
+ * `outputModalities`) and model-ID patterns while keeping multimodal general chat
+ * models (`gpt-4o`, `gemini-2.5-pro`, `claude-sonnet-4-5`, etc.) as `null`.
+ */
+export function classifyNonChatSpecialist(
+  input: string | NonChatClassifierInput
+): NonChatSpecialistKind | null {
+  const normalized: NonChatClassifierInput =
+    typeof input === 'string' ? { modelId: input } : input;
+
+  const explicitTag = `${normalized.mode ?? ''} ${normalized.type ?? ''}`.trim().toLowerCase();
+  if (explicitTag) {
+    if (/\brerank/.test(explicitTag)) return 'rerank';
+    if (/\bembed/.test(explicitTag)) return 'embedding';
+    if (/\b(?:audio|tts|stt|speech|transcri)/.test(explicitTag)) return 'audio';
+    if (/\b(?:moderation|guard|safety)/.test(explicitTag)) return 'moderation';
+    if (/\b(?:image_generation|image-gen|image_edit|text-to-image)/.test(explicitTag)) {
+      return 'image-gen';
+    }
+    if (/\b(?:vision-only|ocr-only)/.test(explicitTag)) return 'vision-only';
+  }
+
+  if (normalized.outputModalities && normalized.outputModalities.length > 0) {
+    const outs = normalized.outputModalities.map((m) => m.toLowerCase());
+    const hasTextOut = outs.includes('text');
+    if (!hasTextOut) {
+      if (outs.includes('embedding') || outs.includes('embeddings')) return 'embedding';
+      if (outs.includes('audio') || outs.includes('speech')) return 'audio';
+      if (outs.includes('image')) return 'image-gen';
+    }
+  }
+
+  if (normalized.capabilities && normalized.capabilities.length > 0) {
+    const caps = normalized.capabilities.map((c) => c.toLowerCase());
+    const hasChat = caps.includes('chat') || caps.includes('text-generation') || caps.includes('completion');
+    if (!hasChat) {
+      if (caps.includes('rerank')) return 'rerank';
+      if (caps.includes('embedding') || caps.includes('embeddings')) return 'embedding';
+      if (caps.includes('tts') || caps.includes('asr') || caps.includes('audio-transcription')) return 'audio';
+      if (caps.includes('moderation')) return 'moderation';
+      if (caps.includes('image-generation') || caps.includes('image-gen')) return 'image-gen';
+    }
+  }
+
+  const id = normalized.modelId.trim();
+  // Check rerank BEFORE embedding so `bge-reranker-*` maps to `rerank`
+  if (RERANK_PATTERNS.some((re) => re.test(id))) return 'rerank';
+  if (EMBEDDING_PATTERNS.some((re) => re.test(id))) return 'embedding';
+  if (AUDIO_PATTERNS.some((re) => re.test(id))) return 'audio';
+  if (MODERATION_PATTERNS.some((re) => re.test(id))) return 'moderation';
+  if (IMAGE_GEN_PATTERNS.some((re) => re.test(id))) return 'image-gen';
+  if (VISION_ONLY_PATTERNS.some((re) => re.test(id))) return 'vision-only';
+
+  return null;
+}
 
 export function extractProvider(fullId: string): { provider: string; modelName: string } {
   const trimmed = fullId.trim();
@@ -108,6 +253,9 @@ export function isBlacklisted(modelId: string, blacklistPatterns: string[]): boo
 }
 
 export function isNonChat(modelId: string, nonChatPatterns: string[]): boolean {
+  if (classifyNonChatSpecialist(modelId) !== null) {
+    return true;
+  }
   const lower = modelId.toLowerCase();
   for (const pattern of nonChatPatterns) {
     const p = pattern.trim().toLowerCase();
