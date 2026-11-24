@@ -394,13 +394,41 @@ export function createCliProgram(): Command {
     .option('--out <path>', 'Write output to file')
     .action(async (opts: { once?: boolean; out?: string }) => { await runResearchCommand({ subcommand: 'run', once: opts.once, out: opts.out }); });
   researchCmd.command('status').action(async () => { await runResearchCommand({ subcommand: 'status' }); });
-  researchCmd.command('queue').action(async () => { await runResearchCommand({ subcommand: 'queue' }); });
+  researchCmd
+    .command('queue')
+    .option('-c, --config <path>', 'Custom path to configuration file (routersync.yaml)')
+    .option('--state-dir <dir>', 'Custom state directory')
+    .option('--json', 'Output research queue and weekly budget in JSON format')
+    .action(async (opts: { config?: string; stateDir?: string; json?: boolean }) => {
+      await runResearchCommand({
+        subcommand: 'queue',
+        configPath: opts.config,
+        stateDir: opts.stateDir,
+        json: opts.json,
+      });
+    });
   researchCmd.command('evidence <model>').action(async (model: string) => { await runResearchCommand({ subcommand: 'evidence', model }); });
   researchCmd.command('price-confirm').action(async () => { await runResearchCommand({ subcommand: 'price-confirm' }); });
   researchCmd
     .command('submit [file]')
     .description('Submit research evidence JSON (validated, untrusted, zero router writes)')
-    .action(async (file?: string) => { await runResearchCommand({ subcommand: 'submit', file }); });
+    .option('-c, --config <path>', 'Custom path to configuration file (routersync.yaml)')
+    .option('--state-dir <dir>', 'Custom state directory')
+    .option('--session-id <id>', 'Explicit research session ID for weekly cap accounting')
+    .action(
+      async (
+        file: string | undefined,
+        opts: { config?: string; stateDir?: string; sessionId?: string }
+      ) => {
+        await runResearchCommand({
+          subcommand: 'submit',
+          file,
+          configPath: opts.config,
+          stateDir: opts.stateDir,
+          sessionId: opts.sessionId,
+        });
+      }
+    );
 
   // inbox command (Round C4c A8): list, ack, snooze items
   const inboxCmd = program
@@ -543,13 +571,14 @@ export function createCliProgram(): Command {
       }
     );
 
-  // schedule command (W4 / F1 C4a: install | status | uninstall | --dry-run)
+  // schedule command (W4 / F1 C4a + C45-WP7: install | status | uninstall | --dry-run)
   program
     .command('schedule [action]')
     .description('Manage OS schedule for routersync tick (install | status | uninstall | --dry-run)')
     .option('-c, --config <path>', 'Custom path to configuration file (routersync.yaml)')
     .option('--state-dir <dir>', 'Custom state directory')
     .option('--interval-minutes <n>', 'Scan interval in minutes (default 15)')
+    .option('--scheduler <mode>', 'Linux scheduler backend: auto | systemd | cron (default auto)', 'auto')
     .option('--harness <id>', 'Resolve schedule capability from harness-matrix.json for target harness')
     .option('--mode <mode>', 'Autonomy mode for scheduled tick (default propose)', 'propose')
     .option('--dry-run', 'Print schedule artifacts for all 3 OSes without installing')
@@ -561,13 +590,18 @@ export function createCliProgram(): Command {
           config?: string;
           stateDir?: string;
           harness?: string;
+          scheduler?: 'auto' | 'systemd' | 'cron';
           intervalMinutes?: string;
           mode?: string;
           dryRun?: boolean;
           json?: boolean;
         }
       ) => {
-        await (await import('./commands/schedule.js')).runScheduleCommand({ action, ...opts });
+        await (await import('./commands/schedule.js')).runScheduleCommand({
+          action,
+          configPath: opts.config,
+          ...opts,
+        });
       }
     );
 

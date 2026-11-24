@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// C15 Q2.4: cross-platform check of low-priority scheduler artifact keys.
+// C15 Q2.4 + C45-WP7: cross-platform check of low-priority scheduler artifact keys & Linux cron marker.
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -13,6 +13,7 @@ function read(p) {
 const win = read(path.join(dir, 'routersync-task.xml'));
 const srv = read(path.join(dir, 'routersync-daemon.service'));
 const plist = read(path.join(dir, 'com.routersync.daemon.plist'));
+const cron = read(path.join(dir, 'routersync-tick.cron')).trim();
 
 const checks = [
   [win, '<Priority>7</Priority>', 'Windows Priority'],
@@ -25,8 +26,16 @@ const checks = [
   [plist, '<key>ProcessType</key><string>Background</string>', 'launchd ProcessType'],
   [plist, '<key>LowPriorityIO</key><true/>', 'launchd LowPriorityIO'],
   [plist, '<key>Nice</key><integer>10</integer>', 'launchd Nice'],
+  [cron, '*/15 * * * *', 'linuxCron 15m schedule'],
+  [cron, '# routersync-tick', 'linuxCron marker'],
 ];
 const missing = checks.filter(([text, needle]) => !text.includes(needle)).map(([, , label]) => label);
+if (cron.includes('\n') || cron.includes('\r')) {
+  missing.push('linuxCron single-line');
+}
+if (/(?<!\\)%/.test(cron)) {
+  missing.push('linuxCron percent-escaped');
+}
 if (missing.length) {
   console.error('SCHEDULE PRIORITY KEYS MISSING: ' + missing.join(', '));
   process.exit(1);

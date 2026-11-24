@@ -3,13 +3,18 @@
  *
  * Implements L3 upstream changelog/RSS/releases scanner according to registry/sources.yaml.
  * Runs at most once per day, cached by content hash.
- * Zero-token: pure public HTTP GET.
+ * Zero-token: pure public HTTP GET guarded by canonical outbound allowlist.
  * Extracts title/date/link and detects deprecation / release notices.
  */
 
 import { createHash } from 'node:crypto';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import {
+  assertAllowedOutboundUrl,
+  createGuardedFetch,
+  OutboundGuardError,
+} from '@routersync/core';
 import type { L3NoticeItem, L3ScanState } from './types.js';
 
 export interface L3ScannerOptions {
@@ -145,14 +150,6 @@ function stripTags(html: string): string {
   return html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
-/**
- * Parse upstream headings and deprecation tables into notices.
- *
- * Provider deprecation pages publish their real model ids and shutdown dates in
- * `<table>` rows, not headings, so headings alone return zero notices on those
- * pages (OpenAI, Groq). Table rows are only read when the page itself talks about
- * lifecycle changes, which keeps marketing/blog tables out.
- */
 export function parseChangelogNotices(
   sourceId: string,
   url: string,
@@ -178,7 +175,6 @@ export function parseChangelogNotices(
     });
   };
 
-  // Parse HTML headings or markdown list items / headers
   const headingMatches = [
     ...content.matchAll(/<h[123][^>]*>(.*?)<\/h[123]>/gis),
     ...content.matchAll(/^[#]{1,3}\s+(.+)$/gm),
@@ -187,10 +183,6 @@ export function parseChangelogNotices(
     push(stripTags(match[1] ?? ''));
   }
 
-  // Deprecation tables: a row counts only when it carries a date or a model id,
-  // which skips the header row without hardcoding column names. The table header
-  // supplies the lifecycle context ("Shutdown date", "Deprecated model") that the
-  // row text itself usually omits.
   if (LIFECYCLE_WORDING.test(content)) {
     const tableMatches = [...content.matchAll(/<table[^>]*>([\s\S]*?)<\/table>/gi)];
     for (const table of tableMatches.slice(0, 40)) {
@@ -212,9 +204,6 @@ export function parseChangelogNotices(
         if (!carriesDate && !carriesModelId) continue;
 
         const rowTitle = cells.join(' | ');
-        // The lifecycle date is the first dated cell (shutdown column), never a
-        // later snapshot/price date. A row whose status cell says "Active" has no
-        // shutdown scheduled yet, so it stays informational.
         const rowDate = cells.map((cell) => extractNoticeDate(cell)).find((value) => value !== null) ?? null;
         const stillActive = cells.some((cell) => /^active$/i.test(cell.trim()));
         let typeOverride: L3NoticeItem['noticeType'] | undefined;
@@ -254,6 +243,11 @@ export async function runL3Scan(options: L3ScannerOptions = {}): Promise<{
   fromCache: boolean;
   requests: number;
 }> {
+  const rawSources = readRegistrySources(options.sourcesFilePath);
+  for (const s of rawSources) {
+    assertAllowedOutboundUrl(s.url);
+  }
+
   const nowMs = options.nowMs ?? Date.now();
   const minInterval = options.minIntervalMs ?? DEFAULT_L3_MIN_INTERVAL_MS;
   const sDir = options.stateDir ?? path.join(process.cwd(), '.routersync');
@@ -272,11 +266,10 @@ export async function runL3Scan(options: L3ScannerOptions = {}): Promise<{
     return { state: cached, fromCache: true, requests: 0 };
   }
 
-  const rawSources = readRegistrySources(options.sourcesFilePath);
   const sources = rawSources.filter(
     (s) => !s.loai || s.loai === 'changelog' || s.loai === 'trang-trang-thai' || s.loai === 'deprecations'
   );
-  const fetchFn = options.fetchFn ?? globalThis.fetch;
+  const fetchFn = createGuardedFetch(options.fetchFn ?? globalThis.fetch);
   let requests = 0;
   const newHashes: Record<string, string> = { ...cached.sourceHashes };
   const allNotices: L3NoticeItem[] = [];
@@ -295,7 +288,8 @@ export async function runL3Scan(options: L3ScannerOptions = {}): Promise<{
         const parsed = parseChangelogNotices(s.id, s.url, text);
         allNotices.push(...parsed);
       }
-    } catch {
+    } catch (err) {
+      if (err instanceof OutboundGuardError) throw err;
       // Non-fatal
     }
   }

@@ -24,9 +24,10 @@ routersync init
 routersync scan
 ```
 
-Diagnose harness configuration and circular dependencies:
+Diagnose harness configuration, active 4-tier schedule ladder, and circular dependencies (see [docs/schedule-ladder.md](schedule-ladder.md) for Windows, macOS, Linux `systemd` / `crontab`, Hermes, Antigravity, and MCP `tick_if_due` setup):
 ```bash
 routersync doctor
+routersync schedule install --dry-run --json
 ```
 
 Run the local daemon in read-only slice (S1):

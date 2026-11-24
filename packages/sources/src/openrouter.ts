@@ -1,12 +1,12 @@
 /**
  * packages/sources/src/openrouter.ts
- * 
+ *
  * OpenRouter public models catalog source.
- * Conforms to zero-inference-token rule (GET /api/v1/models only).
+ * Conforms to zero-inference-token rule (GET /api/v1/models only) + outbound allowlist guard.
  */
 
 import type { CatalogSource, ModelInfo } from '@routersync/adapter-sdk';
-import { normalizeModelInfo } from '@routersync/core';
+import { createGuardedFetch, normalizeModelInfo } from '@routersync/core';
 
 export interface OpenRouterCatalogOptions {
   endpoint?: string | undefined;
@@ -20,7 +20,7 @@ export class OpenRouterCatalogSource implements CatalogSource {
 
   constructor(options: OpenRouterCatalogOptions = {}) {
     this.endpoint = options.endpoint ?? 'https://openrouter.ai/api/v1/models';
-    this.fetchFn = options.fetchFn ?? globalThis.fetch;
+    this.fetchFn = createGuardedFetch(options.fetchFn ?? globalThis.fetch);
   }
 
   async fetchCatalog(): Promise<ModelInfo[]> {

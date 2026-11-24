@@ -18,10 +18,15 @@ import { createHash } from 'node:crypto';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as os from 'node:os';
-import { acquireLock, releaseLock, readRouterCombos } from '@routersync/daemon';
+import { readRouterCombos } from '@routersync/daemon';
 import {
   activateFreeze,
   appendApplyReceipt,
+  appendTickCostEntry,
+  assertAllowedOutboundUrl,
+  createAccountingFetch,
+  releaseTickLock,
+  tryAcquireTickLock,
   applyPlanSafe,
   assertControlledWriteSandbox,
   assertEligibleForAutoSafe,
@@ -608,14 +613,13 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
   const effectiveMode: EffectiveTickMode = freezeState.frozen ? 'FROZEN' : requestedMode;
   if (!fs.existsSync(sDir)) fs.mkdirSync(sDir, { recursive: true });
 
-  const lockPath = path.join(sDir, 'tick.lock');
-  const lock = acquireLock(lockPath);
+  const nowMs = options.nowMs ?? Date.now();
+  const lock = tryAcquireTickLock(sDir, process.pid, nowMs);
   if (!lock.acquired) {
-    throw new Error(`Another tick instance (pid ${lock.pid}) already holds ${lockPath}`);
+    throw new Error(`Another tick instance (pid ${lock.holderPid}) already holds ${lock.lockPath}`);
   }
 
   try {
-    const nowMs = options.nowMs ?? Date.now();
     const nowIso = new Date(nowMs).toISOString();
     const resolvedPlansDir = options.plansDir ?? path.join(sDir, 'plans');
 
@@ -673,6 +677,33 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
         targets.push({ ...t, router: view.name });
       }
     }
+
+    const routerDeclaredHosts = targets
+      .map((t) => {
+        if (!t.baseUrl) return '';
+        try {
+          return new URL(t.baseUrl).hostname;
+        } catch {
+          return '';
+        }
+      })
+      .filter(Boolean);
+    const baseFetch = options.fetchFn ?? globalThis.fetch;
+    const strictAccounting = createAccountingFetch(baseFetch);
+    const l1AccountingFetch = ((input: Parameters<typeof fetch>[0], init?: RequestInit) => {
+      try {
+        const rawUrl =
+          typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
+        const { host } = assertAllowedOutboundUrl(rawUrl, {
+          extraAllowedHosts: routerDeclaredHosts,
+          allowInsecureExtraHosts: true,
+        });
+        strictAccounting.recordHostRequest(host);
+      } catch (err) {
+        return Promise.reject(err);
+      }
+      return baseFetch(input, init);
+    }) as typeof globalThis.fetch;
 
     let requests = 0;
     let changedProviders = 0;
@@ -777,7 +808,7 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
       requests += 1;
       const tickTimeoutMs = isLowResource() ? 8_000 : 12_000;
       const outcome = await fetchModelList(t, {
-        ...(options.fetchFn ? { fetchFn: options.fetchFn } : {}),
+        fetchFn: l1AccountingFetch,
         timeoutMs: tickTimeoutMs,
         retryDelaysMs: [],
         serverEtag: prev?.serverEtag ?? null,
@@ -1218,8 +1249,8 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
     atomicWriteFileSync(catalogPath, JSON.stringify(catalogState, null, 2));
 
     // A3: Run L2 (1h TTL) and L3 (24h TTL) scans and aggregate requests into unified accounting
-    const l2Res = await runL2Scan({ stateDir: sDir, nowMs, fetchFn: options.fetchFn });
-    const l3Res = await runL3Scan({ stateDir: sDir, nowMs, fetchFn: options.fetchFn });
+    const l2Res = await runL2Scan({ stateDir: sDir, nowMs, fetchFn: strictAccounting.fetchFn });
+    const l3Res = await runL3Scan({ stateDir: sDir, nowMs, fetchFn: strictAccounting.fetchFn });
     let totalRequests = requests + l2Res.requests + l3Res.requests;
 
     // C45-WP3 §3.1: Load research-evidence.json and join with L1/L2/L3 verification
@@ -1301,7 +1332,7 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
         models: realModels,
         combos: allCombos,
         evidenceRecords,
-        fetchFn: options.fetchFn,
+        fetchFn: strictAccounting.fetchFn,
         silent: true,
       });
       totalRequests += verifySummary.accounting?.requests ?? 0;
@@ -2667,6 +2698,15 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
       webhookDelivery,
     };
 
+    const netSnap = strictAccounting.snapshot();
+    appendTickCostEntry(sDir, {
+      timestamp: nowIso,
+      nowMs,
+      mode: requestedMode,
+      totalHttpRequests: netSnap.totalHttpRequests,
+      domainRequests: netSnap.domainRequests,
+    });
+
     atomicWriteFileSync(statusPath, JSON.stringify(summary, null, 2));
 
     const latencyLogToken =
@@ -2700,10 +2740,15 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
       console.log(
         `TICK requests=${totalRequests} paid-requests=0 tokens=0 llm-calls=0`
       );
+      if (options.toast && inboxAdded > 0) {
+        console.log(
+          `[routersync toast] ${inboxAdded} new proposal(s) added to inbox (mode=${effectiveMode}).`
+        );
+      }
     }
 
     return summary;
   } finally {
-    releaseLock(lockPath);
+    releaseTickLock(sDir, process.pid);
   }
 }

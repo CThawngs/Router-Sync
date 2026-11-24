@@ -322,11 +322,11 @@ describe('C45-WP4 Controlled MCP `apply_plan` Tool', () => {
     return { planPath, planHash };
   }
 
-  it('exports exact 3-tier tool split (25 + 1 + 1 = 27) with zero delete/approve/grant tools', () => {
-    expect(READ_ONLY_TOOL_NAMES).toHaveLength(25);
-    expect(LEDGER_APPEND_TOOL_NAMES).toEqual(['submit_research']);
+  it('exports exact 3-tier tool split (26 + 2 + 1 = 29) with zero delete/approve/grant tools', () => {
+    expect(READ_ONLY_TOOL_NAMES).toHaveLength(26);
+    expect(LEDGER_APPEND_TOOL_NAMES).toEqual(['submit_research', 'tick_if_due']);
     expect(CONTROLLED_WRITE_TOOL_NAMES).toEqual(['apply_plan']);
-    expect(ALL_MCP_TOOL_NAMES).toHaveLength(27);
+    expect(ALL_MCP_TOOL_NAMES).toHaveLength(29);
 
     for (const name of ALL_MCP_TOOL_NAMES) {
       expect(name).not.toMatch(/delete|approve|grant/i);

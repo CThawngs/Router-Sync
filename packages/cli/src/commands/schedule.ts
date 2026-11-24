@@ -2,8 +2,9 @@
  * packages/cli/src/commands/schedule.ts
  *
  * Scheduler artifacts & CLI handler (`routersync schedule [install|status|uninstall]`).
- * Supports Windows Task Scheduler, macOS launchd, Linux systemd --user timer, AND
- * C45-WP1 `--harness <id>` capability lookup from `harness-matrix.json` (Phục vụ: S6).
+ * Supports Windows Task Scheduler, macOS launchd, Linux systemd --user timer,
+ * Linux `crontab` (`--scheduler auto|systemd|cron`), AND C45-WP7 4-Tier Schedule Ladder
+ * across all 9 harnesses from `harness-matrix.json` (Phục vụ: S6, S7).
  *
  * C4q/Q1: every artifact launches `<absolute node> <absolute dist/index.js> tick ...`
  * (see resolveTickInvocation) instead of a bare `routersync`, which only works
@@ -16,15 +17,24 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import * as readline from 'node:readline';
 import { fileURLToPath } from 'node:url';
-import { getHarnessCapability, listHarnessCapabilities } from '@routersync/core';
+import {
+  emitHarnessNativeSnippets,
+  getHarnessCapability,
+  listHarnessCapabilities,
+  resolveHarnessLadderEntry,
+  type ScheduleLadderTier,
+} from '@routersync/core';
 import { resolveAutonomyMode } from './tick.js';
 import { resolveConfigFilePath } from '../config/loader.js';
+
+export type LinuxSchedulerMode = 'auto' | 'systemd' | 'cron';
 
 export interface ScheduleArtifacts {
   windowsXml: string;
   systemdUnit: string;
   systemdTimer: string;
   launchdPlist: string;
+  linuxCron: string;
   uninstallCommands: string[];
 }
 
@@ -40,7 +50,7 @@ export interface ScheduleOptions {
   autonomy?: string | undefined;
   commandArgs?: string[] | undefined;
   invocation?: TickInvocation | undefined;
-  /** Directory for launchd stdout/stderr logs. Default: the state dir. */
+  /** Directory for launchd / cron stdout/stderr logs. Default: the state dir. */
   logDir?: string | undefined;
 }
 
@@ -55,6 +65,9 @@ export interface HarnessSchedulePlan {
   harnessId: string;
   displayName: string;
   zeroTokenScriptCapable: boolean;
+  harnessNativeSupported: boolean;
+  ladderTier: 'harness-native' | 'os-scheduler';
+  fallbackTiers: ScheduleLadderTier[];
   selectedTier: 'harness-native-zero-token' | 'os-scheduler';
   reason: string;
   nativePreview?: string | undefined;
@@ -63,11 +76,34 @@ export interface HarnessSchedulePlan {
   osFallbackArtifacts: ScheduleArtifacts;
 }
 
+export type ScheduleSpawnResult = {
+  status: number | null;
+  stdout?: string | undefined;
+  stderr?: string | undefined;
+  error?: Error | undefined;
+};
+
+export type ScheduleSpawnFn = (
+  command: string,
+  args: string[],
+  options?: { encoding?: BufferEncoding; timeout?: number; input?: string }
+) => ScheduleSpawnResult;
+
 export const DEFAULT_INTERVAL_MINUTES = 15;
 export const WINDOWS_TASK_NAME = 'RouterSync';
+export const LINUX_CRON_MARKER = '# routersync-tick';
 
 export function resolveStateDir(env: NodeJS.ProcessEnv = process.env): string {
   return env['ROUTERSYNC_STATE_DIR'] || path.join(os.homedir(), '.routersync');
+}
+
+export function validateLinuxSchedulerMode(value?: string | undefined): LinuxSchedulerMode {
+  if (!value || value.trim() === '') return 'auto';
+  const normalized = value.trim().toLowerCase();
+  if (normalized === 'auto' || normalized === 'systemd' || normalized === 'cron') {
+    return normalized;
+  }
+  throw new Error(`Invalid --scheduler "${value}": expected auto | systemd | cron`);
 }
 
 /**
@@ -87,7 +123,7 @@ export function resolveTickInvocation(overrides: Partial<TickInvocation> = {}): 
   return { node: path.resolve(node), script: path.resolve(script) };
 }
 
-/** Reject values that could break out of an XML / plist / unit-file field. */
+/** Reject values that could break out of an XML / plist / unit-file / crontab field. */
 function assertSafeValue(label: string, value: string): string {
   // eslint-disable-next-line no-control-regex
   if (/[\u0000-\u001f\u007f"]/.test(value)) {
@@ -110,6 +146,63 @@ function escapeXml(value: string): string {
 function systemdToken(value: string): string {
   const escaped = value.replace(/\\/g, '\\\\').replace(/%/g, '%%').replace(/\$/g, '$$$$');
   return /\s/.test(escaped) ? `"${escaped}"` : escaped;
+}
+
+/**
+ * Escapes literal `%` as `\%` per `crontab(5)` rules (where unescaped `%` becomes newline)
+ * and escapes `$` / `` ` `` / `\` inside double-quoted shell arguments (kills M4).
+ */
+function escapeCrontabDoubleQuoted(value: string): string {
+  return value
+    .replace(/\\/g, '\\\\')
+    .replace(/\$/g, '\\$')
+    .replace(/`/g, '\\`')
+    .replace(/%/g, '\\%');
+}
+
+function buildCronSchedulePrefix(minutes: number): string {
+  if (minutes >= 1440) return '0 0 * * *';
+  if (minutes >= 60) {
+    const hours = Math.max(1, Math.min(23, Math.floor(minutes / 60)));
+    return `0 */${hours} * * *`;
+  }
+  return `*/${Math.max(1, minutes)} * * * *`;
+}
+
+/**
+ * Idempotently merges a `# routersync-tick` cron line into an existing crontab
+ * without clobbering unrelated user cron entries (kills M4).
+ */
+export function mergeLinuxCrontab(existingCrontab: string, cronLine: string): string {
+  const cleanLine = cronLine.trim();
+  if (!cleanLine.endsWith(LINUX_CRON_MARKER)) {
+    throw new Error(`Invalid RouterSync cron line: missing ${LINUX_CRON_MARKER} suffix.`);
+  }
+  const keptLines = existingCrontab
+    .replace(/\r\n/g, '\n')
+    .split('\n')
+    .filter((line) => !line.trimEnd().endsWith(LINUX_CRON_MARKER));
+
+  // Trim trailing empty lines so output ends cleanly with single newline
+  while (keptLines.length > 0 && keptLines[keptLines.length - 1] === '') {
+    keptLines.pop();
+  }
+  keptLines.push(cleanLine);
+  return keptLines.join('\n') + '\n';
+}
+
+/**
+ * Removes only lines ending with `# routersync-tick` from an existing crontab.
+ */
+export function removeLinuxCrontabEntry(existingCrontab: string): string {
+  const keptLines = existingCrontab
+    .replace(/\r\n/g, '\n')
+    .split('\n')
+    .filter((line) => !line.trimEnd().endsWith(LINUX_CRON_MARKER));
+  while (keptLines.length > 0 && keptLines[keptLines.length - 1] === '') {
+    keptLines.pop();
+  }
+  return keptLines.length > 0 ? keptLines.join('\n') + '\n' : '';
 }
 
 /** Windows Task Scheduler needs a UTF-16 LE file with BOM when the XML says UTF-16. */
@@ -196,13 +289,18 @@ export function buildScheduleArtifacts(options: ScheduleOptions = {}): ScheduleA
     '</plist>',
   ].join('\n');
 
+  const cronSchedule = buildCronSchedulePrefix(minutes);
+  const cronTokens = [node, script, ...cmdArgs].map((tok) => `"${escapeCrontabDoubleQuoted(tok)}"`);
+  const cronLogFile = path.posix.join(logDir.replace(/\\/g, '/'), 'logs', 'cron-tick.log');
+  const linuxCron = `${cronSchedule} ${cronTokens.join(' ')} >> "${escapeCrontabDoubleQuoted(cronLogFile)}" 2>&1 ${LINUX_CRON_MARKER}`;
+
   const uninstallCommands = [
     `schtasks /delete /tn "${WINDOWS_TASK_NAME}" /f`,
-    'systemctl --user disable --now routersync-daemon.service routersync-daemon.timer',
+    `systemctl --user disable --now routersync-daemon.service routersync-daemon.timer; (crontab -l 2>/dev/null | grep -v "${LINUX_CRON_MARKER}" | crontab -)`,
     'launchctl unload ~/Library/LaunchAgents/com.routersync.daemon.plist; rm ~/Library/LaunchAgents/com.routersync.daemon.plist',
   ];
 
-  return { windowsXml, systemdUnit, systemdTimer, launchdPlist, uninstallCommands };
+  return { windowsXml, systemdUnit, systemdTimer, launchdPlist, linuxCron, uninstallCommands };
 }
 
 export function validateIntervalMinutes(value: unknown): number {
@@ -242,9 +340,9 @@ export function buildTickScheduleArtifacts(
 }
 
 /**
- * C45-WP1 (`Phục vụ: S6`): Resolves the verified schedule plan for a given harness
- * directly from `harness-matrix.json`, never overwriting live user `jobs.json` or
- * `routines.json`.
+ * C45-WP1 + C45-WP7 (`Phục vụ: S6, S7`): Resolves the verified 4-tier schedule plan
+ * for a given harness directly via `resolveHarnessLadderEntry` (`harness-matrix.json`),
+ * never overwriting live user `jobs.json` or `routines.json`.
  */
 export function resolveHarnessSchedulePlan(
   harnessId: string,
@@ -278,76 +376,51 @@ export function resolveHarnessSchedulePlan(
     stateDir: options.stateDir,
   });
 
-  if (cap.scheduler.zeroTokenScriptCapable) {
-    if (cap.id === 'hermes') {
-      const jobDescriptor = {
-        name: 'routersync-tick',
-        schedule: `every ${minutes}m`,
-        no_agent: true,
-        script: 'routersync-tick.sh',
-      };
-      const scriptPreview = `#!/usr/bin/env sh\nexec "${inv.node.replace(/\\/g, '/')}" "${inv.script.replace(/\\/g, '/')}" tick --mode ${mode}\n`;
-      const preview = `${JSON.stringify(jobDescriptor, null, 2)}\n# routersync-tick.sh\n${scriptPreview}`;
-      return {
-        harnessId: cap.id,
-        displayName: cap.displayName,
-        zeroTokenScriptCapable: true,
-        selectedTier: 'harness-native-zero-token',
-        reason: `Hermes hỗ trợ Script-Only Cron Job gốc (no_agent=true, 0 token LLM) qua ${cap.scheduler.scriptsDir ?? '<HERMES_HOME>/scripts/'}; kết hợp dự phòng bộ lập lịch hệ điều hành khi gateway tắt.`,
-        nativePreview: preview,
-        nativeArtifact: {
-          kind: 'hermes-script-cron',
-          command: cap.scheduler.nativeCommand,
-          preview,
-          notes: cap.scheduler.notes,
-        },
-        osArtifacts,
-        osFallbackArtifacts: osArtifacts,
-      };
-    }
+  const ladder = resolveHarnessLadderEntry(harnessId, {
+    intervalMinutes: minutes,
+    nodePath: inv.node,
+    cliEntryPath: inv.script,
+    mode: mode === 'observe' ? 'observe' : 'propose',
+    configPath: options.configPath,
+    stateDir: options.stateDir,
+  });
 
-    if (cap.id === 'antigravity') {
-      const cronStep = minutes <= 59 ? `*/${minutes} * * * *` : '0 * * * *';
-      const sidecarJson = {
-        builtin: 'schedule',
-        args: [`CRON_TZ=UTC ${cronStep}`, inv.node, inv.script, 'tick', '--mode', mode],
-        restart_policy: 'always',
-      };
-      const optInSnippet = {
-        sidecars: {
-          'routersync-tick': { enabled: true },
-        },
-      };
-      const preview =
-        `// ~/.gemini/config/sidecars/routersync-tick/sidecar.json\n` +
-        `${JSON.stringify(sidecarJson, null, 2)}\n` +
-        `// ~/.gemini/config/config.json opt-in\n` +
-        `${JSON.stringify(optInSnippet, null, 2)}`;
-      return {
-        harnessId: cap.id,
-        displayName: cap.displayName,
-        zeroTokenScriptCapable: true,
-        selectedTier: 'harness-native-zero-token',
-        reason:
-          'Google Antigravity hỗ trợ sidecar builtin="schedule" chạy trực tiếp lệnh định kỳ 0 token LLM; kết hợp dự phòng bộ lập lịch hệ điều hành khi đóng app.',
-        nativePreview: preview,
-        nativeArtifact: {
-          kind: 'antigravity-schedule-sidecar',
-          preview,
-          notes: cap.scheduler.notes,
-        },
-        osArtifacts,
-        osFallbackArtifacts: osArtifacts,
-      };
-    }
+  if (ladder.harnessNativeSupported && ladder.assets) {
+    const preview =
+      ladder.assets.kind === 'hermes-script-cron'
+        ? `${(ladder.assets.cronJobSnippetJson ?? '').trim()}\n# routersync-tick.sh\n${ladder.assets.posixScript ?? ''}`
+        : `// ~/.gemini/config/sidecars/routersync-tick/sidecar.json\n${(ladder.assets.sidecarSnippetJson ?? '').trim()}`;
+
+    return {
+      harnessId: ladder.harnessId,
+      displayName: ladder.displayName,
+      zeroTokenScriptCapable: ladder.zeroTokenScriptCapable,
+      harnessNativeSupported: true,
+      ladderTier: ladder.primaryTier,
+      fallbackTiers: ladder.fallbackTiers,
+      selectedTier: 'harness-native-zero-token',
+      reason: ladder.reason,
+      nativePreview: preview,
+      nativeArtifact: {
+        kind: ladder.assets.kind,
+        command: cap.scheduler.nativeCommand,
+        preview,
+        notes: cap.scheduler.notes,
+      },
+      osArtifacts,
+      osFallbackArtifacts: osArtifacts,
+    };
   }
 
   return {
-    harnessId: cap.id,
-    displayName: cap.displayName,
-    zeroTokenScriptCapable: false,
-    selectedTier: 'os-scheduler',
-    reason: `[${cap.displayName}] Không dùng cron gốc của harness (${cap.scheduler.schedulerType}): ${cap.scheduler.notes} -> Chọn bộ lập lịch hệ điều hành (Task Scheduler / launchd / systemd --user) chạy 0 token.`,
+    harnessId: ladder.harnessId,
+    displayName: ladder.displayName,
+    zeroTokenScriptCapable: ladder.zeroTokenScriptCapable,
+    harnessNativeSupported: ladder.harnessNativeSupported,
+    ladderTier: ladder.primaryTier,
+    fallbackTiers: ladder.fallbackTiers,
+    selectedTier: ladder.harnessNativeSupported ? 'harness-native-zero-token' : 'os-scheduler',
+    reason: ladder.reason,
     nativePreview: undefined,
     nativeArtifact: undefined,
     osArtifacts,
@@ -371,14 +444,38 @@ function askTypeChay(promptText: string): Promise<boolean> {
   });
 }
 
-export function queryScheduleStatus(platform: NodeJS.Platform = process.platform): {
+function defaultSpawnFn(
+  command: string,
+  args: string[],
+  options?: { encoding?: BufferEncoding; timeout?: number; input?: string }
+): ScheduleSpawnResult {
+  const res = spawnSync(command, args, {
+    encoding: options?.encoding ?? 'utf8',
+    timeout: options?.timeout,
+    input: options?.input,
+  });
+  return {
+    status: res.status,
+    stdout: typeof res.stdout === 'string' ? res.stdout : '',
+    stderr: typeof res.stderr === 'string' ? res.stderr : '',
+    error: res.error,
+  };
+}
+
+export function queryScheduleStatus(
+  platform: NodeJS.Platform = process.platform,
+  options: { homeDir?: string | undefined; spawnFn?: ScheduleSpawnFn | undefined } = {}
+): {
   os: string;
   taskName: string;
   installed: boolean;
   detail: string;
 } {
+  const homeDir = options.homeDir ?? os.homedir();
+  const run = options.spawnFn ?? defaultSpawnFn;
+
   if (platform === 'win32') {
-    const res = spawnSync('schtasks', ['/query', '/tn', WINDOWS_TASK_NAME], { encoding: 'utf8', timeout: 5_000 });
+    const res = run('schtasks', ['/query', '/tn', WINDOWS_TASK_NAME], { encoding: 'utf8', timeout: 5_000 });
     const installed = res.status === 0;
     return {
       os: 'windows',
@@ -388,7 +485,7 @@ export function queryScheduleStatus(platform: NodeJS.Platform = process.platform
     };
   }
   if (platform === 'darwin') {
-    const plistPath = path.join(os.homedir(), 'Library', 'LaunchAgents', 'com.routersync.daemon.plist');
+    const plistPath = path.join(homeDir, 'Library', 'LaunchAgents', 'com.routersync.daemon.plist');
     const installed = fs.existsSync(plistPath);
     return {
       os: 'macos',
@@ -397,19 +494,36 @@ export function queryScheduleStatus(platform: NodeJS.Platform = process.platform
       detail: installed ? plistPath : 'not-registered',
     };
   }
-  const timerPath = path.join(os.homedir(), '.config', 'systemd', 'user', 'routersync-daemon.timer');
-  const installed = fs.existsSync(timerPath);
+  const timerPath = path.join(homeDir, '.config', 'systemd', 'user', 'routersync-daemon.timer');
+  if (fs.existsSync(timerPath)) {
+    return {
+      os: 'linux',
+      taskName: 'routersync-daemon.timer',
+      installed: true,
+      detail: timerPath,
+    };
+  }
+  const cronRes = run('crontab', ['-l'], { encoding: 'utf8', timeout: 5_000 });
+  if (cronRes.status === 0 && (cronRes.stdout ?? '').includes(LINUX_CRON_MARKER)) {
+    return {
+      os: 'linux',
+      taskName: 'crontab#routersync-tick',
+      installed: true,
+      detail: 'crontab (# routersync-tick)',
+    };
+  }
   return {
     os: 'linux',
     taskName: 'routersync-daemon.timer',
-    installed,
-    detail: installed ? timerPath : 'not-registered',
+    installed: false,
+    detail: 'not-registered',
   };
 }
 
 export interface RunScheduleCommandOptions {
   action?: string | undefined;
   harness?: string | undefined;
+  scheduler?: string | undefined;
   intervalMinutes?: string | undefined;
   mode?: string | undefined;
   dryRun?: boolean | undefined;
@@ -417,12 +531,44 @@ export interface RunScheduleCommandOptions {
   config?: string | undefined;
   configPath?: string | undefined;
   stateDir?: string | undefined;
+  homeDir?: string | undefined;
+  platformOverride?: NodeJS.Platform | undefined;
+  allowNonTtyForTest?: boolean | undefined;
+  spawnFn?: ScheduleSpawnFn | undefined;
+}
+
+function readExistingCrontab(run: ScheduleSpawnFn): string {
+  const res = run('crontab', ['-l'], { encoding: 'utf8', timeout: 5_000 });
+  if (res.status === 0) {
+    return res.stdout ?? '';
+  }
+  const msg = `${res.stderr ?? ''} ${res.stdout ?? ''}`.toLowerCase();
+  if (msg.includes('no crontab')) {
+    return '';
+  }
+  return '';
+}
+
+function isSystemdUserAvailable(run: ScheduleSpawnFn): boolean {
+  const res = run('systemctl', ['--user', 'status'], { encoding: 'utf8', timeout: 5_000 });
+  if (res.error) return false;
+  // systemctl --user status returns 0 when running or degraded, non-zero (1) when bus/systemd unavailable unless stdout shows State:
+  if (res.status === 0) return true;
+  const out = `${res.stdout ?? ''}\n${res.stderr ?? ''}`;
+  if (/Failed to connect to bus|System has not been booted with systemd|not found/i.test(out)) {
+    return false;
+  }
+  return /State:\s*(running|degraded)/i.test(out);
 }
 
 export async function runScheduleCommand(options: RunScheduleCommandOptions = {}): Promise<void> {
   const action = (options.action ?? 'dry-run').toLowerCase();
   const interval = validateIntervalMinutes(options.intervalMinutes);
   const mode = resolveAutonomyMode(options.mode);
+  const linuxScheduler = validateLinuxSchedulerMode(options.scheduler);
+  const targetPlatform = options.platformOverride ?? process.platform;
+  const homeDir = options.homeDir ?? os.homedir();
+  const run = options.spawnFn ?? defaultSpawnFn;
 
   const explicitCfg = options.configPath ?? options.config;
   let resolvedConfig: string | undefined;
@@ -451,13 +597,14 @@ export async function runScheduleCommand(options: RunScheduleCommandOptions = {}
     : undefined;
 
   if (action === 'status') {
-    const st = queryScheduleStatus();
+    const st = queryScheduleStatus(targetPlatform, { homeDir, spawnFn: run });
     if (options.json) {
       console.log(
         JSON.stringify(
           {
             ...st,
             intervalMinutes: interval,
+            scheduler: linuxScheduler,
             ...(harnessPlan ? { harnessPlan } : {}),
           },
           null,
@@ -491,6 +638,8 @@ export async function runScheduleCommand(options: RunScheduleCommandOptions = {}
           {
             dryRun: true,
             action,
+            platform: targetPlatform,
+            scheduler: linuxScheduler,
             intervalMinutes: interval,
             mode,
             ...(harnessPlan ? { harnessPlan } : {}),
@@ -517,32 +666,45 @@ export async function runScheduleCommand(options: RunScheduleCommandOptions = {}
       console.log(artifacts.systemdUnit);
       console.log('--- systemdTimer (Linux systemd --user timer) ---');
       console.log(artifacts.systemdTimer);
+      console.log('--- linuxCron (Linux crontab fallback) ---');
+      console.log(artifacts.linuxCron);
       console.log('--- uninstallCommands ---');
       console.log(artifacts.uninstallCommands.join('\n'));
     }
     return;
   }
 
-  if (!process.stdin.isTTY) {
-    console.error(`[routersync schedule] Error: 'schedule ${action}' requires an interactive TTY (or pass --dry-run).`);
-    process.exitCode = 1;
-    return;
+  if (!options.allowNonTtyForTest) {
+    if (!process.stdin.isTTY) {
+      console.error(`[routersync schedule] Error: 'schedule ${action}' requires an interactive TTY (or pass --dry-run).`);
+      process.exitCode = 1;
+      return;
+    }
+
+    const ok = await askTypeChay(`Xác nhận thực thi 'routersync schedule ${action}' trên hệ điều hành? Gõ 'chay' để tiếp tục: `);
+    if (!ok) {
+      console.log(`[routersync schedule] Đã hủy '${action}'. Không có thay đổi nào được thực hiện.`);
+      return;
+    }
   }
 
-  const ok = await askTypeChay(`Xác nhận thực thi 'routersync schedule ${action}' trên hệ điều hành? Gõ 'chay' để tiếp tục: `);
-  if (!ok) {
-    console.log(`[routersync schedule] Đã hủy '${action}'. Không có thay đổi nào được thực hiện.`);
-    return;
-  }
-
-  const stateDir = resolveStateDir();
-  if (!fs.existsSync(stateDir)) fs.mkdirSync(stateDir, { recursive: true });
+  if (!fs.existsSync(resolvedState)) fs.mkdirSync(resolvedState, { recursive: true });
 
   if (action === 'install') {
-    if (process.platform === 'win32') {
-      const xmlFile = path.join(stateDir, 'routersync-task.xml');
+    if (harnessPlan?.harnessNativeSupported) {
+      const targetSnippetDir = path.join(resolvedState, 'schedules', harnessPlan.harnessId);
+      emitHarnessNativeSnippets(harnessPlan.harnessId, targetSnippetDir, {
+        intervalMinutes: interval,
+        mode: mode === 'observe' ? 'observe' : 'propose',
+        configPath: resolvedConfig,
+        stateDir: resolvedState,
+      });
+    }
+
+    if (targetPlatform === 'win32') {
+      const xmlFile = path.join(resolvedState, 'routersync-task.xml');
       fs.writeFileSync(xmlFile, encodeWindowsTaskXml(artifacts.windowsXml));
-      const res = spawnSync('schtasks', ['/create', '/tn', WINDOWS_TASK_NAME, '/xml', xmlFile, '/f'], { encoding: 'utf8' });
+      const res = run('schtasks', ['/create', '/tn', WINDOWS_TASK_NAME, '/xml', xmlFile, '/f'], { encoding: 'utf8' });
       if (res.status !== 0) {
         console.error(`[routersync schedule] schtasks install failed: ${res.stderr || res.stdout}`);
         process.exitCode = 1;
@@ -551,39 +713,79 @@ export async function runScheduleCommand(options: RunScheduleCommandOptions = {}
       console.log(`SCHEDULE-INSTALLED os=windows task=${WINDOWS_TASK_NAME} interval=${interval}m`);
       return;
     }
-    if (process.platform === 'darwin') {
-      const dir = path.join(os.homedir(), 'Library', 'LaunchAgents');
+    if (targetPlatform === 'darwin') {
+      const dir = path.join(homeDir, 'Library', 'LaunchAgents');
       if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
       const plistFile = path.join(dir, 'com.routersync.daemon.plist');
       fs.writeFileSync(plistFile, artifacts.launchdPlist, 'utf8');
-      spawnSync('launchctl', ['load', plistFile], { encoding: 'utf8' });
+      run('launchctl', ['load', plistFile], { encoding: 'utf8' });
       console.log(`SCHEDULE-INSTALLED os=macos plist=${plistFile} interval=${interval}m`);
       return;
     }
-    const unitDir = path.join(os.homedir(), '.config', 'systemd', 'user');
+
+    const useCron =
+      linuxScheduler === 'cron' ||
+      (linuxScheduler === 'auto' && !isSystemdUserAvailable(run));
+
+    if (useCron) {
+      const logDir = path.join(resolvedState, 'logs');
+      fs.mkdirSync(logDir, { recursive: true });
+      const existing = readExistingCrontab(run);
+      const updated = mergeLinuxCrontab(existing, artifacts.linuxCron);
+      const res = run('crontab', ['-'], { encoding: 'utf8', input: updated });
+      if (res.status !== 0) {
+        console.error(`[routersync schedule] crontab install failed: ${res.stderr || res.stdout}`);
+        process.exitCode = 1;
+        return;
+      }
+      console.log(`SCHEDULE-INSTALLED os=linux scheduler=cron interval=${interval}m`);
+      return;
+    }
+
+    const unitDir = path.join(homeDir, '.config', 'systemd', 'user');
     if (!fs.existsSync(unitDir)) fs.mkdirSync(unitDir, { recursive: true });
     fs.writeFileSync(path.join(unitDir, 'routersync-daemon.service'), artifacts.systemdUnit, 'utf8');
     fs.writeFileSync(path.join(unitDir, 'routersync-daemon.timer'), artifacts.systemdTimer, 'utf8');
-    spawnSync('systemctl', ['--user', 'daemon-reload'], { encoding: 'utf8' });
-    spawnSync('systemctl', ['--user', 'enable', '--now', 'routersync-daemon.timer'], { encoding: 'utf8' });
-    console.log(`SCHEDULE-INSTALLED os=linux unit=${unitDir}/routersync-daemon.timer interval=${interval}m`);
+    const reloadRes = run('systemctl', ['--user', 'daemon-reload'], { encoding: 'utf8' });
+    const enableRes = run('systemctl', ['--user', 'enable', '--now', 'routersync-daemon.timer'], { encoding: 'utf8' });
+    if (reloadRes.status !== 0 || enableRes.status !== 0) {
+      console.error(`[routersync schedule] systemctl --user install failed: ${enableRes.stderr || reloadRes.stderr}`);
+      process.exitCode = 1;
+      return;
+    }
+    console.log(`SCHEDULE-INSTALLED os=linux scheduler=systemd unit=${unitDir}/routersync-daemon.timer interval=${interval}m`);
     return;
   }
 
   if (action === 'uninstall') {
-    if (process.platform === 'win32') {
-      spawnSync('schtasks', ['/delete', '/tn', WINDOWS_TASK_NAME, '/f'], { encoding: 'utf8' });
+    if (targetPlatform === 'win32') {
+      run('schtasks', ['/delete', '/tn', WINDOWS_TASK_NAME, '/f'], { encoding: 'utf8' });
       console.log(`SCHEDULE-UNINSTALLED os=windows task=${WINDOWS_TASK_NAME}`);
       return;
     }
-    if (process.platform === 'darwin') {
-      const plistFile = path.join(os.homedir(), 'Library', 'LaunchAgents', 'com.routersync.daemon.plist');
-      spawnSync('launchctl', ['unload', plistFile], { encoding: 'utf8' });
+    if (targetPlatform === 'darwin') {
+      const plistFile = path.join(homeDir, 'Library', 'LaunchAgents', 'com.routersync.daemon.plist');
+      run('launchctl', ['unload', plistFile], { encoding: 'utf8' });
       if (fs.existsSync(plistFile)) fs.unlinkSync(plistFile);
       console.log(`SCHEDULE-UNINSTALLED os=macos plist=${plistFile}`);
       return;
     }
-    spawnSync('systemctl', ['--user', 'disable', '--now', 'routersync-daemon.service', 'routersync-daemon.timer'], { encoding: 'utf8' });
+
+    if (linuxScheduler === 'cron' || linuxScheduler === 'auto') {
+      const existing = readExistingCrontab(run);
+      if (existing.includes(LINUX_CRON_MARKER)) {
+        const cleaned = removeLinuxCrontabEntry(existing);
+        run('crontab', ['-'], { encoding: 'utf8', input: cleaned });
+      }
+    }
+    if (linuxScheduler === 'systemd' || linuxScheduler === 'auto') {
+      run('systemctl', ['--user', 'disable', '--now', 'routersync-daemon.service', 'routersync-daemon.timer'], { encoding: 'utf8' });
+      const unitDir = path.join(homeDir, '.config', 'systemd', 'user');
+      for (const fname of ['routersync-daemon.service', 'routersync-daemon.timer']) {
+        const fpath = path.join(unitDir, fname);
+        if (fs.existsSync(fpath)) fs.unlinkSync(fpath);
+      }
+    }
     console.log('SCHEDULE-UNINSTALLED os=linux task=routersync-daemon.timer');
   }
 }

@@ -3,13 +3,18 @@
  *
  * Implements L2 web catalog scanner (models.dev + OpenRouter catalog).
  * Runs at most once per hour, cached by ETag and content hash.
- * Zero-token: pure public HTTP GET.
+ * Zero-token: pure public HTTP GET guarded by canonical outbound allowlist.
  * Enforces flag `ẨN-GIÁ-0`: models with price 0 that lack -free / :free suffix.
  */
 
 import { createHash } from 'node:crypto';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import {
+  assertAllowedOutboundUrl,
+  createGuardedFetch,
+  OutboundGuardError,
+} from '@routersync/core';
 import type { L2ModelEntry, L2ScanState } from './types.js';
 
 export const PROVIDER_ALIASES: Record<string, string> = {
@@ -66,6 +71,11 @@ export async function runL2Scan(options: L2ScannerOptions = {}): Promise<{
   fromCache: boolean;
   requests: number;
 }> {
+  const orUrl = options.openRouterUrl ?? 'https://openrouter.ai/api/v1/models';
+  const mdUrl = options.modelsDevUrl ?? 'https://models.dev/api.json';
+  assertAllowedOutboundUrl(orUrl);
+  assertAllowedOutboundUrl(mdUrl);
+
   const nowMs = options.nowMs ?? Date.now();
   const minInterval = options.minIntervalMs ?? DEFAULT_L2_MIN_INTERVAL_MS;
   const sDir = options.stateDir ?? path.join(process.cwd(), '.routersync');
@@ -85,7 +95,7 @@ export async function runL2Scan(options: L2ScannerOptions = {}): Promise<{
     return { state: cached, fromCache: true, requests: 0 };
   }
 
-  const fetchFn = options.fetchFn ?? globalThis.fetch;
+  const fetchFn = createGuardedFetch(options.fetchFn ?? globalThis.fetch);
   let requests = 0;
   const modelMap: Record<string, L2ModelEntry> = { ...cached.models };
 
@@ -95,7 +105,6 @@ export async function runL2Scan(options: L2ScannerOptions = {}): Promise<{
   let nextMdHash = cached.hashModelsDev ?? '';
 
   // 1. Fetch OpenRouter catalog
-  const orUrl = options.openRouterUrl ?? 'https://openrouter.ai/api/v1/models';
   try {
     const headers: Record<string, string> = { Accept: 'application/json' };
     if (cached.etagOpenRouter) headers['If-None-Match'] = cached.etagOpenRouter;
@@ -133,12 +142,12 @@ export async function runL2Scan(options: L2ScannerOptions = {}): Promise<{
         }
       }
     }
-  } catch {
+  } catch (err) {
+    if (err instanceof OutboundGuardError) throw err;
     // Non-fatal network error, preserve cached entries
   }
 
   // 2. Fetch models.dev catalog
-  const mdUrl = options.modelsDevUrl ?? 'https://models.dev/api.json';
   try {
     const headers: Record<string, string> = { Accept: 'application/json' };
     if (cached.etagModelsDev) headers['If-None-Match'] = cached.etagModelsDev;
@@ -177,7 +186,8 @@ export async function runL2Scan(options: L2ScannerOptions = {}): Promise<{
         }
       }
     }
-  } catch {
+  } catch (err) {
+    if (err instanceof OutboundGuardError) throw err;
     // Non-fatal network error
   }
 

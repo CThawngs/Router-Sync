@@ -24,10 +24,14 @@ import { OmniRouteAdapter } from '@routersync/adapter-omniroute';
 import { NineRouterAdapter } from '@routersync/adapter-9router';
 import {
   ComboDefinitionSchema,
+  CostBudgetError,
   ModelCapabilitiesSchema,
   PlanSchema,
   ResearchValidationError,
   appendResearchEvidence,
+  assertWeeklyResearchSessionAllowed,
+  computeWeeklyResearchBudget,
+  recordResearchSessionActivity,
   buildProviderModelUniverse,
   canonicalizeResearchProvider,
   hasWrittenEvidence,
@@ -50,6 +54,11 @@ import {
   type TieredModelEntry,
 } from '@routersync/core';
 import { registerApplyPlanTool } from './apply-plan.js';
+import {
+  readConfiguredMaxWeeklySessionsReadOnly,
+  registerCostReportTool,
+} from './cost-report.js';
+import { registerTickIfDueTool, type SpawnTickFn } from './tick-if-due.js';
 import {
   buildListStrategiesPayload,
   buildProfileInterviewPayload,
@@ -101,9 +110,10 @@ export const READ_ONLY_TOOL_NAMES = [
   'list_strategies',
   'get_schema',
   'profile_interview',
+  'cost_report',
 ] as const;
 
-export const LEDGER_APPEND_TOOL_NAMES = ['submit_research'] as const;
+export const LEDGER_APPEND_TOOL_NAMES = ['submit_research', 'tick_if_due'] as const;
 
 export const CONTROLLED_WRITE_TOOL_NAMES = ['apply_plan'] as const;
 
@@ -122,6 +132,8 @@ export interface ServerOptions {
   configPath?: string | undefined;
   mockCombos?: ComboDefinition[] | undefined;
   mockCatalog?: ModelInfo[] | undefined;
+  nowMs?: (() => number) | number | undefined;
+  spawnTickFn?: SpawnTickFn | undefined;
 }
 
 interface ToolResponse {
@@ -256,6 +268,8 @@ function matchSubmittedEvidenceForModel(
 }
 
 export function createRouterSyncMcpServer(options: ServerOptions = {}): McpServer {
+  const resolveNowMs = (): number =>
+    typeof options.nowMs === 'function' ? options.nowMs() : (options.nowMs ?? Date.now());
   // C4o/O2: install configured router DB paths at MCP server startup
   let parsedConfig: { routers?: Array<{ adapter?: string; baseUrl?: string; db?: { path?: string } }> } | undefined;
   try {
@@ -1237,6 +1251,13 @@ export function createRouterSyncMcpServer(options: ServerOptions = {}): McpServe
     },
     async (args) => {
       const paths = resolveStatePaths();
+      const nowMs = resolveNowMs();
+      const maxWeeklyResearchSessions = readConfiguredMaxWeeklySessionsReadOnly(options.configPath);
+      const weeklyBudget = computeWeeklyResearchBudget(paths.stateDir, {
+        nowMs,
+        maxWeeklyResearchSessions,
+      });
+
       const queueRead = readJsonFile<ResearchQueueFile>(paths.researchQueue);
       const ledger = readJsonFile<VerifyStatusFile>(paths.verifyStatus);
       const evidenceRead = readJsonFile<ResearchEvidenceRecord[]>(paths.researchEvidence);
@@ -1262,6 +1283,22 @@ export function createRouterSyncMcpServer(options: ServerOptions = {}): McpServe
             return tb - ta;
           });
 
+        if (weeklyBudget.budgetExceeded) {
+          return respond({
+            available: true,
+            source: {
+              path: queueRead.filePath,
+              timestamp: queueRead.value.updatedAt ?? null,
+            },
+            items: [],
+            total: 0,
+            totalPending: filteredItems.length,
+            nextCursor: null,
+            weeklyBudget,
+            skipReason: 'WEEKLY_RESEARCH_CAP_EXCEEDED',
+          });
+        }
+
         const page = paginateArray(filteredItems, { cursor: args.cursor, limit: args.limit });
         return respond({
           available: true,
@@ -1269,12 +1306,20 @@ export function createRouterSyncMcpServer(options: ServerOptions = {}): McpServe
             path: queueRead.filePath,
             timestamp: queueRead.value.updatedAt ?? null,
           },
+          weeklyBudget,
           ...page,
         });
       }
 
       if (!ledger.ok) {
-        return respond({ available: false, source: describeReadFailure(ledger), items: [], total: 0 });
+        return respond({
+          available: false,
+          source: describeReadFailure(ledger),
+          items: [],
+          total: 0,
+          weeklyBudget,
+          ...(weeklyBudget.budgetExceeded ? { skipReason: 'WEEKLY_RESEARCH_CAP_EXCEEDED' } : {}),
+        });
       }
 
       const fallbackQueue = (ledger.value.records ?? [])
@@ -1319,10 +1364,24 @@ export function createRouterSyncMcpServer(options: ServerOptions = {}): McpServe
           };
         });
 
+      if (weeklyBudget.budgetExceeded) {
+        return respond({
+          available: true,
+          source: { path: ledger.filePath, timestamp: ledger.value.timestamp ?? null },
+          items: [],
+          total: 0,
+          totalPending: fallbackQueue.length,
+          nextCursor: null,
+          weeklyBudget,
+          skipReason: 'WEEKLY_RESEARCH_CAP_EXCEEDED',
+        });
+      }
+
       const page = paginateArray(fallbackQueue, { cursor: args.cursor, limit: args.limit });
       return respond({
         available: true,
         source: { path: ledger.filePath, timestamp: ledger.value.timestamp ?? null },
+        weeklyBudget,
         ...page,
       });
     }
@@ -1579,10 +1638,29 @@ export function createRouterSyncMcpServer(options: ServerOptions = {}): McpServe
         .describe(
           'Optional claimed source tier; rejected with SPOOFED_OFFICIAL_DOMAIN if official is claimed for a non-official host'
         ),
+      sessionId: z
+        .string()
+        .min(1)
+        .max(128)
+        .optional()
+        .describe(
+          'Optional Tier-1 research session ID; multiple submit_research calls sharing a sessionId in the same ISO week count as 1 session toward maxWeeklyResearchSessions'
+        ),
     },
     async (args) => {
       const paths = resolveStatePaths();
+      const nowMs = resolveNowMs();
+      const maxWeeklyResearchSessions = readConfiguredMaxWeeklySessionsReadOnly(options.configPath);
       try {
+        // Gate 1 (WP8): Enforce weekly research session cap BEFORE appending evidence
+        const allowedSession = assertWeeklyResearchSessionAllowed(paths.stateDir, {
+          sessionId: args.sessionId,
+          nowMs,
+          maxWeeklyResearchSessions,
+        });
+        const resolvedSessionId = allowedSession.sessionId;
+
+        // Gate 2 (WP3): Domain verification & sanitization BEFORE writing cost ledger
         const record = appendResearchEvidence(paths.stateDir, {
           provider: args.provider,
           modelId: args.modelId,
@@ -1598,8 +1676,9 @@ export function createRouterSyncMcpServer(options: ServerOptions = {}): McpServe
           submittedVia: 'mcp',
         });
 
-        return respond({
+        const response = respond({
           accepted: true,
+          sessionId: resolvedSessionId,
           record,
           ledgerPath: paths.researchEvidence,
           routerWrites: 0,
@@ -1607,8 +1686,20 @@ export function createRouterSyncMcpServer(options: ServerOptions = {}): McpServe
           nextAction:
             'Queued in research-evidence.json; next routersync tick will incorporate verified evidence into plans.',
         });
+
+        recordResearchSessionActivity(paths.stateDir, {
+          sessionId: resolvedSessionId,
+          source: 'mcp',
+          nowMs,
+          maxWeeklyResearchSessions,
+          submittedPayload: JSON.stringify(args),
+          returnedPayload: response.content[0]?.text ?? '',
+          findingsDelta: 1,
+        });
+
+        return response;
       } catch (error) {
-        if (error instanceof ResearchValidationError) {
+        if (error instanceof CostBudgetError || error instanceof ResearchValidationError) {
           return {
             isError: true,
             content: [
@@ -1648,7 +1739,20 @@ export function createRouterSyncMcpServer(options: ServerOptions = {}): McpServe
     }
   );
 
-  // 27. apply_plan (Tier 2 Controlled-Write Tool — C45-WP4)
+  // 26. cost_report (Tier 0 Read-Only Cost & Session Budget Tool — C45-WP8)
+  registerCostReportTool(server, {
+    configPath: options.configPath,
+    resolveNowMs,
+  });
+
+  // 28. tick_if_due (Tier 3 Freshness-Gated Detached Tick Trigger — C45-WP7)
+  registerTickIfDueTool(server, {
+    configPath: options.configPath,
+    resolveNowMs,
+    spawnTickFn: options.spawnTickFn,
+  });
+
+  // 29. apply_plan (Tier 2 Controlled-Write Tool — C45-WP4)
   registerApplyPlanTool(server, { configPath: options.configPath });
 
   return server;

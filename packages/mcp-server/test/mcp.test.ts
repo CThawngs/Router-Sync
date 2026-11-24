@@ -37,8 +37,9 @@ import type { ComboDefinition, ModelInfo } from '@routersync/core';
 
 describe('RouterSync Read-Only MCP Server', () => {
   // T2-46 / AT-87 variant + C45-WP4: Snapshot test of exact 3-tier tool split
-  it('registers exactly the 25 verified read-only tools + 1 ledger-append tool + 1 controlled-write tool with zero approval/grant tools', () => {
+  it('registers exactly the 26 verified read-only tools + 2 ledger-append tools + 1 controlled-write tool with zero approval/grant tools', () => {
     const expectedTools = [
+      'cost_report',
       'detect_routers',
       'get_config',
       'validate_config',
@@ -68,11 +69,11 @@ describe('RouterSync Read-Only MCP Server', () => {
 
     const actualTools = [...READ_ONLY_TOOL_NAMES].sort();
     expect(actualTools).toEqual(expectedTools);
-    expect(actualTools).toHaveLength(25);
+    expect(actualTools).toHaveLength(26);
 
-    expect(LEDGER_APPEND_TOOL_NAMES).toEqual(['submit_research']);
+    expect(LEDGER_APPEND_TOOL_NAMES).toEqual(['submit_research', 'tick_if_due']);
     expect(CONTROLLED_WRITE_TOOL_NAMES).toEqual(['apply_plan']);
-    expect(ALL_MCP_TOOL_NAMES).toHaveLength(27);
+    expect(ALL_MCP_TOOL_NAMES).toHaveLength(29);
 
     // Every non-controlled-write tool (26 tools) must forbid all write/apply/approval keywords
     const nonControlledTools = ALL_MCP_TOOL_NAMES.filter((t) => t !== 'apply_plan');
@@ -101,7 +102,7 @@ describe('RouterSync Read-Only MCP Server', () => {
       const listed = await a.listTools();
       const listedNames = listed.map((t) => t.name).sort();
       const registered = [...ALL_MCP_TOOL_NAMES].sort();
-      expect(listedNames).toHaveLength(27);
+      expect(listedNames).toHaveLength(29);
       // No extra tools in listTools()
       for (const name of listedNames) {
         expect(registered).toContain(name);
