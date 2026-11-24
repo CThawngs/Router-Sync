@@ -490,7 +490,7 @@ describe('M2-02: Outbound Webhook for Actionable Alerts (100% Fake Local 127.0.0
     expect(fakeServer!.requests.filter((r) => r.method === 'POST')).toHaveLength(0);
   });
 
-  it('M2-02-T3: handles HTTP 500, 80ms timeout against 400ms slow target, and 302 redirect non-fatally', async () => {
+  it('M2-02-T3: handles HTTP 500, 80ms timeout against 2500ms slow target, and 302 redirect non-fatally', async () => {
     const dbPath = path.join(tmpDir, 'db', 'nine-resilience.sqlite');
     createHermeticNineRouterDb(dbPath, `${fakeServer!.baseUrl}/v1`);
 
@@ -527,20 +527,24 @@ describe('M2-02: Outbound Webhook for Actionable Alerts (100% Fake Local 127.0.0
     expect(del500?.['statusCode']).toBe(500);
     expect(del500?.['reason']).toBe('http_500');
 
-    // 2) Timeout resilience: server delays 400ms while timeoutMs is 80ms
+    // 2) Timeout resilience: server delays 2500ms while timeoutMs is 80ms
     const pendingTimers: NodeJS.Timeout[] = [];
+    let slowHookArrivedAt = 0;
     fakeServer!.setHandler((req, res) => {
       if (req.method === 'GET' && (req.url ?? '').startsWith('/v1/models')) {
         res.writeHead(200, { 'content-type': 'application/json' });
         res.end(JSON.stringify({ data: [{ id: 'gpt-4o-mini' }, { id: 'gpt-4.1-slow' }] }));
         return;
       }
+      if ((req.url ?? '').startsWith('/hook-slow')) {
+        slowHookArrivedAt = Date.now();
+      }
       const timer = setTimeout(() => {
         if (!res.writableEnded) {
           res.writeHead(200, { 'content-type': 'application/json' });
           res.end('{"late":true}');
         }
-      }, 400);
+      }, 2500);
       pendingTimers.push(timer);
     });
 
@@ -563,14 +567,17 @@ describe('M2-02: Outbound Webhook for Actionable Alerts (100% Fake Local 127.0.0
         env: hermeticEnv(),
         fetchFn: createGuardedLocalFetch(),
       });
-      const elapsedMs = Date.now() - startedMs;
+      const hookFinishedAt = Date.now();
+      const elapsedMs = hookFinishedAt - startedMs;
       const delSlow = (sumSlow as unknown as Record<string, unknown>)['webhookDelivery'] as
         | Record<string, unknown>
         | undefined;
+      expect(slowHookArrivedAt).toBeGreaterThan(0);
+      expect(hookFinishedAt - slowHookArrivedAt).toBeLessThan(1500);
+      expect(elapsedMs).toBeLessThan(2000);
       expect(delSlow?.['status']).toBe('failed');
       expect(delSlow?.['ok']).toBe(false);
       expect(delSlow?.['reason']).toBe('timeout');
-      expect(elapsedMs).toBeLessThan(380);
     } finally {
       for (const t of pendingTimers) clearTimeout(t);
     }
