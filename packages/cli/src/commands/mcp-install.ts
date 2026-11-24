@@ -8,7 +8,8 @@
  *  - Default `--dry-run` (shows diff, zero file modifications)
  *  - Lossless non-destructive merge preserving comments & unrelated keys
  *  - `.bak` Backup -> Atomic Write -> Read-back -> Auto-Rollback on mismatch
- *  - Zero secret leakage & strict real `os.homedir()` write guard
+ *  - Zero secret leakage & strict canonical realpath/symlink/junction `os.homedir()` write guard
+ *  - OpenMausBot `bots.json` / `routines.json` safety guard
  *  - `--write` requires interactive TTY confirmation (unless `allowNonTtyForTest` on temp sandbox)
  */
 
@@ -32,6 +33,10 @@ import {
   upsertYamlMcpServer,
   verifyTomlMcpServerTable,
 } from '../apps/lossless-edit.js';
+import {
+  assertHarnessWriteSandboxAllowed,
+  assertOpenMausBotSafeFile,
+} from '../apps/write-adapter.js';
 
 const currentDir = typeof import.meta.dirname === 'string'
   ? import.meta.dirname
@@ -81,30 +86,9 @@ export function resolveMcpServerEntrypoint(): string {
   return path.resolve(currentDir, '..', '..', '..', 'mcp-server', 'dist', 'index.js');
 }
 
-function isInsideRealHomeDir(targetFile: string): boolean {
-  const realHome = path.resolve(os.homedir());
-  const resolvedTarget = path.resolve(targetFile);
-  const rel = path.relative(realHome, resolvedTarget);
-  if (!rel || (!rel.startsWith('..') && !path.isAbsolute(rel))) {
-    const realTmp = path.resolve(os.tmpdir());
-    const relTmp = path.relative(realTmp, resolvedTarget);
-    if (!relTmp || (!relTmp.startsWith('..') && !path.isAbsolute(relTmp))) {
-      return false;
-    }
-    return true;
-  }
-  return false;
-}
-
 function assertSafeMcpWriteTarget(targetFile: string): void {
-  if (process.env['ROUTERSYNC_ALLOW_LIVE_HOME_WRITE'] === '1') {
-    return;
-  }
-  if (isInsideRealHomeDir(targetFile)) {
-    throw new Error(
-      `Refusing MCP config write inside real user homedir (${os.homedir()}); use a sandbox/temp --file path during pre-WP9 testing.`
-    );
-  }
+  assertHarnessWriteSandboxAllowed(targetFile);
+  assertHarnessWriteSandboxAllowed(`${targetFile}.bak`);
 }
 
 function resolveDefaultMcpTargetPath(cap: HarnessCapability): string {
@@ -281,6 +265,10 @@ export async function runMcpInstallCommand(options: McpInstallOptions): Promise<
     process.exit(1);
   }
 
+  if (cap.id === 'openmausbot' && options.targetFile) {
+    assertOpenMausBotSafeFile(options.targetFile);
+  }
+
   const isWrite = Boolean(options.write) && !options.dryRun;
   if (isWrite && !options.allowNonTtyForTest && !process.stdin.isTTY) {
     console.error('Lỗi: Thao tác ghi yêu cầu terminal tương tác (TTY).');
@@ -295,12 +283,16 @@ export async function runMcpInstallCommand(options: McpInstallOptions): Promise<
     if (isWrite) {
       throw new Error('Cannot combine --print and --write.');
     }
+    const printTarget = options.targetFile ?? resolveDefaultMcpTargetPath(cap);
+    if (cap.id === 'openmausbot' && printTarget) {
+      assertOpenMausBotSafeFile(printTarget);
+    }
     const snippet = buildPrintSnippet(cap, normalizedEntrypoint);
     console.log(snippet);
     return {
       client: cap.id,
       mode: 'dry-run',
-      configFile: options.targetFile ?? resolveDefaultMcpTargetPath(cap),
+      configFile: printTarget,
       diff: snippet,
       success: true,
       message: 'Printed MCP configuration.',
@@ -347,6 +339,13 @@ export async function runMcpInstallCommand(options: McpInstallOptions): Promise<
     if (fs.existsSync(legacyJson)) {
       filePath = legacyJson;
     }
+  }
+
+  if (cap.id === 'openmausbot') {
+    assertOpenMausBotSafeFile(filePath);
+  }
+  if (isWrite) {
+    assertSafeMcpWriteTarget(filePath);
   }
 
   const originalContent = fs.existsSync(filePath) ? fs.readFileSync(filePath, 'utf8') : '';

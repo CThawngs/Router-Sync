@@ -11,7 +11,7 @@
  *    the targeted AST span (`applySpanReplacements`).
  */
 
-import { isMap, isScalar, isSeq, parseDocument, type YAMLMap, type YAMLSeq } from 'yaml';
+import { isMap, isScalar, parseDocument, type YAMLMap, type YAMLSeq } from 'yaml';
 
 export interface SpanEdit {
   start: number;
@@ -497,10 +497,10 @@ export function formatYamlScalar(value: string): string {
 }
 
 /**
- * Surgically edits a YAML sequence of models (either scalar `- model-id` or
- * map `- id: model-id`) using AST byte/char ranges so everything outside the
- * sequence (comments, blank lines, sibling providers, keys, URLs, defaults)
- * stays 100% byte-identical.
+ * Surgically edits a YAML sequence of models (either block `- model-id` / `- id: ...`
+ * or flow `["model-id", ...]`) using AST byte/char ranges so comments (including
+ * inline `#` comments on surviving items and standalone `#` comments inside `models:`),
+ * blank lines, sibling providers, keys, URLs, and defaults stay 100% byte-identical.
  */
 export function buildYamlModelsSeqEdit(
   text: string,
@@ -514,21 +514,6 @@ export function buildYamlModelsSeqEdit(
   const nl = detectNewline(text);
   const [seqStart, seqValueEnd] = seqNode.range;
 
-  // Empty flow sequence `models: []`
-  const rawSeq = text.slice(seqStart, seqValueEnd).trim();
-  if (seqNode.items.length === 0 || rawSeq === '[]') {
-    if (addIds.length === 0) return null;
-    const parentIndent = getLineIndentAt(text, seqStart);
-    const itemIndent = `${parentIndent}  `;
-    const rendered = addIds.map((id) => `${itemIndent}- ${formatYamlScalar(id)}`).join(nl);
-    return {
-      start: seqStart,
-      end: seqValueEnd,
-      replacement: `${nl}${rendered}`,
-    };
-  }
-
-  const itemIndent = getLineIndentAt(text, seqStart);
   const firstItem = seqNode.items[0];
   const useMapItems = isMap(firstItem);
   const mapHasName =
@@ -537,8 +522,96 @@ export function buildYamlModelsSeqEdit(
       (pair) => isScalar(pair.key) && String(pair.key.value) === 'name'
     );
 
-  const keptBlocks: string[] = [];
-  for (const item of seqNode.items) {
+  // Flow sequence (`models: []` or `models: ["a", "b"]` or `models: [{ id: "a" }]`):
+  // keep valid flow `[...]` inside `[seqStart, seqValueEnd]` so trailing `# comments`
+  // after `]` (in `[seqValueEnd, seqNodeEnd]`) remain untouched.
+  const rawSeq = text.slice(seqStart, seqValueEnd).trim();
+  if (Boolean((seqNode as { flow?: boolean }).flow) || rawSeq.startsWith('[')) {
+    if (seqNode.items.length === 0 && addIds.length === 0) {
+      return null;
+    }
+    const firstRange = (firstItem as { range?: [number, number, number] } | undefined)?.range;
+    const preferQuotedScalar =
+      firstItem && isScalar(firstItem) && firstRange
+        ? text.charCodeAt(firstRange[0]) === 34
+        : true;
+
+    const flowParts: string[] = [];
+    for (const item of seqNode.items) {
+      let modelId = '';
+      if (isScalar(item)) {
+        modelId = String(item.value ?? '').trim();
+      } else if (isMap(item)) {
+        const idVal = item.get('id');
+        modelId = typeof idVal === 'string' ? idVal.trim() : String(idVal ?? '').trim();
+      }
+      if (modelId && removeSet.has(modelId)) {
+        continue;
+      }
+      const itemRange = (item as { range?: [number, number, number] }).range;
+      flowParts.push(
+        itemRange ? text.slice(itemRange[0], itemRange[1]).trim() : formatYamlScalar(modelId)
+      );
+    }
+
+    for (const id of addIds) {
+      if (useMapItems) {
+        flowParts.push(
+          `{ id: ${JSON.stringify(id)}${mapHasName ? `, name: ${JSON.stringify(id)}` : ''} }`
+        );
+      } else {
+        flowParts.push(preferQuotedScalar ? JSON.stringify(id) : formatYamlScalar(id));
+      }
+    }
+
+    return {
+      start: seqStart,
+      end: seqValueEnd,
+      replacement: `[${flowParts.join(', ')}]`,
+    };
+  }
+
+  // Block sequence: preserve inline `# comments` (`itemRange[1]..itemRange[2]`) AND
+  // standalone `#` comment lines between items (`prevItemEnd..itemLineStart`).
+  const itemIndent = getLineIndentAt(text, seqStart);
+  const indentedSegments: string[] = [];
+  let keptItemCount = 0;
+  let prevItemEnd = seqStart;
+
+  for (let idx = 0; idx < seqNode.items.length; idx += 1) {
+    const item = seqNode.items[idx];
+    const itemRange = (item as { range?: [number, number, number] } | undefined)?.range;
+    if (!itemRange) continue;
+
+    let dashPos = itemRange[0];
+    while (dashPos > seqStart && text.charCodeAt(dashPos - 1) !== 45) {
+      dashPos -= 1;
+    }
+    if (dashPos > seqStart && text.charCodeAt(dashPos - 1) === 45) {
+      dashPos -= 1;
+    } else if (dashPos === seqStart && text.charCodeAt(dashPos) === 45) {
+      // First item starts directly at seqStart
+    } else if (dashPos > 0 && text.charCodeAt(dashPos - 1) === 45) {
+      dashPos -= 1;
+    }
+
+    let itemLineStart = dashPos;
+    if (idx > 0) {
+      while (
+        itemLineStart > prevItemEnd &&
+        (text.charCodeAt(itemLineStart - 1) === 32 || text.charCodeAt(itemLineStart - 1) === 9)
+      ) {
+        itemLineStart -= 1;
+      }
+      if (itemLineStart > prevItemEnd) {
+        const interTrivia = text.slice(prevItemEnd, itemLineStart);
+        if (interTrivia.trim().length > 0) {
+          indentedSegments.push(interTrivia.endsWith('\n') ? interTrivia : `${interTrivia}${nl}`);
+        }
+      }
+    }
+    prevItemEnd = itemRange[2];
+
     let modelId = '';
     if (isScalar(item)) {
       modelId = String(item.value ?? '').trim();
@@ -549,43 +622,41 @@ export function buildYamlModelsSeqEdit(
     if (modelId && removeSet.has(modelId)) {
       continue;
     }
-    const itemRange = (item as { range?: [number, number, number] }).range;
-    if (!itemRange) continue;
-    let dashPos = itemRange[0];
-    while (dashPos > seqStart && text.charCodeAt(dashPos - 1) !== 45) {
-      dashPos -= 1;
+
+    let itemSlice = text.slice(dashPos, itemRange[2]);
+    if (!itemSlice.endsWith('\n')) {
+      itemSlice += nl;
     }
-    if (dashPos > 0 && text.charCodeAt(dashPos - 1) === 45) {
-      dashPos -= 1;
-    }
-    let slice = text.slice(dashPos, itemRange[1]);
-    if (!slice.endsWith('\n')) {
-      slice += nl;
-    }
-    keptBlocks.push(slice);
+    indentedSegments.push(`${itemIndent}${itemSlice}`);
+    keptItemCount += 1;
   }
 
   for (const id of addIds) {
     if (useMapItems) {
       const safeId = formatYamlScalar(id);
       const nameLine = mapHasName ? `${nl}${itemIndent}  name: ${safeId}` : '';
-      keptBlocks.push(`- id: ${safeId}${nameLine}${nl}`);
+      indentedSegments.push(`${itemIndent}- id: ${safeId}${nameLine}${nl}`);
     } else {
-      keptBlocks.push(`- ${formatYamlScalar(id)}${nl}`);
+      indentedSegments.push(`${itemIndent}- ${formatYamlScalar(id)}${nl}`);
     }
+    keptItemCount += 1;
   }
 
-  if (keptBlocks.length === 0) {
-    return {
-      start: seqStart,
-      end: seqValueEnd,
-      replacement: `[]${nl}`,
-    };
+  if (keptItemCount === 0) {
+    if (indentedSegments.length === 0) {
+      return {
+        start: seqStart,
+        end: seqValueEnd,
+        replacement: `[]${nl}`,
+      };
+    }
+    indentedSegments.push(`${itemIndent}[]${nl}`);
   }
 
-  const replacement = keptBlocks
-    .map((block, idx) => (idx === 0 ? block : `${itemIndent}${block}`))
-    .join('');
+  const fullIndented = indentedSegments.join('');
+  const replacement = fullIndented.startsWith(itemIndent)
+    ? fullIndented.slice(itemIndent.length)
+    : fullIndented;
 
   return {
     start: seqStart,
@@ -595,7 +666,8 @@ export function buildYamlModelsSeqEdit(
 }
 
 /**
- * Comment-preserving YAML merge for `mcp_servers.<serverName>` (Hermes config.yaml).
+ * Comment-preserving YAML merge for `mcp_servers.<serverName>` (Hermes config.yaml),
+ * supporting both block maps and flow maps (`mcp_servers: {}` or `mcp_servers: { ... }`).
  */
 export function upsertYamlMcpServer(
   text: string,
@@ -626,37 +698,116 @@ export function upsertYamlMcpServer(
     (pair) => isScalar(pair.key) && String(pair.key.value) === topKey
   );
 
+  let nextText: string;
+
   if (mcpPair && isMap(mcpPair.value) && mcpPair.value.range) {
     const mcpMap = mcpPair.value;
-    const existingServerPair = mcpMap.items.find(
-      (pair) => isScalar(pair.key) && String(pair.key.value) === serverName
-    );
-    if (existingServerPair) {
-      const keyRange = (existingServerPair.key as { range?: [number, number, number] }).range;
-      const valRange = (existingServerPair.value as { range?: [number, number, number] } | null)?.range;
-      if (keyRange && valRange) {
-        const keyIndent = getLineIndentAt(text, keyRange[0]);
-        const customEntry =
-          `${serverName}:${nl}` +
-          `${keyIndent}  command: ${formatYamlScalar(command)}${nl}` +
-          `${keyIndent}  args:${nl}` +
-          args.map((a) => `${keyIndent}    - ${JSON.stringify(a)}`).join(nl) +
-          nl;
-        return applySpanReplacements(text, [
-          { start: keyRange[0], end: valRange[1], replacement: customEntry },
+    const pairKeyRange = (mcpPair.key as { range?: [number, number, number] }).range;
+    const topIndent = pairKeyRange ? getLineIndentAt(text, pairKeyRange[0]) : '';
+    const serverIndent = `${topIndent}  `;
+    const indentedEntryYaml =
+      `${serverIndent}${serverName}:${nl}` +
+      `${serverIndent}  command: ${formatYamlScalar(command)}${nl}` +
+      `${serverIndent}  args:${nl}` +
+      args.map((a) => `${serverIndent}    - ${JSON.stringify(a)}`).join(nl) +
+      nl;
+
+    if (Boolean((mcpMap as { flow?: boolean }).flow)) {
+      const [mapStart, mapValEnd] = mcpMap.range;
+      if (mcpMap.items.length === 0) {
+        let lineEnd = mapValEnd;
+        while (lineEnd < text.length && text.charCodeAt(lineEnd) !== 10) {
+          lineEnd += 1;
+        }
+        if (lineEnd < text.length && text.charCodeAt(lineEnd) === 10) {
+          lineEnd += 1;
+        }
+        const sameLineTail = text.slice(mapValEnd, lineEnd);
+        const headerSuffix =
+          sameLineTail.length > 0
+            ? sameLineTail.endsWith('\n')
+              ? sameLineTail
+              : `${sameLineTail}${nl}`
+            : nl;
+        nextText = applySpanReplacements(text, [
+          {
+            start: mapStart,
+            end: lineEnd,
+            replacement: `${headerSuffix}${indentedEntryYaml}`,
+          },
+        ]);
+      } else {
+        const flowServerEntry = `${serverName}: { command: ${JSON.stringify(command)}, args: [${args.map((a) => JSON.stringify(a)).join(', ')}] }`;
+        const flowPairs: string[] = [];
+        let replaced = false;
+        for (const pair of mcpMap.items) {
+          if (isScalar(pair.key) && String(pair.key.value) === serverName) {
+            flowPairs.push(flowServerEntry);
+            replaced = true;
+          } else {
+            const kRange = (pair.key as { range?: [number, number, number] }).range;
+            const vRange = (pair.value as { range?: [number, number, number] } | null)?.range;
+            if (kRange && vRange) {
+              flowPairs.push(text.slice(kRange[0], vRange[1]).trim());
+            }
+          }
+        }
+        if (!replaced) {
+          flowPairs.push(flowServerEntry);
+        }
+        nextText = applySpanReplacements(text, [
+          {
+            start: mapStart,
+            end: mapValEnd,
+            replacement: `{ ${flowPairs.join(', ')} }`,
+          },
+        ]);
+      }
+    } else {
+      const existingServerPair = mcpMap.items.find(
+        (pair) => isScalar(pair.key) && String(pair.key.value) === serverName
+      );
+      if (existingServerPair) {
+        const keyRange = (existingServerPair.key as { range?: [number, number, number] }).range;
+        const valRange = (existingServerPair.value as { range?: [number, number, number] } | null)?.range;
+        if (keyRange && valRange) {
+          const keyIndent = getLineIndentAt(text, keyRange[0]);
+          const customEntry =
+            `${serverName}:${nl}` +
+            `${keyIndent}  command: ${formatYamlScalar(command)}${nl}` +
+            `${keyIndent}  args:${nl}` +
+            args.map((a) => `${keyIndent}    - ${JSON.stringify(a)}`).join(nl) +
+            nl;
+          nextText = applySpanReplacements(text, [
+            { start: keyRange[0], end: valRange[1], replacement: customEntry },
+          ]);
+        } else {
+          const insertPos = mcpMap.range[1];
+          const prefix = insertPos > 0 && text.charCodeAt(insertPos - 1) !== 10 ? nl : '';
+          nextText = applySpanReplacements(text, [
+            { start: insertPos, end: insertPos, replacement: `${prefix}${indentedEntryYaml}` },
+          ]);
+        }
+      } else {
+        const insertPos = mcpMap.range[1];
+        const prefix = insertPos > 0 && text.charCodeAt(insertPos - 1) !== 10 ? nl : '';
+        nextText = applySpanReplacements(text, [
+          { start: insertPos, end: insertPos, replacement: `${prefix}${indentedEntryYaml}` },
         ]);
       }
     }
-
-    const insertPos = mcpMap.range[1];
-    const prefix = insertPos > 0 && text.charCodeAt(insertPos - 1) !== 10 ? nl : '';
-    return applySpanReplacements(text, [
-      { start: insertPos, end: insertPos, replacement: `${prefix}${entryYaml}` },
-    ]);
+  } else {
+    const trailingNewline = text.endsWith('\n') ? '' : nl;
+    nextText = `${text}${trailingNewline}${topKey}:${nl}${entryYaml}`;
   }
 
-  const trailingNewline = text.endsWith('\n') ? '' : nl;
-  return `${text}${trailingNewline}${topKey}:${nl}${entryYaml}`;
+  const checkDoc = parseDocument(nextText, { logLevel: 'silent' });
+  if (checkDoc.errors.length > 0 || !isMap(checkDoc.contents)) {
+    throw new Error(
+      `YAML validation failed after MCP upsert: ${checkDoc.errors[0]?.message ?? 'root must be a mapping'}`
+    );
+  }
+  return nextText;
 }
 
 // ---------------------------------------------------------------------------
@@ -740,7 +891,7 @@ export function verifyTomlMcpServerTable(
     const stripped = rawLine.replace(/#.*$/, '').trim();
     if (!stripped) continue;
     if (stripped.startsWith('[')) {
-      if (! stripped.endsWith(']')) return false;
+      if (!stripped.endsWith(']')) return false;
       inTarget = stripped === header;
       if (inTarget) foundHeader = true;
       continue;

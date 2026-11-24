@@ -14,8 +14,8 @@
  *  - M1: Only keyed providers (or verified local router ports 20128/30128) are modified.
  *  - M2: Default model slots, API keys, and base URLs are NEVER mutated (deprecated defaults emit warnings only).
  *  - M3: Lossless AST span replacement preserves comments, CRLF/LF, BOM, and sibling sections byte-for-byte.
- *  - M4: Backup -> Atomic Write -> Read-back -> Automatic Rollback to exact preSha256 on mismatch.
- *  - M5: Deterministic refusal on `report-only` harnesses and real `os.homedir()` paths outside `os.tmpdir()`.
+ *  - M4: Backup -> Atomic Write -> Read-back (models + defaults + providerMeta endpoints/keys) -> Automatic Rollback to exact preSha256 on mismatch.
+ *  - M5: Deterministic refusal on `report-only` harnesses and direct/symlink/junction `os.homedir()` paths outside `os.tmpdir()`.
  */
 
 import { spawnSync } from 'node:child_process';
@@ -73,23 +73,78 @@ function computePlanHash(payload: {
   return sha256(JSON.stringify(payload));
 }
 
-function resolveBestRealPath(target: string): string {
-  const abs = path.resolve(target);
-  try {
-    return fs.realpathSync.native(abs);
-  } catch {
-    const parent = path.dirname(abs);
+// ---------------------------------------------------------------------------
+// Canonical Symlink / Junction-Safe Path Guards (Shared across WP1 & WP2)
+// ---------------------------------------------------------------------------
+
+/**
+ * Resolves `targetPath` to its deepest canonical real path on disk by walking
+ * upward through non-existent trailing path segments until finding the nearest
+ * existing ancestor (or dangling symlink), resolving via `fs.realpathSync.native`
+ * (or `fs.readlinkSync`), and re-appending the remaining relative segments.
+ */
+export function resolveDeepRealPath(targetPath: string, depth = 0): string {
+  if (depth > 40) {
+    throw new Error(`Too many symbolic link levels while resolving path: ${targetPath}`);
+  }
+  const abs = path.resolve(targetPath);
+  const tailSegments: string[] = [];
+  let cur = abs;
+
+  while (true) {
     try {
-      return path.join(fs.realpathSync.native(parent), path.basename(abs));
+      const realAncestor = fs.realpathSync.native(cur);
+      return tailSegments.length > 0
+        ? path.join(realAncestor, ...tailSegments.reverse())
+        : realAncestor;
     } catch {
-      return abs;
+      const lstat = fs.lstatSync(cur, { throwIfNoEntry: false });
+      if (lstat?.isSymbolicLink()) {
+        const rawLink = fs.readlinkSync(cur);
+        const linkedTarget = path.resolve(path.dirname(cur), rawLink);
+        const resolvedLink = resolveDeepRealPath(linkedTarget, depth + 1);
+        return tailSegments.length > 0
+          ? path.join(resolvedLink, ...tailSegments.reverse())
+          : resolvedLink;
+      }
+      const parent = path.dirname(cur);
+      if (parent === cur) {
+        return tailSegments.length > 0 ? path.join(cur, ...tailSegments.reverse()) : cur;
+      }
+      tailSegments.push(path.basename(cur));
+      cur = parent;
     }
   }
 }
 
-function isSubPathOrEqual(parentDir: string, candidate: string): boolean {
-  const rel = path.relative(parentDir, candidate);
+function normalizeForPlatformComparison(p: string): string {
+  const resolved = path.resolve(p);
+  return process.platform === 'win32' ? resolved.toLowerCase() : resolved;
+}
+
+export function isSubPathOrEqual(parentDir: string, candidate: string): boolean {
+  const normParent = normalizeForPlatformComparison(parentDir);
+  const normCandidate = normalizeForPlatformComparison(candidate);
+  const rel = path.relative(normParent, normCandidate);
   return rel === '' || (!rel.startsWith('..') && !path.isAbsolute(rel));
+}
+
+/**
+ * Returns `true` when `targetPath` (after full symlink / Windows junction
+ * resolution) lands inside the real `os.homedir()` and NOT genuinely inside
+ * a distinct `os.tmpdir()` sandbox directory.
+ */
+export function isInsideRealHomeOutsideSandbox(targetPath: string): boolean {
+  const realTarget = resolveDeepRealPath(targetPath);
+  const realHome = resolveDeepRealPath(os.homedir());
+  const realTmp = resolveDeepRealPath(os.tmpdir());
+
+  const sameTmpAndHome =
+    normalizeForPlatformComparison(realTmp) === normalizeForPlatformComparison(realHome);
+  if (!sameTmpAndHome && !isSubPathOrEqual(realTmp, realHome) && isSubPathOrEqual(realTmp, realTarget)) {
+    return false;
+  }
+  return isSubPathOrEqual(realHome, realTarget);
 }
 
 /**
@@ -100,26 +155,47 @@ export function assertHarnessWriteSandboxAllowed(configPath: string): void {
   if (process.env['ROUTERSYNC_ALLOW_LIVE_HOME_WRITE'] === '1') {
     return;
   }
-  const resolvedTarget = resolveBestRealPath(configPath);
-  const resolvedTmp = resolveBestRealPath(os.tmpdir());
-  if (isSubPathOrEqual(resolvedTmp, resolvedTarget)) {
-    return;
-  }
-  const resolvedHome = resolveBestRealPath(os.homedir());
-  if (isSubPathOrEqual(resolvedHome, resolvedTarget)) {
+  if (isInsideRealHomeOutsideSandbox(configPath)) {
     throw new Error(
       `Sandbox guard blocked write inside real user homedir (${os.homedir()}). Use a sandbox copy inside os.tmpdir().`
     );
   }
 }
 
-function assertOpenMausBotSafeFile(configPath: string): void {
-  const base = path.basename(configPath).toLowerCase();
-  if (base === 'bots.json' || base === 'routines.json') {
-    throw new Error(
-      `OpenMausBot safety guard: refusing to access or modify ${base}; only config.json may be inspected/edited while ${base} belongs to the running app.`
-    );
+/**
+ * Blocks any read/write against OpenMausBot's app-owned `bots.json` or `routines.json`
+ * (checking both lexical basename and symlink-resolved basename).
+ */
+export function assertOpenMausBotSafeFile(configPath: string): void {
+  const lexicalBase = path.basename(configPath).toLowerCase();
+  const realBase = path.basename(resolveDeepRealPath(configPath)).toLowerCase();
+  for (const base of [lexicalBase, realBase]) {
+    if (base === 'bots.json' || base === 'routines.json') {
+      throw new Error(
+        `OpenMausBot safety guard: refusing to access or modify ${base}; only config.json may be inspected/edited while ${base} belongs to the running app.`
+      );
+    }
   }
+}
+
+/**
+ * Resolves the effective `homeDir` for `apps plan` / `apps apply`:
+ *  - If `--home` was explicitly provided, use it symmetrically.
+ *  - If `--config` points to a sandbox path outside real `os.homedir()`, return `undefined`
+ *    so host `~/.hermes/.env` and `~/.local/share/opencode/auth.json` never leak into sandbox runs.
+ *  - Otherwise (no `--config`, or `--config` is inside real `os.homedir()`), return `os.homedir()`.
+ */
+export function resolveEffectiveHarnessHomeDir(
+  configPath: string | undefined,
+  explicitHome: string | undefined
+): string | undefined {
+  if (explicitHome !== undefined) {
+    return explicitHome;
+  }
+  if (!configPath) {
+    return os.homedir();
+  }
+  return isInsideRealHomeOutsideSandbox(configPath) ? os.homedir() : undefined;
 }
 
 let cachedOsProcs: { at: number; list: string[] } | undefined;
@@ -239,6 +315,12 @@ function atomicWriteBytes(filePath: string, content: Buffer | string): void {
   fs.renameSync(tmpPath, filePath);
 }
 
+interface ProviderMetaFingerprint {
+  endpointFingerprint: string;
+  authFingerprint: string;
+  nonModelsFingerprint: string;
+}
+
 interface ParsedHarnessState {
   /** All providers discovered -> ordered list of model IDs */
   allProviderModels: Map<string, string[]>;
@@ -246,10 +328,23 @@ interface ParsedHarnessState {
   keyedProviders: Set<string>;
   /** Default slot name -> raw string value */
   defaultSlots: Map<string, { rawValue: string; providerHint?: string | undefined }>;
-  /**Computes lossless next text for a given map of provider -> { removeSet, addIds } */
+  /** Immutable SHA-256 digests of endpoint URL, auth metadata, and non-model fields per provider */
+  providerMeta: Map<string, ProviderMetaFingerprint>;
+  /** Computes lossless next text for a given map of provider -> { removeSet, addIds } */
   buildUpdatedText: (
     providerChanges: Map<string, { removeSet: Set<string>; addIds: string[] }>
   ) => string;
+}
+
+function omitKeys(obj: Record<string, unknown>, keysToOmit: readonly string[]): Record<string, unknown> {
+  const omit = new Set(keysToOmit);
+  const out: Record<string, unknown> = {};
+  for (const key of Object.keys(obj).sort()) {
+    if (!omit.has(key)) {
+      out[key] = obj[key];
+    }
+  }
+  return out;
 }
 
 function checkDefaultSlotWarnings(
@@ -292,6 +387,39 @@ function checkDefaultSlotWarnings(
   return warnings;
 }
 
+/**
+ * Parses the RHS of a `KEY=VALUE` line in `.env` without returning or logging
+ * secrets externally: strips unquoted `# inline comments` and empty quotes `""`/`''`.
+ */
+function extractDotEnvValue(rawRhs: string): string {
+  const s = rawRhs.trim();
+  if (!s || s.startsWith('#')) {
+    return '';
+  }
+  if (s.startsWith('"') || s.startsWith("'")) {
+    const quote = s[0]!;
+    for (let i = 1; i < s.length; i += 1) {
+      if (quote === '"' && s[i] === '\\') {
+        i += 1;
+        continue;
+      }
+      if (s[i] === quote) {
+        return s.slice(1, i).trim();
+      }
+    }
+    return s.slice(1).replace(/\s+#.*$/, '').trim();
+  }
+  const commentMatch = s.match(/\s+#/);
+  const unquoted =
+    commentMatch && commentMatch.index !== undefined
+      ? s.slice(0, commentMatch.index).trim()
+      : s;
+  if (unquoted === '""' || unquoted === "''") {
+    return '';
+  }
+  return unquoted;
+}
+
 function readEnvVariableNamesOnly(envFilePaths: string[]): Set<string> {
   const keys = new Set<string>();
   for (const envPath of envFilePaths) {
@@ -303,7 +431,7 @@ function readEnvVariableNamesOnly(envFilePaths: string[]): Set<string> {
         if (!trimmed || trimmed.startsWith('#')) continue;
         const m = trimmed.match(/^(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$/);
         if (!m?.[1]) continue;
-        const val = (m[2] ?? '').trim().replace(/^['"]|['"]$/g, '');
+        const val = extractDotEnvValue(m[2] ?? '');
         if (val.length > 0) {
           keys.add(m[1]);
         }
@@ -343,6 +471,30 @@ function getLineIndentBefore(text: string, offset: number): string {
   return text.slice(lineStart, cursor);
 }
 
+const CANONICAL_JSON_SECRET_KEYS = new Set([
+  'apikey',
+  'key',
+  'token',
+  'accesstoken',
+  'authtoken',
+  'bearertoken',
+  'secret',
+  'secretkey',
+  'clientsecret',
+  'credential',
+  'credentials',
+]);
+
+function isCanonicalSecretFieldName(key: string): boolean {
+  return CANONICAL_JSON_SECRET_KEYS.has(key.replace(/[_-]/g, '').toLowerCase());
+}
+
+function hasJsonSecretField(rec: Record<string, unknown>): boolean {
+  return Object.entries(rec).some(
+    ([k, v]) => isCanonicalSecretFieldName(k) && typeof v === 'string' && v.trim().length > 0
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Parser 1: Hermes (`config.yaml` + sibling `.env`)
 // ---------------------------------------------------------------------------
@@ -364,6 +516,7 @@ function parseHermesState(text: string, configPath: string, homeDir?: string): P
   const keyedProviders = new Set<string>();
   const providerSeqNodes = new Map<string, { mapNode: YAMLMap; seqNode?: YAMLSeq | undefined }>();
   const defaultSlots = new Map<string, { rawValue: string; providerHint?: string | undefined }>();
+  const providerMeta = new Map<string, ProviderMetaFingerprint>();
 
   const modelMap = root.get('model', true);
   let mainProviderHint: string | undefined;
@@ -397,14 +550,40 @@ function parseHermesState(text: string, configPath: string, homeDir?: string): P
         nonEmptyStr(pMap.get('key'));
       const keyEnvName = nonEmptyStr(pMap.get('key_env')) ?? nonEmptyStr(pMap.get('api_key_env'));
       const hasEnvKey = Boolean(keyEnvName && envKeys.has(keyEnvName));
-      const baseUrl = nonEmptyStr(pMap.get('base_url')) ?? nonEmptyStr(pMap.get('baseURL'));
+      const baseUrl =
+        nonEmptyStr(pMap.get('base_url')) ??
+        nonEmptyStr(pMap.get('baseURL')) ??
+        nonEmptyStr(pMap.get('url'));
+      const isKeyed = Boolean(inlineKey) || hasEnvKey || isLocalRouterPortUrl(baseUrl);
 
       const modelsRaw = pMap.get('models', true);
       const seqNode = isSeq(modelsRaw) ? modelsRaw : undefined;
       allProviderModels.set(provId, extractYamlSeqModelIds(seqNode));
       providerSeqNodes.set(provId, { mapNode: pMap, seqNode });
 
-      if (Boolean(inlineKey) || hasEnvKey || isLocalRouterPortUrl(baseUrl)) {
+      const rawJs = (pMap.toJS(doc) ?? {}) as Record<string, unknown>;
+      providerMeta.set(provId, {
+        endpointFingerprint: sha256(
+          JSON.stringify({
+            base_url: rawJs['base_url'] ?? null,
+            baseURL: rawJs['baseURL'] ?? null,
+            url: rawJs['url'] ?? null,
+          })
+        ),
+        authFingerprint: sha256(
+          JSON.stringify({
+            api_key: rawJs['api_key'] ?? null,
+            apiKey: rawJs['apiKey'] ?? null,
+            key: rawJs['key'] ?? null,
+            key_env: rawJs['key_env'] ?? null,
+            api_key_env: rawJs['api_key_env'] ?? null,
+            isKeyed,
+          })
+        ),
+        nonModelsFingerprint: sha256(JSON.stringify(omitKeys(rawJs, ['models']))),
+      });
+
+      if (isKeyed) {
         keyedProviders.add(provId);
       }
     }
@@ -423,7 +602,11 @@ function parseHermesState(text: string, configPath: string, homeDir?: string): P
         nonEmptyStr(item.get('key'));
       const keyEnvName = nonEmptyStr(item.get('key_env')) ?? nonEmptyStr(item.get('api_key_env'));
       const hasEnvKey = Boolean(keyEnvName && envKeys.has(keyEnvName));
-      const baseUrl = nonEmptyStr(item.get('base_url')) ?? nonEmptyStr(item.get('baseURL'));
+      const baseUrl =
+        nonEmptyStr(item.get('base_url')) ??
+        nonEmptyStr(item.get('baseURL')) ??
+        nonEmptyStr(item.get('url'));
+      const isKeyed = Boolean(inlineKey) || hasEnvKey || isLocalRouterPortUrl(baseUrl);
 
       const slotModel = nonEmptyStr(item.get('model'));
       if (slotModel) {
@@ -438,7 +621,29 @@ function parseHermesState(text: string, configPath: string, homeDir?: string): P
       allProviderModels.set(provId, extractYamlSeqModelIds(seqNode));
       providerSeqNodes.set(provId, { mapNode: item, seqNode });
 
-      if (Boolean(inlineKey) || hasEnvKey || isLocalRouterPortUrl(baseUrl)) {
+      const rawJs = (item.toJS(doc) ?? {}) as Record<string, unknown>;
+      providerMeta.set(provId, {
+        endpointFingerprint: sha256(
+          JSON.stringify({
+            base_url: rawJs['base_url'] ?? null,
+            baseURL: rawJs['baseURL'] ?? null,
+            url: rawJs['url'] ?? null,
+          })
+        ),
+        authFingerprint: sha256(
+          JSON.stringify({
+            api_key: rawJs['api_key'] ?? null,
+            apiKey: rawJs['apiKey'] ?? null,
+            key: rawJs['key'] ?? null,
+            key_env: rawJs['key_env'] ?? null,
+            api_key_env: rawJs['api_key_env'] ?? null,
+            isKeyed,
+          })
+        ),
+        nonModelsFingerprint: sha256(JSON.stringify(omitKeys(rawJs, ['models']))),
+      });
+
+      if (isKeyed) {
         keyedProviders.add(provId);
       }
     });
@@ -448,6 +653,7 @@ function parseHermesState(text: string, configPath: string, homeDir?: string): P
     allProviderModels,
     keyedProviders,
     defaultSlots,
+    providerMeta,
     buildUpdatedText(providerChanges) {
       const edits: SpanEdit[] = [];
       const nl = detectNewline(text);
@@ -488,12 +694,6 @@ function parseHermesState(text: string, configPath: string, homeDir?: string): P
 // Parser 2: OpenMausBot (`config.json` -> `instances.<id>.config.managedModels`)
 // ---------------------------------------------------------------------------
 
-function hasJsonSecretField(rec: Record<string, unknown>): boolean {
-  return Object.entries(rec).some(
-    ([k, v]) => /key|token|secret|credential/i.test(k) && typeof v === 'string' && v.trim().length > 0
-  );
-}
-
 function parseOpenMausBotState(text: string, configPath: string): ParsedHarnessState {
   assertOpenMausBotSafeFile(configPath);
   const { root, value } = parseJsoncObject(text);
@@ -501,6 +701,7 @@ function parseOpenMausBotState(text: string, configPath: string): ParsedHarnessS
   const allProviderModels = new Map<string, string[]>();
   const keyedProviders = new Set<string>();
   const defaultSlots = new Map<string, { rawValue: string; providerHint?: string | undefined }>();
+  const providerMeta = new Map<string, ProviderMetaFingerprint>();
   const configNodes = new Map<string, JsoncObjectNode>();
 
   const topDef = value['defaultModelSelection'];
@@ -509,7 +710,43 @@ function parseOpenMausBotState(text: string, configPath: string): ParsedHarnessS
   } else if (topDef && typeof topDef === 'object' && !Array.isArray(topDef)) {
     const nestedModel = nonEmptyStr((topDef as Record<string, unknown>)['model']);
     if (nestedModel) {
-      defaultSlots.set('defaultModelSelection', { rawValue: nestedModel });
+      defaultSlots.set('defaultModelSelection', {
+        rawValue: nestedModel,
+        providerHint: nonEmptyStr((topDef as Record<string, unknown>)['provider']),
+      });
+    }
+  }
+
+  const autoRecovery = value['automaticRecovery'];
+  if (autoRecovery && typeof autoRecovery === 'object' && !Array.isArray(autoRecovery)) {
+    const backupRaw = (autoRecovery as Record<string, unknown>)['backup'];
+    if (typeof backupRaw === 'string' && backupRaw.trim()) {
+      defaultSlots.set('automaticRecovery.backup', { rawValue: backupRaw.trim() });
+    } else if (backupRaw && typeof backupRaw === 'object' && !Array.isArray(backupRaw)) {
+      const rec = backupRaw as Record<string, unknown>;
+      const bm = nonEmptyStr(rec['model']);
+      if (bm) {
+        defaultSlots.set('automaticRecovery.backup', {
+          rawValue: bm,
+          providerHint: nonEmptyStr(rec['provider']) ?? nonEmptyStr(rec['instanceId']),
+        });
+      }
+    } else if (Array.isArray(backupRaw)) {
+      backupRaw.forEach((entry, idx) => {
+        const slotKey = idx === 0 ? 'automaticRecovery.backup' : `automaticRecovery.backup[${idx}]`;
+        if (typeof entry === 'string' && entry.trim()) {
+          defaultSlots.set(slotKey, { rawValue: entry.trim() });
+        } else if (entry && typeof entry === 'object' && !Array.isArray(entry)) {
+          const rec = entry as Record<string, unknown>;
+          const bm = nonEmptyStr(rec['model']);
+          if (bm) {
+            defaultSlots.set(slotKey, {
+              rawValue: bm,
+              providerHint: nonEmptyStr(rec['provider']) ?? nonEmptyStr(rec['instanceId']),
+            });
+          }
+        }
+      });
     }
   }
 
@@ -551,8 +788,35 @@ function parseOpenMausBotState(text: string, configPath: string): ParsedHarnessS
 
       // Only `openai-compat` instances maintain user-editable `managedModels`
       const isEditableDriver = driver === 'openai-compat';
-      const urlVal = nonEmptyStr(cfgVal['url']);
-      if (isEditableDriver && (hasJsonSecretField(cfgVal) || isLocalRouterPortUrl(urlVal))) {
+      const urlVal =
+        nonEmptyStr(cfgVal['url']) ??
+        nonEmptyStr(cfgVal['baseURL']) ??
+        nonEmptyStr(cfgVal['baseUrl']);
+      const hasSecret = hasJsonSecretField(cfgVal);
+      const isKeyed = isEditableDriver && (hasSecret || isLocalRouterPortUrl(urlVal));
+
+      const secretPairs = Object.entries(cfgVal)
+        .filter(([k]) => isCanonicalSecretFieldName(k))
+        .sort(([a], [b]) => a.localeCompare(b));
+
+      providerMeta.set(instId, {
+        endpointFingerprint: sha256(
+          JSON.stringify({
+            url: cfgVal['url'] ?? null,
+            baseURL: cfgVal['baseURL'] ?? null,
+            baseUrl: cfgVal['baseUrl'] ?? null,
+          })
+        ),
+        authFingerprint: sha256(JSON.stringify({ secretPairs, isKeyed })),
+        nonModelsFingerprint: sha256(
+          JSON.stringify({
+            instTop: omitKeys(instVal, ['config']),
+            cfgWithoutModels: omitKeys(cfgVal, ['managedModels']),
+          })
+        ),
+      });
+
+      if (isKeyed) {
         keyedProviders.add(instId);
       }
     }
@@ -562,6 +826,7 @@ function parseOpenMausBotState(text: string, configPath: string): ParsedHarnessS
     allProviderModels,
     keyedProviders,
     defaultSlots,
+    providerMeta,
     buildUpdatedText(providerChanges) {
       const edits: SpanEdit[] = [];
       const nl = detectNewline(text);
@@ -638,13 +903,34 @@ function readOpenCodeAuthProviders(homeDir?: string): Set<string> {
   return out;
 }
 
-function parseOpenCodeState(text: string, _configPath: string, homeDir?: string): ParsedHarnessState {
+function extractEnvNameList(raw: unknown): string[] {
+  if (typeof raw === 'string') {
+    const s = nonEmptyStr(raw);
+    return s ? [s] : [];
+  }
+  if (Array.isArray(raw)) {
+    return raw.map((item) => nonEmptyStr(item)).filter((item): item is string => Boolean(item));
+  }
+  return [];
+}
+
+function parseOpenCodeState(text: string, configPath: string, homeDir?: string): ParsedHarnessState {
   const { root, value } = parseJsoncObject(text);
   const authProviders = readOpenCodeAuthProviders(homeDir);
+
+  const envPaths = [path.join(path.dirname(configPath), '.env')];
+  if (homeDir) {
+    envPaths.push(
+      path.join(homeDir, '.config', 'opencode', '.env'),
+      path.join(homeDir, '.env')
+    );
+  }
+  const envKeys = readEnvVariableNamesOnly(envPaths);
 
   const allProviderModels = new Map<string, string[]>();
   const keyedProviders = new Set<string>();
   const defaultSlots = new Map<string, { rawValue: string; providerHint?: string | undefined }>();
+  const providerMeta = new Map<string, ProviderMetaFingerprint>();
   const providerNodes = new Map<string, { provNode: JsoncObjectNode; modelsNode?: JsoncObjectNode | undefined }>();
 
   const topModel = nonEmptyStr(value['model']);
@@ -674,12 +960,25 @@ function parseOpenCodeState(text: string, _configPath: string, homeDir?: string)
           ? (pVal['options'] as Record<string, unknown>)
           : {};
 
+      const configuredEnvNames = [
+        ...extractEnvNameList(pVal['env']),
+        ...extractEnvNameList(optsVal['env']),
+        ...extractEnvNameList(pVal['apiKeyEnv']),
+        ...extractEnvNameList(optsVal['apiKeyEnv']),
+      ];
+      const hasEnvKey = configuredEnvNames.some((envName) => envKeys.has(envName));
+      const baseUrl =
+        nonEmptyStr(optsVal['baseURL']) ??
+        nonEmptyStr(optsVal['base_url']) ??
+        nonEmptyStr(optsVal['url']) ??
+        nonEmptyStr(pVal['baseURL']);
+
       const hasKey =
-        Boolean(nonEmptyStr(optsVal['apiKey'])) ||
-        Boolean(nonEmptyStr(optsVal['key'])) ||
-        Boolean(nonEmptyStr(pVal['apiKey'])) ||
+        hasJsonSecretField(optsVal) ||
+        hasJsonSecretField(pVal) ||
+        hasEnvKey ||
         authProviders.has(provId) ||
-        isLocalRouterPortUrl(nonEmptyStr(optsVal['baseURL']));
+        isLocalRouterPortUrl(baseUrl);
 
       const modelsProp = findJsoncProperty(pNode, 'models');
       const modelsNode = modelsProp && modelsProp.value.kind === 'object' ? modelsProp.value : undefined;
@@ -687,6 +986,35 @@ function parseOpenCodeState(text: string, _configPath: string, homeDir?: string)
 
       allProviderModels.set(provId, modelIds);
       providerNodes.set(provId, { provNode: pNode, modelsNode });
+
+      const optSecrets = Object.entries(optsVal)
+        .filter(([k]) => isCanonicalSecretFieldName(k))
+        .sort(([a], [b]) => a.localeCompare(b));
+      const topSecrets = Object.entries(pVal)
+        .filter(([k]) => isCanonicalSecretFieldName(k))
+        .sort(([a], [b]) => a.localeCompare(b));
+
+      providerMeta.set(provId, {
+        endpointFingerprint: sha256(
+          JSON.stringify({
+            optsBaseURL: optsVal['baseURL'] ?? null,
+            optsBaseUrl: optsVal['base_url'] ?? null,
+            optsUrl: optsVal['url'] ?? null,
+            topBaseURL: pVal['baseURL'] ?? null,
+          })
+        ),
+        authFingerprint: sha256(
+          JSON.stringify({
+            optSecrets,
+            topSecrets,
+            env: pVal['env'] ?? null,
+            optsEnv: optsVal['env'] ?? null,
+            hasKey,
+          })
+        ),
+        nonModelsFingerprint: sha256(JSON.stringify(omitKeys(pVal, ['models']))),
+      });
+
       if (hasKey) {
         keyedProviders.add(provId);
       }
@@ -697,6 +1025,7 @@ function parseOpenCodeState(text: string, _configPath: string, homeDir?: string)
     allProviderModels,
     keyedProviders,
     defaultSlots,
+    providerMeta,
     buildUpdatedText(providerChanges) {
       const edits: SpanEdit[] = [];
       const nl = detectNewline(text);
@@ -763,6 +1092,7 @@ function parseDshState(text: string, configPath: string): ParsedHarnessState {
   const allProviderModels = new Map<string, string[]>();
   const keyedProviders = new Set<string>();
   const defaultSlots = new Map<string, { rawValue: string; providerHint?: string | undefined }>();
+  const providerMeta = new Map<string, ProviderMetaFingerprint>();
   const providerSeqNodes = new Map<string, { mapNode: YAMLMap; seqNode?: YAMLSeq | undefined }>();
 
   const rows: YAMLMap[] = [];
@@ -822,6 +1152,26 @@ function parseDshState(text: string, configPath: string): ParsedHarnessState {
           const seqNode = isSeq(modelsRaw) ? modelsRaw : undefined;
           allProviderModels.set(provId, extractYamlSeqModelIds(seqNode));
           providerSeqNodes.set(provId, { mapNode: pMap, seqNode });
+
+          const rawJs = (pMap.toJS(doc) ?? {}) as Record<string, unknown>;
+          providerMeta.set(provId, {
+            endpointFingerprint: sha256(
+              JSON.stringify({
+                baseURL: rawJs['baseURL'] ?? null,
+                base_url: rawJs['base_url'] ?? null,
+                url: rawJs['url'] ?? null,
+              })
+            ),
+            authFingerprint: sha256(
+              JSON.stringify({
+                apiKey: rawJs['apiKey'] ?? null,
+                apiKeyEnv: rawJs['apiKeyEnv'] ?? null,
+                hasKey,
+              })
+            ),
+            nonModelsFingerprint: sha256(JSON.stringify(omitKeys(rawJs, ['models']))),
+          });
+
           if (hasKey) {
             keyedProviders.add(provId);
           }
@@ -834,6 +1184,7 @@ function parseDshState(text: string, configPath: string): ParsedHarnessState {
     allProviderModels,
     keyedProviders,
     defaultSlots,
+    providerMeta,
     buildUpdatedText(providerChanges) {
       const edits: SpanEdit[] = [];
       const nl = detectNewline(text);
@@ -989,6 +1340,8 @@ function createTierAWriteAdapter(cap: HarnessCapability, parseState: StateParser
         assertOpenMausBotSafeFile(configPath);
       }
       assertHarnessWriteSandboxAllowed(configPath);
+      const backupPath = options.backupPath ?? `${configPath}.routersync.bak`;
+      assertHarnessWriteSandboxAllowed(backupPath);
 
       if (!fs.existsSync(configPath)) {
         throw new Error(`[${cap.id}] Config file does not exist: ${configPath}`);
@@ -1005,8 +1358,6 @@ function createTierAWriteAdapter(cap: HarnessCapability, parseState: StateParser
           `[${cap.id}] Plan hash mismatch: expected ${options.expectedPlanHash}, computed ${plan.planHash}`
         );
       }
-
-      const backupPath = options.backupPath ?? `${configPath}.routersync.bak`;
 
       const providerChanges = new Map<string, { removeSet: Set<string>; addIds: string[] }>();
       const expectedModelsByProvider = new Map<string, string[]>();
@@ -1065,11 +1416,40 @@ function createTierAWriteAdapter(cap: HarnessCapability, parseState: StateParser
           }
         }
 
-        // 2. Verify zero mutation on default model slots
+        // 2. Verify zero mutation on default model slots (including automaticRecovery.backup)
+        if (postState.defaultSlots.size !== preState.defaultSlots.size) {
+          throw new Error('Read-back detected default-slot count mutation');
+        }
         for (const [slot, preSlot] of preState.defaultSlots.entries()) {
           const postSlot = postState.defaultSlots.get(slot);
           if (!postSlot || postSlot.rawValue !== preSlot.rawValue) {
             throw new Error(`Read-back detected forbidden default-slot mutation on "${slot}"`);
+          }
+        }
+
+        // 3. Verify zero mutation on provider endpoints (baseURL/base_url/url), keys, and non-model metadata
+        if (postState.providerMeta.size !== preState.providerMeta.size) {
+          throw new Error('Read-back detected provider metadata count mismatch');
+        }
+        for (const [provId, preMeta] of preState.providerMeta.entries()) {
+          const postMeta = postState.providerMeta.get(provId);
+          if (!postMeta) {
+            throw new Error(`Read-back missing provider metadata for "${provId}"`);
+          }
+          if (postMeta.endpointFingerprint !== preMeta.endpointFingerprint) {
+            throw new Error(
+              `Read-back detected forbidden baseURL/endpoint mutation on provider "${provId}"`
+            );
+          }
+          if (postMeta.authFingerprint !== preMeta.authFingerprint) {
+            throw new Error(
+              `Read-back detected forbidden API key/credential mutation on provider "${provId}"`
+            );
+          }
+          if (postMeta.nonModelsFingerprint !== preMeta.nonModelsFingerprint) {
+            throw new Error(
+              `Read-back detected forbidden non-model field mutation on provider "${provId}"`
+            );
           }
         }
       } catch (verifyErr) {
@@ -1109,6 +1489,7 @@ function createTierAWriteAdapter(cap: HarnessCapability, parseState: StateParser
       assertHarnessWriteSandboxAllowed(options.configPath);
 
       const backupPath = options.backupPath ?? `${options.configPath}.routersync.bak`;
+      assertHarnessWriteSandboxAllowed(backupPath);
       if (!fs.existsSync(backupPath)) {
         throw new Error(`[${cap.id}] Backup file not found for rollback: ${backupPath}`);
       }

@@ -1228,6 +1228,7 @@ export function createCliProgram(): Command {
     .requiredOption('--app <app>', 'Target harness ID from harness-matrix.json')
     .requiredOption('-c, --config <path>', 'Path to isolated sandbox harness config copy in os.tmpdir()')
     .requiredOption('--catalog <path>', 'Path to verified provider catalog JSON')
+    .option('--home <dir>', 'Custom user home directory')
     .option('--sandbox-copy', 'Confirm target config is an isolated sandbox copy')
     .option('--plan-hash <hash>', 'Expected planHash from apps plan')
     .option('--backup <path>', 'Custom backup file path')
@@ -1237,6 +1238,7 @@ export function createCliProgram(): Command {
         app: string;
         config: string;
         catalog: string;
+        home?: string;
         sandboxCopy?: boolean;
         planHash?: string;
         backup?: string;

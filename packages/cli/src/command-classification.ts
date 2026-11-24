@@ -92,10 +92,13 @@ export const COMMAND_CLASSES: Record<string, CommandClass> = {
   'agents update': 'interactive',
   combos: 'short',
   'combos stale': 'short',
+  // C32 M1: probe làm việc mạng nhiều phút, không được watchdog 120s cắt.
   'combos probe': 'long-running',
+  // C33 N3: plan đọc DB + ghi một file kế hoạch, tính bằng giây.
   'combos plan': 'short',
   'combos reliability': 'long-running',
-  router: 'long-running',
+  // C35 R1: watch chạy nhiều phút, không bị watchdog 120s cắt.
+  'router': 'long-running',
   'router watch': 'long-running',
 };
 

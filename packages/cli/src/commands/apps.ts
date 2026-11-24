@@ -21,6 +21,7 @@ import {
   assertHarnessWriteSandboxAllowed,
   getHarnessWriteAdapter,
   listHarnessWriteAdapters,
+  resolveEffectiveHarnessHomeDir,
 } from '../apps/write-adapter.js';
 
 export interface AppsInspectOptions {
@@ -42,6 +43,7 @@ export interface AppsApplyCommandOptions {
   app: string;
   config: string;
   catalog: string;
+  home?: string | undefined;
   sandboxCopy?: boolean | undefined;
   planHash?: string | undefined;
   backup?: string | undefined;
@@ -175,15 +177,16 @@ function requireWriteAdapter(app: string) {
 export async function runAppsPlanCommand(options: AppsPlanCommandOptions): Promise<void> {
   const adapter = requireWriteAdapter(options.app);
   const catalog = loadCatalogJson(options.catalog);
-  const homeDir = options.home ?? os.homedir();
+  const effectiveHomeDir = resolveEffectiveHarnessHomeDir(options.config, options.home);
+  const maskBaseHome = options.home ?? os.homedir();
   const plan = await adapter.plan({
     configPath: options.config,
-    homeDir,
+    homeDir: effectiveHomeDir,
     catalog,
   });
   const maskedPlan = {
     ...plan,
-    configPath: maskHomePath(plan.configPath, homeDir),
+    configPath: maskHomePath(plan.configPath, maskBaseHome),
   };
 
   if (options.json) {
@@ -216,8 +219,10 @@ export async function runAppsApplyCommand(options: AppsApplyCommandOptions): Pro
   assertHarnessWriteSandboxAllowed(options.config);
   const adapter = requireWriteAdapter(options.app);
   const catalog = loadCatalogJson(options.catalog);
+  const effectiveHomeDir = resolveEffectiveHarnessHomeDir(options.config, options.home);
   const res = await adapter.apply({
     configPath: options.config,
+    homeDir: effectiveHomeDir,
     catalog,
     expectedPlanHash: options.planHash,
     backupPath: options.backup,

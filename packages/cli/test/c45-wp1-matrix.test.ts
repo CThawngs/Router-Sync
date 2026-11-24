@@ -45,6 +45,14 @@ function sha256(buf: Buffer | string): string {
   return crypto.createHash('sha256').update(buf).digest('hex');
 }
 
+function stubSimulatedHomeAndTmp(simulatedHome: string, simulatedTmp: string): void {
+  vi.stubEnv('HOME', simulatedHome);
+  vi.stubEnv('USERPROFILE', simulatedHome);
+  vi.stubEnv('TMPDIR', simulatedTmp);
+  vi.stubEnv('TEMP', simulatedTmp);
+  vi.stubEnv('TMP', simulatedTmp);
+}
+
 describe('C45-WP1: Canonical Harness Capability Matrix', () => {
   it('maintains byte-for-byte & JSON equality between root harness-matrix.json and packages/core/src/harness/harness-matrix.json', () => {
     const rootPath = path.join(REPO_ROOT, 'harness-matrix.json');
@@ -95,6 +103,7 @@ describe('C45-WP1: 9-Harness MCP Install (dry-run, print, sandbox write, backup,
   });
 
   afterEach(() => {
+    vi.unstubAllEnvs();
     vi.restoreAllMocks();
     fs.rmSync(tmpDir, { recursive: true, force: true });
   });
@@ -161,6 +170,55 @@ describe('C45-WP1: 9-Harness MCP Install (dry-run, print, sandbox write, backup,
     expect(Array.isArray(parsed.mcp_servers.routersync.args)).toBe(true);
   });
 
+  it('hermes YAML flow maps (Bug #2): handles empty `mcp_servers: {}` and non-empty flow `mcp_servers: { ... }` without syntax corruption', async () => {
+    const emptyFlowTarget = path.join(tmpDir, 'hermes-empty-flow.yaml');
+    const initialEmptyFlow = [
+      '# Hermes default empty flow mcp_servers',
+      'model:',
+      '  default: gpt-4o',
+      'mcp_servers: {} # keep empty flow comment',
+      '# Bottom comment',
+      '',
+    ].join('\n');
+    fs.writeFileSync(emptyFlowTarget, initialEmptyFlow, 'utf8');
+
+    const resEmpty = await runMcpInstallCommand({
+      client: 'hermes',
+      write: true,
+      allowNonTtyForTest: true,
+      targetFile: emptyFlowTarget,
+    });
+    expect(resEmpty.success).toBe(true);
+    const updatedEmpty = fs.readFileSync(emptyFlowTarget, 'utf8');
+    expect(updatedEmpty).toContain('# Hermes default empty flow mcp_servers');
+    expect(updatedEmpty).toContain('# keep empty flow comment');
+    expect(updatedEmpty).toContain('# Bottom comment');
+    const parsedEmpty = parseDocument(updatedEmpty).toJS() as Record<string, any>;
+    expect(parsedEmpty.mcp_servers.routersync.command).toBe('node');
+
+    const populatedFlowTarget = path.join(tmpDir, 'hermes-populated-flow.yaml');
+    const initialPopulatedFlow = [
+      'model:',
+      '  default: gpt-4o',
+      'mcp_servers: { existing_srv: { command: "npx", args: ["-y", "srv"] } } # flow comment',
+      '',
+    ].join('\n');
+    fs.writeFileSync(populatedFlowTarget, initialPopulatedFlow, 'utf8');
+
+    const resPopulated = await runMcpInstallCommand({
+      client: 'hermes',
+      write: true,
+      allowNonTtyForTest: true,
+      targetFile: populatedFlowTarget,
+    });
+    expect(resPopulated.success).toBe(true);
+    const updatedPopulated = fs.readFileSync(populatedFlowTarget, 'utf8');
+    expect(updatedPopulated).toContain('# flow comment');
+    const parsedPopulated = parseDocument(updatedPopulated).toJS() as Record<string, any>;
+    expect(parsedPopulated.mcp_servers.existing_srv.command).toBe('npx');
+    expect(parsedPopulated.mcp_servers.routersync.command).toBe('node');
+  });
+
   it('antigravity JSON: writes mcpServers.routersync WITHOUT "type" field and preserves existing servers', async () => {
     const target = path.join(tmpDir, 'mcp_config.json');
     const initial = JSON.stringify(
@@ -189,7 +247,7 @@ describe('C45-WP1: 9-Harness MCP Install (dry-run, print, sandbox write, backup,
     expect('type' in parsed.mcpServers.routersync).toBe(false);
   });
 
-  it('claude-code, cursor, and openmausbot JSON: preserve all unrelated keys & instances with .bak backup', async () => {
+  it('claude-code, cursor, and openmausbot JSON: preserve all unrelated keys & instances with .bak backup, while openmausbot refuses bots.json & routines.json (Bug #3)', async () => {
     for (const client of ['claude-code', 'cursor', 'openmausbot'] as const) {
       const target = path.join(tmpDir, `${client}.json`);
       const initialObj = {
@@ -212,6 +270,28 @@ describe('C45-WP1: 9-Harness MCP Install (dry-run, print, sandbox write, backup,
       expect(parsed.instances).toEqual(initialObj.instances);
       expect(parsed.mcpServers.other).toEqual(initialObj.mcpServers.other);
       expect(parsed.mcpServers.routersync.command).toBe('node');
+    }
+
+    // Bug #3: openmausbot MUST refuse bots.json and routines.json before reading/writing
+    for (const forbidden of ['bots.json', 'routines.json'] as const) {
+      const forbiddenPath = path.join(tmpDir, forbidden);
+      fs.writeFileSync(forbiddenPath, '{"untouched":true}', 'utf8');
+      await expect(
+        runMcpInstallCommand({
+          client: 'openmausbot',
+          write: true,
+          allowNonTtyForTest: true,
+          targetFile: forbiddenPath,
+        })
+      ).rejects.toThrow(/bots\.json|routines\.json/i);
+      await expect(
+        runMcpInstallCommand({
+          client: 'openmausbot',
+          dryRun: true,
+          targetFile: forbiddenPath,
+        })
+      ).rejects.toThrow(/bots\.json|routines\.json/i);
+      expect(fs.readFileSync(forbiddenPath, 'utf8')).toBe('{"untouched":true}');
     }
   });
 
@@ -305,7 +385,7 @@ describe('C45-WP1: 9-Harness MCP Install (dry-run, print, sandbox write, backup,
     ).rejects.toThrow(/grok-bot|HTTPS|target|--file/i);
   });
 
-  it('auto-rolls back from .bak when post-write read-back fails and refuses writes to real os.homedir()', async () => {
+  it('auto-rolls back from .bak when post-write read-back fails and blocks direct + symlink/junction writes into os.homedir() (Bug #1)', async () => {
     const target = path.join(tmpDir, 'cursor-rollback.json');
     const initial = JSON.stringify({ mcpServers: { keep: { command: 'node', args: ['a.js'] } } }, null, 2);
     fs.writeFileSync(target, initial, 'utf8');
@@ -331,6 +411,33 @@ describe('C45-WP1: 9-Harness MCP Install (dry-run, print, sandbox write, backup,
         targetFile: liveHomeTarget,
       })
     ).rejects.toThrow(/homedir|home|sandbox/i);
+
+    // Bug #1: Symlink / Windows junction inside os.tmpdir() pointing to os.homedir()
+    // (including non-existent nested subdirectory) MUST be blocked deterministically.
+    const simulatedHome = path.join(tmpDir, 'sim-real-home');
+    const simulatedTmp = path.join(tmpDir, 'sim-os-tmp');
+    fs.mkdirSync(simulatedHome, { recursive: true });
+    fs.mkdirSync(simulatedTmp, { recursive: true });
+
+    const homeLink = path.join(simulatedTmp, 'home-junction');
+    fs.symlinkSync(
+      simulatedHome,
+      homeLink,
+      process.platform === 'win32' ? 'junction' : 'dir'
+    );
+
+    stubSimulatedHomeAndTmp(simulatedHome, simulatedTmp);
+
+    const nestedViaJunction = path.join(homeLink, 'missing-subdir', 'mcp.json');
+    await expect(
+      runMcpInstallCommand({
+        client: 'cursor',
+        write: true,
+        allowNonTtyForTest: true,
+        targetFile: nestedViaJunction,
+      })
+    ).rejects.toThrow(/homedir|home|sandbox/i);
+    expect(fs.existsSync(path.join(simulatedHome, 'missing-subdir'))).toBe(false);
   });
 });
 

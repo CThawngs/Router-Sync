@@ -9,12 +9,12 @@
  *    4. dsh (YAML Cordis patch with # comments, full row preservation & running process detection)
  *  - Deterministic report-only refusal + Vietnamese guidance for:
  *    claude-code, codex, antigravity, cursor, grok-bot
- *  - Strict invariants tested to kill M1..M5:
- *    M1: Keyless provider never receives additions/removals
- *    M2: Default model slot never mutated even when deprecated (emits defaultSlotWarnings)
- *    M3: YAML/JSONC comments & unchanged sections preserved byte-for-byte
- *    M4: Auto-rollback to exact preSha256 on post-write read-back mismatch
- *    M5: Refuses apply on report-only harnesses and refuses real os.homedir() paths
+ *  - Strict invariants tested to kill M1..M5 and QA Q1..Q6:
+ *    M1: Keyless provider never receives additions/removals (including `.env` inline `# comment` & `maxTokens`)
+ *    M2: Default model slot (incl. `automaticRecovery.backup`) & `baseURL`/`base_url`/`url` never mutated (kills Q1)
+ *    M3: YAML/JSONC comments (incl. inline & mid-sequence inside `models:` and flow `models: [...]`) preserved
+ *    M4: Auto-rollback to exact preSha256 on post-write read-back mismatch (incl. `baseURL` drift)
+ *    M5: Refuses apply on report-only harnesses and refuses direct + symlink/junction `os.homedir()` paths
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -25,6 +25,7 @@ import * as path from 'node:path';
 import { parseDocument } from 'yaml';
 import type { HarnessCatalogInput } from '@routersync/adapter-sdk';
 import { AGENT_APP_ADAPTERS } from '../src/apps/inspect.js';
+import { parseJsoncObject } from '../src/apps/lossless-edit.js';
 import {
   assertHarnessWriteSandboxAllowed,
   detectRunningHarnessProcesses,
@@ -44,6 +45,14 @@ function sha256(buf: Buffer | string): string {
   return crypto.createHash('sha256').update(buf).digest('hex');
 }
 
+function stubSimulatedHomeAndTmp(simulatedHome: string, simulatedTmp: string): void {
+  vi.stubEnv('HOME', simulatedHome);
+  vi.stubEnv('USERPROFILE', simulatedHome);
+  vi.stubEnv('TMPDIR', simulatedTmp);
+  vi.stubEnv('TEMP', simulatedTmp);
+  vi.stubEnv('TMP', simulatedTmp);
+}
+
 describe('C45-WP2: Harness Write Adapters & Safety Invariants', () => {
   let tmpDir: string;
 
@@ -52,6 +61,7 @@ describe('C45-WP2: Harness Write Adapters & Safety Invariants', () => {
   });
 
   afterEach(() => {
+    vi.unstubAllEnvs();
     vi.restoreAllMocks();
     fs.rmSync(tmpDir, { recursive: true, force: true });
   });
@@ -66,7 +76,16 @@ describe('C45-WP2: Harness Write Adapters & Safety Invariants', () => {
   it('1. hermes (YAML): updates keyed providers (inline key & sibling .env), skips keyless (M1), warns without mutating default slots (M2), preserves comments & CRLF byte-for-byte (M3), and rolls back identically', async () => {
     const configPath = path.join(tmpDir, 'config.yaml');
     const envPath = path.join(tmpDir, '.env');
-    fs.writeFileSync(envPath, `NINE_ROUTER_API_KEY=${FAKE_SECRET_A}\n`, 'utf8');
+    fs.writeFileSync(
+      envPath,
+      [
+        `NINE_ROUTER_API_KEY=${FAKE_SECRET_A}`,
+        'COMMENTED_OUT_EMPTY_KEY= # not set yet',
+        'QUOTED_EMPTY_KEY="" # empty quotes',
+        '',
+      ].join('\n'),
+      'utf8'
+    );
 
     const initialYaml = [
       '# Hermes top banner comment — MUST stay byte-identical',
@@ -84,12 +103,15 @@ describe('C45-WP2: Harness Write Adapters & Safety Invariants', () => {
       '    key_env: NINE_ROUTER_API_KEY',
       '    models:',
       '      # Keep surviving model entry & its custom metadata',
-      '      - id: keep-model-1',
-      '        name: Keep Model One',
+      '      - id: keep-model-1 # inline id comment preserved',
+      '        name: Keep Model One # inline name comment preserved',
       '      - id: deprecated-coder-v1',
+      '      # Mid-sequence comment inside models list MUST survive',
+      '      - id: keep-model-2 # second surviving inline comment',
       '  keyless_provider:',
-      '    # No key in YAML and no key in .env -> MUST NOT BE TOUCHED (M1)',
+      '    # No key in YAML and only empty inline comment in .env -> MUST NOT BE TOUCHED (M1 / Bug #5)',
       '    base_url: https://example.invalid/v1',
+      '    key_env: COMMENTED_OUT_EMPTY_KEY',
       '    models:',
       '      - id: keyless-old-model',
       'custom_providers:',
@@ -97,9 +119,7 @@ describe('C45-WP2: Harness Write Adapters & Safety Invariants', () => {
       '    base_url: https://example.invalid/custom',
       `    api_key: ${FAKE_SECRET_B}`,
       '    model: custom-keep',
-      '    models:',
-      '      - id: custom-keep',
-      '      - id: custom-deprecated',
+      '    models: ["custom-keep", "custom-deprecated"] # flow models comment preserved',
       '# Trailing Hermes comment',
       '',
     ].join('\r\n');
@@ -108,7 +128,7 @@ describe('C45-WP2: Harness Write Adapters & Safety Invariants', () => {
 
     const catalog: HarnessCatalogInput = {
       '9router': {
-        liveModels: ['keep-model-1', 'new-verified-pro-2'],
+        liveModels: ['keep-model-1', 'keep-model-2', 'new-verified-pro-2'],
         deprecatedModels: ['deprecated-coder-v1'],
       },
       keyless_provider: {
@@ -167,19 +187,28 @@ describe('C45-WP2: Harness Write Adapters & Safety Invariants', () => {
     expect(JSON.stringify(applyRes)).not.toContain(FAKE_SECRET_B);
 
     const afterText = fs.readFileSync(configPath, 'utf8');
-    // M3: Comments, CRLF, secrets, URLs, default slots, and keyless section byte-preserved
+    // M3 & Bug #2: Comments (including inline & mid-sequence inside models: and flow comment), CRLF, secrets, URLs, default slots preserved
     expect(afterText).toContain('# Hermes top banner comment — MUST stay byte-identical\r\n');
     expect(afterText).toContain('  default: deprecated-coder-v1 # inline default slot comment\r\n');
     expect(afterText).toContain('  model: deprecated-coder-v1\r\n');
-    expect(afterText).toContain('# No key in YAML and no key in .env -> MUST NOT BE TOUCHED (M1)\r\n');
+    expect(afterText).toContain('# inline id comment preserved\r\n');
+    expect(afterText).toContain('# inline name comment preserved\r\n');
+    expect(afterText).toContain('# Mid-sequence comment inside models list MUST survive\r\n');
+    expect(afterText).toContain('# second surviving inline comment\r\n');
+    expect(afterText).toContain('# flow models comment preserved\r\n');
+    expect(afterText).toContain('# No key in YAML and only empty inline comment in .env -> MUST NOT BE TOUCHED (M1 / Bug #5)\r\n');
     expect(afterText).toContain('# Trailing Hermes comment\r\n');
     expect(afterText).toContain(`    api_key: ${FAKE_SECRET_B}\r\n`);
 
     const parsed = parseDocument(afterText).toJS() as Record<string, any>;
     expect(parsed.model.default).toBe('deprecated-coder-v1');
     expect(parsed.cron.model).toBe('deprecated-coder-v1');
+    expect(parsed.providers['9router'].base_url).toBe('http://127.0.0.1:9/v1');
+    expect(parsed.providers.keyless_provider.base_url).toBe('https://example.invalid/v1');
+    expect(parsed.custom_providers[0].base_url).toBe('https://example.invalid/custom');
     expect(parsed.providers['9router'].models.map((m: any) => m.id ?? m)).toEqual([
       'keep-model-1',
+      'keep-model-2',
       'new-verified-pro-2',
     ]);
     expect(parsed.providers['9router'].models[0].name).toBe('Keep Model One');
@@ -200,11 +229,14 @@ describe('C45-WP2: Harness Write Adapters & Safety Invariants', () => {
     expect(sha256(fs.readFileSync(configPath))).toBe(preSha);
   });
 
-  it('2. openmausbot (JSON): updates instances.<id>.config.managedModels on keyed openai-compat only (M1), preserves key/url/model & warns on deprecated default (M2), refuses bots.json & routines.json, and round-trips byte-identically', async () => {
+  it('2. openmausbot (JSON): updates instances.<id>.config.managedModels on keyed openai-compat only (M1), preserves key/url/model & automaticRecovery.backup (M2 / Bug #3), ignores maxTokens false-positive (Bug #5), refuses bots.json & routines.json, and round-trips byte-identically', async () => {
     const configPath = path.join(tmpDir, 'config.json');
     const initialJson = [
       '{',
       '  "defaultModelSelection": "old-omb-default",',
+      '  "automaticRecovery": {',
+      '    "backup": "old-omb-recovery-model"',
+      '  },',
       '  "instances": {',
       '    "openai-compat-keyed": {',
       '      "driver": "openai-compat",',
@@ -222,6 +254,7 @@ describe('C45-WP2: Harness Write Adapters & Safety Invariants', () => {
       '      "driver": "openai-compat",',
       '      "config": {',
       '        "url": "https://example.invalid/v1",',
+      '        "maxTokens": "8192",',
       '        "model": "keyless-m1",',
       '        "managedModels": ["keyless-m1"]',
       '      }',
@@ -246,7 +279,7 @@ describe('C45-WP2: Harness Write Adapters & Safety Invariants', () => {
     const catalog: HarnessCatalogInput = {
       'openai-compat-keyed': {
         liveModels: ['keep-omb-1', 'new-omb-2'],
-        deprecatedModels: ['old-omb-default'],
+        deprecatedModels: ['old-omb-default', 'old-omb-recovery-model'],
       },
       'openai-compat-keyless': {
         liveModels: ['never-inject'],
@@ -271,7 +304,12 @@ describe('C45-WP2: Harness Write Adapters & Safety Invariants', () => {
     expect(plan.targetProviders).toEqual(['openai-compat-keyed']);
     expect(plan.additions).toEqual([{ provider: 'openai-compat-keyed', model: 'new-omb-2' }]);
     expect(plan.removals.map((r) => r.model)).toEqual(['old-omb-default']);
-    expect(plan.defaultSlotWarnings.length).toBeGreaterThanOrEqual(1);
+    expect(plan.defaultSlotWarnings.some((w) => w.slot === 'defaultModelSelection')).toBe(true);
+    expect(
+      plan.defaultSlotWarnings.some(
+        (w) => w.slot === 'automaticRecovery.backup' && w.currentModel === 'old-omb-recovery-model'
+      )
+    ).toBe(true);
     expect(JSON.stringify(plan)).not.toContain(FAKE_SECRET_A);
 
     const applyRes = await adapter.apply({ configPath, catalog });
@@ -281,10 +319,12 @@ describe('C45-WP2: Harness Write Adapters & Safety Invariants', () => {
 
     const parsed = JSON.parse(fs.readFileSync(configPath, 'utf8')) as Record<string, any>;
     expect(parsed.defaultModelSelection).toBe('old-omb-default');
+    expect(parsed.automaticRecovery.backup).toBe('old-omb-recovery-model');
     expect(parsed.instances['openai-compat-keyed'].config.model).toBe('old-omb-default');
     expect(parsed.instances['openai-compat-keyed'].config.key).toBe(FAKE_SECRET_A);
     expect(parsed.instances['openai-compat-keyed'].config.url).toBe('http://127.0.0.1:9/v1');
     expect(parsed.instances['openai-compat-keyed'].config.managedModels).toEqual(['keep-omb-1', 'new-omb-2']);
+    expect(parsed.instances['openai-compat-keyless'].config.url).toBe('https://example.invalid/v1');
     expect(parsed.instances['openai-compat-keyless'].config.managedModels).toEqual(['keyless-m1']);
     expect(parsed.instances['builtin-openai'].config.managedModels).toBeUndefined();
     expect(parsed.mcpServers).toEqual({ 'keep-mcp': { command: 'node', args: ['srv.js'], enabled: true } });
@@ -302,8 +342,17 @@ describe('C45-WP2: Harness Write Adapters & Safety Invariants', () => {
     }
   });
 
-  it('3. opencode (JSONC): updates keyed provider models preserving // and /* */ comments & exact surrounding bytes (M1, M2, M3)', async () => {
+  it('3. opencode (JSONC): updates keyed providers (options.apiKey & provider.<id>.env), preserves // and /* */ comments, baseURL & exact surrounding bytes (M1, M2, M3, Q1)', async () => {
     const configPath = path.join(tmpDir, 'opencode.jsonc');
+    fs.writeFileSync(
+      path.join(tmpDir, '.env'),
+      [
+        `ENV_KEYED_OC_SECRET=${FAKE_SECRET_B}`,
+        'ENV_COMMENT_ONLY= # not set yet',
+        '',
+      ].join('\n'),
+      'utf8'
+    );
     const initialJsonc = [
       '{',
       '  // Leading JSONC line comment',
@@ -323,8 +372,16 @@ describe('C45-WP2: Harness Write Adapters & Safety Invariants', () => {
       '        "old-oc-model": { "name": "Deprecated OC" }',
       '      }',
       '    },',
+      '    "env-keyed-oc": {',
+      '      "env": ["ENV_KEYED_OC_SECRET"],',
+      '      "options": { "baseURL": "https://api.env-keyed.invalid/v1" },',
+      '      "models": {',
+      '        "env-keep": { "name": "Env Keep" }',
+      '      }',
+      '    },',
       '    "keyless-oc": {',
-      '      "options": { "baseURL": "https://example.invalid/v1" },',
+      '      "env": ["ENV_COMMENT_ONLY"],',
+      '      "options": { "baseURL": "https://example.invalid/v1", "maxTokens": "4096" },',
       '      "models": {',
       '        "untouched-model": { "name": "Untouched" }',
       '      }',
@@ -341,6 +398,10 @@ describe('C45-WP2: Harness Write Adapters & Safety Invariants', () => {
         liveModels: ['keep-oc-model', 'new-oc-sonnet'],
         deprecatedModels: ['old-oc-model'],
       },
+      'env-keyed-oc': {
+        liveModels: ['env-keep', 'env-added-model'],
+        deprecatedModels: [],
+      },
       'keyless-oc': {
         liveModels: ['never-add-to-keyless'],
         deprecatedModels: ['untouched-model'],
@@ -350,8 +411,11 @@ describe('C45-WP2: Harness Write Adapters & Safety Invariants', () => {
     const adapter = getHarnessWriteAdapter('opencode')!;
     const plan = await adapter.plan({ configPath, catalog });
     expect(plan.editable).toBe(true);
-    expect(plan.targetProviders).toEqual(['9router']);
-    expect(plan.additions).toEqual([{ provider: '9router', model: 'new-oc-sonnet' }]);
+    expect(plan.targetProviders).toEqual(['9router', 'env-keyed-oc']);
+    expect(plan.additions).toEqual([
+      { provider: '9router', model: 'new-oc-sonnet' },
+      { provider: 'env-keyed-oc', model: 'env-added-model' },
+    ]);
     expect(plan.removals.map((r) => r.model)).toEqual(['old-oc-model']);
     expect(plan.defaultSlotWarnings.some((w) => w.slot === 'model')).toBe(true);
 
@@ -366,9 +430,18 @@ describe('C45-WP2: Harness Write Adapters & Safety Invariants', () => {
     expect(afterText).toContain('"model": "9router/old-oc-model"');
     expect(afterText).toContain('"keep-oc-model": { "name": "Keep OC", "limit": { "context": 128000, "output": 8192 } }');
     expect(afterText).toContain('"new-oc-sonnet"');
+    expect(afterText).toContain('"env-added-model"');
     expect(afterText).not.toContain('"old-oc-model": { "name": "Deprecated OC" }');
     expect(afterText).toContain('"untouched-model": { "name": "Untouched" }');
     expect(afterText).not.toContain('never-add-to-keyless');
+
+    // Kills Q1: explicitly verify baseURL & apiKey/env preservation across every OpenCode provider
+    const parsedAfter = parseJsoncObject(afterText).value as Record<string, any>;
+    expect(parsedAfter.provider['9router'].options.baseURL).toBe('http://127.0.0.1:9/v1');
+    expect(parsedAfter.provider['9router'].options.apiKey).toBe(FAKE_SECRET_A);
+    expect(parsedAfter.provider['env-keyed-oc'].options.baseURL).toBe('https://api.env-keyed.invalid/v1');
+    expect(parsedAfter.provider['env-keyed-oc'].env).toEqual(['ENV_KEYED_OC_SECRET']);
+    expect(parsedAfter.provider['keyless-oc'].options.baseURL).toBe('https://example.invalid/v1');
 
     // Second apply with identical catalog is a strict no-op (byte-identical)
     const afterFirstSha = sha256(fs.readFileSync(configPath));
@@ -381,7 +454,7 @@ describe('C45-WP2: Harness Write Adapters & Safety Invariants', () => {
     expect(sha256(fs.readFileSync(configPath))).toBe(preSha);
   });
 
-  it('4. dsh (YAML Cordis patch): updates keyed llm-pi-ai providers only, preserves sibling Cordis rows & comments byte-for-byte, and detects running DSH process (M1, M2, M3)', async () => {
+  it('4. dsh (YAML Cordis patch): updates keyed llm-pi-ai providers (block & flow models[]), preserves baseURL, sibling Cordis rows & comments byte-for-byte (M1, M2, M3, Bug #2)', async () => {
     const configPath = path.join(tmpDir, 'cordis.patch.yml');
     const initialCordis = [
       '# DSH Cordis Patch — critical boot file',
@@ -401,10 +474,15 @@ describe('C45-WP2: Harness Write Adapters & Safety Invariants', () => {
       '        baseURL: http://127.0.0.1:9/v1',
       '        models:',
       '          # Keep custom contextWindow metadata',
-      '          - id: dsh-keep-1',
+      '          - id: dsh-keep-1 # inline dsh comment',
       '            name: DSH Keep 1',
       '            contextWindow: 200000',
       '          - id: dsh-old-default',
+      '      "flow-dsh":',
+      '        displayName: Flow Provider',
+      '        apiKeyEnv: FLOW_API_KEY',
+      '        baseURL: https://api.flow-dsh.invalid/v1',
+      '        models: ["flow-dsh-keep", "flow-dsh-drop"]',
       '      "keyless-dsh":',
       '        displayName: Keyless',
       '        baseURL: https://example.invalid/v1',
@@ -424,6 +502,10 @@ describe('C45-WP2: Harness Write Adapters & Safety Invariants', () => {
         liveModels: ['dsh-keep-1', 'dsh-new-v3'],
         deprecatedModels: ['dsh-old-default'],
       },
+      'flow-dsh': {
+        liveModels: ['flow-dsh-keep', 'flow-dsh-added'],
+        deprecatedModels: ['flow-dsh-drop'],
+      },
       'keyless-dsh': {
         liveModels: ['never-added'],
         deprecatedModels: ['keyless-stay'],
@@ -439,7 +521,7 @@ describe('C45-WP2: Harness Write Adapters & Safety Invariants', () => {
     expect(plan.editable).toBe(true);
     expect(plan.reloadRequired).toBe(false);
     expect(plan.runningProcesses).toContain('dsh.exe');
-    expect(plan.targetProviders).toEqual(['9router']);
+    expect(plan.targetProviders).toEqual(['9router', 'flow-dsh']);
     expect(plan.defaultSlotWarnings.length).toBeGreaterThanOrEqual(1);
 
     const applyRes = await adapter.apply({
@@ -453,6 +535,7 @@ describe('C45-WP2: Harness Write Adapters & Safety Invariants', () => {
     const afterText = fs.readFileSync(configPath, 'utf8');
     expect(afterText).toContain('# DSH Cordis Patch — critical boot file');
     expect(afterText).toContain('# Keep custom contextWindow metadata');
+    expect(afterText).toContain('# inline dsh comment');
     expect(afterText).toContain('model: dsh-old-default');
     expect(afterText).toContain('selectedDefault: 9router/dsh-old-default');
 
@@ -462,8 +545,15 @@ describe('C45-WP2: Harness Write Adapters & Safety Invariants', () => {
     expect(rows[2]?.config.keepFlag).toBe(true);
     const piProviders = rows[1]?.config.providers;
     expect(piProviders['9router'].displayName).toBe('Local Router');
+    expect(piProviders['9router'].baseURL).toBe('http://127.0.0.1:9/v1');
     expect(piProviders['9router'].models.map((m: any) => m.id)).toEqual(['dsh-keep-1', 'dsh-new-v3']);
     expect(piProviders['9router'].models[0].contextWindow).toBe(200000);
+    expect(piProviders['flow-dsh'].baseURL).toBe('https://api.flow-dsh.invalid/v1');
+    expect(piProviders['flow-dsh'].models.map((m: any) => m.id ?? m)).toEqual([
+      'flow-dsh-keep',
+      'flow-dsh-added',
+    ]);
+    expect(piProviders['keyless-dsh'].baseURL).toBe('https://example.invalid/v1');
     expect(piProviders['keyless-dsh'].models).toEqual([{ id: 'keyless-stay' }]);
 
     const rb = await adapter.rollback({ configPath, backupPath: applyRes.backupPath });
@@ -471,14 +561,14 @@ describe('C45-WP2: Harness Write Adapters & Safety Invariants', () => {
     expect(sha256(fs.readFileSync(configPath))).toBe(preSha);
   });
 
-  it('5. Auto-rolls back immediately when post-write read-back mismatches or corrupts (kills M4)', async () => {
+  it('5. Auto-rolls back immediately when post-write read-back detects model OR baseURL/endpoint corruption (kills M4 & Q1)', async () => {
     const configPath = path.join(tmpDir, 'opencode-fault.jsonc');
     const initial = [
       '{',
       '  // Must survive failed apply via automatic rollback',
       '  "provider": {',
       '    "9router": {',
-      `      "options": { "apiKey": "${FAKE_SECRET_A}" },`,
+      `      "options": { "baseURL": "http://127.0.0.1:9/v1", "apiKey": "${FAKE_SECRET_A}" },`,
       '      "models": { "m1": { "name": "M1" } }',
       '    }',
       '  }',
@@ -494,18 +584,35 @@ describe('C45-WP2: Harness Write Adapters & Safety Invariants', () => {
         configPath,
         catalog: { '9router': { liveModels: ['m1', 'm2'], deprecatedModels: [] } },
         injectReadBackFault: () => {
-          // Simulate mid-flight corruption before read-back verification
+          // Simulate mid-flight model corruption before read-back verification
           fs.writeFileSync(configPath, '{ "provider": { "9router": { "models": {} } } }', 'utf8');
         },
       })
     ).rejects.toThrow(/read-back|rollback/i);
 
-    // File on disk MUST be restored to exact pre-apply bytes!
+    expect(sha256(fs.readFileSync(configPath))).toBe(preSha);
+    expect(fs.readFileSync(configPath, 'utf8')).toBe(initial);
+
+    // Bug #5 / Q1: If baseURL is altered while model list matches expected, read-back MUST reject & rollback!
+    await expect(
+      adapter.apply({
+        configPath,
+        catalog: { '9router': { liveModels: ['m1', 'm2'], deprecatedModels: [] } },
+        injectReadBackFault: (writtenText) => {
+          fs.writeFileSync(
+            configPath,
+            writtenText.replace('http://127.0.0.1:9/v1', 'https://hijacked.invalid/v1'),
+            'utf8'
+          );
+        },
+      })
+    ).rejects.toThrow(/baseURL|endpoint|read-back/i);
+
     expect(sha256(fs.readFileSync(configPath))).toBe(preSha);
     expect(fs.readFileSync(configPath, 'utf8')).toBe(initial);
   });
 
-  it('6. Enforces report-only refusal for claude-code, codex, antigravity, cursor, grok-bot AND refuses real os.homedir() paths (kills M5)', async () => {
+  it('6. Enforces report-only refusal for claude-code, codex, antigravity, cursor, grok-bot AND refuses direct + symlink/junction os.homedir() paths (kills M5 & Bug #1)', async () => {
     const reportOnlyIds = ['claude-code', 'codex', 'antigravity', 'cursor', 'grok-bot'] as const;
     const catalog: HarnessCatalogInput = {
       openai: { liveModels: ['gpt-5'], deprecatedModels: [] },
@@ -532,16 +639,79 @@ describe('C45-WP2: Harness Write Adapters & Safety Invariants', () => {
 
     const hermes = getHarnessWriteAdapter('hermes')!;
     await expect(hermes.apply({ configPath: liveHermesPath, catalog })).rejects.toThrow(/homedir|home|sandbox/i);
+
+    // Bug #1: Symlink / Windows junction inside os.tmpdir() pointing to os.homedir()
+    // with non-existent nested subdirectory MUST be refused deterministically.
+    const simulatedHome = path.join(tmpDir, 'sim-real-home');
+    const simulatedTmp = path.join(tmpDir, 'sim-os-tmp');
+    fs.mkdirSync(simulatedHome, { recursive: true });
+    fs.mkdirSync(simulatedTmp, { recursive: true });
+
+    const homeJunction = path.join(simulatedTmp, 'junction-to-home');
+    fs.symlinkSync(
+      simulatedHome,
+      homeJunction,
+      process.platform === 'win32' ? 'junction' : 'dir'
+    );
+
+    stubSimulatedHomeAndTmp(simulatedHome, simulatedTmp);
+
+    const sneakyNestedPath = path.join(homeJunction, 'nonexistent-subdir', 'config.yaml');
+    expect(() => assertHarnessWriteSandboxAllowed(sneakyNestedPath)).toThrow(/homedir|home|sandbox/i);
+    await expect(hermes.apply({ configPath: sneakyNestedPath, catalog })).rejects.toThrow(/homedir|home|sandbox/i);
+    expect(fs.existsSync(path.join(simulatedHome, 'nonexistent-subdir'))).toBe(false);
   });
 
-  it('7. CLI subcommands `apps plan`, `apps apply --sandbox-copy`, and `apps rollback` execute end-to-end in os.tmpdir() and refuse live homedir', async () => {
-    const configPath = path.join(tmpDir, 'cli-opencode.jsonc');
-    const catalogPath = path.join(tmpDir, 'catalog.json');
-    const initial = `{\n  // CLI E2E JSONC\n  "provider": {\n    "9router": {\n      "options": { "apiKey": "${FAKE_SECRET_A}" },\n      "models": { "m1": { "name": "M1" } }\n    }\n  }\n}\n`;
+  it('7. CLI subcommands `apps plan`, `apps apply --sandbox-copy`, and `apps rollback` execute end-to-end in os.tmpdir(), isolate host os.homedir(), and honor symmetric `--home` (Bug #4)', async () => {
+    // Simulate a host machine whose real os.homedir() has OpenCode auth.json for 'host-leaked-prov'
+    const simulatedHostHome = path.join(tmpDir, 'sim-host-home');
+    const simulatedTmpRoot = path.join(tmpDir, 'sim-tmp-root');
+    const explicitSandboxHome = path.join(simulatedTmpRoot, 'custom-sandbox-home');
+    fs.mkdirSync(path.join(simulatedHostHome, '.local', 'share', 'opencode'), { recursive: true });
+    fs.writeFileSync(
+      path.join(simulatedHostHome, '.local', 'share', 'opencode', 'auth.json'),
+      JSON.stringify({ 'host-leaked-prov': { key: FAKE_SECRET_B } }),
+      'utf8'
+    );
+    fs.mkdirSync(path.join(explicitSandboxHome, '.local', 'share', 'opencode'), { recursive: true });
+    fs.writeFileSync(
+      path.join(explicitSandboxHome, '.local', 'share', 'opencode', 'auth.json'),
+      JSON.stringify({ 'sandbox-auth-prov': { key: FAKE_SECRET_A } }),
+      'utf8'
+    );
+
+    stubSimulatedHomeAndTmp(simulatedHostHome, simulatedTmpRoot);
+
+    const configPath = path.join(simulatedTmpRoot, 'cli-opencode.jsonc');
+    const catalogPath = path.join(simulatedTmpRoot, 'catalog.json');
+    const initial = [
+      '{',
+      '  // CLI E2E JSONC',
+      '  "provider": {',
+      '    "9router": {',
+      `      "options": { "baseURL": "http://127.0.0.1:9/v1", "apiKey": "${FAKE_SECRET_A}" },`,
+      '      "models": { "m1": { "name": "M1" } }',
+      '    },',
+      '    "host-leaked-prov": {',
+      '      "options": { "baseURL": "https://host-leak.invalid/v1" },',
+      '      "models": { "leak-m1": { "name": "Leak M1" } }',
+      '    },',
+      '    "sandbox-auth-prov": {',
+      '      "options": { "baseURL": "https://sandbox-auth.invalid/v1" },',
+      '      "models": { "sb-m1": { "name": "SB M1" } }',
+      '    }',
+      '  }',
+      '}',
+      '',
+    ].join('\n');
     fs.writeFileSync(configPath, initial, 'utf8');
     fs.writeFileSync(
       catalogPath,
-      JSON.stringify({ '9router': { liveModels: ['m1', 'm2-cli'], deprecatedModels: [] } }),
+      JSON.stringify({
+        '9router': { liveModels: ['m1', 'm2-cli'], deprecatedModels: [] },
+        'host-leaked-prov': { liveModels: ['leak-m1', 'leak-injected'], deprecatedModels: [] },
+        'sandbox-auth-prov': { liveModels: ['sb-m1', 'sb-m2-home'], deprecatedModels: [] },
+      }),
       'utf8'
     );
     const preSha = sha256(fs.readFileSync(configPath));
@@ -552,9 +722,11 @@ describe('C45-WP2: Harness Write Adapters & Safety Invariants', () => {
       return true;
     });
 
+    // (a) Without --home: MUST NOT leak simulatedHostHome auth.json, and planHash MUST match apply!
     await runAppsPlanCommand({ app: 'opencode', config: configPath, catalog: catalogPath, json: true });
     const planJson = JSON.parse(out.splice(0).join('')) as Record<string, any>;
     expect(planJson.editable).toBe(true);
+    expect(planJson.targetProviders).toEqual(['9router']);
     expect(planJson.additions).toEqual([{ provider: '9router', model: 'm2-cli' }]);
 
     await runAppsApplyCommand({
@@ -568,6 +740,7 @@ describe('C45-WP2: Harness Write Adapters & Safety Invariants', () => {
     const applyJson = JSON.parse(out.splice(0).join('')) as Record<string, any>;
     expect(applyJson.applied).toBe(true);
     expect(fs.readFileSync(configPath, 'utf8')).toContain('m2-cli');
+    expect(fs.readFileSync(configPath, 'utf8')).not.toContain('leak-injected');
 
     await runAppsRollbackCommand({
       app: 'opencode',
@@ -578,6 +751,31 @@ describe('C45-WP2: Harness Write Adapters & Safety Invariants', () => {
     const rbJson = JSON.parse(out.splice(0).join('')) as Record<string, any>;
     expect(rbJson.byteIdenticalToPreApply).toBe(true);
     expect(sha256(fs.readFileSync(configPath))).toBe(preSha);
+
+    // (b) With explicit symmetric --home: plan & apply both use explicitSandboxHome and match planHash!
+    await runAppsPlanCommand({
+      app: 'opencode',
+      config: configPath,
+      catalog: catalogPath,
+      home: explicitSandboxHome,
+      json: true,
+    });
+    const planWithHome = JSON.parse(out.splice(0).join('')) as Record<string, any>;
+    expect(planWithHome.targetProviders).toEqual(['9router', 'sandbox-auth-prov']);
+
+    await runAppsApplyCommand({
+      app: 'opencode',
+      config: configPath,
+      catalog: catalogPath,
+      home: explicitSandboxHome,
+      sandboxCopy: true,
+      planHash: planWithHome.planHash,
+      json: true,
+    });
+    const applyWithHome = JSON.parse(out.splice(0).join('')) as Record<string, any>;
+    expect(applyWithHome.applied).toBe(true);
+    expect(fs.readFileSync(configPath, 'utf8')).toContain('sb-m2-home');
+    expect(fs.readFileSync(configPath, 'utf8')).not.toContain('leak-injected');
 
     // Detect running processes helper is hermetic with custom runner
     expect(detectRunningHarnessProcesses('dsh', () => ['dsh.exe'])).toEqual(['dsh.exe']);
