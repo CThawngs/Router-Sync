@@ -70,9 +70,9 @@ describe('C45 WP5 + WP6 MCP — list_strategies, profile_interview & adaptive pr
     };
   }
 
-  it('keeps READ_ONLY_TOOL_NAMES=25 and ALL_MCP_TOOL_NAMES=27 while upgrading list_strategies with 9router, omniroute, and litellm capabilities', async () => {
-    expect(READ_ONLY_TOOL_NAMES).toHaveLength(25);
-    expect(ALL_MCP_TOOL_NAMES).toHaveLength(27);
+  it('keeps READ_ONLY_TOOL_NAMES=26 and ALL_MCP_TOOL_NAMES=29 while upgrading list_strategies with 9router, omniroute, and litellm capabilities', async () => {
+    expect(READ_ONLY_TOOL_NAMES).toHaveLength(26);
+    expect(ALL_MCP_TOOL_NAMES).toHaveLength(29);
 
     const conn = await connectClient();
     try {

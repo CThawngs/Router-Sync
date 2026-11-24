@@ -104,11 +104,11 @@ describe('C45-WP3 Part 2: MCP submit_research, research_queue & research_evidenc
     };
   }
 
-  it('exports separated READ_ONLY_TOOL_NAMES (25), LEDGER_APPEND_TOOL_NAMES (1), CONTROLLED_WRITE_TOOL_NAMES (1), and ALL_MCP_TOOL_NAMES (27)', () => {
-    expect(READ_ONLY_TOOL_NAMES).toHaveLength(25);
-    expect(LEDGER_APPEND_TOOL_NAMES).toEqual(['submit_research']);
+  it('exports separated READ_ONLY_TOOL_NAMES (26), LEDGER_APPEND_TOOL_NAMES (2), CONTROLLED_WRITE_TOOL_NAMES (1), and ALL_MCP_TOOL_NAMES (29)', () => {
+    expect(READ_ONLY_TOOL_NAMES).toHaveLength(26);
+    expect(LEDGER_APPEND_TOOL_NAMES).toEqual(['submit_research', 'tick_if_due']);
     expect(CONTROLLED_WRITE_TOOL_NAMES).toEqual(['apply_plan']);
-    expect(ALL_MCP_TOOL_NAMES).toHaveLength(27);
+    expect(ALL_MCP_TOOL_NAMES).toHaveLength(29);
   });
 
   it('accepts official URL, writes ONLY research-evidence.json, and touches zero router/harness/inbox/verify files', async () => {
@@ -140,8 +140,11 @@ describe('C45-WP3 Part 2: MCP submit_research, research_queue & research_evidenc
       expect(record['matchedOfficialDomain']).toBe('openai.com');
       expect(record['untrusted']).toBe(true);
 
-      // Strictly ONLY research-evidence.json exists inside stateDir
-      expect(fs.readdirSync(stateDir)).toEqual(['research-evidence.json']);
+      // Strictly ONLY ledger files (cost-ledger.json + research-evidence.json) exist inside stateDir
+      expect(fs.readdirSync(stateDir).sort()).toEqual([
+        'cost-ledger.json',
+        'research-evidence.json',
+      ]);
       expect(fs.readdirSync(configDir)).toEqual([]);
       expect(fs.existsSync(path.join(stateDir, 'inbox.json'))).toBe(false);
       expect(fs.existsSync(path.join(stateDir, 'verify-status.json'))).toBe(false);

@@ -91,3 +91,7 @@ export * from './harness/matrix.js';
 export * from './research/index.js';
 // C45-WP4: Controlled Automation — Standing Consent, Freeze, Apply History & Approval Tokens (S3, S4, S9)
 export * from './consent/index.js';
+// C45-WP7: 4-Tier Schedule Ladder & Shared 15-Minute Tick Gate (S6, S7)
+export * from './schedule/index.js';
+// C45-WP8: Atomic Token/Network Cost Ledger & Outbound Domain Allowlist Guard (S7)
+export * from './cost/index.js';

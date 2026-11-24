@@ -127,6 +127,22 @@ export const WebhookConfigSchema = z.object({
   timeoutMs: z.number().optional(),
 });
 
+/**
+ * C45-WP7 (`Phục vụ: S6`): Optional schedule ladder preferences.
+ */
+export const ScheduleConfigSchema = z.object({
+  intervalMinutes: z.number().int().min(1).max(1440).default(15),
+  tickOnMcpStartup: z.boolean().default(false),
+  preferredLinuxScheduler: z.enum(['auto', 'systemd', 'cron']).default('auto'),
+});
+
+/**
+ * C45-WP8 (`Phục vụ: S7`): Optional Tier-1 research session budget settings.
+ */
+export const ResearchConfigSchema = z.object({
+  maxWeeklyResearchSessions: z.number().int().min(0).max(1000).default(5),
+});
+
 export const RouterSyncConfigSchema = z
   .object({
     version: z.literal(1),
@@ -152,6 +168,14 @@ export const RouterSyncConfigSchema = z
      * M2-02: Optional outbound webhook configuration for actionable alerts.
      */
     webhook: WebhookConfigSchema.optional(),
+    /**
+     * C45-WP7: Optional schedule ladder preferences.
+     */
+    schedule: ScheduleConfigSchema.optional(),
+    /**
+     * C45-WP8: Optional weekly Tier-1 research session cap (default 5).
+     */
+    research: ResearchConfigSchema.optional(),
   })
   .superRefine((data, ctx) => {
     // C4o/O2: Each router in config.yaml must use a distinct adapter.
@@ -203,3 +227,5 @@ export type RouterConfig = z.infer<typeof RouterConfigSchema>;
 export type ComboSpec = z.infer<typeof ComboSpecSchema>;
 export type AdoptSpec = z.infer<typeof AdoptSpecSchema>;
 export type WebhookConfig = z.infer<typeof WebhookConfigSchema>;
+export type ScheduleConfig = z.infer<typeof ScheduleConfigSchema>;
+export type ResearchConfig = z.infer<typeof ResearchConfigSchema>;

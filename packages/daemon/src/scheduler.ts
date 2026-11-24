@@ -2,12 +2,14 @@
  * packages/daemon/src/scheduler.ts
  *
  * Interval scheduler: jitter ±10%, exponential backoff (cap 8x), pause/resume
- * via stateDir/daemon.paused file, JSONL job log at stateDir/jobs.jsonl.
+ * via stateDir/daemon.paused file, JSONL job log at stateDir/jobs.jsonl,
+ * and cross-tier `<stateDir>/tick.lock` mutual exclusion (`C45-WP7`).
  * Clock / random / timer injected for tests.
  */
 
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { releaseTickLock, tryAcquireTickLock } from './single-instance.js';
 import { realClock, stateDir as defaultStateDir, type Clock } from './jobs.js';
 
 export type JobName = 'scan' | 'health' | 'plan' | 'digest' | 'cleanup';
@@ -156,6 +158,26 @@ export function createScheduler(options: SchedulerOptions = {}): Scheduler {
       if (!stopped) schedule();
       return;
     }
+
+    const tickLock = tryAcquireTickLock(dir, process.pid, started);
+    if (!tickLock.acquired) {
+      appendJobLog(
+        {
+          jobId: `tick-${seq}`,
+          job: 'scan',
+          startedAt: iso,
+          endedAt: new Date(clock.now()).toISOString(),
+          durationMs: Math.max(0, clock.now() - started),
+          status: 'skipped',
+          summary: `skipped: tick.lock held by pid ${tickLock.holderPid ?? 'unknown'}`,
+        },
+        dir
+      );
+      ticking = false;
+      if (!stopped) schedule();
+      return;
+    }
+
     try {
       const summaries: string[] = [];
       for (const job of ['scan', 'health', 'plan', 'digest', 'cleanup'] as JobName[]) {
@@ -195,6 +217,8 @@ export function createScheduler(options: SchedulerOptions = {}): Scheduler {
       errors = 0;
     } catch {
       errors += 1;
+    } finally {
+      releaseTickLock(dir, process.pid);
     }
     ticking = false;
     if (!stopped) schedule();

@@ -80,6 +80,10 @@ jobs:
       - name: Emit schedule artifacts (no install)
         run: node tools/ci/emit-schedule-artifacts.mjs "${{ runner.temp }}/schedule-artifacts"
 
+      - name: Smoke schedule dry-run JSON across OS matrix
+        run: |
+          node packages/cli/dist/index.js schedule install --dry-run --json
+
       - name: Report failure
         if: failure()
         shell: bash

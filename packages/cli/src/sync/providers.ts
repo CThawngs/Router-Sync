@@ -14,7 +14,13 @@
  * They are never logged, printed, serialised into a plan, or put in a URL.
  */
 
-import { openBetterSqlite3, locateRouterDb, type SqliteDriver } from '@routersync/core';
+import {
+  FORBIDDEN_LLM_PATH_PATTERNS,
+  OutboundGuardError,
+  locateRouterDb,
+  openBetterSqlite3,
+  type SqliteDriver,
+} from '@routersync/core';
 import { loadProviderRegistry } from './provider-registry.js';
 
 export type SkipReason =
@@ -25,6 +31,32 @@ export type SkipReason =
   | 'unknown-prefix'
   | 'incomplete-pagination'
   | 'redirect-blocked';
+
+function assertZeroLlmScanUrl(rawUrl: string): void {
+  let parsed: URL;
+  try {
+    parsed = new URL(rawUrl);
+  } catch {
+    return;
+  }
+  if (parsed.username !== '' || parsed.password !== '') {
+    throw new OutboundGuardError(
+      'EMBEDDED_CREDENTIALS_FORBIDDEN',
+      rawUrl,
+      'Provider scan URL must not contain embedded credentials.'
+    );
+  }
+  const pathAndQuery = `${parsed.pathname}${parsed.search}`;
+  for (const pattern of FORBIDDEN_LLM_PATH_PATTERNS) {
+    if (pattern.test(parsed.pathname) || pattern.test(pathAndQuery)) {
+      throw new OutboundGuardError(
+        'FORBIDDEN_LLM_ENDPOINT',
+        rawUrl,
+        `Blocked LLM inference endpoint "${parsed.pathname}" in provider model scan.`
+      );
+    }
+  }
+}
 
 /**
  * Providers whose public model list requires no API key (free/anonymous GET).
@@ -99,11 +131,6 @@ interface ConnectionRow {
   extra?: Record<string, unknown> | undefined;
 }
 
-// ---------------------------------------------------------------------------
-// Known provider table (public GET /models endpoints, zero tokens)
-// Loaded from registry/providers.yaml - shared product data, no private entry.
-// ---------------------------------------------------------------------------
-
 function knownBaseUrls(): Readonly<Record<string, string>> {
   return loadProviderRegistry().providers;
 }
@@ -118,10 +145,6 @@ function prefixAliases(): Readonly<Record<string, string>> {
   return loadProviderRegistry().alias;
 }
 
-/**
- * Router-managed subscription/OAuth providers: RouterSync never uses their
- * tokens for a keyed GET and never removes their steps (R2/§2d).
- */
 const OAUTH_PROVIDERS: ReadonlySet<string> = new Set([
   'antigravity',
   'claude-code',
@@ -130,10 +153,6 @@ const OAUTH_PROVIDERS: ReadonlySet<string> = new Set([
   'copilot',
   'cursor',
 ]);
-
-// ---------------------------------------------------------------------------
-// DB readers (read-only)
-// ---------------------------------------------------------------------------
 
 function parseJsonObject(raw: unknown): Record<string, unknown> {
   if (typeof raw !== 'string' || raw.trim() === '') return {};
@@ -162,8 +181,6 @@ function readNineRouterConnections(db: SqliteDriver): ConnectionRow[] {
     const data = parseJsonObject(row['data']);
     const active = Number(row['isActive'] ?? 0) === 1;
     const authType = String(row['authType'] ?? 'none');
-    // RouterSync only ever needs the credential itself; everything else here
-    // is non-secret metadata.
     const apiKey = authType === 'apikey' ? str(data['apiKey']) : undefined;
     return {
       provider: String(row['provider'] ?? ''),
@@ -198,11 +215,6 @@ function readOmniRouteConnections(db: SqliteDriver): ConnectionRow[] {
   });
 }
 
-/**
- * OmniRoute provider_nodes: openai-compatible custom nodes with prefix + base_url.
- * R57: read these to resolve uuid-named connections (e.g. openai-compatible-chat-75b6525d)
- * that have a declared prefix and host but whose api_key lives on the connection row.
- */
 function readOmniRouteNodes(db: SqliteDriver): Map<string, { provider: string; baseUrl?: string | undefined }> {
   const byPrefix = new Map<string, { provider: string; baseUrl?: string | undefined }>();
   try {
@@ -214,7 +226,6 @@ function readOmniRouteNodes(db: SqliteDriver): Map<string, { provider: string; b
       const id = String(node['id'] ?? '');
       if (!prefix) continue;
       const entry = { provider: id, baseUrl: str(node['base_url']) };
-      // Both prefix and uuid id may appear in combo steps; register both.
       byPrefix.set(prefix.toLowerCase(), entry);
       if (id) byPrefix.set(id.toLowerCase(), entry);
     }
@@ -224,35 +235,15 @@ function readOmniRouteNodes(db: SqliteDriver): Map<string, { provider: string; b
   return byPrefix;
 }
 
-/**
- * OmniRoute encrypts provider keys at rest. A ciphertext is long and has no
- * recognisable vendor shape; a plaintext key from 9Router is short. Decide by
- * length only — the value itself is never inspected for its content.
- */
 export function looksEncrypted(value: string | undefined): boolean {
   return typeof value === 'string' && value.length > 100;
 }
 
-// ---------------------------------------------------------------------------
-// Target resolution
-// ---------------------------------------------------------------------------
-
-/** Canonical provider name for a combo prefix (alias table, then identity). */
 export function canonicalPrefix(prefix: string): string {
   const lower = prefix.trim().toLowerCase();
   return prefixAliases()[lower] ?? lower;
 }
 
-/**
- * Builds the provider targets for one router. Only prefixes that are actually
- * referenced by an in-scope combo are returned — scanning a provider whose
- * steps nobody uses is pure noise.
- *
- * `sharedKeys` carries credentials already resolved from 9Router, keyed by
- * canonical prefix. OmniRoute encrypts its own keys at rest, so a provider that
- * both routers configure is scanned once, with the 9Router key, against the
- * OmniRoute-declared host (ROUND 56 §2c).
- */
 export function resolveProviderTargets(
   router: '9router' | 'omniroute',
   prefixes: string[],
@@ -275,22 +266,15 @@ export function resolveProviderTargets(
         const id = String(node['id'] ?? '');
         const entry = { provider: id, baseUrl: str(data['baseUrl']) } as const;
         const prefix = str(data['prefix']);
-        // Both names are real: combos reference the node prefix
-        // and, after a rename, the raw connection id
-        // (`openai-compatible-chat-<uuid>`). Both reach the same host.
         if (prefix) entries.push([prefix.toLowerCase(), entry]);
         if (id) entries.push([id.toLowerCase(), entry]);
       }
       byPrefix = new Map(entries);
     } else {
-      // OmniRoute declares prefix + baseUrl on the connection itself.
       for (const row of rows) {
         if (!row.prefix) continue;
         byPrefix.set(row.prefix.toLowerCase(), { provider: row.provider, baseUrl: row.baseUrl });
       }
-      // R57: also read provider_nodes (openai-compatible custom nodes) which carry
-      // prefix + base_url independently of the connection row. Nodes take lower
-      // priority than connection-declared prefix so they don't overwrite existing entries.
       const nodeMap = readOmniRouteNodes(db);
       for (const [key, entry] of nodeMap) {
         if (!byPrefix.has(key)) byPrefix.set(key, entry);
@@ -300,7 +284,6 @@ export function resolveProviderTargets(
     db.close();
   }
 
-  // provider id -> row, for every active connection.
   const byProvider = new Map<string, ConnectionRow>();
   for (const row of rows) {
     if (!byProvider.has(row.provider) || row.active) byProvider.set(row.provider, row);
@@ -324,8 +307,6 @@ export function resolveProviderTargets(
     const encrypted = looksEncrypted(row?.apiKey);
     const ownKey = encrypted ? undefined : row?.apiKey;
     const apiKey = ownKey ?? shared?.apiKey;
-    // A borrowed key is always a 9Router key, even when the step belongs to
-    // OmniRoute; the report says so instead of implying OmniRoute's own key.
     const keySource: '9router-key' | 'omniroute-key' | 'none' = ownKey
       ? router === '9router'
         ? '9router-key'
@@ -339,23 +320,17 @@ export function resolveProviderTargets(
       continue;
     }
 
-    // RouterSync has no parameterised list endpoint (e.g. the Cloudflare
-    // account-scoped path): the provider is skipped, never guessed.
     if (NEEDS_PARAM[provider]) {
       targets.push({ ...base, keySource: 'none', skipReason: 'missing-param' });
       continue;
     }
 
-    // Nothing is configured under this namespace at all -> the step must stay
-    // (R3). Reported as unknown-prefix, never removed.
     if (!row && !declared) {
       targets.push({ ...base, keySource: 'none', skipReason: 'unknown-prefix' });
       continue;
     }
 
     if (!apiKey) {
-      // R57: providers in NO_KEY_PUBLIC serve /models without authentication.
-      // Allow a keyless GET rather than skipping with 'no-key'.
       const isPublic = noKeyPublicProviders().has(canonicalPrefix(lower));
       if (!isPublic) {
         targets.push({
@@ -365,7 +340,6 @@ export function resolveProviderTargets(
         });
         continue;
       }
-      // Fall through: isPublic=true, apiKey=undefined, keySource='none', no skipReason.
     }
 
     const baseUrl = declared?.baseUrl ?? row?.baseUrl ?? knownBaseUrls()[provider] ?? shared?.baseUrl;
@@ -385,14 +359,9 @@ export function resolveProviderTargets(
   return targets;
 }
 
-// ---------------------------------------------------------------------------
-// Zero-token scan
-// ---------------------------------------------------------------------------
-
 export type NetworkErrorClass = 'timeout' | 'reset' | 'dns' | 'tls' | 'refused' | 'unknown';
 export function classifyNetworkError(err: unknown): NetworkErrorClass {
   const inner = (err as { cause?: unknown } | null)?.cause ?? err;
-  // C3o O3(e): Windows/undici báo fetch-refused là AggregateError; đọc errors[].code trước.
   const agg = ((err as { errors?: Array<{ code?: string }> } | null)?.errors ?? (inner as { errors?: Array<{ code?: string }> } | null)?.errors);
   const aggCode = agg?.[0]?.code ?? '';
   const code = aggCode || (inner as { code?: string } | null)?.code || (err as { code?: string } | null)?.code || '';
@@ -430,7 +399,6 @@ export const SCAN_MAX_BYTES_PER_PAGE = 10 * 1024 * 1024; // 10 MiB per-page ceil
 
 export const FORBIDDEN_INFERENCE_PATH_PATTERN = /(?:^|\/)(chat|completions|embeddings|responses|messages|images|audio|generate|predict|infer)(?:$|\/|\?)/i;
 
-/** ponytail: detect common pagination signals only; add provider-specific pagers when a host proves different. */
 export function detectNextPage(
   payload: unknown,
   headers?: Headers | Map<string, string> | Record<string, string>
@@ -445,7 +413,7 @@ export function detectNextPage(
   let url: string | null = null;
   let signalWithoutCursor = false;
   let forbiddenDiscarded = false;
-  const link = typeof (headers as any)?.get === 'function' ? (headers as any).get('link') : (headers as Record<string,string>)?.['Link'] ?? (headers as Record<string,string>)?.['link'];
+  const link = typeof (headers as any)?.get === 'function' ? (headers as any).get('link') : (headers as Record<string, string>)?.['Link'] ?? (headers as Record<string, string>)?.['link'];
   if (typeof link === 'string') { const m = link.match(/<([^>]+)>;\s*rel="next"/i); if (m) url = m[1] ?? null; }
   if (!url && typeof r['next'] === 'string') url = r['next'] as string;
   if (!url && typeof r['next_url'] === 'string') url = r['next_url'] as string;
@@ -456,12 +424,12 @@ export function detectNextPage(
     const cur = typeof r['next_cursor'] === 'string' ? r['next_cursor'] : typeof r['cursor'] === 'string' ? r['cursor'] : typeof r['last_id'] === 'string' ? r['last_id'] : null;
     if (cur) url = cur;
     else {
-      url = ''; // signal present but no cursor -> incomplete
+      url = '';
       signalWithoutCursor = true;
     }
   }
   if (url && FORBIDDEN_INFERENCE_PATH_PATTERN.test(url)) {
-    url = null; // discard pagination pointing to inference/chat endpoints
+    url = null;
     forbiddenDiscarded = true;
   }
   const t = typeof r['total'] === 'number' ? r['total'] : pag && typeof pag['total'] === 'number' ? pag['total'] as number : null;
@@ -495,11 +463,6 @@ function extractIds(payload: unknown): string[] {
   return ids;
 }
 
-/**
- * Same-origin check: protocol, hostname, and port must match.
- * Used to verify pagination links and redirect destinations so credentials
- * (Authorization: Bearer <apiKey>) are never sent to a foreign origin (C4o/O4).
- */
 export function isSameOrigin(targetUrl: string, baseOriginUrl: string): boolean {
   try {
     const t = new URL(targetUrl);
@@ -510,16 +473,6 @@ export function isSameOrigin(targetUrl: string, baseOriginUrl: string): boolean 
   }
 }
 
-/**
- * Reads an HTTP response body with a strict per-page byte cap (`maxBytes`).
- *
- * Uses `res.body.getReader()` when available so that an oversized chunked or
- * streaming response without `Content-Length` is cancelled mid-stream as soon
- * as cumulative bytes exceed `maxBytes`, before buffering the whole body.
- *
- * Falls back to `res.text()` / `res.json()` ONLY when `res.body?.getReader` is
- * absent (synthetic unit-test response mocks that omit a Web ReadableStream).
- */
 export async function readBodyCapped(
   res: Response,
   maxBytes: number = SCAN_MAX_BYTES_PER_PAGE
@@ -572,8 +525,6 @@ export async function readBodyCapped(
     }
   }
 
-  // Fallback for synthetic unit-test response objects that only implement res.text() or res.json()
-  // without providing a Web ReadableStream on res.body.
   if (typeof res.text === 'function') {
     const text = await res.text();
     const byteLen = Buffer.byteLength(text, 'utf8');
@@ -608,10 +559,6 @@ export async function readBodyCapped(
   return { ok: true, payload, byteLen };
 }
 
-/**
- * GET <baseUrl>/models. This is the only network call RouterSync makes here:
- * a model listing, billed at zero tokens.
- */
 async function fetchModelListOnce(
   target: ProviderTarget,
   options: { fetchFn?: typeof globalThis.fetch; timeoutMs?: number; serverEtag?: string | null } = {}
@@ -641,6 +588,7 @@ async function fetchModelListOnce(
   let foundServerEtag: string | null = null;
   try {
     while (currentUrl && pages < SCAN_MAX_PAGES && all.length < SCAN_MAX_MODELS) {
+      assertZeroLlmScanUrl(currentUrl);
       const res = await fetchFn(currentUrl, {
         method: 'GET',
         headers,
@@ -652,7 +600,6 @@ async function fetchModelListOnce(
       if (res.status === 304) {
         return { ok: true, status: 304, models: [], serverEtag: options.serverEtag, latencyMs: Date.now() - started, pages: 1, incomplete: false, bytes: 0, rawCount: 0 };
       }
-      // C4o/O4 & C4p/P2: handle redirects under manual redirect to prevent credential leakage
       if (res.status >= 300 && res.status < 400) {
         const headersAny = res.headers as unknown as { get?: (k: string) => string | null } & Record<string, string>;
         const loc = typeof headersAny?.get === 'function' ? headersAny.get('location') : headersAny?.['location'] ?? headersAny?.['Location'];
@@ -786,7 +733,6 @@ async function fetchModelListOnce(
       let resolvedNextUrl: string;
       if (next.url.startsWith('http://') || next.url.startsWith('https://')) {
         if (!isSameOrigin(next.url, baseUrl)) {
-          // C4o/O4: cross-origin pagination rejected to prevent credential leakage
           incomplete = true;
           currentUrl = null;
           break;
@@ -828,11 +774,12 @@ async function fetchModelListOnce(
       rawCount,
     };
   } catch (err) {
+    if (err instanceof OutboundGuardError) throw err;
     const ec = classifyNetworkError(err);
     return { ok: false, status: 0, models: [], error: `network-${ec}: ${err instanceof Error ? err.message : 'fetch-failed'}`, errorClass: ec, latencyMs: Date.now() - started, pages, incomplete, topKeys, pagination, bytes: bytesAcc, rawCount };
   }
 }
-/** C3m M1: retries tối đa 2 lần cho lỗi mạng (3s rồi 9s), không retry HTTP/bad-shape. */
+
 export async function fetchModelList(
   target: ProviderTarget,
   options: {
@@ -856,11 +803,8 @@ export async function fetchModelList(
 export interface ModelEntry {
   id: string;
   raw: Record<string, unknown>;
-  /** Pricing field names actually present in the response, e.g. 'pricing.input' / 'pricing.output' or 'cost'. */
   priceFields: string[];
-  /** Resolved input price (number or undefined). */
   inputPrice: number | undefined;
-  /** Resolved completion/output price (number or undefined). */
   outputPrice: number | undefined;
 }
 
@@ -870,7 +814,6 @@ function extractPriceNumbers(obj: Record<string, unknown> | undefined): { input:
   let input: number | undefined;
   let output: number | undefined;
 
-  // OpenRouter style: pricing.prompt / pricing.completion
   const pricing = obj['pricing'];
   if (pricing && typeof pricing === 'object') {
     const p = pricing as Record<string, unknown>;
@@ -882,15 +825,12 @@ function extractPriceNumbers(obj: Record<string, unknown> | undefined): { input:
     else if (typeof p['output'] === 'number') { fields.push('pricing.output'); output = p['output']; }
   }
 
-  // Flat cost field
   const cost = obj['cost'];
   if (typeof cost === 'number') { fields.push('cost'); input = cost; output = cost; }
 
-  // Flat input/output
   if (typeof obj['input'] === 'number' && !fields.includes('pricing.input')) { fields.push('input'); input = obj['input']; }
   if (typeof obj['output'] === 'number' && !fields.includes('pricing.output')) { fields.push('output'); output = obj['output']; }
 
-  // Node-A style (C3p P2): price_input_vnd / price_output_vnd (VNĐ/1M tokens) con số thật.
   if (typeof obj['price_input_vnd'] === 'number') { fields.push('price_input_vnd'); input = obj['price_input_vnd']; }
   if (typeof obj['price_output_vnd'] === 'number') { fields.push('price_output_vnd'); output = obj['price_output_vnd']; }
 
@@ -918,10 +858,6 @@ function extractModelEntries(payload: unknown): ModelEntry[] {
   return entries;
 }
 
-/**
- * FETCH /models and return raw model entries with resolved pricing.
- * Zero-token listing only; never calls billed endpoints.
- */
 export async function fetchModelEntries(
   target: ProviderTarget,
   options: { fetchFn?: typeof globalThis.fetch; timeoutMs?: number } = {}
@@ -945,6 +881,7 @@ export async function fetchModelEntries(
 
   try {
     while (currentUrl) {
+      assertZeroLlmScanUrl(currentUrl);
       const res = await fetchFn(currentUrl, {
         method: 'GET',
         headers,
@@ -1037,6 +974,7 @@ export async function fetchModelEntries(
     }
     return { ok: false, status: 0, entries: [], error: 'empty-url', latencyMs: Date.now() - started, bytes: 0 };
   } catch (err) {
+    if (err instanceof OutboundGuardError) throw err;
     return {
       ok: false,
       status: 0,
@@ -1048,7 +986,6 @@ export async function fetchModelEntries(
   }
 }
 
-/** Control xác định theo host: bỏ tiền tố provider, sort, lấy đầu tiên. Cùng host + cùng danh sách => cùng id. */
 export function pickDeterministicControlId(modelIds: readonly string[], providerPrefix: string): string | null {
   const pref = providerPrefix.toLowerCase();
   const stripped = modelIds
@@ -1057,7 +994,6 @@ export function pickDeterministicControlId(modelIds: readonly string[], provider
     .sort((a, b) => a.localeCompare(b));
   return stripped[0] ?? null;
 }
-/** Host only — safe to print, never carries a key. */
 export function hostOf(baseUrl: string | undefined): string {
   if (!baseUrl) return '(none)';
   try {

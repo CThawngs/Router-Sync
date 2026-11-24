@@ -1,12 +1,17 @@
 /**
  * packages/daemon/src/single-instance.ts
  *
- * Single-instance lock for the daemon: PID-file + stale check.
- * Pure fs only, no OS scheduling, no side effects beyond the lock file.
+ * Single-instance lock for the daemon: PID-file + stale check, plus cross-tier
+ * `<stateDir>/tick.lock` mutual exclusion compatible with CLI `tick` and MCP `tick_if_due`.
+ * Pure fs/path/process only (AT-118 read-only isolation: zero root @routersync/core imports).
  */
 
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+
+export function resolveTickLockPath(stateDir: string): string {
+  return path.join(stateDir, 'tick.lock');
+}
 
 export interface LockContent {
   pid: number;
@@ -19,6 +24,14 @@ export interface AcquireLockResult {
   pid: number;
 }
 
+export interface TickLockAcquireResult {
+  acquired: boolean;
+  lockPath: string;
+  pid: number;
+  staleReplaced: boolean;
+  holderPid?: number | undefined;
+}
+
 export function parseLockContent(raw: string): LockContent | null {
   try {
     const parsed = JSON.parse(raw) as Partial<LockContent>;
@@ -29,14 +42,68 @@ export function parseLockContent(raw: string): LockContent | null {
   }
 }
 
-/** True if pid points to a live process on this host. */
+/**
+ * True if `pid` points to a live same-user process on this host.
+ * `EPERM` (e.g. Linux `pid: 2` `[kthreadd]` owned by root) indicates a foreign-UID
+ * process rather than a user-space RouterSync daemon owning `<stateDir>`.
+ */
 export function isPidAlive(pid: number): boolean {
+  if (!Number.isInteger(pid) || pid <= 0) return false;
+  if (pid === process.pid) return true;
   try {
     process.kill(pid, 0);
     return true;
   } catch {
     return false;
   }
+}
+
+export function tryAcquireTickLock(
+  stateDir: string,
+  pid: number = process.pid,
+  nowMs: number = Date.now()
+): TickLockAcquireResult {
+  const lockPath = resolveTickLockPath(stateDir);
+  fs.mkdirSync(path.dirname(lockPath), { recursive: true });
+  const payload = JSON.stringify({ pid, startedAt: new Date(nowMs).toISOString() }) + "\n";
+  let staleReplaced = false;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const fd = fs.openSync(lockPath, 'wx', 0o600);
+      try {
+        fs.writeFileSync(fd, payload, 'utf8');
+      } finally {
+        fs.closeSync(fd);
+      }
+      return { acquired: true, lockPath, pid, staleReplaced };
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException)?.code !== 'EEXIST') throw err;
+      let existing: LockContent | null = null;
+      try {
+        existing = parseLockContent(fs.readFileSync(lockPath, 'utf8'));
+      } catch {
+        existing = null;
+      }
+      if (existing && existing.pid === pid) {
+        fs.writeFileSync(lockPath, payload, 'utf8');
+        return { acquired: true, lockPath, pid, staleReplaced: true };
+      }
+      if (existing && isPidAlive(existing.pid)) {
+        return { acquired: false, lockPath, pid, staleReplaced: false, holderPid: existing.pid };
+      }
+      try {
+        fs.unlinkSync(lockPath);
+        staleReplaced = true;
+      } catch {
+        // raced unlink
+      }
+    }
+  }
+  return { acquired: false, lockPath, pid, staleReplaced };
+}
+
+export function releaseTickLock(stateDir: string, pid: number = process.pid): void {
+  releaseLock(resolveTickLockPath(stateDir), pid);
 }
 
 export function acquireLock(lockPath: string, pid: number = process.pid): AcquireLockResult {

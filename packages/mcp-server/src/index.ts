@@ -32,6 +32,8 @@ export {
 };
 export * from './pagination.js';
 export * from './sanitize.js';
+export * from './cost-report.js';
+export * from './tick-if-due.js';
 
 export interface McpClientRecord {
   name: string;
@@ -109,6 +111,16 @@ export async function runServer(): Promise<void> {
   });
 
   await server.connect(transport);
+  if (process.env['ROUTERSYNC_MCP_STARTUP_TICK'] === '1') {
+    try {
+      const { runTickIfDue } = await import('./tick-if-due.js');
+      const stateDir =
+        process.env['ROUTERSYNC_STATE_DIR'] || path.join(os.homedir(), '.routersync');
+      runTickIfDue({ stateDir });
+    } catch {
+      // Non-fatal opt-in startup tick trigger
+    }
+  }
   process.stderr.write(
     `[routersync-mcp] Server running on stdio (${READ_ONLY_TOOL_NAMES.length} read-only + ${LEDGER_APPEND_TOOL_NAMES.length} ledger-append + ${CONTROLLED_WRITE_TOOL_NAMES.length} controlled-write tools active)\n`
   );

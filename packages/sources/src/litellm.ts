@@ -1,12 +1,12 @@
 /**
  * packages/sources/src/litellm.ts
- * 
+ *
  * LiteLLM static catalog reader.
- * Reads model definitions, pricing, context window from JSON dataset.
+ * Reads model definitions, pricing, context window from JSON dataset with outbound allowlist guard.
  */
 
 import type { CatalogSource, ModelInfo } from '@routersync/adapter-sdk';
-import { normalizeModelInfo } from '@routersync/core';
+import { createGuardedFetch, normalizeModelInfo } from '@routersync/core';
 import * as fs from 'node:fs/promises';
 
 export interface LiteLLMCatalogOptions {
@@ -27,7 +27,7 @@ export class LiteLLMCatalogSource implements CatalogSource {
     this.data = options.data;
     this.filePath = options.filePath;
     this.url = options.url;
-    this.fetchFn = options.fetchFn ?? globalThis.fetch;
+    this.fetchFn = createGuardedFetch(options.fetchFn ?? globalThis.fetch);
   }
 
   async fetchCatalog(): Promise<ModelInfo[]> {
