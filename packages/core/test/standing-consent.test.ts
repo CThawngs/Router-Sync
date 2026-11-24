@@ -404,30 +404,37 @@ describe('C45-WP4 Standing Consent, Promotion Gate, Freeze & Persistent Approval
       }
 
       // (b) Directory symlink/junction inside os.tmpdir() pointing outside os.tmpdir() with a NON-EXISTENT filename
-      // MUST fail closed with SANDBOX_OUTSIDE_TMPDIR instead of skipping realpath resolution!
+      // MUST fail closed with SANDBOX_OUTSIDE_TMPDIR even when process.cwd() itself resides inside os.tmpdir()!
       const sandboxDir = makeTmpDir('rs-wp4-f1-escape-');
       const escapeLinkDir = path.join(sandboxDir, 'escape-outside-tmp');
-      createDirLinkOrJunction(process.cwd(), escapeLinkDir);
+      const realTmpRoot = path.parse(fs.realpathSync.native(os.tmpdir())).root;
+      createDirLinkOrJunction(realTmpRoot, escapeLinkDir);
 
-      const escapedHarnessPath = path.join(escapeLinkDir, 'nonexistent-escaped-victim.json');
-      const escapedRouterDbPath = path.join(escapeLinkDir, 'nonexistent-escaped-router.sqlite');
-
-      expect(() =>
-        assertControlledWriteSandbox(escapedHarnessPath, 'harness-config', {})
-      ).toThrowError(ConsentValidationError);
+      const prevCwd = process.cwd();
       try {
-        assertControlledWriteSandbox(escapedHarnessPath, 'harness-config', {});
-      } catch (err) {
-        expect((err as ConsentValidationError).code).toBe('SANDBOX_OUTSIDE_TMPDIR');
-      }
+        process.chdir(sandboxDir);
+        const escapedHarnessPath = path.join(escapeLinkDir, 'nonexistent-escaped-victim.json');
+        const escapedRouterDbPath = path.join(escapeLinkDir, 'nonexistent-escaped-router.sqlite');
 
-      expect(() =>
-        assertControlledWriteSandbox(escapedRouterDbPath, 'router-db', {})
-      ).toThrowError(ConsentValidationError);
-      try {
-        assertControlledWriteSandbox(escapedRouterDbPath, 'router-db', {});
-      } catch (err) {
-        expect((err as ConsentValidationError).code).toBe('SANDBOX_OUTSIDE_TMPDIR');
+        expect(() =>
+          assertControlledWriteSandbox(escapedHarnessPath, 'harness-config', {})
+        ).toThrowError(ConsentValidationError);
+        try {
+          assertControlledWriteSandbox(escapedHarnessPath, 'harness-config', {});
+        } catch (err) {
+          expect((err as ConsentValidationError).code).toBe('SANDBOX_OUTSIDE_TMPDIR');
+        }
+
+        expect(() =>
+          assertControlledWriteSandbox(escapedRouterDbPath, 'router-db', {})
+        ).toThrowError(ConsentValidationError);
+        try {
+          assertControlledWriteSandbox(escapedRouterDbPath, 'router-db', {});
+        } catch (err) {
+          expect((err as ConsentValidationError).code).toBe('SANDBOX_OUTSIDE_TMPDIR');
+        }
+      } finally {
+        process.chdir(prevCwd);
       }
     });
   });
