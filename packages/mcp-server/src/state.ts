@@ -82,6 +82,13 @@ export interface TickStatusFile {
   unchangedProviders?: number;
   backoffSkipped?: number;
   inboxAdded?: number;
+  researchQueueCount?: number;
+  detectionLatency?: {
+    measuredCount: number;
+    minMs: number | null;
+    maxMs: number | null;
+    p50Ms: number | null;
+  };
   providers?: Array<{
     prefix: string;
     label: string;
@@ -136,6 +143,8 @@ export interface StatePaths {
   plansDir: string;
   inbox: string;
   verifyStatus: string;
+  researchEvidence: string;
+  researchQueue: string;
   tickCatalog: string;
   tickStatus: string;
   tickLog: string;
@@ -154,6 +163,8 @@ export function resolveStatePaths(env: NodeJS.ProcessEnv = process.env): StatePa
     plansDir: resolvePlansDir(env),
     inbox: path.join(stateDir, 'inbox.json'),
     verifyStatus: path.join(stateDir, 'verify-status.json'),
+    researchEvidence: path.join(stateDir, 'research-evidence.json'),
+    researchQueue: path.join(stateDir, 'research-queue.json'),
     tickCatalog: path.join(stateDir, 'tick-catalog.json'),
     tickStatus: path.join(stateDir, 'status.json'),
     tickLog: path.join(stateDir, 'tick.log'),

@@ -1,16 +1,24 @@
 /**
  * packages/cli/src/verify/verifier.ts
  *
- * Implements the VERIFY phase (Round C4b F3b):
- *  - 6 canonical labels: ĐÃ-XÁC-NHẬN-CÒN, ĐÃ-XÁC-NHẬN-NGỪNG, SẮP-NGỪNG, NGHI-NGỪNG, CHƯA-XÁC-MINH, QUOTA
+ * Implements the VERIFY phase (Round C4b F3b + C45-WP3):
+ *  - 6+ canonical labels: ĐÃ-XÁC-NHẬN-CÒN, ĐÃ-XÁC-NHẬN-NGỪNG, SẮP-NGỪNG, NGHI-NGỪNG, CHƯA-XÁC-MINH, QUOTA, CHƯA-QUÉT
  *  - ABSENT-STABLE classification for gateways without single-model GET endpoints (F4)
  *  - NEW-CANDIDATE proposal generator for combos & agent configs (F5)
- *  - Optional BYOK LLM batch with hard daily token budget (F3)
+ *  - C45-WP3: Official vs Secondary research evidence joining, 10% target shrink cap
+ *    (`TARGET_REMOVAL_MAX_SHRINK_RATIO = 0.10`), `UNVERIFIABLE != ABSENT` helper, and
+ *    `computeDetectionLatencyMs` / `summarizeDetectionLatencies`
  *  - Deterministic accounting line: `VERIFY requests=<n> paid=0 tokens=0 llm-calls=0`
  */
 
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import {
+  atomicWriteFileSync,
+  canonicalizeResearchProvider,
+  loadResearchEvidence,
+  type ResearchEvidenceRecord,
+} from '@routersync/core';
 import type {
   VerificationLabel,
   ModelVerificationRecord,
@@ -19,17 +27,124 @@ import type {
   NewCandidateProposal,
   VerifyPhaseSummary,
   VerifyAccounting,
+  DetectionLatencyInput,
+  DetectionLatencySummary,
+  ShrinkCapEvaluation,
 } from './types.js';
 import { runL2Scan, PROVIDER_ALIASES, type L2ScannerOptions } from './l2-scanner.js';
 import { runL3Scan, type L3ScannerOptions } from './l3-scanner.js';
 import { isBlacklisted } from '../rank/filters.js';
 import { loadRankingConfig } from '../rank/config.js';
 
+export const TARGET_REMOVAL_MAX_SHRINK_RATIO = 0.10;
+
+export const UNVERIFIABLE_SCAN_STATES = new Set<string>([
+  'UNVERIFIABLE',
+  'CHƯA-XÁC-MINH',
+  'CHƯA-QUÉT',
+  'UPSTREAM-UNREACHABLE',
+  'ACCESS-RESTRICTED-OR-ABSENT',
+  'QUOTA',
+  'QUOTA-NO-LIST',
+  'AUTH_ERROR',
+  'TRANSIENT',
+  'PROXY_DELEGATED',
+  'SKIPPED',
+  'BACKOFF',
+  'SHRINK-GUARD-BLOCKED',
+]);
+
+export function isUnverifiableScanState(stateOrLabel: string | null | undefined): boolean {
+  if (!stateOrLabel) return false;
+  return UNVERIFIABLE_SCAN_STATES.has(stateOrLabel.trim());
+}
+
+export function computeDetectionLatencyMs(input: DetectionLatencyInput): number | null {
+  const sourceRaw = input.sourcePublishedAt ?? input.sourceFirstChangedAt ?? null;
+  if (!sourceRaw || typeof sourceRaw !== 'string' || sourceRaw.trim().length === 0) {
+    return null;
+  }
+  const planMs = Date.parse(input.planCreatedAt);
+  const sourceMs = Date.parse(sourceRaw);
+  if (!Number.isFinite(planMs) || !Number.isFinite(sourceMs)) {
+    return null;
+  }
+  return Math.max(0, planMs - sourceMs);
+}
+
+export function summarizeDetectionLatencies(
+  latencies: Array<number | null | undefined>
+): DetectionLatencySummary {
+  const valid = latencies
+    .filter((val): val is number => typeof val === 'number' && Number.isFinite(val) && val >= 0)
+    .sort((a, b) => a - b);
+  if (valid.length === 0) {
+    return {
+      measuredCount: 0,
+      minMs: null,
+      maxMs: null,
+      p50Ms: null,
+    };
+  }
+  const minMs = valid[0]!;
+  const maxMs = valid[valid.length - 1]!;
+  const midIdx = Math.floor((valid.length - 1) / 2);
+  return {
+    measuredCount: valid.length,
+    minMs,
+    maxMs,
+    p50Ms: valid[midIdx]!,
+  };
+}
+
+export function enforceTargetShrinkCap(
+  targetType: 'router' | 'harness',
+  currentCount: number,
+  dropCount: number
+): ShrinkCapEvaluation {
+  const minRemainingRequired = targetType === 'router' ? 2 : 1;
+  if (dropCount <= 0) {
+    return {
+      allowed: true,
+      shrinkRatio: 0,
+      remainingCount: currentCount,
+      minRemainingRequired,
+    };
+  }
+  const denom = Math.max(1, currentCount);
+  const shrinkRatio = dropCount / denom;
+  const remainingCount = currentCount - dropCount;
+
+  if (shrinkRatio > TARGET_REMOVAL_MAX_SHRINK_RATIO) {
+    return {
+      allowed: false,
+      shrinkRatio,
+      remainingCount,
+      minRemainingRequired,
+      reason: `shrinkRatio=${(shrinkRatio * 100).toFixed(1)}% > ${(TARGET_REMOVAL_MAX_SHRINK_RATIO * 100).toFixed(0)}%`,
+    };
+  }
+  if (currentCount > 0 && remainingCount < minRemainingRequired) {
+    return {
+      allowed: false,
+      shrinkRatio,
+      remainingCount,
+      minRemainingRequired,
+      reason: `remainingCount=${remainingCount} < ${minRemainingRequired}`,
+    };
+  }
+  return {
+    allowed: true,
+    shrinkRatio,
+    remainingCount,
+    minRemainingRequired,
+  };
+}
+
 export interface VerifyPhaseOptions {
   stateDir?: string | undefined;
   nowMs?: number | undefined;
   fetchFn?: typeof globalThis.fetch | undefined;
-  // Models to verify: { id: string; prefix: string; l1Status: number; l1Exists: boolean; absenceCount: number; firstAbsentAtMs?: number }
   models?: Array<{
     id: string;
     prefix: string;
@@ -46,13 +161,10 @@ export interface VerifyPhaseOptions {
     unscannedReason?: string | undefined;
   }> | undefined;
   addedModelIds?: Set<string> | undefined;
-  // Connected combos from router
   combos?: Array<{ name: string; router: string; models: string[] }> | undefined;
-  // Configured agents
   agents?: Array<{ name: string; client: string; model?: string }> | undefined;
-  // Provider external coverage map: prefix -> boolean
   coveredProviders?: Record<string, boolean> | undefined;
-  // Custom L2/L3 scan options
+  evidenceRecords?: ResearchEvidenceRecord[] | undefined;
   l2Options?: L2ScannerOptions | undefined;
   l3Options?: L3ScannerOptions | undefined;
   silent?: boolean | undefined;
@@ -64,7 +176,7 @@ export function classifyVerificationLabel(
   l3: { hasNotice: boolean; noticeType?: string | undefined },
   providerCovered: boolean
 ): VerificationLabel {
-  // 0. If provider was not scanned or skipped (Round C4d B4)
+  // 0. If provider was not scanned or skipped (Round C4d B4 & C45-WP3 UNVERIFIABLE != ABSENT)
   if (l1.isUnscanned) {
     return 'CHƯA-QUÉT';
   }
@@ -72,6 +184,11 @@ export function classifyVerificationLabel(
   // 1. If HTTP 429 received
   if (l1.status === 429) {
     return l1.exists ? 'QUOTA' : 'QUOTA-NO-LIST';
+  }
+
+  // 1b. Non-authoritative HTTP failures (401/403/5xx/0) must never become NGHI-NGỪNG or ĐÃ-XÁC-NHẬN-NGỪNG
+  if (l1.status === 0 || (l1.status >= 400 && l1.status !== 404)) {
+    return 'CHƯA-XÁC-MINH';
   }
 
   // 2. If present in L1 scan with valid key
@@ -107,6 +224,11 @@ export function evaluateAbsentStable(input: AbsentStableCheckInput): AbsentStabl
   const reasons: string[] = [];
   const hoursAbsent = (input.nowMs - input.firstAbsentAtMs) / (3600 * 1000);
 
+  // 0. UNVERIFIABLE != ABSENT guard
+  if (isUnverifiableScanState(input.lastLabel)) {
+    reasons.push(`lastLabel=${input.lastLabel} is unverifiable/non-authoritative`);
+  }
+
   // 1. Absent in >= 3 scans
   if (input.absenceCount < 3) {
     reasons.push(`absenceCount=${input.absenceCount} < 3`);
@@ -117,24 +239,21 @@ export function evaluateAbsentStable(input: AbsentStableCheckInput): AbsentStabl
     reasons.push(`hoursAbsent=${hoursAbsent.toFixed(1)} < 24h`);
   }
 
-  // 3. Not labeled QUOTA or TRANSIENT
-  if (input.lastLabel === 'QUOTA' || input.lastLabel === 'TRANSIENT') {
-    reasons.push(`lastLabel=${input.lastLabel} is transient/quota`);
-  }
-
-  // 4. Not in independent external source when provider is covered
+  // 3. Not in independent external source when provider is covered
   if (input.providerCoveredByExternal && input.l2ExternalExists) {
     reasons.push(`model still exists in independent external source (CÒN-Ở-NGUỒN-NGOÀI)`);
   }
 
-  // 5. Shrinking <= 10% per combo per cycle
+  // 4. Shrinking <= TARGET_REMOVAL_MAX_SHRINK_RATIO (10%) per combo per cycle
   const stepCount = Math.max(1, input.comboStepCount);
   const shrinkRatio = input.dropCount / stepCount;
-  if (shrinkRatio > 0.10) {
-    reasons.push(`Hạn mức co rút (shrinkRatio=${(shrinkRatio * 100).toFixed(1)}% > 10%)`);
+  if (shrinkRatio > TARGET_REMOVAL_MAX_SHRINK_RATIO) {
+    reasons.push(
+      `Hạn mức co rút (shrinkRatio=${(shrinkRatio * 100).toFixed(1)}% > ${(TARGET_REMOVAL_MAX_SHRINK_RATIO * 100).toFixed(0)}%)`
+    );
   }
 
-  // 6. Combo retains >= 2 steps (Invariant I3)
+  // 5. Combo retains >= 2 steps (Invariant I3)
   const remaining = input.comboStepCount - input.dropCount;
   if (input.comboStepCount > 0 && remaining < 2) {
     reasons.push(`remainingSteps=${remaining} < 2 (Invariant I3)`);
@@ -167,13 +286,14 @@ export function evaluateNewCandidateProposals(
   for (const c of candidates) {
     const fullStep = `${c.prefix}/${c.id}`;
 
-    // A6: Bỏ ứng viên có nhãn SẮP-NGỪNG hoặc QUOTA
-    if (c.label === 'SẮP-NGỪNG' || c.label === 'QUOTA') {
+    if (c.label === 'SẮP-NGỪNG' || c.label === 'QUOTA' || c.label === 'ĐÃ-XÁC-NHẬN-NGỪNG') {
       continue;
     }
 
-    // A6: Bỏ ứng viên khớp mẫu blacklist trong ranking.yaml
-    if (blacklistPatterns.length > 0 && (isBlacklisted(c.id, blacklistPatterns) || isBlacklisted(fullStep, blacklistPatterns))) {
+    if (
+      blacklistPatterns.length > 0 &&
+      (isBlacklisted(c.id, blacklistPatterns) || isBlacklisted(fullStep, blacklistPatterns))
+    ) {
       continue;
     }
 
@@ -184,7 +304,7 @@ export function evaluateNewCandidateProposals(
         targetCombos.push({
           comboName: combo.name,
           router: combo.router,
-          proposedRankIndex: combo.models.length + 1, // propose appending or ranking
+          proposedRankIndex: combo.models.length + 1,
         });
       }
     }
@@ -203,9 +323,14 @@ export function evaluateNewCandidateProposals(
     const p = c.pricing as Record<string, unknown> | undefined;
     const promptCost = p ? Number(p['prompt'] ?? p['input_cost_per_token'] ?? 0) : undefined;
     const compCost = p ? Number(p['completion'] ?? p['cost_per_token'] ?? 0) : undefined;
-    const zeroPriceHidden = Boolean(c.isZeroPriceHidden || (promptCost === 0 && compCost === 0 && !c.id.toLowerCase().endsWith('-free') && !c.id.toLowerCase().endsWith(':free')));
-    // A6: model có cờ ẨN-GIÁ-0 chỉ cảnh báo, không tự xếp là miễn phí
-    const isFree = zeroPriceHidden ? false : (promptCost === 0 && compCost === 0);
+    const zeroPriceHidden = Boolean(
+      c.isZeroPriceHidden ||
+        (promptCost === 0 &&
+          compCost === 0 &&
+          !c.id.toLowerCase().endsWith('-free') &&
+          !c.id.toLowerCase().endsWith(':free'))
+    );
+    const isFree = zeroPriceHidden ? false : promptCost === 0 && compCost === 0;
 
     proposals.push({
       id: `prop-new-${c.prefix}-${c.id}`,
@@ -227,11 +352,18 @@ export function evaluateNewCandidateProposals(
   return proposals;
 }
 
+function selectNewestEvidence(records: ResearchEvidenceRecord[]): ResearchEvidenceRecord | undefined {
+  if (records.length === 0) return undefined;
+  return [...records].sort((a, b) => Date.parse(b.submittedAt) - Date.parse(a.submittedAt))[0];
+}
+
 export async function runVerifyPhase(options: VerifyPhaseOptions = {}): Promise<VerifyPhaseSummary> {
   const nowMs = options.nowMs ?? Date.now();
   const nowIso = new Date(nowMs).toISOString();
   const sDir = options.stateDir ?? path.join(process.cwd(), '.routersync');
   if (!fs.existsSync(sDir)) fs.mkdirSync(sDir, { recursive: true });
+
+  const evidenceRecords = options.evidenceRecords ?? loadResearchEvidence(sDir);
 
   // 1. Run L2 scan (cached 1h)
   const l2Res = await runL2Scan({
@@ -275,24 +407,26 @@ export async function runVerifyPhase(options: VerifyPhaseOptions = {}): Promise<
     evidenceUrl?: string | null | undefined;
   }> = [];
 
-  const hasAddedFilter = Boolean(options.addedModelIds || models.some((x) => x.isAdded !== undefined));
+  const hasAddedFilter = Boolean(
+    options.addedModelIds || models.some((x) => x.isAdded !== undefined)
+  );
 
   for (const m of models) {
     const fullStep = `${m.prefix}/${m.id}`;
-    const l1Exists = Boolean(m.l1Exists ?? (m.l1Status === 200));
-    const l1Status = m.l1Status ?? (l1Exists ? 200 : 404);
-    const absenceCount = m.absenceCount ?? (l1Exists ? 0 : 1);
-
     const isUnscanned = m.isUnscanned ?? (m.l1Status === 0);
     const unscannedReason = m.unscannedReason;
+    const l1Exists = Boolean(m.l1Exists ?? (m.l1Status === 200));
+    const l1Status = m.l1Status ?? (isUnscanned ? 0 : l1Exists ? 200 : 404);
+    const absenceCount = isUnscanned ? 0 : (m.absenceCount ?? (l1Exists ? 0 : 1));
 
-    // L2 match with provider alias mapping (B4: hf->huggingface, gemini->google)
     const aliasPrefix = PROVIDER_ALIASES[m.prefix.toLowerCase()];
     const aliasStep = aliasPrefix ? `${aliasPrefix}/${m.id}` : undefined;
-    const l2Entry = l2Res.state.models[m.id] ?? l2Res.state.models[fullStep] ?? (aliasStep ? l2Res.state.models[aliasStep] : undefined);
+    const l2Entry =
+      l2Res.state.models[m.id] ??
+      l2Res.state.models[fullStep] ??
+      (aliasStep ? l2Res.state.models[aliasStep] : undefined);
     const l2Exists = Boolean(l2Entry);
 
-    // L3 notice match: match by exact id or word-boundary token, no broad substring leak (A4)
     const mIdLower = m.id.toLowerCase();
     const fullStepLower = fullStep.toLowerCase();
     const l3Notice = l3Res.state.notices.find((n) => {
@@ -307,30 +441,77 @@ export async function runVerifyPhase(options: VerifyPhaseOptions = {}): Promise<
       return regex.test(n.title);
     });
 
-    const coveredSet = new Set(['google', 'gemini', 'openai', 'anthropic', 'meta', 'deepseek', 'openrouter']);
+    const coveredSet = new Set([
+      'google',
+      'gemini',
+      'openai',
+      'anthropic',
+      'meta',
+      'deepseek',
+      'openrouter',
+    ]);
     const providerCovered =
       options.coveredProviders?.[m.prefix] ??
-      (l2Exists || coveredSet.has(m.prefix.toLowerCase()) || (aliasPrefix ? coveredSet.has(aliasPrefix.toLowerCase()) : false));
+      (l2Exists ||
+        coveredSet.has(m.prefix.toLowerCase()) ||
+        (aliasPrefix ? coveredSet.has(aliasPrefix.toLowerCase()) : false));
 
-    const label = classifyVerificationLabel(
+    let label = classifyVerificationLabel(
       { exists: l1Exists, status: l1Status, absenceCount, isUnscanned, unscannedReason },
       { exists: l2Exists },
       { hasNotice: Boolean(l3Notice), noticeType: l3Notice?.noticeType },
       providerCovered
     );
 
-    labelCounts[label]++;
-
     const flags: string[] = [];
     if (l2Entry?.isZeroPriceHidden) flags.push('ẨN-GIÁ-0');
-    if (!l1Exists && l2Exists) flags.push('CÒN-Ở-NGUỒN-NGOÀI');
+    if (!isUnscanned && !l1Exists && l2Exists) flags.push('CÒN-Ở-NGUỒN-NGOÀI');
+
+    // Join C45-WP3 research-evidence.json records
+    const canonPrefix = canonicalizeResearchProvider(m.prefix);
+    const matchingEvidence = evidenceRecords.filter(
+      (ev) => ev.id === fullStep || (ev.provider === canonPrefix && ev.modelId === m.id)
+    );
+    const officialEv = selectNewestEvidence(
+      matchingEvidence.filter((ev) => ev.sourceTier === 'official' && ev.domainVerified)
+    );
+    const secondaryEv = selectNewestEvidence(
+      matchingEvidence.filter((ev) => ev.sourceTier === 'secondary')
+    );
+
+    if (officialEv) {
+      flags.push('BẰNG-CHỨNG-OFFICIAL');
+      const shutdownMs = officialEv.shutdownDate ? Date.parse(officialEv.shutdownDate) : null;
+      if (
+        officialEv.verdict === 'deprecated' &&
+        (shutdownMs === null || (Number.isFinite(shutdownMs) && shutdownMs <= nowMs))
+      ) {
+        label = 'ĐÃ-XÁC-NHẬN-NGỪNG';
+      } else if (
+        officialEv.verdict === 'upcoming_deprecation' ||
+        (officialEv.verdict === 'deprecated' &&
+          shutdownMs !== null &&
+          Number.isFinite(shutdownMs) &&
+          shutdownMs > nowMs)
+      ) {
+        label = 'SẮP-NGỪNG';
+      } else if (officialEv.verdict === 'active' && l1Exists) {
+        label = 'ĐÃ-XÁC-NHẬN-CÒN';
+      }
+    }
+    if (secondaryEv) {
+      flags.push('BẰNG-CHỨNG-SECONDARY');
+    }
+
+    labelCounts[label]++;
 
     records.push({
       id: m.id,
       prefix: m.prefix,
       fullStep,
       label,
-      unscannedReason: label === 'CHƯA-QUÉT' ? (unscannedReason ?? 'chưa-quét-nhà-cung-cấp') : undefined,
+      unscannedReason:
+        label === 'CHƯA-QUÉT' ? (unscannedReason ?? 'chưa-quét-nhà-cung-cấp') : undefined,
       l1: {
         exists: l1Exists,
         status: l1Status,
@@ -356,11 +537,19 @@ export async function runVerifyPhase(options: VerifyPhaseOptions = {}): Promise<
     });
 
     const isNewlyAdded = options.addedModelIds
-      ? (options.addedModelIds.has(m.id) || options.addedModelIds.has(fullStep))
-      : (hasAddedFilter ? Boolean(m.isAdded) : (l1Exists && absenceCount === 0));
+      ? options.addedModelIds.has(m.id) || options.addedModelIds.has(fullStep)
+      : hasAddedFilter
+        ? Boolean(m.isAdded)
+        : l1Exists && absenceCount === 0;
 
-    // A6: Ứng viên chỉ gồm id nằm trong added của lần diff gần nhất, loại bỏ SẮP-NGỪNG và QUOTA
-    if (isNewlyAdded && l1Exists && absenceCount === 0 && label !== 'SẮP-NGỪNG' && label !== 'QUOTA') {
+    if (
+      isNewlyAdded &&
+      l1Exists &&
+      absenceCount === 0 &&
+      label !== 'SẮP-NGỪNG' &&
+      label !== 'QUOTA' &&
+      label !== 'ĐÃ-XÁC-NHẬN-NGỪNG'
+    ) {
       newCandidateItems.push({
         id: m.id,
         prefix: m.prefix,
@@ -371,9 +560,8 @@ export async function runVerifyPhase(options: VerifyPhaseOptions = {}): Promise<
       });
     }
 
-    // F4 check: if gateway model absent without single-model GET
-    if (!l1Exists && absenceCount >= 3) {
-      const firstAbsentMs = m.firstAbsentAtMs ?? (nowMs - 25 * 3600 * 1000);
+    if (!isUnscanned && !l1Exists && absenceCount >= 3) {
+      const firstAbsentMs = m.firstAbsentAtMs ?? nowMs - 25 * 3600 * 1000;
       const asCheck = evaluateAbsentStable({
         id: m.id,
         prefix: m.prefix,
@@ -392,7 +580,6 @@ export async function runVerifyPhase(options: VerifyPhaseOptions = {}): Promise<
     }
   }
 
-  // 4. Generate NEW-CANDIDATE proposals (F5) with blacklist filtering
   const rankCfg = loadRankingConfig(undefined, { quiet: true });
   const blacklistPatterns = rankCfg.config.blacklist ?? [];
   if (blacklistPatterns.length === 0 && !options.silent) {
@@ -423,12 +610,13 @@ export async function runVerifyPhase(options: VerifyPhaseOptions = {}): Promise<
     accounting,
   };
 
-  // Write summary to verify-status.json
   const verifyStatusPath = path.join(sDir, 'verify-status.json');
-  fs.writeFileSync(verifyStatusPath, JSON.stringify(summary, null, 2), 'utf8');
+  atomicWriteFileSync(verifyStatusPath, JSON.stringify(summary, null, 2));
 
   if (!options.silent) {
-    console.log(`VERIFY-SUMMARY models=${models.length} remaining=${summary.absentStableCandidates.length} proposals=${proposals.length}`);
+    console.log(
+      `VERIFY-SUMMARY models=${models.length} remaining=${summary.absentStableCandidates.length} proposals=${proposals.length}`
+    );
     for (const [k, count] of Object.entries(labelCounts)) {
       console.log(`  LABEL ${k}: ${count}`);
     }
@@ -438,7 +626,9 @@ export async function runVerifyPhase(options: VerifyPhaseOptions = {}): Promise<
     if (absentStableCandidates.length > 0) {
       console.log(`  ABSENT-STABLE (F4): ${absentStableCandidates.join(', ')}`);
     }
-    console.log(`VERIFY requests=${accounting.requests} paid=0 tokens=${accounting.tokens} llm-calls=${accounting.llmCalls}`);
+    console.log(
+      `VERIFY requests=${accounting.requests} paid=0 tokens=${accounting.tokens} llm-calls=${accounting.llmCalls}`
+    );
   }
 
   return summary;

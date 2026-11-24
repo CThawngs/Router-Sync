@@ -1,13 +1,16 @@
 /**
  * packages/cli/src/commands/tick.ts
  *
- * Implements `routersync tick` (Round C4a F1):
+ * Implements `routersync tick` (Round C4a F1 + C45-WP3 Real-time Research Loop):
  *  - Single-instance file lock (`<stateDir>/tick.lock`)
  *  - Reads provider keys from connected router DB/config in RAM only (never written to disk)
  *  - Zero-token GET /models scan with ETag/hash + exponential backoff (2m -> 6h, factor 2)
- *  - Catalog diff with grace_cycles (default 2), shrink-guard, and QUOTA/TRANSIENT vs DEAD labels
- *  - Honors autonomy modes: observe | propose (default). `auto-safe` was removed in A8.
- *  - Writes status.json, appends 1 line to tick.log, and (in propose) updates inbox.json
+ *  - Consumes <stateDir>/research-evidence.json (official vs secondary source tiers)
+ *  - Multi-target comparison across router combos + keyed AI coding harnesses (WP1+WP2)
+ *  - Emits <plansDir>/tick-plan.json and 4-trigger <stateDir>/research-queue.json
+ *  - Enforces 10% per-cycle removal shrink cap (`TARGET_REMOVAL_MAX_SHRINK_RATIO = 0.10`)
+ *    and `UNVERIFIABLE != ABSENT` invariant
+ *  - Records `detectionLatencyMs` across tick-plan.json, status.json, and tick.log
  *  - Prints final accounting line: `TICK requests=<n> paid-requests=0 tokens=0 llm-calls=0`
  */
 
@@ -16,28 +19,51 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as os from 'node:os';
 import { acquireLock, releaseLock, readRouterCombos } from '@routersync/daemon';
-import { locateRouterDb, openBetterSqlite3, readRouterModelState, getProviderAliases, sendActionableWebhook, type ActionableWebhookAlert, type RouterModelState, type WebhookDeliveryResult } from '@routersync/core';
+import {
+  atomicWriteFileSync,
+  canonicalizeResearchProvider,
+  getProviderAliases,
+  isPathInsideDir,
+  loadHarnessMatrix,
+  loadResearchEvidence,
+  loadResearchQueue,
+  locateRouterDb,
+  openBetterSqlite3,
+  readRouterModelState,
+  saveResearchEvidence,
+  saveResearchQueue,
+  sendActionableWebhook,
+  verifyProviderSourceDomain,
+  type ActionableWebhookAlert,
+  type ResearchEvidenceRecord,
+  type ResearchQueueFile,
+  type ResearchQueueItem,
+  type ResearchQueueReason,
+  type RouterModelState,
+  type WebhookDeliveryResult,
+} from '@routersync/core';
 import { loadConfigFile } from '../config/loader.js';
 import { buildViews } from './sync/sync-plan.js';
 import { fetchModelList, type ProviderTarget } from '../sync/providers.js';
-import { evaluateAbsentStable } from '../verify/index.js';
-import { runL2Scan } from '../verify/l2-scanner.js';
+import {
+  computeDetectionLatencyMs,
+  enforceTargetShrinkCap,
+  evaluateAbsentStable,
+  isUnverifiableScanState,
+  summarizeDetectionLatencies,
+  type DetectionLatencySummary,
+  type ModelVerificationRecord,
+} from '../verify/index.js';
+import { runL2Scan, PROVIDER_ALIASES } from '../verify/l2-scanner.js';
 import { runL3Scan } from '../verify/l3-scanner.js';
 import { loadRankingConfig } from '../rank/config.js';
 import { isBlacklisted } from '../rank/filters.js';
-import { isLowResource } from '../low-resource.js';
-import { applyLowResourcePriority } from '../low-resource.js';
+import { isLowResource, applyLowResourcePriority } from '../low-resource.js';
 import { providerHasSingleModelGet } from '../verify/gateways.js';
+import { AGENT_APP_ADAPTERS } from '../apps/inspect.js';
 
 export type AutonomyMode = 'observe' | 'propose';
 
-/**
- * C4n/N6: resolve the `--mode` value.
- *
- * An unknown value is refused with a clear message instead of silently
- * becoming 'propose' (which writes into inbox.json). `auto-safe` was removed
- * in A8 and is refused with a message that says so.
- */
 export function resolveAutonomyMode(value: string | undefined): AutonomyMode {
   if (value === undefined || value === null || value === '') return 'propose';
   const normalized = String(value).trim().toLowerCase();
@@ -91,6 +117,7 @@ export interface ProviderCatalogEntry {
   ids: string[];
   absenceCounts: Record<string, number>;
   firstAbsentAt?: Record<string, string> | undefined;
+  firstSeenAt?: Record<string, string> | undefined;
   consecutiveFailures: number;
   backoffUntilMs: number;
   lastStatus: number;
@@ -106,31 +133,45 @@ export interface TickCatalogState {
 }
 
 /**
- * K4.8: decide whether a model is confirmed present in the L1 catalog.
- *
- * A provider scan that failed with 401 or 5xx leaves the catalog STALE: the
- * model list was not confirmed in this cycle. The old list must therefore not
- * produce the label "confirmed alive" - the model stays unverified until a
- * scan succeeds. A 429 (quota) is a different case: the list was not refused
- * by the provider, only throttled, so the previous catalog stays valid.
+ * K4.8 + C45-WP3 (§4.3 UNVERIFIABLE != ABSENT):
+ * Decide whether a model is confirmed present in the L1 catalog.
+ * Unscanned, skipped, 401/403, or 5xx providers NEVER fabricate absenceCount > 0.
+ * Models in grace-period absence (`absenceCounts[modelId] > 0`) report `l1Exists: false`
+ * with their recorded `absenceCount`.
  */
 export function resolveCatalogPresence(
   providerEntry: ProviderCatalogEntry | undefined,
   modelId: string
 ): { l1Exists: boolean; absenceCount: number; scanFailed: boolean } {
   if (!providerEntry) {
-    return { l1Exists: false, absenceCount: 1, scanFailed: false };
+    return { l1Exists: false, absenceCount: 0, scanFailed: true };
+  }
+  if (providerEntry.lastStatus === 429) {
+    const recordedAbsence = providerEntry.absenceCounts[modelId] ?? 0;
+    const l1Exists = recordedAbsence === 0 && providerEntry.ids.includes(modelId);
+    return {
+      l1Exists,
+      absenceCount: recordedAbsence,
+      scanFailed: !l1Exists && providerEntry.ids.length === 0,
+    };
   }
   const scanFailed =
     providerEntry.lastStatus === 0 ||
+    Boolean(
+      providerEntry.skipReason &&
+        providerEntry.skipReason !== 'MIN_INTERVAL_SKIPPED' &&
+        providerEntry.skipReason !== '304_NOT_MODIFIED'
+    ) ||
+    providerEntry.lastLabel === 'SHRINK-GUARD-BLOCKED' ||
     (providerEntry.lastStatus >= 400 && providerEntry.lastStatus !== 429);
   if (scanFailed) {
     return { l1Exists: false, absenceCount: 0, scanFailed: true };
   }
-  const l1Exists = providerEntry.ids.includes(modelId);
+  const recordedAbsence = providerEntry.absenceCounts[modelId] ?? 0;
+  const l1Exists = recordedAbsence === 0 && providerEntry.ids.includes(modelId);
   return {
     l1Exists,
-    absenceCount: providerEntry.absenceCounts[modelId] ?? (l1Exists ? 0 : 1),
+    absenceCount: recordedAbsence > 0 ? recordedAbsence : l1Exists ? 0 : 1,
     scanFailed: false,
   };
 }
@@ -152,6 +193,84 @@ export interface TickInboxItem {
   proposed_by: { kind: 'system'; source: 'tick' };
 }
 
+export interface HarnessProviderTickTarget {
+  providerId: string;
+  models: string[];
+  keyPresent?: boolean | undefined;
+  unverifiable?: boolean | undefined;
+  unverifiableReason?: string | undefined;
+  proxyDelegated?: boolean | undefined;
+}
+
+export interface HarnessTickTarget {
+  harnessId: string;
+  configPath: string;
+  defaultModels?: string[] | undefined;
+  providers: HarnessProviderTickTarget[];
+}
+
+export type BlockedRemovalReason =
+  | 'SECONDARY_SOURCE_ONLY'
+  | 'SHRINK_CAP_EXCEEDED'
+  | 'UNVERIFIABLE_NOT_ABSENT'
+  | 'DEFAULT_SLOT_PROTECTED';
+
+export interface TickActionLatencyFields {
+  sourcePublishedAt: string | null;
+  sourceFirstChangedAt: string | null;
+  planCreatedAt: string;
+  detectionLatencyMs: number | null;
+}
+
+export interface TickRouterPlanAction extends TickActionLatencyFields {
+  targetType: 'router';
+  router: string;
+  comboName: string;
+  provider: string;
+  modelId: string;
+  fullStep: string;
+  action: 'ADD_MODEL' | 'ENABLE_MODEL' | 'REMOVE_MODEL' | 'DEPRECATION_WARNING';
+  reason: string;
+  replacementModelId?: string | null | undefined;
+}
+
+export interface TickHarnessPlanAction extends TickActionLatencyFields {
+  targetType: 'harness';
+  harnessId: string;
+  configPath: string;
+  providerId: string;
+  modelId: string;
+  action: 'ADD_MODEL' | 'REMOVE_MODEL' | 'DEPRECATION_WARNING';
+  reason: string;
+  replacementModelId?: string | null | undefined;
+}
+
+export interface BlockedRemovalRecord {
+  targetType: 'router' | 'harness';
+  targetId: string;
+  provider: string;
+  modelId: string;
+  blockedReason: BlockedRemovalReason;
+  detail: string;
+}
+
+export interface TickPlanFile {
+  version: 1;
+  mode: AutonomyMode;
+  planCreatedAt: string;
+  planHash: string;
+  accounting: {
+    requests: number;
+    paidRequests: 0;
+    tokens: 0;
+    llmCalls: 0;
+  };
+  routerActions: TickRouterPlanAction[];
+  harnessActions: TickHarnessPlanAction[];
+  blockedRemovals: BlockedRemovalRecord[];
+  detectionLatency: DetectionLatencySummary;
+}
+
 export interface TickCommandOptions {
   configPath?: string | undefined;
   mode?: AutonomyMode | string | undefined;
@@ -163,6 +282,9 @@ export interface TickCommandOptions {
   toast?: boolean | undefined;
   json?: boolean | undefined;
   stateDir?: string | undefined;
+  plansDir?: string | undefined;
+  homeDir?: string | undefined;
+  harnessTargets?: HarnessTickTarget[] | undefined;
   nowMs?: number | undefined;
   fetchFn?: typeof globalThis.fetch | undefined;
   disabledModels?: Set<string> | undefined;
@@ -183,6 +305,8 @@ export interface TickRunSummary {
   unchangedProviders: number;
   backoffSkipped: number;
   inboxAdded: number;
+  researchQueueCount?: number;
+  detectionLatency?: DetectionLatencySummary;
   providers: Array<{
     prefix: string;
     label: ProviderHealthLabel;
@@ -195,14 +319,7 @@ export interface TickRunSummary {
     deadConfirmed: string[];
     backoffSec: number;
   }>;
-  // G2: shrink-block reasons per provider from evaluateAbsentStable
   shrinkBlockReasons?: Record<string, string[]>;
-  /**
-   * C4n/N6: models that went missing but are used by NO combo.
-   *
-   * They are reported here instead of becoming inbox proposals, because there
-   * is nothing to remove from a combo.
-   */
   absentNotInCombo?: Record<string, string[]>;
   webhookDelivery?: WebhookDeliveryResult | undefined;
 }
@@ -233,6 +350,94 @@ export function classifyFailureLabel(status: number, error?: string): ProviderHe
 function hashIds(ids: readonly string[]): string {
   const sorted = [...ids].sort();
   return createHash('sha256').update(JSON.stringify(sorted)).digest('hex').slice(0, 16);
+}
+
+function normalizeModelKey(modelId: string): string {
+  return modelId.toLowerCase().replace(/[^a-z0-9]/g, '');
+}
+
+function selectNewestEvidence(records: ResearchEvidenceRecord[]): ResearchEvidenceRecord | undefined {
+  if (records.length === 0) return undefined;
+  return [...records].sort((a, b) => Date.parse(b.submittedAt) - Date.parse(a.submittedAt))[0];
+}
+
+function isOfficialUrlForProvider(provider: string, rawUrl: string | undefined): boolean {
+  if (!rawUrl) return false;
+  try {
+    return verifyProviderSourceDomain(provider, rawUrl).isOfficial;
+  } catch {
+    return false;
+  }
+}
+
+async function discoverLocalHarnessTargets(
+  stateDir: string,
+  options: TickCommandOptions
+): Promise<HarnessTickTarget[]> {
+  if (options.harnessTargets !== undefined) {
+    return options.harnessTargets;
+  }
+
+  const envSource = options.env ?? process.env;
+  const tmpRoot = os.tmpdir();
+  const stateInTmp = isPathInsideDir(stateDir, tmpRoot);
+  const effectiveHomeDir =
+    options.homeDir ??
+    envSource['ROUTERSYNC_HOME'] ??
+    (stateInTmp ? path.join(stateDir, '__isolated_home__') : os.homedir());
+
+  if (!fs.existsSync(effectiveHomeDir)) {
+    return [];
+  }
+
+  let tierOneIds = new Set<string>();
+  try {
+    const matrix = loadHarnessMatrix();
+    for (const h of matrix.harnesses) {
+      if (h.tier === 'A') {
+        tierOneIds.add(h.id);
+      }
+    }
+  } catch {
+    tierOneIds = new Set(['hermes', 'opencode', 'dsh', 'openmausbot']);
+  }
+
+  const discovered: HarnessTickTarget[] = [];
+  for (const adapter of AGENT_APP_ADAPTERS) {
+    if (!tierOneIds.has(adapter.app)) continue;
+    try {
+      const inspection = await adapter.inspect({ homeDir: effectiveHomeDir });
+      const directProviders: HarnessProviderTickTarget[] = [];
+      for (const prov of inspection.providers) {
+        if (prov.kind === 'router') {
+          continue; // WP2 PROXY_DELEGATED rule: skip local router proxy entries
+        }
+        const provModels = inspection.models
+          .filter((m) => m.provider === prov.id)
+          .map((m) => m.id);
+        if (provModels.length === 0) continue;
+        directProviders.push({
+          providerId: prov.id,
+          models: provModels,
+          keyPresent: prov.keyPresent,
+          unverifiable: prov.kind === 'unknown' && !prov.keyPresent,
+          unverifiableReason: prov.kind === 'unknown' && !prov.keyPresent ? 'UNVERIFIABLE' : undefined,
+        });
+      }
+      if (directProviders.length > 0) {
+        discovered.push({
+          harnessId: inspection.app,
+          configPath: inspection.configPath,
+          defaultModels: inspection.activeModel !== 'UNKNOWN' ? [inspection.activeModel] : [],
+          providers: directProviders,
+        });
+      }
+    } catch {
+      // Uninstalled or unreadable harness config: safely ignore in Tier 0 tick
+    }
+  }
+
+  return discovered;
 }
 
 export function loadCatalogState(filePath: string): TickCatalogState {
@@ -304,8 +509,6 @@ export function loadAllRouterCombos(): Array<{ name: string; router: string; mod
 
 export function loadRouterDisabledModels(env?: NodeJS.ProcessEnv): Set<string> {
   const disabled = new Set<string>();
-  // U3: OmniRoute does not store disabled models in kv (deprecated is metadata, not disabled).
-  // Only 9Router has explicit user/router disabledModels kv scope.
   for (const r of ['9router'] as const) {
     try {
       const dbPath = locateRouterDb(r, env);
@@ -361,7 +564,6 @@ export function resolveModelTier(
   if (routerState) {
     const classification = routerState.classify(prefix, modelId);
     if (classification.inconsistent) {
-      // Inconsistent models (e.g. in combo but not available in router UI) must NOT produce proposals
       return 'UNKNOWN';
     }
     return classification.tier;
@@ -375,11 +577,7 @@ export function resolveModelTier(
 }
 
 export async function runTickCommand(options: TickCommandOptions = {}): Promise<TickRunSummary> {
-  // C14 (d): lower our OS priority on resource-constrained machines.
   applyLowResourcePriority();
-  // A8: Only observe and propose in v0.1 (auto-safe removed)
-  // C4n/N6: an unknown --mode is REFUSED, not silently treated as 'propose'.
-  // C4o/O5 & C4p/P3: Validate options at top of function before touching disk or acquiring lock.
   const requestedMode = resolveAutonomyMode(options.mode);
   const effectiveMode: AutonomyMode = requestedMode;
   const graceCycles = validateGraceCycles(options.graceCycles);
@@ -397,21 +595,20 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
   try {
     const nowMs = options.nowMs ?? Date.now();
     const nowIso = new Date(nowMs).toISOString();
+    const resolvedPlansDir = options.plansDir ?? path.join(sDir, 'plans');
 
-    // C4o/O1: loadConfigFile FIRST so configured router database paths are
-    // installed before collectUsedComboSteps and loadAllRouterCombos read the
-    // router databases. In a fresh process (e.g. scheduled tick run), this
-    // ensures the combos are read from the configured database, not the default.
     const { config } = loadConfigFile(options.configPath);
 
     const catalogPath = path.join(sDir, 'tick-catalog.json');
     const statusPath = path.join(sDir, 'status.json');
     const tickLogPath = path.join(sDir, 'tick.log');
     const inboxPath = path.join(sDir, 'inbox.json');
+    const tickPlanPath = path.join(resolvedPlansDir, 'tick-plan.json');
 
     const catalogState = loadCatalogState(catalogPath);
     const usedSteps = collectUsedComboSteps();
     const allCombos = loadAllRouterCombos();
+    const harnessTargets = await discoverLocalHarnessTargets(sDir, options);
     const disabledModels = options.disabledModels ?? loadRouterDisabledModels(options.env);
 
     const routerStateByRouter = new Map<string, RouterModelState>();
@@ -444,7 +641,6 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
       return routerStateByRouter.get(norm);
     }
 
-    // Load provider targets from connected routers (keys kept in RAM only)
     const views = await buildViews(config, 'all');
     const targets: Array<ProviderTarget & { router: string }> = [];
     const seen = new Set<string>();
@@ -462,24 +658,16 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
     let backoffSkipped = 0;
     const providerSummaries: TickRunSummary['providers'] = [];
     const newInboxCandidates: TickInboxItem[] = [];
-    // G3b: track real added IDs per provider for scoped isAdded checks
     const addedByPrefix = new Map<string, Set<string>>();
-    // G2: persist evaluateAbsentStable shrink-block reasons per provider
     const shrinkBlockReasons = new Map<string, string[]>();
-    // C4n/N6: models that went missing but are used by NO combo. They are
-    // reported in status.json instead of becoming inbox proposals.
     const absentNotInCombo = new Map<string, string[]>();
 
-    // G3a: load blacklist once for NEW-CANDIDATE filtering.
-    // The tick never writes using the ranking policy, so it must not print the
-    // "missing ranking.yaml" banner on every run.
     let blacklistPatterns: string[] = [];
     let blacklistEmptyLogged = false;
     try {
-      const { config } = loadRankingConfig(undefined, { quiet: true });
-      blacklistPatterns = config.blacklist ?? [];
+      const { config: rankCfg } = loadRankingConfig(undefined, { quiet: true });
+      blacklistPatterns = rankCfg.blacklist ?? [];
     } catch {
-      // If ranking config cannot be loaded, proceed with empty blacklist
       blacklistPatterns = [];
     }
 
@@ -487,6 +675,24 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
       const prev = catalogState.providers[t.prefix];
 
       if (t.skipReason || !t.baseUrl) {
+        // C45-WP3 §4.3: Skipped/unverifiable provider NEVER increments absenceCounts
+        catalogState.providers[t.prefix] = {
+          prefix: t.prefix,
+          router: t.router,
+          contentHash: prev?.contentHash ?? prev?.hash ?? '',
+          serverEtag: prev?.serverEtag ?? null,
+          hash: prev?.hash ?? '',
+          ids: prev?.ids ?? [],
+          absenceCounts: prev?.absenceCounts ?? {},
+          firstAbsentAt: prev?.firstAbsentAt,
+          firstSeenAt: prev?.firstSeenAt,
+          consecutiveFailures: prev?.consecutiveFailures ?? 0,
+          backoffUntilMs: prev?.backoffUntilMs ?? 0,
+          lastStatus: 0,
+          lastLabel: 'SKIPPED',
+          skipReason: t.skipReason ?? (t.baseUrl ? undefined : 'missing-base-url'),
+          updatedAt: prev?.updatedAt ?? nowIso,
+        };
         providerSummaries.push({
           prefix: t.prefix,
           label: 'SKIPPED',
@@ -520,7 +726,6 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
         continue;
       }
 
-      // ETag/hash cache freshness gate: skip redundant GET when hash was verified within minScanIntervalMs (default 15m)
       const minScanIntervalMs = options.minScanIntervalMs ?? 15 * 60 * 1000;
       const prevUpdatedMs = prev?.updatedAt ? Date.parse(prev.updatedAt) : 0;
       if (
@@ -582,7 +787,6 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
         const backoffMs = computeBackoffMs(failures);
         const backoffSec = Math.round(backoffMs / 1000);
 
-        // A9: Alert in inbox for 401/403 AUTH_ERROR
         if (failLabel === 'AUTH_ERROR') {
           newInboxCandidates.push({
             id: `auth-error-${t.prefix}-${outcome.status}`,
@@ -605,6 +809,7 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
           ids: prev?.ids ?? [],
           absenceCounts: prev?.absenceCounts ?? {},
           firstAbsentAt: prev?.firstAbsentAt,
+          firstSeenAt: prev?.firstSeenAt,
           consecutiveFailures: failures,
           backoffUntilMs: nowMs + backoffMs,
           lastStatus: outcome.status,
@@ -655,8 +860,13 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
 
       const fetchedIds = [...new Set(outcome.models)].sort();
       const nextHash = hashIds(fetchedIds);
+      const nextFirstSeenAt: Record<string, string> = { ...(prev?.firstSeenAt ?? {}) };
+      for (const id of fetchedIds) {
+        if (!nextFirstSeenAt[id]) {
+          nextFirstSeenAt[id] = nowIso;
+        }
+      }
 
-      // Unchanged hash & no pending absence cycles -> zero work
       if (prev && (prev.contentHash ?? prev.hash) === nextHash && Object.keys(prev.absenceCounts ?? {}).length === 0) {
         unchangedProviders++;
         catalogState.providers[t.prefix] = {
@@ -665,6 +875,7 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
           contentHash: nextHash,
           serverEtag: outcome.serverEtag ?? prev.serverEtag ?? null,
           hash: nextHash,
+          firstSeenAt: nextFirstSeenAt,
           consecutiveFailures: 0,
           backoffUntilMs: 0,
           lastStatus: outcome.status,
@@ -685,7 +896,6 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
         continue;
       }
 
-      // Shrink-guard check when baseline exists
       const prevIds = prev?.ids ?? [];
       if (prevIds.length >= 5) {
         const dropRatio = (prevIds.length - fetchedIds.length) / prevIds.length;
@@ -710,6 +920,7 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
             ids: prevIds,
             absenceCounts: prev?.absenceCounts ?? {},
             firstAbsentAt: prev?.firstAbsentAt,
+            firstSeenAt: prev?.firstSeenAt,
             consecutiveFailures: 0,
             backoffUntilMs: 0,
             lastStatus: outcome.status,
@@ -753,10 +964,10 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
         const fullStep = `${t.prefix}/${id}`;
         const firstAbsentIso = nextFirstAbsentAt[id];
         const absentDurationMs = firstAbsentIso ? nowMs - Date.parse(firstAbsentIso) : 0;
-        // B6: prune absent > 7 days if not in combos
         if (absentDurationMs > 7 * 24 * 3600 * 1000 && !usedSteps.has(fullStep)) {
           delete nextFirstAbsentAt[id];
           delete nextAbsence[id];
+          delete nextFirstSeenAt[id];
           continue;
         }
 
@@ -764,7 +975,6 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
           nextFirstAbsentAt[id] = nowIso;
         }
         const count = (prev?.absenceCounts?.[id] ?? 0) + 1;
-        // A7: retain absenceCounts past graceCycles so absenceCount >= 3 is preserved for F4
         nextAbsence[id] = count;
         if (count < graceCycles) {
           graceAbsent.push(id);
@@ -774,7 +984,11 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
       }
 
       const effectiveIds = [...new Set([...fetchedIds, ...graceAbsent])].sort();
-      const didChange = !prev || (prev.contentHash ?? prev.hash) !== nextHash || deadConfirmed.length > 0 || added.length > 0;
+      const didChange =
+        !prev ||
+        (prev.contentHash ?? prev.hash) !== nextHash ||
+        deadConfirmed.length > 0 ||
+        added.length > 0;
       if (didChange) changedProviders++;
       else unchangedProviders++;
 
@@ -787,6 +1001,7 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
         ids: effectiveIds,
         absenceCounts: nextAbsence,
         firstAbsentAt: nextFirstAbsentAt,
+        firstSeenAt: nextFirstSeenAt,
         consecutiveFailures: 0,
         backoffUntilMs: 0,
         lastStatus: outcome.status,
@@ -794,19 +1009,13 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
         updatedAt: nowIso,
       };
 
-      // C4t: On first scan (prevIds empty), evaluate all fetchedIds as candidates against router state.
-      // On subsequent scans, evaluate newly added IDs.
       const candidateModels = prevIds.length === 0 ? fetchedIds : added;
-
       if (candidateModels.length > 0) {
-        // G3a: print BLACKLIST=none once when blacklist is empty
         if (blacklistPatterns.length === 0 && !blacklistEmptyLogged) {
           console.log('BLACKLIST=none');
           blacklistEmptyLogged = true;
         }
 
-        // G3a: only ids that survive the blacklist become proposals, so the
-        // summary item never mentions a blacklisted id.
         const allowedCandidates = candidateModels.filter(
           (candidateId) =>
             !isBlacklisted(candidateId, blacklistPatterns) &&
@@ -814,12 +1023,6 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
         );
 
         const rState = getRouterStateFor(t.router);
-
-        // Tier classification for additions (C4s / C4t):
-        // - Tier A: skip (already active in router / in combo)
-        // - UNKNOWN: skip (unverified router state)
-        // - Tier B: propose ENABLE_MODEL
-        // - Tier C: propose ADD_MODEL
         const tierCModels = allowedCandidates.filter(
           (id) => resolveModelTier(t.prefix, id, usedSteps, disabledModels, rState) === 'C'
         );
@@ -827,7 +1030,6 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
           (id) => resolveModelTier(t.prefix, id, usedSteps, disabledModels, rState) === 'B'
         );
 
-        // Tier C: propose ADD_MODEL
         if (tierCModels.length > 0) {
           newInboxCandidates.push({
             id: `new-candidate-${t.prefix}-${nextHash}`,
@@ -844,7 +1046,6 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
           });
         }
 
-        // Tier B: propose ENABLE_MODEL
         if (tierBModels.length > 0) {
           newInboxCandidates.push({
             id: `enable-candidate-${t.prefix}-${nextHash}`,
@@ -861,10 +1062,9 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
           });
         }
 
-        // F5: Propose adding new or enabling models in matching combos (for delta additions when prevIds > 0)
-        for (const addedId of (prevIds.length > 0 ? allowedCandidates : [])) {
+        for (const addedId of prevIds.length > 0 ? allowedCandidates : []) {
           const tier = resolveModelTier(t.prefix, addedId, usedSteps, disabledModels, rState);
-          if (tier === 'A' || tier === 'UNKNOWN') continue; // Skip Tier A and UNKNOWN
+          if (tier === 'A' || tier === 'UNKNOWN') continue;
 
           const fullStep = `${t.prefix}/${addedId}`;
           const isTierB = tier === 'B';
@@ -895,8 +1095,6 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
 
       for (const deadId of deadConfirmed) {
         const fullStep = `${t.prefix}/${deadId}`;
-
-        // C4s / C4t: Prevent REMOVE_MODEL on Tier C or UNKNOWN (unconfigured in router)
         const rState = getRouterStateFor(t.router);
         const deadTier = resolveModelTier(t.prefix, deadId, usedSteps, disabledModels, rState);
         if (deadTier === 'C' || deadTier === 'UNKNOWN') {
@@ -909,7 +1107,6 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
         const count = nextAbsence[deadId] ?? ((prev?.absenceCounts?.[deadId] ?? 0) + 1);
         const firstAbsentMs = nextFirstAbsentAt[deadId] ? Date.parse(nextFirstAbsentAt[deadId]) : nowMs;
 
-        // A7: Calculate real comboStepCount and dropCount for combos using this step
         const matchingCombos = allCombos.filter((c) => c.models.includes(fullStep));
         let comboStepCount = 1;
         let dropCount = 1;
@@ -923,7 +1120,6 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
           }).length;
         }
 
-        // F4: Gateway without single-model GET (read from registry/gateways.yaml)
         const isUnsupportedGateway = !providerHasSingleModelGet(t.prefix);
         if (isUnsupportedGateway) {
           const asCheck = evaluateAbsentStable({
@@ -955,7 +1151,6 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
             });
             continue;
           }
-          // G2: persist evaluateAbsentStable shrink-block reasons for status.json/tick.log
           if (asCheck.reasons.length > 0) {
             const existing = shrinkBlockReasons.get(t.prefix) ?? [];
             existing.push(`${deadId}: ${asCheck.reasons.join('; ')}`);
@@ -963,16 +1158,7 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
           }
         }
 
-        // C4n/N6: only a step that is actually USED in a combo becomes an
-        // inbox proposal.
-        //
-        // The old condition was `usedSteps.has(fullStep) || prevIds.includes(deadId)`.
-        // `deadConfirmed` is built from `prevIds`, so the second half was always
-        // true and every model that went missing produced a proposal — even
-        // models no combo uses. Those are now recorded in status.json
-        // (`absentNotInCombo`) instead of filling the owner's inbox.
         if (usedSteps.has(fullStep)) {
-          // B6: prune hash from absent-unconfirmed-... inbox IDs
           newInboxCandidates.push({
             id: `absent-unconfirmed-${t.prefix}-${deadId}`,
             title: `${fullStep}: ABSENT-UNCONFIRMED (vắng >= ${graceCycles} chu kỳ, chưa có GET đơn lẻ)`,
@@ -987,8 +1173,6 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
             proposed_by: { kind: 'system', source: 'tick' },
           });
         } else {
-          // Missing but referenced by no combo: nothing to remove, so no
-          // proposal. It is still reported so the owner can see it.
           const notInCombo = absentNotInCombo.get(t.prefix) ?? [];
           notInCombo.push(fullStep);
           absentNotInCombo.set(t.prefix, notInCombo);
@@ -1009,20 +1193,37 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
     }
 
     catalogState.updatedAt = nowIso;
-    fs.writeFileSync(catalogPath, JSON.stringify(catalogState, null, 2), 'utf8');
+    atomicWriteFileSync(catalogPath, JSON.stringify(catalogState, null, 2));
 
     // A3: Run L2 (1h TTL) and L3 (24h TTL) scans and aggregate requests into unified accounting
     const l2Res = await runL2Scan({ stateDir: sDir, nowMs, fetchFn: options.fetchFn });
     const l3Res = await runL3Scan({ stateDir: sDir, nowMs, fetchFn: options.fetchFn });
     let totalRequests = requests + l2Res.requests + l3Res.requests;
 
-    // B2: Execute verify phase at cycle end without additional network requests, persist verify-status.json
+    // C45-WP3 §3.1: Load research-evidence.json and join with L1/L2/L3 verification
+    const evidenceRecords = loadResearchEvidence(sDir);
+    const matchedEvidenceRecordIds = new Set<string>();
+
+    const verifyRecordsByStep = new Map<string, ModelVerificationRecord>();
     try {
       const { runVerifyPhase } = await import('../verify/verifier.js');
       const targetSteps = new Set<string>();
       for (const c of allCombos) {
         for (const m of c.models) targetSteps.add(m);
       }
+      for (const ht of harnessTargets) {
+        for (const hp of ht.providers) {
+          for (const m of hp.models) {
+            targetSteps.add(`${hp.providerId}/${m}`);
+          }
+        }
+      }
+      for (const [prefix, addedSet] of addedByPrefix.entries()) {
+        for (const addedId of addedSet) {
+          targetSteps.add(`${prefix}/${addedId}`);
+        }
+      }
+
       const realModels: Array<{
         id: string;
         prefix: string;
@@ -1041,11 +1242,18 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
         const prefix = slashIdx !== -1 ? step.slice(0, slashIdx) : 'unknown';
         const id = slashIdx !== -1 ? step.slice(slashIdx + 1) : step;
         const provEntry = catalogState.providers[prefix];
-        const isUnscanned = !provEntry || Boolean(provEntry.skipReason);
-        const unscannedReason = provEntry?.skipReason ?? (!provEntry ? 'chưa-quét' : undefined);
+        const isSkippedScan =
+          !provEntry ||
+          (Boolean(provEntry.skipReason) &&
+            provEntry.skipReason !== 'MIN_INTERVAL_SKIPPED' &&
+            provEntry.skipReason !== '304_NOT_MODIFIED' &&
+            provEntry.lastStatus === 0);
+        const unscannedReason = isSkippedScan
+          ? (provEntry?.skipReason ?? (!provEntry ? 'chưa-quét' : undefined))
+          : undefined;
         const presence = resolveCatalogPresence(provEntry, id);
         const l1Exists = presence.l1Exists;
-        const l1Status = provEntry ? provEntry.lastStatus : (isUnscanned ? 0 : (l1Exists ? 200 : 404));
+        const l1Status = provEntry ? provEntry.lastStatus : 0;
         const absenceCount = presence.absenceCount;
         const firstAbsentAt = provEntry?.firstAbsentAt?.[id];
         const firstAbsentAtMs = firstAbsentAt ? Date.parse(firstAbsentAt) : undefined;
@@ -1060,7 +1268,7 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
           firstAbsentAtMs,
           lastSeenAt: provEntry?.updatedAt,
           isAdded,
-          isUnscanned,
+          isUnscanned: isSkippedScan,
           unscannedReason,
         });
       }
@@ -1070,18 +1278,25 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
         nowMs,
         models: realModels,
         combos: allCombos,
+        evidenceRecords,
         fetchFn: options.fetchFn,
         silent: true,
       });
       totalRequests += verifySummary.accounting?.requests ?? 0;
 
-      // Alert inbox by provider/model/nhãn for actionable items (E8)
+      for (const rec of verifySummary.records) {
+        verifyRecordsByStep.set(rec.fullStep, rec);
+      }
+
       const alertLabels = new Set(['NGHI-NGỪNG', 'SẮP-NGỪNG', 'ĐÃ-XÁC-NHẬN-NGỪNG', 'CHƯA-XÁC-MINH']);
       for (const rec of verifySummary.records) {
+        if (!usedSteps.has(rec.fullStep)) continue;
         const isActionable =
           rec.label === 'ĐÃ-XÁC-NHẬN-NGỪNG' ||
           rec.label === 'SẮP-NGỪNG' ||
-          ((rec.label === 'NGHI-NGỪNG' || rec.label === 'CHƯA-XÁC-MINH') && !rec.unscannedReason && (rec.l1.absenceCount ?? 0) >= 2);
+          ((rec.label === 'NGHI-NGỪNG' || rec.label === 'CHƯA-XÁC-MINH') &&
+            !rec.unscannedReason &&
+            (rec.l1.absenceCount ?? 0) >= 2);
 
         if (alertLabels.has(rec.label) && isActionable) {
           newInboxCandidates.push({
@@ -1100,6 +1315,833 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
       // Non-fatal verify phase error
     }
 
+    // Helper: lookup matching submitted evidence records for (prefix, modelId)
+    function findEvidenceForModel(prefix: string, modelId: string): {
+      official?: ResearchEvidenceRecord | undefined;
+      secondary?: ResearchEvidenceRecord | undefined;
+      all: ResearchEvidenceRecord[];
+    } {
+      const canon = canonicalizeResearchProvider(prefix);
+      const fullStep = `${prefix}/${modelId}`;
+      const matched = evidenceRecords.filter(
+        (ev) => ev.id === fullStep || (ev.provider === canon && ev.modelId === modelId)
+      );
+      for (const ev of matched) {
+        matchedEvidenceRecordIds.add(ev.recordId);
+      }
+      return {
+        official: selectNewestEvidence(
+          matched.filter((ev) => ev.sourceTier === 'official' && ev.domainVerified)
+        ),
+        secondary: selectNewestEvidence(matched.filter((ev) => ev.sourceTier === 'secondary')),
+        all: matched,
+      };
+    }
+
+    // Helper: evaluate WP3 Part 4 removal eligibility for one (prefix, modelId)
+    function checkRemovalEligibility(
+      prefix: string,
+      modelId: string,
+      opts: { explicitUnverifiable?: boolean | undefined } = {}
+    ): {
+      eligible: boolean;
+      blockedReason?: BlockedRemovalReason | undefined;
+      reason: string;
+      sourcePublishedAt: string | null;
+      sourceFirstChangedAt: string | null;
+      replacementModelId: string | null;
+    } {
+      const provEntry = catalogState.providers[prefix];
+      const ev = findEvidenceForModel(prefix, modelId);
+      const fullStep = `${prefix}/${modelId}`;
+      const verifyRec = verifyRecordsByStep.get(fullStep);
+
+      const providerScanUnverifiable =
+        Boolean(opts.explicitUnverifiable) ||
+        !provEntry ||
+        provEntry.lastStatus === 0 ||
+        (provEntry.lastStatus >= 400 && provEntry.lastStatus !== 404) ||
+        isUnverifiableScanState(provEntry.lastLabel) ||
+        Boolean(
+          provEntry.skipReason &&
+            provEntry.skipReason !== 'MIN_INTERVAL_SKIPPED' &&
+            provEntry.skipReason !== '304_NOT_MODIFIED'
+        );
+
+      // §4.3 Hard UNVERIFIABLE != ABSENT guard
+      if (providerScanUnverifiable) {
+        return {
+          eligible: false,
+          blockedReason: ev.secondary?.verdict === 'deprecated' ? 'UNVERIFIABLE_NOT_ABSENT' : undefined,
+          reason: 'UNVERIFIABLE_NOT_ABSENT',
+          sourcePublishedAt: null,
+          sourceFirstChangedAt: null,
+          replacementModelId: null,
+        };
+      }
+
+      const firstAbsentAt = provEntry?.firstAbsentAt?.[modelId] ?? null;
+
+      // Path 1a: Verified official deprecation evidence in research-evidence.json
+      if (ev.official && ev.official.verdict === 'deprecated') {
+        const shutdownMs = ev.official.shutdownDate ? Date.parse(ev.official.shutdownDate) : null;
+        if (shutdownMs === null || (Number.isFinite(shutdownMs) && shutdownMs <= nowMs)) {
+          return {
+            eligible: true,
+            reason: `OFFICIAL_DEPRECATION (${ev.official.url})`,
+            sourcePublishedAt: ev.official.publishedAt ?? ev.official.shutdownDate ?? null,
+            sourceFirstChangedAt: firstAbsentAt,
+            replacementModelId: ev.official.replacementModelId ?? null,
+          };
+        }
+      }
+
+      // Path 1b: Official vendor L3 deprecation + absenceCount >= 2
+      if (
+        verifyRec &&
+        verifyRec.label === 'ĐÃ-XÁC-NHẬN-NGỪNG' &&
+        (verifyRec.l1.absenceCount ?? 0) >= 2 &&
+        isOfficialUrlForProvider(prefix, verifyRec.l3.url)
+      ) {
+        const shutdownMs = verifyRec.l3.noticeDate ? Date.parse(verifyRec.l3.noticeDate) : null;
+        if (shutdownMs === null || (Number.isFinite(shutdownMs) && shutdownMs <= nowMs)) {
+          return {
+            eligible: true,
+            reason: `OFFICIAL_L3_DEPRECATION (${verifyRec.l3.url ?? 'l3'})`,
+            sourcePublishedAt: verifyRec.l3.noticeDate ?? null,
+            sourceFirstChangedAt: firstAbsentAt,
+            replacementModelId: null,
+          };
+        }
+      }
+
+      // Path 2: Multi-cycle ABSENT-STABLE (absenceCount >= 3, >= 24h, not in L2)
+      const presence = resolveCatalogPresence(provEntry, modelId);
+      if (!presence.l1Exists && presence.absenceCount >= 3 && firstAbsentAt) {
+        const firstAbsentMs = Date.parse(firstAbsentAt);
+        const l2Exists = Boolean(verifyRec?.l2.exists);
+        const providerCovered = Boolean(
+          verifyRec?.flags.includes('CÒN-Ở-NGUỒN-NGOÀI') || l2Exists
+        );
+        const baseAsCheck = evaluateAbsentStable({
+          id: modelId,
+          prefix,
+          absenceCount: presence.absenceCount,
+          firstAbsentAtMs: Number.isFinite(firstAbsentMs) ? firstAbsentMs : nowMs,
+          nowMs,
+          lastLabel: provEntry.lastLabel,
+          l2ExternalExists: l2Exists,
+          providerCoveredByExternal: providerCovered,
+          comboStepCount: 10, // per-target shrink cap checked uniformly below
+          dropCount: 1,
+        });
+        if (baseAsCheck.isAbsentStable) {
+          return {
+            eligible: true,
+            reason: `ABSENT_STABLE (absenceCount=${presence.absenceCount})`,
+            sourcePublishedAt: verifyRec?.l3.noticeDate ?? null,
+            sourceFirstChangedAt: firstAbsentAt,
+            replacementModelId: null,
+          };
+        }
+      }
+
+      // Explicit Prohibition (§4.1): secondary-only deprecation NEVER removes
+      if (ev.secondary && ev.secondary.verdict === 'deprecated') {
+        return {
+          eligible: false,
+          blockedReason: 'SECONDARY_SOURCE_ONLY',
+          reason: `Secondary source (${ev.secondary.url}) cannot authorize model removal without official domain confirmation.`,
+          sourcePublishedAt: ev.secondary.publishedAt ?? null,
+          sourceFirstChangedAt: firstAbsentAt,
+          replacementModelId: ev.secondary.replacementModelId ?? null,
+        };
+      }
+
+      return {
+        eligible: false,
+        reason: 'NOT_DEPRECATED_OR_ABSENT_STABLE',
+        sourcePublishedAt: null,
+        sourceFirstChangedAt: null,
+        replacementModelId: null,
+      };
+    }
+
+    // C45-WP3 §3.2 & §4.2: Multi-Target Plan Generation (Routers + Keyed Harnesses)
+    const routerActions: TickRouterPlanAction[] = [];
+    const harnessActions: TickHarnessPlanAction[] = [];
+    const blockedRemovals: BlockedRemovalRecord[] = [];
+
+    // 1) Evaluate Router Combos
+    for (const combo of allCombos) {
+      const targetId = `${combo.router}/${combo.name}`;
+      const eligibleInCombo: Array<{
+        prefix: string;
+        modelId: string;
+        fullStep: string;
+        reason: string;
+        sourcePublishedAt: string | null;
+        sourceFirstChangedAt: string | null;
+        replacementModelId: string | null;
+      }> = [];
+
+      for (const fullStep of combo.models) {
+        const slashIdx = fullStep.indexOf('/');
+        if (slashIdx <= 0 || slashIdx >= fullStep.length - 1) continue;
+        const prefix = fullStep.slice(0, slashIdx);
+        const modelId = fullStep.slice(slashIdx + 1);
+
+        const check = checkRemovalEligibility(prefix, modelId);
+        if (check.eligible) {
+          eligibleInCombo.push({
+            prefix,
+            modelId,
+            fullStep,
+            reason: check.reason,
+            sourcePublishedAt: check.sourcePublishedAt,
+            sourceFirstChangedAt: check.sourceFirstChangedAt,
+            replacementModelId: check.replacementModelId,
+          });
+        } else if (check.blockedReason) {
+          blockedRemovals.push({
+            targetType: 'router',
+            targetId,
+            provider: prefix,
+            modelId,
+            blockedReason: check.blockedReason,
+            detail: check.reason,
+          });
+        }
+      }
+
+      if (eligibleInCombo.length > 0) {
+        const capCheck = enforceTargetShrinkCap(
+          'router',
+          combo.models.length,
+          eligibleInCombo.length
+        );
+        if (!capCheck.allowed) {
+          for (const rem of eligibleInCombo) {
+            blockedRemovals.push({
+              targetType: 'router',
+              targetId,
+              provider: rem.prefix,
+              modelId: rem.modelId,
+              blockedReason: 'SHRINK_CAP_EXCEEDED',
+              detail: capCheck.reason ?? 'Router combo shrink > 10%',
+            });
+            const existingReasons = shrinkBlockReasons.get(rem.prefix) ?? [];
+            existingReasons.push(`${rem.modelId}: Hạn mức co rút (${capCheck.reason ?? '> 10%'})`);
+            shrinkBlockReasons.set(rem.prefix, existingReasons);
+          }
+          newInboxCandidates.push({
+            id: `shrink-guard-router-${combo.router}-${combo.name}`,
+            title: `[SHRINK-GUARD] Router combo ${combo.name} vượt hạn mức gỡ 10% (${eligibleInCombo.length}/${combo.models.length})`,
+            type: 'warning',
+            timestamp: nowIso,
+            body: `Đã chặn tự động gỡ ${eligibleInCombo.length}/${combo.models.length} model trong combo ${combo.name} (${capCheck.reason}). Cần chủ sở hữu duyệt thủ công.`,
+            provider: eligibleInCombo[0]!.prefix,
+            label: 'SHRINK-GUARD',
+            proposed_by: { kind: 'system', source: 'tick' },
+          });
+        } else {
+          for (const rem of eligibleInCombo) {
+            const latencyMs = computeDetectionLatencyMs({
+              planCreatedAt: nowIso,
+              sourcePublishedAt: rem.sourcePublishedAt,
+              sourceFirstChangedAt: rem.sourceFirstChangedAt,
+            });
+            routerActions.push({
+              targetType: 'router',
+              router: combo.router,
+              comboName: combo.name,
+              provider: rem.prefix,
+              modelId: rem.modelId,
+              fullStep: rem.fullStep,
+              action: 'REMOVE_MODEL',
+              reason: rem.reason,
+              replacementModelId: rem.replacementModelId,
+              sourcePublishedAt: rem.sourcePublishedAt,
+              sourceFirstChangedAt: rem.sourceFirstChangedAt,
+              planCreatedAt: nowIso,
+              detectionLatencyMs: latencyMs,
+            });
+
+            const alreadyProposed = newInboxCandidates.some(
+              (item) =>
+                item.action === 'REMOVE_MODEL' &&
+                item.provider === rem.prefix &&
+                item.modelId === rem.modelId
+            );
+            if (!alreadyProposed) {
+              newInboxCandidates.push({
+                id: `official-deprecated-${combo.name}-${rem.prefix}-${rem.modelId}`,
+                title: `[ĐÃ-XÁC-NHẬN-NGỪNG] Đề xuất gỡ ${rem.fullStep} khỏi combo ${combo.name}`,
+                type: 'proposal',
+                timestamp: nowIso,
+                body: `Model ${rem.fullStep} đủ điều kiện gỡ an toàn (${rem.reason}; co rút 1/${combo.models.length} <= 10%).`,
+                provider: rem.prefix,
+                modelId: rem.modelId,
+                action: 'REMOVE_MODEL',
+                targetTier: 'B',
+                label: 'ĐÃ-XÁC-NHẬN-NGỪNG',
+                proposed_by: { kind: 'system', source: 'tick' },
+              });
+            }
+          }
+        }
+      }
+
+      // Router ADD_MODEL plan actions for newly discovered non-blacklisted models
+      const prefixesInCombo = new Set(
+        combo.models
+          .map((m) => (m.includes('/') ? m.slice(0, m.indexOf('/')) : ''))
+          .filter(Boolean)
+      );
+      for (const prefix of prefixesInCombo) {
+        const addedSet = addedByPrefix.get(prefix);
+        if (!addedSet || addedSet.size === 0) continue;
+        const provEntry = catalogState.providers[prefix];
+        const rState = getRouterStateFor(combo.router);
+
+        for (const addedId of addedSet) {
+          const fullStep = `${prefix}/${addedId}`;
+          if (combo.models.includes(fullStep)) continue;
+          if (
+            isBlacklisted(addedId, blacklistPatterns) ||
+            isBlacklisted(fullStep, blacklistPatterns)
+          ) {
+            continue;
+          }
+          const verifyRec = verifyRecordsByStep.get(fullStep);
+          if (
+            verifyRec?.label === 'SẮP-NGỪNG' ||
+            verifyRec?.label === 'ĐÃ-XÁC-NHẬN-NGỪNG' ||
+            verifyRec?.label === 'QUOTA'
+          ) {
+            continue;
+          }
+          const tier = resolveModelTier(prefix, addedId, usedSteps, disabledModels, rState);
+          if (tier === 'A' || tier === 'UNKNOWN') continue;
+
+          const ev = findEvidenceForModel(prefix, addedId);
+          const sourcePublishedAt = ev.official?.publishedAt ?? null;
+          const sourceFirstChangedAt = provEntry?.firstSeenAt?.[addedId] ?? nowIso;
+          const actionKind = tier === 'B' ? 'ENABLE_MODEL' : 'ADD_MODEL';
+
+          routerActions.push({
+            targetType: 'router',
+            router: combo.router,
+            comboName: combo.name,
+            provider: prefix,
+            modelId: addedId,
+            fullStep,
+            action: actionKind,
+            reason: `Discovered in L1 scan (${tier === 'B' ? 'Tier B disabled' : 'Tier C new'})`,
+            sourcePublishedAt,
+            sourceFirstChangedAt,
+            planCreatedAt: nowIso,
+            detectionLatencyMs: computeDetectionLatencyMs({
+              planCreatedAt: nowIso,
+              sourcePublishedAt,
+              sourceFirstChangedAt,
+            }),
+          });
+        }
+      }
+    }
+
+    // 2) Evaluate Keyed Harness Provider Model Lists
+    for (const ht of harnessTargets) {
+      const defaultSlots = new Set(ht.defaultModels ?? []);
+      for (const hp of ht.providers) {
+        if (hp.proxyDelegated) continue;
+
+        const targetId = `${ht.harnessId}/${hp.providerId}`;
+        const explicitUnverifiable =
+          Boolean(hp.unverifiable) || isUnverifiableScanState(hp.unverifiableReason);
+
+        const eligibleInHarness: Array<{
+          modelId: string;
+          reason: string;
+          sourcePublishedAt: string | null;
+          sourceFirstChangedAt: string | null;
+          replacementModelId: string | null;
+        }> = [];
+
+        for (const modelId of hp.models) {
+          const check = checkRemovalEligibility(hp.providerId, modelId, {
+            explicitUnverifiable,
+          });
+          if (!check.eligible) {
+            if (check.blockedReason) {
+              blockedRemovals.push({
+                targetType: 'harness',
+                targetId,
+                provider: hp.providerId,
+                modelId,
+                blockedReason: check.blockedReason,
+                detail: check.reason,
+              });
+            }
+            continue;
+          }
+
+          const fullStep = `${hp.providerId}/${modelId}`;
+          if ((defaultSlots.has(modelId) || defaultSlots.has(fullStep)) && !check.replacementModelId) {
+            blockedRemovals.push({
+              targetType: 'harness',
+              targetId,
+              provider: hp.providerId,
+              modelId,
+              blockedReason: 'DEFAULT_SLOT_PROTECTED',
+              detail: `Model ${fullStep} is an active default slot without a verified replacement.`,
+            });
+            continue;
+          }
+
+          eligibleInHarness.push({
+            modelId,
+            reason: check.reason,
+            sourcePublishedAt: check.sourcePublishedAt,
+            sourceFirstChangedAt: check.sourceFirstChangedAt,
+            replacementModelId: check.replacementModelId,
+          });
+        }
+
+        if (eligibleInHarness.length > 0) {
+          const capCheck = enforceTargetShrinkCap(
+            'harness',
+            hp.models.length,
+            eligibleInHarness.length
+          );
+          if (!capCheck.allowed) {
+            for (const rem of eligibleInHarness) {
+              blockedRemovals.push({
+                targetType: 'harness',
+                targetId,
+                provider: hp.providerId,
+                modelId: rem.modelId,
+                blockedReason: 'SHRINK_CAP_EXCEEDED',
+                detail: capCheck.reason ?? 'Harness provider shrink > 10%',
+              });
+            }
+            newInboxCandidates.push({
+              id: `shrink-guard-harness-${ht.harnessId}-${hp.providerId}`,
+              title: `[SHRINK-GUARD] Harness ${ht.harnessId}/${hp.providerId} vượt hạn mức gỡ 10% (${eligibleInHarness.length}/${hp.models.length})`,
+              type: 'warning',
+              timestamp: nowIso,
+              body: `Đã chặn tự động gỡ ${eligibleInHarness.length}/${hp.models.length} model trong ${ht.harnessId} (${hp.providerId}): ${capCheck.reason}. Cần chủ sở hữu duyệt thủ công.`,
+              provider: hp.providerId,
+              label: 'SHRINK-GUARD',
+              proposed_by: { kind: 'system', source: 'tick' },
+            });
+          } else {
+            for (const rem of eligibleInHarness) {
+              const latencyMs = computeDetectionLatencyMs({
+                planCreatedAt: nowIso,
+                sourcePublishedAt: rem.sourcePublishedAt,
+                sourceFirstChangedAt: rem.sourceFirstChangedAt,
+              });
+              harnessActions.push({
+                targetType: 'harness',
+                harnessId: ht.harnessId,
+                configPath: ht.configPath,
+                providerId: hp.providerId,
+                modelId: rem.modelId,
+                action: 'REMOVE_MODEL',
+                reason: rem.reason,
+                replacementModelId: rem.replacementModelId,
+                sourcePublishedAt: rem.sourcePublishedAt,
+                sourceFirstChangedAt: rem.sourceFirstChangedAt,
+                planCreatedAt: nowIso,
+                detectionLatencyMs: latencyMs,
+              });
+              newInboxCandidates.push({
+                id: `harness-remove-${ht.harnessId}-${hp.providerId}-${rem.modelId}`,
+                title: `[HARNESS-REMOVE] Đề xuất gỡ ${hp.providerId}/${rem.modelId} khỏi ${ht.harnessId}`,
+                type: 'proposal',
+                timestamp: nowIso,
+                body: `Model ${hp.providerId}/${rem.modelId} đã xác nhận ngừng phục vụ (${rem.reason}). Đề xuất gỡ khỏi ${ht.harnessId}.`,
+                provider: hp.providerId,
+                modelId: rem.modelId,
+                action: 'REMOVE_MODEL',
+                targetTier: 'B',
+                label: 'ĐÃ-XÁC-NHẬN-NGỪNG',
+                proposed_by: { kind: 'system', source: 'tick' },
+              });
+            }
+          }
+        }
+
+        // Harness ADD_MODEL actions for newly discovered non-blacklisted models
+        if (!explicitUnverifiable) {
+          const addedSet = addedByPrefix.get(hp.providerId);
+          const provEntry = catalogState.providers[hp.providerId];
+          if (addedSet && addedSet.size > 0) {
+            for (const addedId of addedSet) {
+              const fullStep = `${hp.providerId}/${addedId}`;
+              if (hp.models.includes(addedId)) continue;
+              if (
+                isBlacklisted(addedId, blacklistPatterns) ||
+                isBlacklisted(fullStep, blacklistPatterns)
+              ) {
+                continue;
+              }
+              const verifyRec = verifyRecordsByStep.get(fullStep);
+              if (
+                verifyRec?.label === 'SẮP-NGỪNG' ||
+                verifyRec?.label === 'ĐÃ-XÁC-NHẬN-NGỪNG' ||
+                verifyRec?.label === 'QUOTA'
+              ) {
+                continue;
+              }
+              const ev = findEvidenceForModel(hp.providerId, addedId);
+              const sourcePublishedAt = ev.official?.publishedAt ?? null;
+              const sourceFirstChangedAt = provEntry?.firstSeenAt?.[addedId] ?? nowIso;
+              harnessActions.push({
+                targetType: 'harness',
+                harnessId: ht.harnessId,
+                configPath: ht.configPath,
+                providerId: hp.providerId,
+                modelId: addedId,
+                action: 'ADD_MODEL',
+                reason: 'Discovered in L1 scan',
+                sourcePublishedAt,
+                sourceFirstChangedAt,
+                planCreatedAt: nowIso,
+                detectionLatencyMs: computeDetectionLatencyMs({
+                  planCreatedAt: nowIso,
+                  sourcePublishedAt,
+                  sourceFirstChangedAt,
+                }),
+              });
+            }
+          }
+        }
+      }
+    }
+
+    // Stamp consumedAt on newly consumed evidence records
+    if (matchedEvidenceRecordIds.size > 0) {
+      let didStampEvidence = false;
+      const stamped = evidenceRecords.map((rec) => {
+        if (rec.consumedAt === null && matchedEvidenceRecordIds.has(rec.recordId)) {
+          didStampEvidence = true;
+          return { ...rec, consumedAt: nowIso };
+        }
+        return rec;
+      });
+      if (didStampEvidence) {
+        saveResearchEvidence(sDir, stamped);
+      }
+    }
+
+    // C45-WP3 §3.3: Build deterministic 4-trigger <stateDir>/research-queue.json
+    const prevQueueFile = loadResearchQueue(sDir);
+    const prevFirstQueuedById = new Map<string, string>();
+    if (prevQueueFile) {
+      for (const item of prevQueueFile.items) {
+        prevFirstQueuedById.set(item.queueId, item.firstQueuedAt);
+      }
+    }
+
+    const targetsByStep = new Map<string, Set<string>>();
+    const targetsByPrefix = new Map<string, Set<string>>();
+    for (const c of allCombos) {
+      for (const m of c.models) {
+        const ref = `router:${c.router}/${c.name}`;
+        const set = targetsByStep.get(m) ?? new Set<string>();
+        set.add(ref);
+        targetsByStep.set(m, set);
+        const slashIdx = m.indexOf('/');
+        if (slashIdx > 0) {
+          const p = m.slice(0, slashIdx);
+          const pSet = targetsByPrefix.get(p) ?? new Set<string>();
+          pSet.add(ref);
+          targetsByPrefix.set(p, pSet);
+        }
+      }
+    }
+    for (const ht of harnessTargets) {
+      for (const hp of ht.providers) {
+        if (hp.proxyDelegated) continue;
+        const ref = `harness:${ht.harnessId}`;
+        const pSet = targetsByPrefix.get(hp.providerId) ?? new Set<string>();
+        pSet.add(ref);
+        targetsByPrefix.set(hp.providerId, pSet);
+        for (const m of hp.models) {
+          const step = `${hp.providerId}/${m}`;
+          const set = targetsByStep.get(step) ?? new Set<string>();
+          set.add(ref);
+          targetsByStep.set(step, set);
+        }
+      }
+    }
+
+    const nextQueueMap = new Map<string, ResearchQueueItem>();
+    function upsertQueueItem(params: {
+      queueId: string;
+      id: string;
+      prefix: string;
+      modelId: string | null;
+      label: string;
+      reason: ResearchQueueReason;
+      extraMissing?: string[];
+      targets: string[];
+      verifiedAt: string | null;
+    }): void {
+      const existing = nextQueueMap.get(params.queueId);
+      if (existing) {
+        if (!existing.reasons.includes(params.reason)) {
+          existing.reasons.push(params.reason);
+        }
+        for (const m of [params.reason, ...(params.extraMissing ?? [])]) {
+          if (!existing.missing.includes(m)) existing.missing.push(m);
+        }
+        for (const t of params.targets) {
+          if (!existing.targetsAffected.includes(t)) existing.targetsAffected.push(t);
+        }
+        return;
+      }
+      const missing = [...new Set([params.reason, ...(params.extraMissing ?? [])])];
+      nextQueueMap.set(params.queueId, {
+        queueId: params.queueId,
+        id: params.id,
+        prefix: params.prefix,
+        modelId: params.modelId,
+        label: params.label,
+        reasons: [params.reason],
+        missing,
+        targetsAffected: [...new Set(params.targets)].sort(),
+        firstQueuedAt: prevFirstQueuedById.get(params.queueId) ?? nowIso,
+        updatedAt: nowIso,
+        verifiedAt: params.verifiedAt,
+      });
+    }
+
+    // Trigger 1: NO_MODEL_LIST_API (active keyed provider with missing-param / unknown-prefix / no list URL)
+    for (const t of targets) {
+      const hasNoListApi =
+        t.skipReason === 'missing-param' ||
+        t.skipReason === 'unknown-prefix' ||
+        (!t.baseUrl &&
+          t.keySource !== 'none' &&
+          t.skipReason !== 'no-key' &&
+          t.skipReason !== 'oauth-router-managed' &&
+          t.skipReason !== 'key-encrypted');
+      if (!hasNoListApi) continue;
+
+      const canon = canonicalizeResearchProvider(t.prefix);
+      const resolvedByOfficial = evidenceRecords.some(
+        (ev) =>
+          ev.provider === canon &&
+          ev.sourceTier === 'official' &&
+          ev.domainVerified &&
+          ev.verdict !== 'inconclusive'
+      );
+      if (resolvedByOfficial) continue;
+
+      const queueId = `${t.prefix}/*`;
+      upsertQueueItem({
+        queueId,
+        id: queueId,
+        prefix: t.prefix,
+        modelId: null,
+        label: 'CHƯA-QUÉT',
+        reason: 'NO_MODEL_LIST_API',
+        targets: [...(targetsByPrefix.get(t.prefix) ?? new Set([`router:${t.router}`]))],
+        verifiedAt: null,
+      });
+    }
+
+    // Precompute normalized L1 & L2 keys per provider for CROSS_SOURCE_ID_CONFLICT
+    const l2NormKeysByProvider = new Map<string, Map<string, string>>();
+    for (const l2Key of Object.keys(l2Res.state.models)) {
+      const slash = l2Key.indexOf('/');
+      if (slash <= 0) continue;
+      const p = l2Key.slice(0, slash).toLowerCase();
+      const m = l2Key.slice(slash + 1);
+      const bucket = l2NormKeysByProvider.get(p) ?? new Map<string, string>();
+      bucket.set(normalizeModelKey(m), m);
+      l2NormKeysByProvider.set(p, bucket);
+    }
+
+    // Triggers 2, 3, 4 on verified model records (strictly excluding 429/5xx/401/unscanned transport failures)
+    for (const [fullStep, rec] of verifyRecordsByStep.entries()) {
+      const provEntry = catalogState.providers[rec.prefix];
+      const isTransportOrUnscanned =
+        Boolean(rec.unscannedReason) ||
+        rec.label === 'CHƯA-QUÉT' ||
+        rec.label === 'QUOTA' ||
+        rec.label === 'QUOTA-NO-LIST' ||
+        !provEntry ||
+        provEntry.lastStatus === 0 ||
+        (provEntry.lastStatus >= 400 && provEntry.lastStatus !== 404);
+      if (isTransportOrUnscanned) continue;
+
+      const ev = findEvidenceForModel(rec.prefix, rec.id);
+      const isActiveTargetModel = targetsByStep.has(fullStep);
+      const isAddedCandidate = addedByPrefix.get(rec.prefix)?.has(rec.id) ?? false;
+      const affectedTargets = [
+        ...(targetsByStep.get(fullStep) ?? targetsByPrefix.get(rec.prefix) ?? new Set<string>()),
+      ];
+
+      // Trigger 2: AMBIGUOUS_DEPRECATION
+      if (isActiveTargetModel) {
+        const hasOfficialLifecycleVerdict = Boolean(
+          ev.official &&
+            (ev.official.verdict === 'deprecated' ||
+              ev.official.verdict === 'upcoming_deprecation' ||
+              ev.official.verdict === 'active')
+        );
+        const l3LifecycleNotice =
+          rec.l3.hasNotice &&
+          (rec.l3.noticeType === 'upcoming_deprecation' || rec.l3.noticeType === 'deprecated');
+        const l3AlreadyConfirmedOfficial =
+          rec.label === 'ĐÃ-XÁC-NHẬN-NGỪNG' &&
+          Boolean(rec.l3.noticeDate) &&
+          isOfficialUrlForProvider(rec.prefix, rec.l3.url);
+        const secondaryLifecycleClaim = Boolean(
+          ev.secondary &&
+            (ev.secondary.verdict === 'deprecated' ||
+              ev.secondary.verdict === 'upcoming_deprecation')
+        );
+
+        if (
+          !hasOfficialLifecycleVerdict &&
+          ((l3LifecycleNotice && (!rec.l3.noticeDate || !l3AlreadyConfirmedOfficial)) ||
+            secondaryLifecycleClaim)
+        ) {
+          upsertQueueItem({
+            queueId: fullStep,
+            id: fullStep,
+            prefix: rec.prefix,
+            modelId: rec.id,
+            label: rec.label,
+            reason: 'AMBIGUOUS_DEPRECATION',
+            extraMissing: rec.l3.hasNotice ? ['L3_NOTICE'] : [],
+            targets: affectedTargets,
+            verifiedAt: rec.verifiedAt,
+          });
+        }
+      }
+
+      // Trigger 3: UNKNOWN_PRICING_TIER (newly added candidates with hidden-zero, single-source-zero, or missing price)
+      if (isAddedCandidate && rec.l1.exists) {
+        const hasOfficialPricing = Boolean(
+          ev.official &&
+            (ev.official.verdict === 'pricing_confirmed' || ev.official.verdict === 'deprecated')
+        );
+        const unknownPricing =
+          rec.l2.price === null ||
+          rec.l2.isZeroPriceHidden ||
+          (rec.l2.price === 0 && rec.l2.source !== 'both');
+        if (!hasOfficialPricing && unknownPricing) {
+          upsertQueueItem({
+            queueId: fullStep,
+            id: fullStep,
+            prefix: rec.prefix,
+            modelId: rec.id,
+            label: rec.label,
+            reason: 'UNKNOWN_PRICING_TIER',
+            targets: affectedTargets,
+            verifiedAt: rec.verifiedAt,
+          });
+        }
+      }
+
+      // Trigger 4: CROSS_SOURCE_ID_CONFLICT
+      if (isActiveTargetModel) {
+        const hasOfficialResolution = Boolean(
+          ev.official &&
+            (ev.official.verdict === 'id_resolved' ||
+              ev.official.verdict === 'active' ||
+              ev.official.verdict === 'deprecated' ||
+              ev.official.verdict === 'upcoming_deprecation')
+        );
+        if (!hasOfficialResolution) {
+          const absentL1PresentL2 = !rec.l1.exists && rec.l2.exists;
+          const pastL3NoticeMs = rec.l3.noticeDate ? Date.parse(rec.l3.noticeDate) : Number.NaN;
+          const presentL1PastDeprecatedL3 =
+            rec.l1.exists &&
+            rec.l3.hasNotice &&
+            rec.l3.noticeType === 'deprecated' &&
+            Number.isFinite(pastL3NoticeMs) &&
+            pastL3NoticeMs <= nowMs;
+
+          const aliasPrefix = PROVIDER_ALIASES[rec.prefix.toLowerCase()] ?? rec.prefix.toLowerCase();
+          const l2Bucket =
+            l2NormKeysByProvider.get(rec.prefix.toLowerCase()) ??
+            l2NormKeysByProvider.get(aliasPrefix);
+          const matchedCanonId = l2Bucket?.get(normalizeModelKey(rec.id));
+          const divergentIdConflict = Boolean(matchedCanonId && matchedCanonId !== rec.id);
+
+          if (absentL1PresentL2 || presentL1PastDeprecatedL3 || divergentIdConflict) {
+            upsertQueueItem({
+              queueId: fullStep,
+              id: fullStep,
+              prefix: rec.prefix,
+              modelId: rec.id,
+              label: rec.label,
+              reason: 'CROSS_SOURCE_ID_CONFLICT',
+              extraMissing: !rec.l1.exists ? ['L1_ABSENT'] : [],
+              targets: affectedTargets,
+              verifiedAt: rec.verifiedAt,
+            });
+          }
+        }
+      }
+    }
+
+    const nextQueueItems = [...nextQueueMap.values()].sort((a, b) => a.id.localeCompare(b.id));
+    const nextQueueFile: ResearchQueueFile = {
+      version: 1,
+      updatedAt: nowIso,
+      items: nextQueueItems,
+    };
+    saveResearchQueue(sDir, nextQueueFile);
+    const researchQueueCount = nextQueueItems.length;
+
+    // Persist deterministic <plansDir>/tick-plan.json
+    const detectionLatency = summarizeDetectionLatencies([
+      ...routerActions.map((a) => a.detectionLatencyMs),
+      ...harnessActions.map((a) => a.detectionLatencyMs),
+    ]);
+    const canonicalActionPayload = JSON.stringify({
+      routerActions: routerActions.map((a) => ({
+        router: a.router,
+        comboName: a.comboName,
+        provider: a.provider,
+        modelId: a.modelId,
+        action: a.action,
+      })),
+      harnessActions: harnessActions.map((a) => ({
+        harnessId: a.harnessId,
+        providerId: a.providerId,
+        modelId: a.modelId,
+        action: a.action,
+      })),
+    });
+    const planHash = createHash('sha256').update(canonicalActionPayload).digest('hex').slice(0, 16);
+    const tickPlan: TickPlanFile = {
+      version: 1,
+      mode: effectiveMode,
+      planCreatedAt: nowIso,
+      planHash,
+      accounting: {
+        requests: totalRequests,
+        paidRequests: 0,
+        tokens: 0,
+        llmCalls: 0,
+      },
+      routerActions,
+      harnessActions,
+      blockedRemovals,
+      detectionLatency,
+    };
+    atomicWriteFileSync(tickPlanPath, JSON.stringify(tickPlan, null, 2));
+
     let inboxAdded = 0;
     const newlyAddedInboxItems: TickInboxItem[] = [];
     if (effectiveMode === 'propose') {
@@ -1114,19 +2156,12 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
         }
       }
       if (inboxAdded > 0 || !fs.existsSync(inboxPath) || existingInbox.length > 200) {
-        // G3d: keep unacknowledged and active-snoozed items; only trim oldest
-        // acknowledged/expired-snoozed.
-        //
-        // C4n/N8: a snoozed item whose snooze has EXPIRED is handled, not
-        // active. The old code fell through to `return true` for an expired
-        // snooze, so expired items were never trimmed.
         const nowMsTick = nowMs;
         const isActive = (item: TickInboxItem) => {
           const st = item.status;
           if (st === 'acknowledged') return false;
           if (st === 'snoozed') {
             const snoozeMs = item.snoozeUntil ? Date.parse(item.snoozeUntil) : Number.NaN;
-            // No snoozeUntil, or a snooze in the future: still active.
             return !Number.isFinite(snoozeMs) || snoozeMs > nowMsTick;
           }
           return true;
@@ -1138,7 +2173,10 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
         if (remaining > 0) {
           itemsToWrite.push(...handledItems.slice(0, remaining));
         }
-        fs.writeFileSync(inboxPath, JSON.stringify({ updatedAt: nowIso, items: itemsToWrite }, null, 2), 'utf8');
+        atomicWriteFileSync(
+          inboxPath,
+          JSON.stringify({ updatedAt: nowIso, items: itemsToWrite }, null, 2)
+        );
       }
     }
 
@@ -1186,38 +2224,49 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
       unchangedProviders,
       backoffSkipped,
       inboxAdded,
+      researchQueueCount,
+      detectionLatency,
       providers: providerSummaries,
-      // G2: persist evaluateAbsentStable shrink-block reasons
       shrinkBlockReasons: Object.fromEntries(shrinkBlockReasons),
-      // C4n/N6: missing models that no combo uses (reported, not proposed)
       absentNotInCombo: Object.fromEntries(absentNotInCombo),
       webhookDelivery,
     };
 
-    fs.writeFileSync(statusPath, JSON.stringify(summary, null, 2), 'utf8');
+    atomicWriteFileSync(statusPath, JSON.stringify(summary, null, 2));
 
-    const logLine = `${nowIso} mode=${effectiveMode} requests=${totalRequests} changed=${changedProviders} unchanged=${unchangedProviders} backoff=${backoffSkipped} inbox_added=${inboxAdded} paid-requests=0 tokens=0 llm-calls=0 shrink_blocks=${JSON.stringify(Object.fromEntries(shrinkBlockReasons))}\n`;
+    const latencyLogToken =
+      detectionLatency.maxMs !== null ? String(detectionLatency.maxMs) : 'na';
+    const logLine = `${nowIso} mode=${effectiveMode} requests=${totalRequests} changed=${changedProviders} unchanged=${unchangedProviders} backoff=${backoffSkipped} inbox_added=${inboxAdded} paid-requests=0 tokens=0 llm-calls=0 shrink_blocks=${JSON.stringify(Object.fromEntries(shrinkBlockReasons))} research_queue=${researchQueueCount} detection_latency_ms=${latencyLogToken}\n`;
     fs.appendFileSync(tickLogPath, logLine, 'utf8');
-
-    if (options.toast && inboxAdded > 0 && !options.json) {
-      console.log(`[routersync toast] ${inboxAdded} đề xuất mới trong inbox.`);
-    }
 
     if (options.json) {
       console.log(JSON.stringify(summary, null, 2));
     } else {
-      const scannedCount = providerSummaries.filter((p) => p.label !== 'SKIPPED').length;
+      const scannedCount = providerSummaries.filter(
+        (p) => p.label !== 'SKIPPED' && p.label !== 'BACKOFF'
+      ).length;
       const skippedCount = providerSummaries.filter((p) => p.label === 'SKIPPED').length;
       console.log(
         `TICK-SUMMARY mode=${effectiveMode} scanned=${scannedCount} skipped=${skippedCount} changed=${changedProviders} unchanged=${unchangedProviders} backoff=${backoffSkipped} inbox_added=${inboxAdded}`
       );
       for (const p of providerSummaries) {
+        if (p.label === 'SKIPPED') {
+          console.log(
+            `  PROVIDER prefix=${p.prefix} label=${p.label} status=0 models=${p.models} changed=no reason=${p.skipReason ?? 'SKIPPED'}`
+          );
+          continue;
+        }
+        const reasonPart = p.skipReason ? ` reason=${p.skipReason}` : '';
+        const backoffPart = p.backoffSec > 0 ? ` backoff=${p.backoffSec}s` : '';
         console.log(
-          `  PROVIDER prefix=${p.prefix} label=${p.label} status=${p.status} models=${p.models} changed=${p.changed ? 'yes' : 'no'}${p.skipReason ? ` reason=${p.skipReason}` : ''} added=${p.added.length} grace=${p.graceAbsent.length} dead=${p.deadConfirmed.length}${p.backoffSec > 0 ? ` backoff=${p.backoffSec}s` : ''}`
+          `  PROVIDER prefix=${p.prefix} label=${p.label} status=${p.status} models=${p.models} changed=${p.changed ? 'yes' : 'no'}${reasonPart} added=${p.added.length} grace=${p.graceAbsent.length} dead=${p.deadConfirmed.length}${backoffPart}`
         );
       }
+      console.log(
+        `TICK requests=${totalRequests} paid-requests=0 tokens=0 llm-calls=0`
+      );
     }
-    console.log(`TICK requests=${totalRequests} paid-requests=0 tokens=0 llm-calls=0`);
+
     return summary;
   } finally {
     releaseLock(lockPath);

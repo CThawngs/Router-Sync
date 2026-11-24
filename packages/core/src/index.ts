@@ -87,3 +87,5 @@ export * from './domain/model-state.js';
 export * from './notify/webhook.js';
 // C45-WP1: Canonical Harness Capability Matrix (S2, S3, S6)
 export * from './harness/matrix.js';
+// C45-WP3: Official Provider Domain Registry & Sanitized Research Evidence Ledger (S1, S3, S7)
+export * from './research/index.js';

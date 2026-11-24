@@ -1,9 +1,10 @@
 /**
  * packages/mcp-server/src/server.ts
  *
- * RouterSync Read-Only MCP Server (Condition C1, Spec §13.2).
- * Provides 24 strictly read-only inspection, diagnostic, and query tools.
- * ZERO write tools permitted.
+ * RouterSync MCP Server (Condition C1, Spec §13.2 + C45-WP3).
+ *  - READ_ONLY_TOOL_NAMES: 25 strictly read-only inspection, diagnostic, and query tools (0 writes).
+ *  - LEDGER_APPEND_TOOL_NAMES: ['submit_research'] — appends sanitized evidence ONLY to
+ *    <stateDir>/research-evidence.json (ZERO router DB or harness config writes).
  *
  * Every tool reads a real source: a router adapter, a state file the daemon
  * writes, the documentation tree, or a runtime Zod schema. When the source is
@@ -15,7 +16,6 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import * as os from 'node:os';
 import { parse as parseYaml } from 'yaml';
 import { OmniRouteAdapter } from '@routersync/adapter-omniroute';
 import { NineRouterAdapter } from '@routersync/adapter-9router';
@@ -24,20 +24,26 @@ import {
   INTERVIEW_QUESTIONS,
   ModelCapabilitiesSchema,
   PlanSchema,
+  ResearchValidationError,
+  appendResearchEvidence,
+  buildProviderModelUniverse,
+  canonicalizeResearchProvider,
   hasWrittenEvidence,
+  locateRouterDb,
   planCombos,
-  validateInvariants,
+  readRouterModelState,
+  resolveConfiguredDbPaths,
   setConfiguredRouterDbPaths,
   getConfiguredRouterDbPath,
-  resolveConfiguredDbPaths,
-  locateRouterDb,
-  readRouterModelState,
-  classifyModelTier,
-  buildProviderModelUniverse,
+  validateInvariants,
   type ComboDefinition,
   type ModelInfo,
-  type TieredModelEntry,
   type ProviderModelUniverse,
+  type ResearchEvidenceRecord,
+  type ResearchQueueFile,
+  type ResearchQueueItem,
+  type ResearchQueueReason,
+  type TieredModelEntry,
 } from '@routersync/core';
 import { paginateArray } from './pagination.js';
 import { sanitizeObject, sanitizeUntrustedString } from './sanitize.js';
@@ -87,10 +93,16 @@ export const READ_ONLY_TOOL_NAMES = [
   'profile_interview',
 ] as const;
 
-// W5 propose tools removed in C4f: they echoed payloads without storing anything
-// and inflated the public tool count from 24 to 28. Read-only surface keeps 24.
+export const LEDGER_APPEND_TOOL_NAMES = ['submit_research'] as const;
+
+export const ALL_MCP_TOOL_NAMES = [
+  ...READ_ONLY_TOOL_NAMES,
+  ...LEDGER_APPEND_TOOL_NAMES,
+] as const;
 
 export type ReadOnlyToolName = typeof READ_ONLY_TOOL_NAMES[number];
+export type LedgerAppendToolName = typeof LEDGER_APPEND_TOOL_NAMES[number];
+export type McpToolName = typeof ALL_MCP_TOOL_NAMES[number];
 
 export interface ServerOptions {
   configPath?: string | undefined;
@@ -113,6 +125,116 @@ const INVARIANTS_NEEDING_MORE_STATE = ['I4', 'I5', 'I8'] as const;
 
 function respond(payload: unknown): ToolResponse {
   return { content: [{ type: 'text', text: JSON.stringify(sanitizeObject(payload), null, 2) }] };
+}
+
+function doesEvidenceResolveReason(
+  record: ResearchEvidenceRecord,
+  reason: ResearchQueueReason
+): boolean {
+  if (record.sourceTier !== 'official' || !record.domainVerified) return false;
+  if (record.verdict === 'inconclusive') return false;
+
+  switch (reason) {
+    case 'AMBIGUOUS_DEPRECATION':
+      return (
+        record.verdict === 'deprecated' ||
+        record.verdict === 'upcoming_deprecation' ||
+        record.verdict === 'active'
+      );
+    case 'UNKNOWN_PRICING_TIER':
+      return record.verdict === 'pricing_confirmed' || record.verdict === 'deprecated';
+    case 'CROSS_SOURCE_ID_CONFLICT':
+      return (
+        record.verdict === 'id_resolved' ||
+        record.verdict === 'active' ||
+        record.verdict === 'deprecated' ||
+        record.verdict === 'upcoming_deprecation'
+      );
+    case 'NO_MODEL_LIST_API':
+      return true;
+  }
+}
+
+function isQueueItemResolvedByOfficialEvidence(
+  item: {
+    id: string;
+    prefix: string;
+    modelId?: string | null;
+    reasons?: ResearchQueueReason[];
+    updatedAt?: string | null;
+    verifiedAt?: string | null;
+  },
+  evidenceRecords: ResearchEvidenceRecord[]
+): boolean {
+  if (evidenceRecords.length === 0) return false;
+
+  const canonPrefix = canonicalizeResearchProvider(item.prefix);
+  const itemModelId =
+    item.modelId !== undefined
+      ? item.modelId
+      : item.id.includes('/')
+        ? item.id.slice(item.id.indexOf('/') + 1)
+        : item.id;
+  const itemTimestampMs = Date.parse(item.updatedAt ?? item.verifiedAt ?? '');
+
+  const matchingOfficial = evidenceRecords.filter((rec) => {
+    if (rec.sourceTier !== 'official' || !rec.domainVerified || rec.verdict === 'inconclusive') {
+      return false;
+    }
+    const submittedMs = Date.parse(rec.submittedAt);
+    if (Number.isFinite(itemTimestampMs) && Number.isFinite(submittedMs)) {
+      if (submittedMs < itemTimestampMs) return false;
+    }
+    if (itemModelId === null || itemModelId === '*') {
+      return rec.provider === canonPrefix;
+    }
+    return (
+      rec.id === item.id ||
+      (rec.provider === canonPrefix && rec.modelId === itemModelId)
+    );
+  });
+
+  if (matchingOfficial.length === 0) return false;
+
+  const reasons = item.reasons ?? [];
+  if (reasons.length === 0) {
+    return true;
+  }
+
+  return reasons.every((reason) =>
+    matchingOfficial.some((rec) => doesEvidenceResolveReason(rec, reason))
+  );
+}
+
+function matchSubmittedEvidenceForModel(
+  modelArg: string,
+  verifyRecord: VerifyRecord | undefined,
+  evidenceRecords: ResearchEvidenceRecord[]
+): ResearchEvidenceRecord[] {
+  if (evidenceRecords.length === 0) return [];
+
+  const trimmed = modelArg.trim();
+  const slashIdx = trimmed.indexOf('/');
+  const canonArgId =
+    slashIdx > 0 && slashIdx < trimmed.length - 1
+      ? `${canonicalizeResearchProvider(trimmed.slice(0, slashIdx))}/${trimmed.slice(slashIdx + 1)}`
+      : null;
+
+  const canonVerifyId =
+    verifyRecord && verifyRecord.id.includes('/')
+      ? `${canonicalizeResearchProvider(verifyRecord.prefix)}/${verifyRecord.id.slice(
+          verifyRecord.id.indexOf('/') + 1
+        )}`
+      : null;
+
+  return evidenceRecords.filter((ev) => {
+    if (ev.id === trimmed || ev.id.endsWith(`/${trimmed}`)) return true;
+    if (canonArgId && ev.id === canonArgId) return true;
+    if (verifyRecord && (ev.id === verifyRecord.id || (canonVerifyId && ev.id === canonVerifyId))) {
+      return true;
+    }
+    return false;
+  });
 }
 
 export function createRouterSyncMcpServer(options: ServerOptions = {}): McpServer {
@@ -516,9 +638,6 @@ export function createRouterSyncMcpServer(options: ServerOptions = {}): McpServe
       const combos = await getAllCombos();
       const catalog = await getAllCatalog();
 
-      // R19-2 (DECISIONS 2026-10-18-01): an apply state describes a WRITE, so
-      // it may only be published when there is EVIDENCE of that write. The
-      // check is READ-ONLY (it never creates a file or a directory).
       const omniWritten = hasWrittenEvidence('omniroute');
       const nineWritten = hasWrittenEvidence('9router');
       const applyStates: Record<string, string> = {
@@ -620,8 +739,7 @@ export function createRouterSyncMcpServer(options: ServerOptions = {}): McpServe
   );
 
   // Labels that never need human research: already scanned-as-healthy,
-  // quota-limited, or already confirmed-dead (unless they carry an L3 notice).
-  // ĐÃ-XÁC-NHẬN-NGỪNG is intentionally NOT excluded: it stays researchable.
+  // quota-limited, or unscanned (unless they carry an L3 notice).
   const NON_RESEARCH_LABELS = new Set([
     'CHƯA-QUÉT', 'QUOTA', 'QUOTA-NO-LIST', 'ĐÃ-XÁC-NHẬN-CÒN',
   ]);
@@ -662,9 +780,6 @@ export function createRouterSyncMcpServer(options: ServerOptions = {}): McpServe
       const inbox = readJsonFile<InboxFile>(paths.inbox);
       const allItems: InboxItem[] = inbox.ok ? [...(inbox.value.items ?? [])] : [];
 
-      // System-sourced event (Spec §33.3 / B8 + F1 tick inbox). Published only
-      // when a snapshot proves a write happened, so an empty machine reports an
-      // empty inbox instead of a reassuring placeholder.
       if (hasWrittenEvidence('9router')) {
         allItems.unshift({
           id: 'sys-pending-reload-9router',
@@ -704,9 +819,6 @@ export function createRouterSyncMcpServer(options: ServerOptions = {}): McpServe
       const limit = Math.max(1, Math.min(args.limit ?? 10, 50));
       const records = ledger.value.records ?? [];
 
-      // A record needs research when absent or carrying an L3 notice. CHƯA-QUÉT
-      // and QUOTA labels are excluded. ĐÃ-XÁC-NHẬN-NGỪNG is intentionally
-      // included and sorted first by severity, then newest verifiedAt.
       const SEVERITY_ORDER: Record<string, number> = {
         'ĐÃ-XÁC-NHẬN-NGỪNG': 0,
         'SẮP-NGỪNG': 1,
@@ -720,7 +832,7 @@ export function createRouterSyncMcpServer(options: ServerOptions = {}): McpServe
           if (sa !== sb) return sa - sb;
           const ta = Date.parse(a.verifiedAt ?? '0');
           const tb = Date.parse(b.verifiedAt ?? '0');
-          return tb - ta; // newest first
+          return tb - ta;
         });
 
       const items = needsResearch.slice(0, limit).map((record) => ({
@@ -888,8 +1000,6 @@ export function createRouterSyncMcpServer(options: ServerOptions = {}): McpServe
         .map((combo) => {
           const missing = combo.models.filter((modelId) => !liveIds.has(modelId));
           const minSteps = combo.minSteps ?? 2;
-          // I3 is about the steps that survive the sync, not the ones on paper:
-          // a five-step combo that loses four models ends up below minSteps.
           const remainingSteps = combo.models.length - missing.length;
           return {
             comboId: combo.id,
@@ -1105,25 +1215,83 @@ export function createRouterSyncMcpServer(options: ServerOptions = {}): McpServe
   // 20. research_queue
   server.tool(
     'research_queue',
-    'Reports the models the verification ledger still needs researched, grouped by the evidence that is missing',
+    'Reports the models the verification ledger or WP3 research queue still needs researched, excluding items already resolved by official evidence',
     {
       cursor: z.string().optional().describe('Cursor token for pagination'),
       limit: z.number().optional().describe('Items per page (default 50, maximum 200)'),
+      reason: z
+        .enum([
+          'NO_MODEL_LIST_API',
+          'AMBIGUOUS_DEPRECATION',
+          'UNKNOWN_PRICING_TIER',
+          'CROSS_SOURCE_ID_CONFLICT',
+        ])
+        .optional()
+        .describe('Optional filter by WP3 research trigger reason'),
     },
     async (args) => {
       const paths = resolveStatePaths();
+      const queueRead = readJsonFile<ResearchQueueFile>(paths.researchQueue);
       const ledger = readJsonFile<VerifyStatusFile>(paths.verifyStatus);
-      if (!ledger.ok) {
-        return respond({ available: false, source: describeReadFailure(ledger), items: [], total: 0 });
-      }
+      const evidenceRead = readJsonFile<ResearchEvidenceRecord[]>(paths.researchEvidence);
+      const evidenceRecords =
+        evidenceRead.ok && Array.isArray(evidenceRead.value) ? evidenceRead.value : [];
 
       const SEVERITY_ORDER: Record<string, number> = {
         'ĐÃ-XÁC-NHẬN-NGỪNG': 0,
         'SẮP-NGỪNG': 1,
         'NGHI-NGỪNG': 2,
       };
-      const queue = (ledger.value.records ?? [])
+
+      if (queueRead.ok && Array.isArray(queueRead.value.items)) {
+        const filteredItems: ResearchQueueItem[] = queueRead.value.items
+          .filter((item) => !isQueueItemResolvedByOfficialEvidence(item, evidenceRecords))
+          .filter((item) => (args.reason ? item.reasons?.includes(args.reason) : true))
+          .sort((a, b) => {
+            const sa = SEVERITY_ORDER[a.label] ?? 99;
+            const sb = SEVERITY_ORDER[b.label] ?? 99;
+            if (sa !== sb) return sa - sb;
+            const ta = Date.parse(a.updatedAt ?? a.verifiedAt ?? '0');
+            const tb = Date.parse(b.updatedAt ?? b.verifiedAt ?? '0');
+            return tb - ta;
+          });
+
+        const page = paginateArray(filteredItems, { cursor: args.cursor, limit: args.limit });
+        return respond({
+          available: true,
+          source: {
+            path: queueRead.filePath,
+            timestamp: queueRead.value.updatedAt ?? null,
+          },
+          ...page,
+        });
+      }
+
+      if (!ledger.ok) {
+        return respond({ available: false, source: describeReadFailure(ledger), items: [], total: 0 });
+      }
+
+      const fallbackQueue = (ledger.value.records ?? [])
         .filter(shouldResearch)
+        .filter((record) => {
+          const derivedReasons: ResearchQueueReason[] = [];
+          if (record.l3?.hasNotice === true) derivedReasons.push('AMBIGUOUS_DEPRECATION');
+          if (record.l1?.exists === false && record.l2?.exists === true) {
+            derivedReasons.push('CROSS_SOURCE_ID_CONFLICT');
+          }
+          if (args.reason && !derivedReasons.includes(args.reason)) {
+            return false;
+          }
+          return !isQueueItemResolvedByOfficialEvidence(
+            {
+              id: record.id,
+              prefix: record.prefix,
+              reasons: derivedReasons,
+              verifiedAt: record.verifiedAt ?? null,
+            },
+            evidenceRecords
+          );
+        })
         .sort((a, b) => {
           const sa = SEVERITY_ORDER[a.label] ?? 99;
           const sb = SEVERITY_ORDER[b.label] ?? 99;
@@ -1145,7 +1313,7 @@ export function createRouterSyncMcpServer(options: ServerOptions = {}): McpServe
           };
         });
 
-      const page = paginateArray(queue, { cursor: args.cursor, limit: args.limit });
+      const page = paginateArray(fallbackQueue, { cursor: args.cursor, limit: args.limit });
       return respond({
         available: true,
         source: { path: ledger.filePath, timestamp: ledger.value.timestamp ?? null },
@@ -1157,28 +1325,46 @@ export function createRouterSyncMcpServer(options: ServerOptions = {}): McpServe
   // 21. research_evidence
   server.tool(
     'research_evidence',
-    'Returns the recorded L1/L2/L3 evidence for one model from the verification ledger',
+    'Returns the recorded L1/L2/L3 verification record and any submitted research evidence ledger entries for one model',
     {
       model: z.string().describe('Model id, or a unique suffix of it'),
     },
     async (args) => {
       const paths = resolveStatePaths();
       const ledger = readJsonFile<VerifyStatusFile>(paths.verifyStatus);
-      if (!ledger.ok) {
+      const evidenceRead = readJsonFile<ResearchEvidenceRecord[]>(paths.researchEvidence);
+
+      if (!ledger.ok && !evidenceRead.ok) {
         return respond({ available: false, source: describeReadFailure(ledger), found: false });
       }
 
-      const records = ledger.value.records ?? [];
+      const records = ledger.ok ? (ledger.value.records ?? []) : [];
       const exact = records.find((record) => record.id === args.model);
       const suffixed = exact ?? records.find((record) => record.id.endsWith(`/${args.model}`));
       const record: VerifyRecord | undefined = suffixed;
 
-      if (!record) {
+      const allSubmitted =
+        evidenceRead.ok && Array.isArray(evidenceRead.value) ? evidenceRead.value : [];
+      const submittedEvidence = matchSubmittedEvidenceForModel(args.model, record, allSubmitted);
+
+      if (!record && submittedEvidence.length === 0) {
         return respond({
           available: true,
           found: false,
           model: args.model,
-          source: { path: ledger.filePath, timestamp: ledger.value.timestamp ?? null },
+          source: ledger.ok
+            ? { path: ledger.filePath, timestamp: ledger.value.timestamp ?? null }
+            : { path: evidenceRead.ok ? evidenceRead.filePath : paths.researchEvidence, timestamp: null },
+        });
+      }
+
+      if (!record) {
+        return respond({
+          available: true,
+          found: true,
+          model: args.model,
+          record: null,
+          submittedEvidence,
         });
       }
 
@@ -1196,6 +1382,7 @@ export function createRouterSyncMcpServer(options: ServerOptions = {}): McpServe
           flags: record.flags ?? [],
           verifiedAt: record.verifiedAt ?? null,
         },
+        submittedEvidence,
       });
     }
   );
@@ -1318,6 +1505,130 @@ export function createRouterSyncMcpServer(options: ServerOptions = {}): McpServe
         pendingQuestionIds: pending.map((question) => question.id),
         profileError,
       });
+    }
+  );
+
+  // 26. submit_research (Tier 1 Ledger-Append Tool — C45-WP3)
+  server.tool(
+    'submit_research',
+    'Appends verified external research evidence for a provider/model into <stateDir>/research-evidence.json after strict HTTPS domain verification and sanitization (ZERO router DB or harness config writes)',
+    {
+      provider: z
+        .string()
+        .min(1)
+        .max(64)
+        .describe('Provider prefix or canonical ID (e.g. openai, anthropic)'),
+      modelId: z
+        .string()
+        .min(1)
+        .max(160)
+        .describe('Model ID (matching provider prefix is stripped automatically)'),
+      verdict: z
+        .enum([
+          'active',
+          'upcoming_deprecation',
+          'deprecated',
+          'pricing_confirmed',
+          'id_resolved',
+          'inconclusive',
+        ])
+        .describe('Structured research verdict'),
+      url: z.string().min(8).max(2048).describe('HTTPS source URL'),
+      quote: z
+        .string()
+        .min(1)
+        .max(2000)
+        .describe('Verbatim supporting excerpt (sanitized and clamped to <= 300 chars)'),
+      conclusion: z.string().max(300).optional().describe('Optional human summary'),
+      publishedAt: z
+        .string()
+        .optional()
+        .describe('Optional ISO-8601 or YYYY-MM-DD publication timestamp on the source page'),
+      shutdownDate: z
+        .string()
+        .optional()
+        .describe('Optional ISO-8601 or YYYY-MM-DD effective retirement date'),
+      replacementModelId: z
+        .string()
+        .max(160)
+        .optional()
+        .describe('Optional suggested replacement model ID'),
+      pricingTier: z
+        .enum(['free', 'paid', 'unknown'])
+        .optional()
+        .describe('Optional confirmed pricing tier'),
+      claimedSourceTier: z
+        .enum(['official', 'secondary'])
+        .optional()
+        .describe(
+          'Optional claimed source tier; rejected with SPOOFED_OFFICIAL_DOMAIN if official is claimed for a non-official host'
+        ),
+    },
+    async (args) => {
+      const paths = resolveStatePaths();
+      try {
+        const record = appendResearchEvidence(paths.stateDir, {
+          provider: args.provider,
+          modelId: args.modelId,
+          verdict: args.verdict,
+          url: args.url,
+          quote: args.quote,
+          conclusion: args.conclusion,
+          publishedAt: args.publishedAt,
+          shutdownDate: args.shutdownDate,
+          replacementModelId: args.replacementModelId,
+          pricingTier: args.pricingTier,
+          claimedSourceTier: args.claimedSourceTier,
+          submittedVia: 'mcp',
+        });
+
+        return respond({
+          accepted: true,
+          record,
+          ledgerPath: paths.researchEvidence,
+          routerWrites: 0,
+          harnessWrites: 0,
+          nextAction:
+            'Queued in research-evidence.json; next routersync tick will incorporate verified evidence into plans.',
+        });
+      } catch (error) {
+        if (error instanceof ResearchValidationError) {
+          return {
+            isError: true,
+            content: [
+              {
+                type: 'text' as const,
+                text: JSON.stringify(
+                  sanitizeObject({
+                    accepted: false,
+                    errorCode: error.code,
+                    message: error.message,
+                  }),
+                  null,
+                  2
+                ),
+              },
+            ],
+          };
+        }
+        return {
+          isError: true,
+          content: [
+            {
+              type: 'text' as const,
+              text: JSON.stringify(
+                sanitizeObject({
+                  accepted: false,
+                  errorCode: 'INTERNAL_ERROR',
+                  message: error instanceof Error ? error.message : String(error),
+                }),
+                null,
+                2
+              ),
+            },
+          ],
+        };
+      }
     }
   );
 
