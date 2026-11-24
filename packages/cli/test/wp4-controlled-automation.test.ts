@@ -21,6 +21,7 @@ import {
   appendResearchEvidence,
   applyPlanSafe,
   readApplyHistory,
+  readFreezeState,
 } from '@routersync/core';
 import { createDaemonServer, createApprovalToken, resetTokenRegistry } from '@routersync/daemon';
 import { setupDaemonFixture } from '../../../test/harness/daemon-fixture.js';
@@ -282,8 +283,6 @@ describe('C45-WP4 Controlled Automation CLI Lifecycle', () => {
 
     process.env['ROUTERSYNC_STATE_DIR'] = stateDir;
     process.env['ROUTERSYNC_CONFIG'] = configPath;
-    process.env['ROUTERSYNC_9ROUTER_DB'] = nineDbPath;
-    process.env['ROUTERSYNC_OMNIROUTE_DB'] = path.join(tmpRoot, 'nonexistent-omniroute.sqlite');
     process.env['ROUTERSYNC_9ROUTER_DB'] = nineDbPath;
     process.env['ROUTERSYNC_OMNIROUTE_DB'] = path.join(tmpRoot, 'nonexistent-omniroute.sqlite');
     process.env['ROUTERSYNC_HOME'] = path.join(tmpRoot, 'home');
@@ -835,5 +834,154 @@ describe('C45-WP4 Controlled Automation CLI Lifecycle', () => {
 
     // Metered model MUST NOT be added to freeOnly combo (kills M6)
     expect(readComboModels('coding-primary')).not.toContain('openai/gpt-5-paid-ultra');
+  });
+
+  it('F5: emits sanitized [AUTO-ROLLBACK] to inbox.json + outbound webhook (auto_rollback) and trips emergency freeze.json circuit breaker on auto-safe rollback', async () => {
+    const preComboModels = readComboModels('coding-primary');
+
+    // Promote router:nine/coding-primary to auto-safe via verified propose receipt
+    await captureCli(() =>
+      runConsentGrantCommand({
+        target: 'router:nine/coding-primary',
+        level: 'propose',
+        stateDir,
+        isTTY: true,
+        promptFn: async () => 'consent',
+      })
+    );
+    const mPlan = await captureCli(() =>
+      runMaintainPlanCommand({ configPath, router: 'nine', stateDir, json: true })
+    );
+    const { planHash } = JSON.parse(mPlan.stdout) as { planHash: string };
+    await captureCli(() =>
+      runMaintainApplyCommand({
+        only: 'coding-primary',
+        configPath,
+        router: 'nine',
+        stateDir,
+        planHash,
+        isTTY: true,
+        promptFn: async () => 'chay',
+      })
+    );
+    await captureCli(() =>
+      runConsentGrantCommand({
+        target: 'router:nine/coding-primary',
+        level: 'auto-safe',
+        stateDir,
+        isTTY: true,
+        promptFn: async () => 'consent',
+      })
+    );
+
+    fs.writeFileSync(
+      path.join(stateDir, 'tick-catalog.json'),
+      JSON.stringify({
+        version: 1,
+        updatedAt: '2026-11-24T10:00:00.000Z',
+        providers: {
+          openai: {
+            prefix: 'openai',
+            router: '9router',
+            contentHash: 'seed-f5',
+            hash: 'seed-f5',
+            ids: [
+              'gpt-4o-legacy',
+              'gpt-4.1',
+              'gpt-4.1-mini',
+              'gpt-4.1-nano',
+              'o3-mini',
+              'o4-mini',
+              'gpt-4o',
+              'gpt-4o-mini',
+              'gpt-4.5',
+              'gpt-5-nano',
+            ],
+            absenceCounts: {},
+            consecutiveFailures: 0,
+            backoffUntilMs: 0,
+            lastStatus: 200,
+            lastLabel: 'OK',
+            updatedAt: '2026-11-24T10:00:00.000Z',
+          },
+        },
+      }),
+      'utf8'
+    );
+
+    // Install SQLite AFTER UPDATE trigger that corrupts writes containing 'gpt-5.5-codex',
+    // forcing post-write read-back mismatch and real snapshot rollback in tick auto-safe!
+    const db = openBetterSqlite3(nineDbPath, { allowLiveDbWrite: true });
+    db.exec(`
+      CREATE TRIGGER f5_simulate_corrupt_write
+      AFTER UPDATE ON combos
+      WHEN NEW.models LIKE '%gpt-5.5-codex%'
+      BEGIN
+        UPDATE combos SET models = '[]' WHERE id = NEW.id;
+      END;
+    `);
+    db.close();
+
+    webhookBodies = [];
+
+    await runTickCommand({
+      configPath,
+      stateDir,
+      mode: 'auto-safe',
+      nowMs: Date.parse('2026-11-24T14:00:00.000Z'),
+      minScanIntervalMs: 0,
+      fetchFn: async (input, init) => {
+        const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+        if (url.includes('api.openai.com')) {
+          return new Response(
+            JSON.stringify({
+              data: [
+                { id: 'gpt-4o-legacy' },
+                { id: 'gpt-4.1' },
+                { id: 'gpt-4.1-mini' },
+                { id: 'gpt-4.1-nano' },
+                { id: 'o3-mini' },
+                { id: 'o4-mini' },
+                { id: 'gpt-4o' },
+                { id: 'gpt-4o-mini' },
+                { id: 'gpt-4.5' },
+                { id: 'gpt-5-nano' },
+                { id: 'gpt-5.5-codex' },
+              ],
+            }),
+            { status: 200, headers: { 'content-type': 'application/json' } }
+          );
+        }
+        if (url.startsWith('http://127.0.0.1:')) {
+          return globalThis.fetch(input, init);
+        }
+        return new Response('{}', { status: 200, headers: { 'content-type': 'application/json' } });
+      },
+      harnessTargets: [],
+    });
+
+    // 1. Pre-apply combo models restored cleanly by snapshot rollback
+    expect(readComboModels('coding-primary')).toEqual(preComboModels);
+
+    // 2. Apply history records rolledBack: true receipt
+    const receipts = readApplyHistory(stateDir).receipts;
+    const autoSafeReceipt = receipts.find((r) => r.appliedAtLevel === 'auto-safe');
+    expect(autoSafeReceipt?.rolledBack).toBe(true);
+    expect(autoSafeReceipt?.success).toBe(false);
+
+    // 3. inbox.json contains sanitized [AUTO-ROLLBACK] notification
+    const inboxRaw = fs.readFileSync(path.join(stateDir, 'inbox.json'), 'utf8');
+    expect(inboxRaw).toContain('[AUTO-ROLLBACK]');
+    expect(inboxRaw).not.toContain('dummy-openai-sandbox-key');
+
+    // 4. Outbound webhook received auto_rollback alert
+    const rawWebhook = JSON.stringify(webhookBodies);
+    expect(rawWebhook).toContain('auto_rollback');
+    expect(rawWebhook).toContain('AUTO_ROLLBACK');
+    expect(rawWebhook).not.toContain('dummy-openai-sandbox-key');
+
+    // 5. Emergency freeze circuit breaker tripped automatically
+    const freeze = readFreezeState(stateDir);
+    expect(freeze.frozen).toBe(true);
   });
 });

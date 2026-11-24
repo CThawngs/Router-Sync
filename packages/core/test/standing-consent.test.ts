@@ -32,6 +32,18 @@ import {
   assertControlledWriteSandbox,
 } from '../src/index.js';
 
+function createDirLinkOrJunction(targetDir: string, linkPath: string): void {
+  if (process.platform === 'win32') {
+    try {
+      fs.symlinkSync(targetDir, linkPath, 'dir');
+    } catch {
+      fs.symlinkSync(targetDir, linkPath, 'junction');
+    }
+  } else {
+    fs.symlinkSync(targetDir, linkPath, 'dir');
+  }
+}
+
 describe('C45-WP4 Standing Consent, Promotion Gate, Freeze & Persistent Approval Tokens', () => {
   let tmpDirs: string[] = [];
 
@@ -360,6 +372,63 @@ describe('C45-WP4 Standing Consent, Promotion Gate, Freeze & Persistent Approval
       expect(() =>
         assertControlledWriteSandbox(fakeHomeTarget, 'harness-config', {})
       ).toThrowError(ConsentValidationError);
+    });
+
+    it('F1: resolves deep existing ancestor realpath for non-existent files under aliased os.tmpdir() and blocks directory symlink/junction escapes outside os.tmpdir()', () => {
+      const realTmpBacking = makeTmpDir('rs-wp4-f1-real-');
+      const linkHolder = makeTmpDir('rs-wp4-f1-holder-');
+      const aliasedTmpDir = path.join(linkHolder, 'aliased-tmpdir');
+      createDirLinkOrJunction(realTmpBacking, aliasedTmpDir);
+
+      // (a) Reproduce macOS /var/folders -> /private/var/folders & Windows 8.3 short-name tmpdir:
+      // os.tmpdir() points to an existing symlink/alias, while targetPath has non-existent nested segments.
+      const prevTmpDir = process.env['TMPDIR'];
+      const prevTemp = process.env['TEMP'];
+      const prevTmp = process.env['TMP'];
+      process.env['TMPDIR'] = aliasedTmpDir;
+      process.env['TEMP'] = aliasedTmpDir;
+      process.env['TMP'] = aliasedTmpDir;
+      try {
+        const nonExistentDb = path.join(aliasedTmpDir, 'nested-a', 'nested-b', 'sandbox-router.sqlite');
+        const nonExistentCfg = path.join(aliasedTmpDir, 'nested-a', 'opencode.jsonc');
+
+        expect(() => assertControlledWriteSandbox(nonExistentDb, 'router-db', {})).not.toThrow();
+        expect(() => assertControlledWriteSandbox(nonExistentCfg, 'harness-config', {})).not.toThrow();
+      } finally {
+        if (prevTmpDir === undefined) delete process.env['TMPDIR'];
+        else process.env['TMPDIR'] = prevTmpDir;
+        if (prevTemp === undefined) delete process.env['TEMP'];
+        else process.env['TEMP'] = prevTemp;
+        if (prevTmp === undefined) delete process.env['TMP'];
+        else process.env['TMP'] = prevTmp;
+      }
+
+      // (b) Directory symlink/junction inside os.tmpdir() pointing outside os.tmpdir() with a NON-EXISTENT filename
+      // MUST fail closed with SANDBOX_OUTSIDE_TMPDIR instead of skipping realpath resolution!
+      const sandboxDir = makeTmpDir('rs-wp4-f1-escape-');
+      const escapeLinkDir = path.join(sandboxDir, 'escape-outside-tmp');
+      createDirLinkOrJunction(process.cwd(), escapeLinkDir);
+
+      const escapedHarnessPath = path.join(escapeLinkDir, 'nonexistent-escaped-victim.json');
+      const escapedRouterDbPath = path.join(escapeLinkDir, 'nonexistent-escaped-router.sqlite');
+
+      expect(() =>
+        assertControlledWriteSandbox(escapedHarnessPath, 'harness-config', {})
+      ).toThrowError(ConsentValidationError);
+      try {
+        assertControlledWriteSandbox(escapedHarnessPath, 'harness-config', {});
+      } catch (err) {
+        expect((err as ConsentValidationError).code).toBe('SANDBOX_OUTSIDE_TMPDIR');
+      }
+
+      expect(() =>
+        assertControlledWriteSandbox(escapedRouterDbPath, 'router-db', {})
+      ).toThrowError(ConsentValidationError);
+      try {
+        assertControlledWriteSandbox(escapedRouterDbPath, 'router-db', {});
+      } catch (err) {
+        expect((err as ConsentValidationError).code).toBe('SANDBOX_OUTSIDE_TMPDIR');
+      }
     });
   });
 });

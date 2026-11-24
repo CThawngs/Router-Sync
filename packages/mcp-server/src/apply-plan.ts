@@ -5,10 +5,10 @@
  *
  * Enforces the mandatory 8-Gate Fail-Closed Pipeline:
  *  1. Emergency Freeze (`WRITE_FROZEN`)
- *  2. Plan Lookup & Canonical `planHash` Re-Computation (`PLAN_NOT_FOUND` / `PLAN_HASH_MISMATCH`)
+ *  2. Plan Lookup & Canonical `planHash` Re-Computation (`PLAN_NOT_FOUND` / `PLAN_HASH_MISMATCH`, including `harnessActions[*].configPath`)
  *  3. Standing Consent / Single-Use Daemon `approvalToken` + `'off'` Veto + C45 §3.2 Auto-Safe Check
- *  4. Sandbox `os.tmpdir()` Path Guard (`SANDBOX_OUTSIDE_TMPDIR` / `FORBIDDEN_RUNTIME_FILE`)
- *  5. Pre-Flight Invariants `I1..I8` (`INVARIANT_VIOLATION`)
+ *  4. Sandbox `os.tmpdir()` Deep Realpath Guard (`SANDBOX_OUTSIDE_TMPDIR` / `FORBIDDEN_RUNTIME_FILE`)
+ *  5. Pre-Flight Target Actions, Diff, WP2 Harness Guards & Invariants `I1..I8` (`TARGET_NOT_FOUND` / `NO_PLANNED_CHANGES` / `UNKEYED_PROVIDER` / `DEFAULT_SLOT_PROTECTED` / `INVARIANT_VIOLATION`)
  *  6. Atomic Write Cycle (`snapshot/.bak -> write -> read-back + I4 -> unconditional auto-rollback`)
  *  7. HMAC-Signed `apply-history.json` Receipt Persistence
  *  8. Dual Sanitized Notification (`inbox.json` + `sendActionableWebhook` with `source: 'mcp.apply_plan'`)
@@ -38,7 +38,7 @@ import {
   assertControlledWriteSandbox,
   atomicWriteFileSync,
   authorizeTargetWrite,
-  canonicalizePath,
+  computeCanonicalTickPlanHash as coreComputeCanonicalTickPlanHash,
   getConfiguredRouterDbPath,
   isPathInsideDir,
   locateRouterDb,
@@ -46,16 +46,19 @@ import {
   planCombos,
   readFreezeState,
   readStandingConsent,
+  resolveDeepCanonicalPath,
   saveSnapshot,
   sendActionableWebhook,
   validateInvariants,
   verifyAndConsumePersistentApprovalToken,
+  verifyPersistentApprovalToken,
   type ComboRule,
   type ParsedTargetScope,
 } from '@routersync/core';
 import {
   applyHarnessPlanActionsSafe,
   restoreHarnessBackupBytes,
+  validateHarnessPlanActionsPreFlight,
   type HarnessPlanActionInput,
 } from './harness-apply.js';
 import { sanitizeObject } from './sanitize.js';
@@ -147,25 +150,10 @@ function mcpJsonResponse(payload: unknown, isError = false) {
 }
 
 export function computeCanonicalTickPlanHash(plan: StoredPlanDocument): string | null {
-  if (!Array.isArray(plan.routerActions) || !Array.isArray(plan.harnessActions)) {
-    return null;
-  }
-  const canonicalPayload = JSON.stringify({
-    routerActions: plan.routerActions.map((a) => ({
-      router: a.router,
-      comboName: a.comboName,
-      provider: a.provider,
-      modelId: a.modelId,
-      action: a.action,
-    })),
-    harnessActions: plan.harnessActions.map((a) => ({
-      harnessId: a.harnessId,
-      providerId: a.providerId,
-      modelId: a.modelId,
-      action: a.action,
-    })),
+  return coreComputeCanonicalTickPlanHash({
+    routerActions: plan.routerActions,
+    harnessActions: plan.harnessActions,
   });
-  return crypto.createHash('sha256').update(canonicalPayload).digest('hex').slice(0, 16);
 }
 
 function resolvePlanFileOnDisk(
@@ -185,8 +173,8 @@ function resolvePlanFileOnDisk(
     }
     for (const dir of candidateDirs) {
       const candidate = path.resolve(dir, cleanRel);
-      const canonDir = canonicalizePath(dir);
-      const canonCandidate = canonicalizePath(candidate);
+      const canonDir = resolveDeepCanonicalPath(dir);
+      const canonCandidate = resolveDeepCanonicalPath(candidate);
       if (!isPathInsideDir(canonCandidate, canonDir)) {
         return {
           ok: false,
@@ -415,21 +403,27 @@ export function registerApplyPlanTool(
 
       let authorizedVia: 'standing-consent' | 'approval-token' = 'standing-consent';
       const targetAppliedLevels = new Map<string, 'propose' | 'auto-safe'>();
+      const trimmedApprovalToken =
+        args.approvalToken !== undefined && args.approvalToken.trim().length > 0
+          ? args.approvalToken.trim()
+          : undefined;
 
-      if (args.approvalToken !== undefined && args.approvalToken.trim().length > 0) {
-        const tokVerify = verifyAndConsumePersistentApprovalToken(
+      if (trimmedApprovalToken) {
+        // Pre-verify token non-destructively at Gate 3 so pre-flight target/invariant/diff
+        // rejections at Gates 4 & 5 do NOT burn a single-use token prematurely (F3).
+        const tokPreview = verifyPersistentApprovalToken(
           paths.stateDir,
-          args.approvalToken.trim(),
+          trimmedApprovalToken,
           computedPlanHash,
           parsedTargets.map((p) => p.target)
         );
-        if (!tokVerify.valid) {
+        if (!tokPreview.valid) {
           return mcpJsonResponse(
             {
               applied: false,
               errorCode: 'INVALID_APPROVAL_TOKEN',
-              reason: tokVerify.reason ?? 'invalid_signature',
-              message: `Approval token rejected (${tokVerify.reason ?? 'invalid_signature'}).`,
+              reason: tokPreview.reason ?? 'invalid_signature',
+              message: `Approval token rejected (${tokPreview.reason ?? 'invalid_signature'}).`,
             },
             true
           );
@@ -457,7 +451,7 @@ export function registerApplyPlanTool(
       }
 
       // ---------------------------------------------------------------------
-      // Gate 4 & Gate 5: Sandbox Path Guard + Invariants `I1..I8` Pre-Flight
+      // Gate 4 & Gate 5: Sandbox Path Guard + Target Action/Diff + Invariants `I1..I8`
       // ---------------------------------------------------------------------
       const { config, configDir } = loadConfigForMcpApply(paths, context.configPath);
       const l2Read = readJsonFile<L2CacheFile>(paths.l2Cache);
@@ -502,6 +496,27 @@ export function registerApplyPlanTool(
                 ? 'omniroute'
                 : '9router';
 
+            // F3: Reject requested router target with zero matching plan actions BEFORE DB write or receipt!
+            const matchingActions = (planDoc.routerActions ?? []).filter(
+              (a) =>
+                a.comboName === comboName &&
+                (a.router === routerId || a.router === adapterName) &&
+                (a.action === 'ADD_MODEL' ||
+                  a.action === 'ENABLE_MODEL' ||
+                  a.action === 'REMOVE_MODEL')
+            );
+            if (matchingActions.length === 0) {
+              return mcpJsonResponse(
+                {
+                  applied: false,
+                  errorCode: 'TARGET_NOT_FOUND',
+                  target: pt.target,
+                  message: `No actionable router plan entries found for '${pt.target}'.`,
+                },
+                true
+              );
+            }
+
             const configuredDb = routerCfg?.db?.path
               ? path.resolve(configDir, routerCfg.db.path)
               : getConfiguredRouterDbPath(adapterName) ?? locateRouterDb(adapterName);
@@ -536,12 +551,6 @@ export function registerApplyPlanTool(
               );
             }
 
-            const matchingActions = (planDoc.routerActions ?? []).filter(
-              (a) =>
-                a.comboName === comboName &&
-                (a.router === routerId || a.router === adapterName)
-            );
-
             let nextModels = [...currentCombo.models];
             for (const act of matchingActions) {
               const step = act.fullStep ?? `${act.provider}/${act.modelId}`;
@@ -552,6 +561,22 @@ export function registerApplyPlanTool(
                   nextModels.push(step);
                 }
               }
+            }
+
+            // F3: Reject zero effective model diff so no-op applies cannot forge §3.2 promotion receipts!
+            if (
+              nextModels.length === currentCombo.models.length &&
+              nextModels.every((m, idx) => m === currentCombo.models[idx])
+            ) {
+              return mcpJsonResponse(
+                {
+                  applied: false,
+                  errorCode: 'NO_PLANNED_CHANGES',
+                  target: pt.target,
+                  message: `Planned router actions for '${pt.target}' produce zero effective model changes.`,
+                },
+                true
+              );
             }
 
             const comboCfg = (config.combos ?? []).find(
@@ -664,7 +689,7 @@ export function registerApplyPlanTool(
             const matchingHarnessActions = (planDoc.harnessActions ?? []).filter(
               (a) => a.harnessId === harnessId && (a.action === 'ADD_MODEL' || a.action === 'REMOVE_MODEL')
             );
-            const configPath = matchingHarnessActions[0]?.configPath;
+            const configPath = matchingHarnessActions[0]?.configPath?.trim();
             if (!configPath) {
               return mcpJsonResponse(
                 {
@@ -675,6 +700,38 @@ export function registerApplyPlanTool(
                 },
                 true
               );
+            }
+
+            // F2: Enforce consistent canonical configPath across all matching actions for this harness
+            const expectedCanonCfg = resolveDeepCanonicalPath(configPath);
+            const foldCase = process.platform === 'win32' || process.platform === 'darwin';
+            const normExpectedCfg = foldCase ? expectedCanonCfg.toLowerCase() : expectedCanonCfg;
+            for (const act of matchingHarnessActions) {
+              const rawActCfg = typeof act.configPath === 'string' ? act.configPath.trim() : '';
+              if (!rawActCfg) {
+                return mcpJsonResponse(
+                  {
+                    applied: false,
+                    errorCode: 'INVALID_PLAN_CONFIG_PATH',
+                    target: pt.target,
+                    message: `Missing configPath in harness plan action for '${pt.target}'.`,
+                  },
+                  true
+                );
+              }
+              const actCanon = resolveDeepCanonicalPath(rawActCfg);
+              const normActCanon = foldCase ? actCanon.toLowerCase() : actCanon;
+              if (normActCanon !== normExpectedCfg) {
+                return mcpJsonResponse(
+                  {
+                    applied: false,
+                    errorCode: 'INVALID_PLAN_CONFIG_PATH',
+                    target: pt.target,
+                    message: `Inconsistent configPath across harness plan actions for '${pt.target}'.`,
+                  },
+                  true
+                );
+              }
             }
 
             assertControlledWriteSandbox(configPath, 'harness-config');
@@ -691,18 +748,38 @@ export function registerApplyPlanTool(
               );
             }
 
+            const mappedActions: HarnessPlanActionInput[] = matchingHarnessActions.map((a) => ({
+              harnessId: a.harnessId,
+              configPath: resolvedCfg,
+              providerId: a.providerId,
+              modelId: a.modelId,
+              action: a.action as 'ADD_MODEL' | 'REMOVE_MODEL',
+            }));
+
+            // F4: Enforce WP2 keyed-provider, default-slot protection, & non-zero diff BEFORE write/token consumption!
+            const hPreFlight = validateHarnessPlanActionsPreFlight({
+              harnessId,
+              configPath: resolvedCfg,
+              actions: mappedActions,
+            });
+            if (!hPreFlight.ok) {
+              return mcpJsonResponse(
+                {
+                  applied: false,
+                  errorCode: hPreFlight.errorCode,
+                  target: pt.target,
+                  message: hPreFlight.message,
+                },
+                true
+              );
+            }
+
             preparedHarnesses.push({
               scope: pt,
               harnessId,
               configPath: resolvedCfg,
               preBytes: fs.readFileSync(resolvedCfg),
-              actions: matchingHarnessActions.map((a) => ({
-                harnessId: a.harnessId,
-                configPath: resolvedCfg,
-                providerId: a.providerId,
-                modelId: a.modelId,
-                action: a.action as 'ADD_MODEL' | 'REMOVE_MODEL',
-              })),
+              actions: mappedActions,
             });
           }
         }
@@ -723,6 +800,27 @@ export function registerApplyPlanTool(
           },
           true
         );
+      }
+
+      // Atomically consume single-use approvalToken right before Gate 6 writes
+      if (trimmedApprovalToken) {
+        const tokConsume = verifyAndConsumePersistentApprovalToken(
+          paths.stateDir,
+          trimmedApprovalToken,
+          computedPlanHash,
+          parsedTargets.map((p) => p.target)
+        );
+        if (!tokConsume.valid) {
+          return mcpJsonResponse(
+            {
+              applied: false,
+              errorCode: 'INVALID_APPROVAL_TOKEN',
+              reason: tokConsume.reason ?? 'invalid_signature',
+              message: `Approval token rejected (${tokConsume.reason ?? 'invalid_signature'}).`,
+            },
+            true
+          );
+        }
       }
 
       // ---------------------------------------------------------------------

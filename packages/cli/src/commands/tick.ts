@@ -20,15 +20,18 @@ import * as path from 'node:path';
 import * as os from 'node:os';
 import { acquireLock, releaseLock, readRouterCombos } from '@routersync/daemon';
 import {
+  activateFreeze,
   appendApplyReceipt,
   applyPlanSafe,
   assertControlledWriteSandbox,
   assertEligibleForAutoSafe,
   atomicWriteFileSync,
   canonicalizeResearchProvider,
+  computeCanonicalTickPlanHash,
   planCombos,
   readFreezeState,
   readStandingConsent,
+  sanitizeUntrustedString,
   saveSnapshot,
   validateInvariants,
   type ModelInfo,
@@ -2127,22 +2130,11 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
       ...routerActions.map((a) => a.detectionLatencyMs),
       ...harnessActions.map((a) => a.detectionLatencyMs),
     ]);
-    const canonicalActionPayload = JSON.stringify({
-      routerActions: routerActions.map((a) => ({
-        router: a.router,
-        comboName: a.comboName,
-        provider: a.provider,
-        modelId: a.modelId,
-        action: a.action,
-      })),
-      harnessActions: harnessActions.map((a) => ({
-        harnessId: a.harnessId,
-        providerId: a.providerId,
-        modelId: a.modelId,
-        action: a.action,
-      })),
-    });
-    const planHash = createHash('sha256').update(canonicalActionPayload).digest('hex').slice(0, 16);
+    const planHash =
+      computeCanonicalTickPlanHash({
+        routerActions,
+        harnessActions,
+      }) ?? createHash('sha256').update('[]').digest('hex').slice(0, 16);
     const tickPlan: TickPlanFile = {
       version: 1,
       mode: effectiveMode,
@@ -2167,6 +2159,45 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
     if (effectiveMode === 'auto-safe') {
       const consent = readStandingConsent(sDir, nowMs);
       if (consent.valid && consent.activeTargets.length > 0) {
+        let autoSafeCircuitTripped = false;
+        const sanitizeRollbackDetail = (rawDetail: unknown): string => {
+          const base = sanitizeUntrustedString(
+            rawDetail instanceof Error
+              ? rawDetail.message
+              : typeof rawDetail === 'string' && rawDetail.trim().length > 0
+                ? rawDetail
+                : 'post-write verification failed',
+            240
+          );
+          return base
+            .replace(/[A-Za-z]:\\Users\\[^\\\s"']+/gi, '<redacted-path>')
+            .replace(/\/(?:Users|home)\/[^/\s"']+/g, '<redacted-path>');
+        };
+        const recordAutoSafeRollbackAndTripFreeze = (
+          targetScope: string,
+          idSuffix: string,
+          rawDetail: unknown
+        ): void => {
+          const cleanDetail = sanitizeRollbackDetail(rawDetail);
+          newInboxCandidates.push({
+            id: `auto-rollback-${idSuffix}-${planHash}`,
+            title: `[AUTO-ROLLBACK] Rolled back ${targetScope} (planHash=${planHash})`,
+            type: 'warning',
+            timestamp: nowIso,
+            body: `Auto-safe update on ${targetScope} rolled back cleanly and tripped emergency freeze (${cleanDetail}).`,
+            label: 'AUTO-ROLLBACK',
+            proposed_by: { kind: 'system', source: 'tick' },
+          });
+          autoSafeWebhookAlerts.push({
+            kind: 'auto_rollback',
+            providerOrRouter: targetScope,
+            code: 'AUTO_ROLLBACK',
+            message: `[AUTO-ROLLBACK] Rolled back ${targetScope} (planHash=${planHash}): ${cleanDetail}`,
+          });
+          activateFreeze(sDir, 'auto-rollback-circuit-breaker', nowMs);
+          autoSafeCircuitTripped = true;
+        };
+
         const autoSafeTargets = new Set(
           consent.activeTargets
             .filter((entry) => entry.level === 'auto-safe')
@@ -2194,6 +2225,7 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
         }
 
         for (const group of groupedRouterActions.values()) {
+          if (autoSafeCircuitTripped) break;
           const routerCfg = config.routers.find(
             (r) => r.id === group.routerKey || r.adapter === group.routerKey
           );
@@ -2430,6 +2462,13 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
               code: 'AUTO_SAFE_APPLIED',
               message: `[AUTO-SAFE-APPLIED] Updated ${matchedScope} (planHash=${planHash})`,
             });
+          } else {
+            recordAutoSafeRollbackAndTripFreeze(
+              matchedScope,
+              `router-${group.comboName}`,
+              applyRes.error ?? 'router post-write read-back or I4 idempotency check failed'
+            );
+            break;
           }
         }
 
@@ -2442,6 +2481,7 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
         }
 
         for (const [harnessId, hActions] of groupedHarnessActions.entries()) {
+          if (autoSafeCircuitTripped) break;
           const targetScope = `harness:${harnessId}`;
           if (!autoSafeTargets.has(targetScope)) continue;
           try {
@@ -2504,8 +2544,15 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
                 code: 'AUTO_SAFE_APPLIED',
                 message: `[AUTO-SAFE-APPLIED] Updated ${targetScope} (planHash=${planHash})`,
               });
+            } else if (hRes.rolledBack || !hRes.readBackVerified) {
+              recordAutoSafeRollbackAndTripFreeze(
+                targetScope,
+                `harness-${harnessId}`,
+                'harness post-write byte/semantic verification failed'
+              );
+              break;
             }
-          } catch {
+          } catch (err) {
             appendApplyReceipt(sDir, {
               target: targetScope,
               planHash,
@@ -2518,6 +2565,8 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
               rolledBack: true,
               snapshotOrBackupRef: `${cfgFile}.routersync.bak`,
             });
+            recordAutoSafeRollbackAndTripFreeze(targetScope, `harness-${harnessId}`, err);
+            break;
           }
         }
       }
@@ -2578,7 +2627,7 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
     const webhookAlerts: ActionableWebhookAlert[] = [
       ...autoSafeWebhookAlerts,
       ...newlyAddedInboxItems
-        .filter((item) => item.label !== 'AUTO-SAFE-APPLIED')
+        .filter((item) => item.label !== 'AUTO-SAFE-APPLIED' && item.label !== 'AUTO-ROLLBACK')
         .map((item) => ({
           kind: 'inbox_item' as const,
           providerOrRouter: item.provider ?? 'unknown',

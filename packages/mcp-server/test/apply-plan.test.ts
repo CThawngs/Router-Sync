@@ -9,7 +9,6 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import * as crypto from 'node:crypto';
 import * as fs from 'node:fs';
 import * as http from 'node:http';
 import * as os from 'node:os';
@@ -33,41 +32,9 @@ import {
   CONTROLLED_WRITE_TOOL_NAMES,
   ALL_MCP_TOOL_NAMES,
 } from '../src/index.js';
+import { computeCanonicalTickPlanHash } from '../src/apply-plan.js';
 
 const ORIGINAL_ENV = { ...process.env };
-
-function computeTickPlanHash(plan: {
-  routerActions: Array<{
-    router: string;
-    comboName: string;
-    provider: string;
-    modelId: string;
-    action: string;
-  }>;
-  harnessActions: Array<{
-    harnessId: string;
-    providerId: string;
-    modelId: string;
-    action: string;
-  }>;
-}): string {
-  const payload = JSON.stringify({
-    routerActions: plan.routerActions.map((a) => ({
-      router: a.router,
-      comboName: a.comboName,
-      provider: a.provider,
-      modelId: a.modelId,
-      action: a.action,
-    })),
-    harnessActions: plan.harnessActions.map((a) => ({
-      harnessId: a.harnessId,
-      providerId: a.providerId,
-      modelId: a.modelId,
-      action: a.action,
-    })),
-  });
-  return crypto.createHash('sha256').update(payload).digest('hex').slice(0, 16);
-}
 
 describe('C45-WP4 Controlled MCP `apply_plan` Tool', () => {
   let tmpRoot: string;
@@ -326,10 +293,11 @@ describe('C45-WP4 Controlled MCP `apply_plan` Tool', () => {
           detectionLatencyMs: 0,
         },
       ];
-    const computed = computeTickPlanHash({
-      routerActions: routerActions as any,
-      harnessActions: harnessActions as any,
-    });
+    const computed =
+      computeCanonicalTickPlanHash({
+        routerActions: routerActions as any,
+        harnessActions: harnessActions as any,
+      }) ?? '';
     const planHash = custom?.overrideHash ?? computed;
     const planPath = path.join(plansDir, 'tick-plan.json');
     fs.writeFileSync(
@@ -661,6 +629,406 @@ describe('C45-WP4 Controlled MCP `apply_plan` Tool', () => {
       expect(() =>
         assertEligibleForAutoSafe(stateDir, 'harness:opencode')
       ).toThrowError(ConsentValidationError);
+    } finally {
+      await mcp.close();
+    }
+  });
+
+  it('F2: binds harnessActions[*].configPath into canonical planHash so swapping configPath fails Gate 2 with PLAN_HASH_MISMATCH without consuming approvalToken', async () => {
+    const victimOpencodePath = path.join(tmpRoot, 'victim-b-opencode.jsonc');
+    fs.copyFileSync(opencodePath, victimOpencodePath);
+    const preVictimBytes = fs.readFileSync(victimOpencodePath);
+
+    const { planPath, planHash } = writeTickPlan();
+    const daemonToken = createApprovalToken(planHash);
+
+    // Tamper configPath inside tick-plan.json after token issuance while keeping planHash unchanged
+    const origPlanRaw = fs.readFileSync(planPath, 'utf8');
+    const tampered = JSON.parse(origPlanRaw) as Record<string, any>;
+    for (const ha of tampered['harnessActions'] as Array<Record<string, any>>) {
+      ha['configPath'] = victimOpencodePath;
+    }
+    fs.writeFileSync(planPath, JSON.stringify(tampered, null, 2), 'utf8');
+
+    const mcp = await connectClient();
+    try {
+      const tamperedRes = await mcp.call('apply_plan', {
+        planHash,
+        targets: ['harness:opencode'],
+        approvalToken: daemonToken.token,
+      });
+      expect(tamperedRes.isError).toBe(true);
+      expect(tamperedRes.body['errorCode']).toBe('PLAN_HASH_MISMATCH');
+      expect(Buffer.compare(fs.readFileSync(victimOpencodePath), preVictimBytes)).toBe(0);
+
+      // Restore valid plan file and verify single-use approvalToken was NOT consumed at Gate 2!
+      fs.writeFileSync(planPath, origPlanRaw, 'utf8');
+      const okAfterRestore = await mcp.call('apply_plan', {
+        planHash,
+        targets: ['harness:opencode'],
+        approvalToken: daemonToken.token,
+      });
+      expect(okAfterRestore.isError).toBe(false);
+      expect(okAfterRestore.body['applied']).toBe(true);
+      expect(Buffer.compare(fs.readFileSync(victimOpencodePath), preVictimBytes)).toBe(0);
+    } finally {
+      await mcp.close();
+    }
+  });
+
+  it('F3: rejects router targets with zero matching plan actions or zero effective diff without consuming approvalToken or minting apply-history receipts', async () => {
+    const mcp = await connectClient();
+    try {
+      // (a) routerActions: [] for requested target router:nine/coding-main
+      const { planHash: emptyHash } = writeTickPlan({ routerActions: [] });
+      const tokEmpty = createApprovalToken(emptyHash);
+
+      const emptyRes = await mcp.call('apply_plan', {
+        planHash: emptyHash,
+        targets: ['router:nine/coding-main'],
+        approvalToken: tokEmpty.token,
+      });
+      expect(emptyRes.isError).toBe(true);
+      expect(['TARGET_NOT_FOUND', 'NO_PLANNED_CHANGES']).toContain(emptyRes.body['errorCode']);
+      expect(readApplyHistory(stateDir).receipts).toHaveLength(0);
+      expect(() =>
+        assertEligibleForAutoSafe(stateDir, 'router:nine/coding-main')
+      ).toThrowError(ConsentValidationError);
+
+      // Token must NOT have been wasted on a target with zero matching actions:
+      // harness:opencode IS in the same plan and can still use tokEmpty!
+      const validHarnessWithSameToken = await mcp.call('apply_plan', {
+        planHash: emptyHash,
+        targets: ['harness:opencode'],
+        approvalToken: tokEmpty.token,
+      });
+      expect(validHarnessWithSameToken.isError).toBe(false);
+      expect(validHarnessWithSameToken.body['applied']).toBe(true);
+
+      // (b) Router action with zero effective model diff (model already present in combo)
+      const { planHash: noDiffHash } = writeTickPlan({
+        routerActions: [
+          {
+            targetType: 'router',
+            router: '9router',
+            comboName: 'coding-main',
+            provider: 'openai',
+            modelId: 'gpt-4.1',
+            fullStep: 'openai/gpt-4.1',
+            action: 'ADD_MODEL',
+            reason: 'already present in combo',
+            sourcePublishedAt: null,
+            sourceFirstChangedAt: null,
+            planCreatedAt: '2026-11-24T12:00:00.000Z',
+            detectionLatencyMs: null,
+          },
+        ],
+        harnessActions: [],
+      });
+      const tokNoDiff = createApprovalToken(noDiffHash);
+      const noDiffRes = await mcp.call('apply_plan', {
+        planHash: noDiffHash,
+        targets: ['router:nine/coding-main'],
+        approvalToken: tokNoDiff.token,
+      });
+      expect(noDiffRes.isError).toBe(true);
+      expect(noDiffRes.body['errorCode']).toBe('NO_PLANNED_CHANGES');
+      expect(() =>
+        assertEligibleForAutoSafe(stateDir, 'router:nine/coding-main')
+      ).toThrowError(ConsentValidationError);
+    } finally {
+      await mcp.close();
+    }
+  });
+
+  it('F4: aligns MCP harness-apply with WP2 (Hermes custom_providers + models insertion, OpenMausBot managedModels insertion + openai-compat guard, unkeyed provider refusal, active default-slot protection, DSH non-models digest)', async () => {
+    for (const h of ['hermes', 'openmausbot', 'opencode', 'dsh']) {
+      upsertStandingConsentTarget(stateDir, {
+        target: `harness:${h}`,
+        level: 'propose',
+      });
+    }
+
+    const mcp = await connectClient();
+    try {
+      // (a) Hermes custom_providers sequence + missing models: insertion + comment preservation
+      const hermesPath = path.join(tmpRoot, 'hermes-config.yaml');
+      fs.writeFileSync(
+        hermesPath,
+        [
+          '# Keep Hermes user comment intact',
+          'model:',
+          '  default: gpt-4.1',
+          '  provider: custom_keyed',
+          'custom_providers:',
+          '  - name: custom_keyed',
+          '    base_url: http://127.0.0.1:20128/v1',
+          '  - name: custom_unkeyed',
+          '    base_url: https://api.example.com/v1',
+          '',
+        ].join('\n'),
+        'utf8'
+      );
+
+      // Unkeyed Hermes custom provider refused
+      const { planHash: hermesUnkeyedHash } = writeTickPlan({
+        routerActions: [],
+        harnessActions: [
+          {
+            targetType: 'harness',
+            harnessId: 'hermes',
+            configPath: hermesPath,
+            providerId: 'custom_unkeyed',
+            modelId: 'gpt-5-mini',
+            action: 'ADD_MODEL',
+          },
+        ],
+      });
+      const hermesUnkeyedRes = await mcp.call('apply_plan', {
+        planHash: hermesUnkeyedHash,
+        targets: ['harness:hermes'],
+      });
+      expect(hermesUnkeyedRes.isError).toBe(true);
+      expect(hermesUnkeyedRes.body['errorCode']).toBe('UNKEYED_PROVIDER');
+
+      // Keyed Hermes custom provider without existing `models:` inserts `models:` losslessly
+      const { planHash: hermesOkHash } = writeTickPlan({
+        routerActions: [],
+        harnessActions: [
+          {
+            targetType: 'harness',
+            harnessId: 'hermes',
+            configPath: hermesPath,
+            providerId: 'custom_keyed',
+            modelId: 'gpt-5-mini',
+            action: 'ADD_MODEL',
+          },
+        ],
+      });
+      const hermesOkRes = await mcp.call('apply_plan', {
+        planHash: hermesOkHash,
+        targets: ['harness:hermes'],
+      });
+      expect(hermesOkRes.isError).toBe(false);
+      expect(hermesOkRes.body['applied']).toBe(true);
+      const postHermes = fs.readFileSync(hermesPath, 'utf8');
+      expect(postHermes).toContain('# Keep Hermes user comment intact');
+      expect(postHermes).toContain('models:');
+      expect(postHermes).toContain('gpt-5-mini');
+
+      // (b) OpenMausBot: insert `managedModels` when absent & reject non-openai-compat driver/type
+      const ombPath = path.join(tmpRoot, 'openmausbot-config.json');
+      fs.writeFileSync(
+        ombPath,
+        JSON.stringify(
+          {
+            defaultModelSelection: 'gpt-4.1',
+            instances: {
+              'compat-local': {
+                driver: 'openai-compat',
+                config: {
+                  url: 'http://127.0.0.1:20128/v1',
+                  model: 'gpt-4.1',
+                },
+              },
+              'native-claude': {
+                driver: 'claudeApi',
+                config: {
+                  key: 'inline-test-credential',
+                  managedModels: ['claude-sonnet-4'],
+                },
+              },
+            },
+          },
+          null,
+          2
+        ) + '\n',
+        'utf8'
+      );
+      const preOmbBytes = fs.readFileSync(ombPath);
+
+      const { planHash: ombBadDriverHash } = writeTickPlan({
+        routerActions: [],
+        harnessActions: [
+          {
+            targetType: 'harness',
+            harnessId: 'openmausbot',
+            configPath: ombPath,
+            providerId: 'native-claude',
+            modelId: 'claude-opus-4',
+            action: 'ADD_MODEL',
+          },
+        ],
+      });
+      const ombBadDriverRes = await mcp.call('apply_plan', {
+        planHash: ombBadDriverHash,
+        targets: ['harness:openmausbot'],
+      });
+      expect(ombBadDriverRes.isError).toBe(true);
+      expect(Buffer.compare(fs.readFileSync(ombPath), preOmbBytes)).toBe(0);
+
+      const { planHash: ombInsertHash } = writeTickPlan({
+        routerActions: [],
+        harnessActions: [
+          {
+            targetType: 'harness',
+            harnessId: 'openmausbot',
+            configPath: ombPath,
+            providerId: 'compat-local',
+            modelId: 'gpt-5-mini',
+            action: 'ADD_MODEL',
+          },
+        ],
+      });
+      const ombInsertRes = await mcp.call('apply_plan', {
+        planHash: ombInsertHash,
+        targets: ['harness:openmausbot'],
+      });
+      expect(ombInsertRes.isError).toBe(false);
+      expect(ombInsertRes.body['applied']).toBe(true);
+      const parsedOmb = JSON.parse(fs.readFileSync(ombPath, 'utf8')) as Record<string, any>;
+      expect(parsedOmb['instances']['compat-local']['config']['managedModels']).toEqual([
+        'gpt-5-mini',
+      ]);
+
+      // (c) OpenCode: refuse unkeyed provider AND refuse removing active default-slot model
+      const unkeyedOcPath = path.join(tmpRoot, 'unkeyed-opencode.jsonc');
+      fs.writeFileSync(
+        unkeyedOcPath,
+        [
+          '{',
+          '  "model": "unkeyed_prov/m1",',
+          '  "provider": {',
+          '    "unkeyed_prov": {',
+          '      "options": { "baseURL": "https://api.example.com/v1" },',
+          '      "models": { "m1": { "name": "M1" } }',
+          '    }',
+          '  }',
+          '}',
+          '',
+        ].join('\n'),
+        'utf8'
+      );
+      const preUnkeyedOc = fs.readFileSync(unkeyedOcPath);
+      const { planHash: ocUnkeyedHash } = writeTickPlan({
+        routerActions: [],
+        harnessActions: [
+          {
+            targetType: 'harness',
+            harnessId: 'opencode',
+            configPath: unkeyedOcPath,
+            providerId: 'unkeyed_prov',
+            modelId: 'm2',
+            action: 'ADD_MODEL',
+          },
+        ],
+      });
+      const ocUnkeyedRes = await mcp.call('apply_plan', {
+        planHash: ocUnkeyedHash,
+        targets: ['harness:opencode'],
+      });
+      expect(ocUnkeyedRes.isError).toBe(true);
+      expect(ocUnkeyedRes.body['errorCode']).toBe('UNKEYED_PROVIDER');
+      expect(Buffer.compare(fs.readFileSync(unkeyedOcPath), preUnkeyedOc)).toBe(0);
+
+      const preKeyedOc = fs.readFileSync(opencodePath);
+      const { planHash: ocDefaultSlotHash } = writeTickPlan({
+        routerActions: [],
+        harnessActions: [
+          {
+            targetType: 'harness',
+            harnessId: 'opencode',
+            configPath: opencodePath,
+            providerId: 'openai',
+            modelId: 'gpt-4.1',
+            action: 'REMOVE_MODEL',
+          },
+        ],
+      });
+      const ocDefaultSlotRes = await mcp.call('apply_plan', {
+        planHash: ocDefaultSlotHash,
+        targets: ['harness:opencode'],
+      });
+      expect(ocDefaultSlotRes.isError).toBe(true);
+      expect(ocDefaultSlotRes.body['errorCode']).toBe('DEFAULT_SLOT_PROTECTED');
+      expect(Buffer.compare(fs.readFileSync(opencodePath), preKeyedOc)).toBe(0);
+
+      // (d) DSH: enforce keyed check, default-slot protection, and preserve sibling Cordis rows/comments
+      const dshPath = path.join(tmpRoot, 'cordis.patch.yml');
+      fs.writeFileSync(
+        dshPath,
+        [
+          '# Preserve Cordis header comment',
+          '- id: agent-default-model',
+          '  name: "@deepseek-ai/dsh-agent-default-model"',
+          '  config:',
+          '    provider: keyed_dsh',
+          '    model: deepseek-chat',
+          '- id: mcp-keep',
+          '  name: "@deepseek-ai/dsh-mcp-client"',
+          '  config:',
+          '    serverName: keep-me',
+          '- id: llm-pi-ai',
+          '  name: "@deepseek-ai/dsh-llm-pi-ai"',
+          '  config:',
+          '    providers:',
+          '      keyed_dsh:',
+          '        apiKeyEnv: DSH_API_KEY',
+          '        baseURL: https://api.deepseek.com/v1',
+          '        models:',
+          '          - deepseek-chat',
+          '      unkeyed_dsh:',
+          '        baseURL: https://api.example.com/v1',
+          '        models:',
+          '          - old-m',
+          '',
+        ].join('\n'),
+        'utf8'
+      );
+
+      const { planHash: dshDefaultHash } = writeTickPlan({
+        routerActions: [],
+        harnessActions: [
+          {
+            targetType: 'harness',
+            harnessId: 'dsh',
+            configPath: dshPath,
+            providerId: 'keyed_dsh',
+            modelId: 'deepseek-chat',
+            action: 'REMOVE_MODEL',
+          },
+        ],
+      });
+      const dshDefaultRes = await mcp.call('apply_plan', {
+        planHash: dshDefaultHash,
+        targets: ['harness:dsh'],
+      });
+      expect(dshDefaultRes.isError).toBe(true);
+      expect(dshDefaultRes.body['errorCode']).toBe('DEFAULT_SLOT_PROTECTED');
+
+      const { planHash: dshOkHash } = writeTickPlan({
+        routerActions: [],
+        harnessActions: [
+          {
+            targetType: 'harness',
+            harnessId: 'dsh',
+            configPath: dshPath,
+            providerId: 'keyed_dsh',
+            modelId: 'deepseek-reasoner',
+            action: 'ADD_MODEL',
+          },
+        ],
+      });
+      const dshOkRes = await mcp.call('apply_plan', {
+        planHash: dshOkHash,
+        targets: ['harness:dsh'],
+      });
+      expect(dshOkRes.isError).toBe(false);
+      expect(dshOkRes.body['applied']).toBe(true);
+      const postDsh = fs.readFileSync(dshPath, 'utf8');
+      expect(postDsh).toContain('# Preserve Cordis header comment');
+      expect(postDsh).toContain('serverName: keep-me');
+      expect(postDsh).toContain('deepseek-reasoner');
     } finally {
       await mcp.close();
     }

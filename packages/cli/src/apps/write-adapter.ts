@@ -471,6 +471,14 @@ function getLineIndentBefore(text: string, offset: number): string {
   return text.slice(lineStart, cursor);
 }
 
+function getColumnSpacesBefore(text: string, offset: number): string {
+  let lineStart = offset;
+  while (lineStart > 0 && text.charCodeAt(lineStart - 1) !== 10 && text.charCodeAt(lineStart - 1) !== 13) {
+    lineStart -= 1;
+  }
+  return text.slice(lineStart, offset).replace(/[^\t]/g, ' ');
+}
+
 const CANONICAL_JSON_SECRET_KEYS = new Set([
   'apikey',
   'key',
@@ -667,7 +675,7 @@ function parseHermesState(text: string, configPath: string, homeDir?: string): P
         } else if (change.addIds.length > 0 && target.mapNode.range) {
           const firstPair = target.mapNode.items[0];
           const keyRange = (firstPair?.key as { range?: [number, number, number] } | undefined)?.range;
-          const propIndent = keyRange ? getLineIndentBefore(text, keyRange[0]) : '    ';
+          const propIndent = keyRange ? getColumnSpacesBefore(text, keyRange[0]) : '    ';
           const insertPos = target.mapNode.range[1];
           const prefix = insertPos > 0 && text.charCodeAt(insertPos - 1) !== 10 ? nl : '';
           const lines = change.addIds

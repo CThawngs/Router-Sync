@@ -160,12 +160,13 @@ export function issuePersistentApprovalToken(
   };
 }
 
-export function verifyAndConsumePersistentApprovalToken(
+function verifyPersistentApprovalTokenInternal(
   explicitStateDir: string | undefined,
   token: string,
   planHash: string,
-  requestedTargets?: string[] | undefined,
-  nowMs = Date.now()
+  requestedTargets: string[] | undefined,
+  nowMs: number,
+  consume: boolean
 ): PersistentTokenVerifyResult {
   if (typeof token !== 'string' || !token.includes('.')) {
     return { valid: false, reason: 'token_not_found' };
@@ -239,9 +240,45 @@ export function verifyAndConsumePersistentApprovalToken(
     }
   }
 
-  const updatedEntries = entries.map((item, i) =>
-    i === idx ? { ...item, consumed: true } : item
-  );
-  writeTokenStoreEntries(stateDir, signingKey, updatedEntries, nowMs);
+  if (consume) {
+    const updatedEntries = entries.map((item, i) =>
+      i === idx ? { ...item, consumed: true } : item
+    );
+    writeTokenStoreEntries(stateDir, signingKey, updatedEntries, nowMs);
+  }
   return { valid: true };
+}
+
+export function verifyPersistentApprovalToken(
+  explicitStateDir: string | undefined,
+  token: string,
+  planHash: string,
+  requestedTargets?: string[] | undefined,
+  nowMs = Date.now()
+): PersistentTokenVerifyResult {
+  return verifyPersistentApprovalTokenInternal(
+    explicitStateDir,
+    token,
+    planHash,
+    requestedTargets,
+    nowMs,
+    false
+  );
+}
+
+export function verifyAndConsumePersistentApprovalToken(
+  explicitStateDir: string | undefined,
+  token: string,
+  planHash: string,
+  requestedTargets?: string[] | undefined,
+  nowMs = Date.now()
+): PersistentTokenVerifyResult {
+  return verifyPersistentApprovalTokenInternal(
+    explicitStateDir,
+    token,
+    planHash,
+    requestedTargets,
+    nowMs,
+    true
+  );
 }
