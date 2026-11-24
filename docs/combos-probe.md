@@ -25,10 +25,11 @@ không trả lời được câu "gọi combo thì có chạy không, chậm ở
 | Chế độ | Gửi gì | Hạn mỗi lần |
 |---|---|---|
 | `--mode combo` (mặc định) | một request cho mỗi combo, `model` = tên combo, `stream: true`, `max_tokens: 8` | 120 s |
-| `--mode step` | một request cho mỗi bước duy nhất, `max_tokens: 1` | 20 s |
+| `--mode step` | một request cho mỗi bước duy nhất, `max_tokens: 8` (đổi được `1..64` qua `--max-tokens`) | 20 s |
 
 `--combo <tên>` chọn một combo, `--all` chọn tất cả, `--max-minutes <n>` là ngân
-sách thời gian cho cả lần chạy (mặc định 40).
+sách thời gian cho cả lần chạy (mặc định 40), và `--concurrency <1|2>` giới hạn số
+request đồng thời (mặc định `1`).
 
 ## Kết luận của một lần thử
 
@@ -50,19 +51,26 @@ Hàm phân loại là `perStepConclusion()` (thuần, có test cho từng nhánh
 - Hết `--max-minutes`.
 - **5 lần 429 liên tiếp**: dừng, không cố tiếp. Đây là giới hạn cứng, không phải
   gợi ý.
-- **Hết `--budget <n>`** (C40 X0, mặc định 40 request): dừng và liệt kê các bước
+- **Hết `--budget <n>`** (C40 X0 & C44 W2, mặc định 40 request): dừng và liệt kê các bước
   chưa đo. Bộ đếm cuối lần chạy in `requests=<đã gửi>/<giới hạn>` và số request
   chia theo provider.
 
-## C40 X0 — thăm dò có tiết kiệm quota
+## C40 X0 & C44 W2 — Thăm dò tiết kiệm quota phía client (`RequestBudget` & đối chiếu `usageHistory`)
 
 Mỗi lần thăm dò **đều tốn quota gói miễn phí** của provider, kể cả request trả
 404/429/503. Đây là chi phí thật, không phải lỗi của router.
 
-| Cờ / hành vi | Tác dụng |
+Trên `9router@0.5.123` (`ponytailEnabled=true`), các request `stream: true` trả
+`HTTP 200 OK` có thể ghi `0` dòng mới vào bảng `usageHistory` trong cửa sổ đo.
+Vì vậy từ vòng `W2` (`packages/cli/src/commands/combos-budget.ts` và
+`packages/cli/src/commands/combos-probe.ts`), toàn bộ bộ đếm ngân sách và nhảy
+bước quota đều hoạt động **độc lập ở phía client**:
+
+| Cờ / cơ chế | Tác dụng |
 |---|---|
-| `--budget <n>` | Trần số request cho một lần chạy (`combos probe` và `combos reliability`). Mặc định 40. |
-| `--skip-quota-from <file>` | Đọc tệp kết quả trước; bước trả `429` / `FreeUsageLimitError` trong 30 phút qua được in là `SKIPPED-QUOTA` và **không gửi lại**. |
+| `--budget <n>` (`RequestBudget`) | Trần số request cho một lần chạy (`combos probe` và `combos reliability`, mặc định 40), đếm trực tiếp từng HTTP request phía client đã gửi đi (không phụ thuộc `usageHistory`). |
+| `--skip-quota-from <file>` | Đọc tệp kết quả trước (`recentQuotaSteps`); cắt hậu tố `#<attempt>` và khớp cả dòng `http=429` có `quota=1` ở chế độ combo/step trong cửa sổ 30 phút để đánh dấu `SKIPPED-QUOTA` và **không gửi lại**. |
+| `reconcileSentVsUsage` | Cuối lượt chạy, đối chiếu số request client đã gửi với số dòng `usageHistory` mới và in dòng `đối chiếu usage: sent=<N> usageHistory=<M> lệch=<N-M>`. |
 | `quota=1` | Chú thích trên dòng `RATE-LIMITED` do quota, phân biệt với 429 thường. |
 | xen kẽ provider | Tối đa 3 request liên tiếp tới cùng provider; giữa hai request cùng provider cách ít nhất 3 giây. |
 
@@ -77,8 +85,9 @@ số vòng không lưu đầu ra dạng dòng kết quả.
 
 - `usage=` trong log là provider/model đã phục vụ, đối chiếu bằng dòng mới trong
   `usageHistory` (chỉ đọc).
-- `usage=không có dòng usage` nghĩa là router không ghi nhận request nào — thường
-  là combo chưa bao giờ gọi tới provider.
+- `usage=không có dòng usage` (hoặc `usage=-` trên đường `stream: true` của
+  `9router@0.5.123`) nghĩa là bảng `usageHistory` không xuất hiện dòng mới trong cửa
+  sổ đọc lại; hãy xem thêm dòng `đối chiếu usage: sent=...` ở cuối lượt chạy.
 - `HANG-AFTER-USAGE` là tín hiệu tách biệt: upstream đã trả lời, client thì không.
 
 ## C33: hạn dài, đo "chậm" vs "treo" (mode combo)
@@ -102,13 +111,14 @@ xuất hiện so với header. Kết luận của mode combo:
 Ngưỡng 120 giây là hằng số `SLOW_THRESHOLD_MS`. Một dòng log có `usageAt=` cho
 biết dòng usage xuất hiện ở mili-giây thứ mấy.
 
-## C34: đo phần chờ sau usage
+## C34 & R1: đo phần chờ sau usage và độ đồng thời
 
 | Cờ | Nghĩa |
 |---|---|
 | `--timeline` | Ghi MỌI dòng `usageHistory` mới trong lúc chờ (hỏi mỗi 1 giây), kèm `usageRows` trong JSON và dòng `usage@<ms> provider/model` trong log. |
-| `--max-tokens <n>` | `max_tokens` mỗi request, 1..64 (mặc định 8). |
+| `--max-tokens <n>` | `max_tokens` mỗi request, 1..64 (mặc định 8 ở cả `combo` và `step`). |
 | `--no-stream` | Gửi `stream: false`. |
+| `--concurrency <1\|2>` | Số request gửi đồng thời (`1` hoặc `2`, mặc định `1`). |
 | `--repeat <n>` | (mode step) lặp lại mỗi bước n lần, hậu tố `#1`, `#2`. |
 
 Dùng khi cần biết header về sau khi router đã ghi usage bao lâu, và router có thử
@@ -155,6 +165,6 @@ node packages/cli/dist/index.js combos probe --mode combo --all
 # thử thật 9 combo, tối đa 12 phút
 node packages/cli/dist/index.js combos probe --mode combo --all --yes-spend-tokens --max-minutes 12
 
-# thử từng bước duy nhất
-node packages/cli/dist/index.js combos probe --mode step --all --yes-spend-tokens --max-minutes 25
+# thử từng bước duy nhất với trần ngân sách 20 request
+node packages/cli/dist/index.js combos probe --mode step --all --budget 20 --yes-spend-tokens --max-minutes 25
 ```
