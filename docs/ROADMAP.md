@@ -36,30 +36,29 @@
 
 ---
 
-## Phase 3: Daemon & Fast Loop (Current Phase)
+## Phase 3: Daemon, Fast Loop & Scoped Human-Gated Writes (Completed)
 - [x] **S1 Slice: Read-Only Daemon Observation:**
   - Background `tick` cycle with 15-minute gatekeeper.
   - Automatic `runVerifyPhase` integration at cycle end with zero additional network requests.
   - Persistent `verify-status.json` and unified request accounting (`paidRequests=0`, `tokens=0`).
   - Inbox proposal and alert generation for newly discovered or deprecating models.
   - Read-only MCP server with 24 tools, each one reading a real state file, ledger, schema or documentation tree; a tool reports `missing`/`INVALID_JSON` instead of inventing a value.
-- [x] **S2 Slice: Grant Lifecycle & Human Review:**
-  - Interactive approval token exchange and grant lifecycle management (ADR-MAINTAIN-02).
-  - Outbound webhook notifications for actionable alerts.
-  - Serving-path read-back verification across all active routers.
+- [x] **S2 Slice: Grant Lifecycle, HMAC Approval Tokens & Honest Read-Back (`M1`–`M2`, `W2`):**
+  - Scoped `GrantFile` (`ROUTERSYNC_GRANT_SECRET` scrypt + HMAC-SHA256) and non-TTY refusal gates (`docs/adr/ADR-MAINTAIN-02-apply-grant-lifecycle.md`).
+  - Daemon single-use HMAC-SHA256 `ApprovalToken` (`<nonceHex>.<sigHex>`), `planHash` binding, and loopback `Origin` allowlist (`docs/security/daemon-threat-model.md`).
+  - Outbound webhook notifications for actionable inbox alerts.
+  - Honest serving-path read-back verification (`live-api` vs `db-only (degraded)`) across active routers.
+  - Client-side probe `RequestBudget`, `SKIPPED-QUOTA`, and `reconcileSentVsUsage` (`packages/cli/src/commands/combos-budget.ts`) independent of missing `9router@0.5.123` `stream=true` `usageHistory` rows.
 
 ---
 
-## Phase 4: Production Hardening & Packaging
-- [ ] Multi-OS verification on physical macOS and Linux environments. (Round C4i produced the three
-      evidence sources that can be produced on one machine: platform-parameterised path helpers with
-      unit tests for win32/darwin/linux, a CI matrix of ubuntu/macos/windows on Node 22 and 24, and
-      an end-to-end suite that runs the same way on every platform. A physical macOS and Linux run is
-      still outstanding and is the first thing to do after the first CI run.)
-- [ ] Standalone tarball packaging and clean npm distribution (`@routersync/cli`, `@routersync/mcp-server`).
-      (The packaging itself is done and covered by `pnpm e2e`: every workspace package is packed with
-      `pnpm pack` and installed with npm into an empty project, and the installed binaries are driven.
-      The publication to a public registry is still outstanding.)
+## Phase 4: Production Hardening, Security Audit & Packaging (Current Phase)
+- [x] **5-OS Tarball Hygiene, Resource Variance & Multi-Surface Security Audit (`M3`–`M4`):**
+  - Automated publishable tarball allowlist, `npm publish --dry-run`, and clean-install CLI smoke across 5 OS runners (`tools/agent/pack-verify.mjs`).
+  - 5-run RSS/wall-clock variance harness (`tools/agent/resource-variance.mjs`) and SQLite driver evaluation (`docs/adr/ADR-SQLITE-01-better-sqlite3-vs-node-sqlite.md`, retaining `better-sqlite3` for v0.1 in `chờ chủ dự án`).
+  - Multi-surface security auditor and programmatic router write-gate checklist (`tools/agent/security-audit.mjs`, `SECURITY.md`).
+- [ ] Multi-OS verification on physical macOS and Linux hardware (5-OS GitHub Actions CI matrix — `ubuntu-latest`, `ubuntu-24.04-arm`, `macos-latest`, `windows-latest`, `windows-11-arm` — is active; physical macOS/Linux validation remains open).
+- [ ] Public npm registry publication (`@routersync/cli`, `@routersync/mcp-server`) — `chờ chủ dự án` after explicit owner sign-off (always pushing an explicit release tag such as `git push origin v0.1.0`).
 - [ ] Automated safe-mode failover with hardware-enforced write locks.
 
 ---
@@ -87,12 +86,12 @@ Các mục dưới đây không thuộc phạm vi v0.0.1 và được ghi lại 
 ## Biết trước (các vấn đề đã xác định, chưa xử lý trong v0.1)
 
 - **Đề xuất model mới chưa loại theo nhãn:** Đường `tick` chỉ lọc đề xuất `NEW-CANDIDATE` theo blacklist; nó không loại các model đã gắn nhãn `QUOTA` hoặc `SẮP-NGỪNG`. Nhãn `QUOTA`/`SẮP-NGỪNG` hiện chỉ được áp dụng ở đường `verify` (`packages/cli/src/verify/verifier.ts`), nên một model đang bị giới hạn lượt hoặc sắp ngừng vẫn có thể được đề xuất thêm vào combo.
-- **9Router chỉ ghi lại request thành công, nên không đo được tỷ lệ lỗi:** Bảng `usageHistory` của 9Router chỉ có các request đã thành công. Vì vậy "sức khỏe 7 ngày" của 9Router hiện hiển thị *số request trong 7 ngày* chứ không phải tỷ lệ thành công/thất bại. OmniRoute thì có bảng `call_logs` với mã trạng thái nên hiển thị được tỷ lệ thành công. Cần tài liệu hoặc một bản 9Router mới hơn để đo được tỷ lệ lỗi của 9Router.
-- **Đường dẫn database của 9Router trên macOS và Linux có nguồn tài liệu, chưa được kiểm chứng trên máy thật:** Đường dẫn Windows (`%APPDATA%\9router\db\data.sqlite`) lấy từ `docs/adapters/9router.md`; đường dẫn macOS/Linux (`~/.9router/db/data.sqlite`) dựa trên hai nguồn độc lập (2026-11-13): (1) tài liệu cài đặt `deepwiki.com/decolua/9router/2.1-installation` (dữ liệu ở `~/.9router` trên macOS/Linux, `%APPDATA%\9router` trên Windows; DB chính `${DATA_DIR}/db/data.sqlite`; `DATA_DIR` ghi đè); (2) mã nguồn 9Router `cli/hooks/sqliteRuntime.js` (win32 -> `%APPDATA%\9router`, khác -> `~/.9router`, `if (process.env.DATA_DIR) return process.env.DATA_DIR`). CI kiểm thử trên ba hệ điều hành. Người dùng có thể ghi đè bằng `ROUTERSYNC_9ROUTER_DB` hoặc khai báo `db.path` trong `routersync.yaml`.
+- **9Router chỉ ghi lại request thành công (và đường `stream=true` trên `0.5.123` có thể thiếu dòng `usageHistory`):** Bảng `usageHistory` của 9Router chỉ có các request thành công và trên `9router@0.5.123` các request `stream=true` thường không ghi dòng mới (đã được giảm thiểu phía client cho `combos probe` ở vòng `W2` qua `RequestBudget` và `reconcileSentVsUsage`; xem `docs/known-issues.md`). OmniRoute có bảng `call_logs` kèm mã trạng thái nên hiển thị được tỷ lệ thành công.
+- **Đường dẫn database của 9Router trên macOS và Linux có nguồn tài liệu, chưa được kiểm chứng trên máy thật:** Đường dẫn Windows (`%APPDATA%\9router\db\data.sqlite`) lấy từ `docs/adapters/9router.md`; đường dẫn macOS/Linux (`~/.9router/db/data.sqlite`) dựa trên hai nguồn độc lập (2026-11-13): (1) tài liệu cài đặt `deepwiki.com/decolua/9router/2.1-installation` (dữ liệu ở `~/.9router` trên macOS/Linux, `%APPDATA%\9router` trên Windows; DB chính `${DATA_DIR}/db/data.sqlite`; `DATA_DIR` ghi đè); (2) mã nguồn 9Router `cli/hooks/sqliteRuntime.js` (win32 -> `%APPDATA%\9router`, khác -> `~/.9router`, `if (process.env.DATA_DIR) return process.env.DATA_DIR`). CI kiểm thử trên năm môi trường hệ điều hành. Người dùng có thể ghi đè bằng `ROUTERSYNC_9ROUTER_DB` hoặc khai báo `db.path` trong `routersync.yaml`.
 - **Hai thư mục trạng thái riêng biệt cho `sync` và `tick`:** Hiện tại `tick` dùng `~/.routersync` còn `sync` dùng thư mục trạng thái nền tảng (`%LOCALAPPDATA%\routersync` trên Windows, `$XDG_STATE_HOME/routersync` trên macOS/Linux). Hai thư mục này sẽ được gộp thống nhất ở vòng sau.
 - **Bảo vệ HTTP trong scanner nhà cung cấp so với safe-http (Phase 0):** `packages/cli/src/sync/providers.ts` hiện có 7 cơ chế bảo vệ: (1) phương thức `GET` duy nhất; (2) timeout qua `AbortSignal.timeout` (10s/15s); (3) trần model tối đa (`SCAN_MAX_MODELS = 5000`); (4) trần phân trang tối đa (`SCAN_MAX_PAGES = 20`); (5) trần kích thước phản hồi mỗi trang (`SCAN_MAX_BYTES_PER_PAGE = 10 MiB`); (6) chặn liên kết phân trang dẫn tới inference endpoint (`FORBIDDEN_INFERENCE_PATH_PATTERN`); (7) không log/in secret hoặc API token. Các biện pháp mở rộng (chặn chuyển hướng cross-host redirect sang mạng nội bộ, lọc SSRF dải IP riêng tư `10.0.0.0/8`, `192.168.0.0/16`, `169.254.169.254`, và allowlist host cứng) chưa được áp dụng cho toàn bộ provider tùy biến bởi người dùng, và được lên lịch trong Phase 4.
 - **`routersync undo` chưa có test tự động:** Lệnh khôi phục danh sách bước từ bản sao lưu sync mới nhất vẫn là công cụ thủ công, chưa được phủ bởi test. Xem thêm mục "Hoãn sau v1".
-- **Chưa kiểm chứng trên máy macOS và Linux vật lý:** Bằng chứng đa nền tảng hiện gồm mã không giả định nền tảng, test mô phỏng win32/darwin/linux trên một máy, và ma trận CI ba hệ điều hành. Xem mục Phase 4.
+- **Chưa kiểm chứng trên máy macOS và Linux vật lý:** Bằng chứng đa nền tảng hiện gồm mã không giả định nền tảng, test mô phỏng win32/darwin/linux trên một máy, và ma trận CI năm môi trường hệ điều hành. Xem mục Phase 4.
 
 ---
 

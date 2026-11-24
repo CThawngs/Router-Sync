@@ -83,11 +83,12 @@ Only claims that the test suite proves are listed here.
 | Read-back after a write | After a write the router is read again through the same path it serves from. |
 | Bounded undo | `undo` restores the step list of the newest sync backup; it does not invent a rollback of an unrelated change. |
 | Zero inference tokens | `tick` and the scanners call `GET /models` only. They never call a chat or completion endpoint. |
-| Secrets stay local | API keys are read into memory, never printed, never written to a plan or a log. |
+| Secrets stay local | API keys are read into memory, never printed, never written to a plan or a log (see [`SECURITY.md`](SECURITY.md)). |
 
-#### Install
+#### Install & Read-Only Quickstart
 
-Requirements on every platform: **Node.js >= 22.12** and **pnpm >= 10**.
+Requirements on every platform: **Node.js >= 22.12.0** and **pnpm >= 10.0.0**
+(see [`docs/SETUP.md`](docs/SETUP.md) for the full step-by-step onboarding guide).
 The SQLite driver (`better-sqlite3`) ships a prebuilt binary for macOS
 (Intel and Apple Silicon), Linux (x64 and arm64) and Windows inside the npm
 package, so **no C++ compiler and no manual build step is needed**. The
@@ -110,11 +111,14 @@ pnpm install --frozen-lockfile
 pnpm build
 New-Item -ItemType Directory -Force "$env:APPDATA\routersync" | Out-Null
 Copy-Item ranking.example.yaml "$env:APPDATA\routersync\ranking.yaml"
-node packages/cli/dist/index.js init     # create default config.yaml configuration
-node packages/cli/dist/index.js scan     # first read-only command
+pnpm routersync init                              # create default config.yaml configuration
+pnpm routersync doctor                            # Step 2: diagnose environment & routers
+pnpm routersync combos stale --router 9router     # Step 3: inspect stale steps (9Router)
+pnpm routersync combos stale --router omniroute   # Step 3: inspect stale steps (OmniRoute)
+pnpm routersync scan                              # Step 4: read-only trial (0 tokens, 0 writes)
 ```
 
-**macOS (Terminal)**
+**macOS / Linux (Terminal)**
 
 ```bash
 node --version          # must be >= v22.12.0
@@ -124,22 +128,11 @@ cd Router-Sync
 pnpm install --frozen-lockfile
 pnpm build
 mkdir -p ~/.config/routersync && cp ranking.example.yaml ~/.config/routersync/ranking.yaml
-node packages/cli/dist/index.js init     # create default config.yaml configuration
-node packages/cli/dist/index.js scan     # first read-only command
-```
-
-**Linux (Terminal)**
-
-```bash
-node --version          # must be >= v22.12.0
-corepack enable pnpm    # or: npm install -g pnpm@10
-git clone https://github.com/CThawngs/Router-Sync.git
-cd Router-Sync
-pnpm install --frozen-lockfile
-pnpm build
-mkdir -p ~/.config/routersync && cp ranking.example.yaml ~/.config/routersync/ranking.yaml
-node packages/cli/dist/index.js init     # create default config.yaml configuration
-node packages/cli/dist/index.js scan     # first read-only command
+pnpm routersync init                              # create default config.yaml configuration
+pnpm routersync doctor                            # Step 2: diagnose environment & routers
+pnpm routersync combos stale --router 9router     # Step 3: inspect stale steps (9Router)
+pnpm routersync combos stale --router omniroute   # Step 3: inspect stale steps (OmniRoute)
+pnpm routersync scan                              # Step 4: read-only trial (0 tokens, 0 writes)
 ```
 
 > **Running commands via `pnpm routersync`:** You can invoke any command using
@@ -195,6 +188,8 @@ types the confirmation word for you.
 | `routersync status` | Show router health and read-back level. | No |
 | `routersync doctor` | Diagnose the configuration. | No |
 | `routersync verify` | Label every model across L1/L2/L3. | No |
+| `routersync combos stale` | Inspect stale combo steps on `9router` or `omniroute`. | No |
+| `routersync apps drift` | Detect drift between agent app configs and router models. | No |
 | `routersync tick` | One zero-token catalogue and inbox pass. | No |
 | `routersync rank` | Preview the new combo order. | No (unless `--apply`) |
 | `routersync sync` | Plan and, with `--apply`, write. | Only with `--apply` + TTY + the word |
@@ -251,10 +246,14 @@ use samples live in [`examples/schedule/`](examples/schedule/):
 
 | Document | Content |
 |---|---|
+| [`docs/SETUP.md`](docs/SETUP.md) | Prerequisites, New-User Read-Only Quickstart, and hook setup |
+| [`SECURITY.md`](SECURITY.md) | Security boundary, human-gated writes, and data-minimization contract |
 | [`docs/low-resource.md`](docs/low-resource.md) | Low-resource mode, env vars, and tips |
-| [`docs/SETUP.md`](docs/SETUP.md) | First-time setup |
 | [`docs/WORKFLOW.md`](docs/WORKFLOW.md) / [`docs/WORKFLOW.vi.md`](docs/WORKFLOW.vi.md) | The daily workflow |
-| [`docs/ROADMAP.md`](docs/ROADMAP.md) | What is planned and what is known to be missing |
+| [`docs/combos-probe.md`](docs/combos-probe.md) | Live combo probing, client-side `RequestBudget`, and usage reconciliation |
+| [`docs/known-issues.md`](docs/known-issues.md) | Known issues and verified mitigations |
+| [`docs/CI.md`](docs/CI.md) | CI handbook, `ci-watch` exit codes, and multi-surface audit tools |
+| [`docs/ROADMAP.md`](docs/ROADMAP.md) | What is completed, planned, and deferred |
 | [`docs/compat-matrix.md`](docs/compat-matrix.md) | Platform and feature matrix |
 | [`docs/adapters/`](docs/adapters/) | Per-router and per-harness notes |
 | [`docs/adr/`](docs/adr/) | Architecture decision records |
@@ -351,11 +350,12 @@ Chỉ nêu những điều mà bộ kiểm thử chứng minh được.
 | Đọc lại sau khi ghi | Sau khi ghi, router được đọc lại qua đúng đường dẫn mà nó phục vụ. |
 | Hoàn tác có giới hạn | `undo` khôi phục danh sách bước của bản sao lưu sync mới nhất. |
 | 0 token suy luận | `tick` và các bộ quét chỉ gọi `GET /models`, không gọi endpoint chat hay completion. |
-| Khóa ở lại máy bạn | Khóa API được đọc vào bộ nhớ, không in ra, không ghi vào kế hoạch hay nhật ký. |
+| Khóa ở lại máy bạn | Khóa API được đọc vào bộ nhớ, không in ra, không ghi vào kế hoạch hay nhật ký (xem [`SECURITY.md`](SECURITY.md)). |
 
-#### Cài đặt
+#### Cài đặt & Dùng thử chỉ đọc (Quickstart)
 
-Yêu cầu giống nhau trên mọi nền tảng: **Node.js >= 22.12** và **pnpm >= 10**.
+Yêu cầu giống nhau trên mọi nền tảng: **Node.js >= 22.12.0** và **pnpm >= 10.0.0**
+(xem hướng dẫn từng bước đầy đủ trong [`docs/SETUP.md`](docs/SETUP.md)).
 Thư viện SQLite (`better-sqlite3`) đi kèm bản dựng sẵn cho macOS (Intel và
 Apple Silicon), Linux (x64 và arm64) và Windows ngay trong gói npm, nên
 **không cần trình biên dịch C++ và không cần bước build thủ công**. Kho đã
@@ -378,11 +378,14 @@ pnpm install --frozen-lockfile
 pnpm build
 New-Item -ItemType Directory -Force "$env:APPDATA\routersync" | Out-Null
 Copy-Item ranking.example.yaml "$env:APPDATA\routersync\ranking.yaml"
-node packages/cli/dist/index.js init     # tạo tệp cấu hình config.yaml mặc định
-node packages/cli/dist/index.js scan     # lệnh chỉ đọc đầu tiên
+pnpm routersync init                              # tạo tệp cấu hình config.yaml mặc định
+pnpm routersync doctor                            # Bước 2: chẩn đoán môi trường & router
+pnpm routersync combos stale --router 9router     # Bước 3: kiểm tra bước combo cũ (9Router)
+pnpm routersync combos stale --router omniroute   # Bước 3: kiểm tra bước combo cũ (OmniRoute)
+pnpm routersync scan                              # Bước 4: dùng thử chỉ đọc (0 token, 0 ghi)
 ```
 
-**macOS (Terminal)**
+**macOS / Linux (Terminal)**
 
 ```bash
 node --version          # phải là >= v22.12.0
@@ -392,22 +395,11 @@ cd Router-Sync
 pnpm install --frozen-lockfile
 pnpm build
 mkdir -p ~/.config/routersync && cp ranking.example.yaml ~/.config/routersync/ranking.yaml
-node packages/cli/dist/index.js init     # tạo tệp cấu hình config.yaml mặc định
-node packages/cli/dist/index.js scan     # lệnh chỉ đọc đầu tiên
-```
-
-**Linux (Terminal)**
-
-```bash
-node --version          # phải là >= v22.12.0
-corepack enable pnpm    # hoặc: npm install -g pnpm@10
-git clone https://github.com/CThawngs/Router-Sync.git
-cd Router-Sync
-pnpm install --frozen-lockfile
-pnpm build
-mkdir -p ~/.config/routersync && cp ranking.example.yaml ~/.config/routersync/ranking.yaml
-node packages/cli/dist/index.js init     # tạo tệp cấu hình config.yaml mặc định
-node packages/cli/dist/index.js scan     # lệnh chỉ đọc đầu tiên
+pnpm routersync init                              # tạo tệp cấu hình config.yaml mặc định
+pnpm routersync doctor                            # Bước 2: chẩn đoán môi trường & router
+pnpm routersync combos stale --router 9router     # Bước 3: kiểm tra bước combo cũ (9Router)
+pnpm routersync combos stale --router omniroute   # Bước 3: kiểm tra bước combo cũ (OmniRoute)
+pnpm routersync scan                              # Bước 4: dùng thử chỉ đọc (0 token, 0 ghi)
 ```
 
 > **Chạy lệnh qua `pnpm routersync`:** Bạn có thể gọi bất kỳ lệnh nào bằng
@@ -463,6 +455,8 @@ giờ tự gõ từ xác nhận thay bạn.
 | `routersync status` | Hiện tình trạng router và mức đọc lại. | Không |
 | `routersync doctor` | Chẩn đoán cấu hình. | Không |
 | `routersync verify` | Gán nhãn mọi model qua L1/L2/L3. | Không |
+| `routersync combos stale` | Kiểm tra bước combo cũ trên `9router` hoặc `omniroute`. | Không |
+| `routersync apps drift` | Kiểm tra độ lệch giữa cấu hình ứng dụng agent và model trong router. | Không |
 | `routersync tick` | Một vòng danh mục và hộp thư báo, 0 token. | Không |
 | `routersync rank` | Xem trước thứ tự combo mới. | Không (trừ khi `--apply`) |
 | `routersync sync` | Lập kế hoạch và, kèm `--apply`, ghi. | Chỉ khi `--apply` + TTY + từ xác nhận |
@@ -519,9 +513,14 @@ Các mẫu dùng ngay nằm ở [`examples/schedule/`](examples/schedule/):
 
 | Tài liệu | Nội dung |
 |---|---|
-| [`docs/SETUP.md`](docs/SETUP.md) | Cài đặt lần đầu |
+| [`docs/SETUP.md`](docs/SETUP.md) | Điều kiện tiên quyết, Quickstart chỉ đọc cho người mới và cài đặt hook |
+| [`SECURITY.md`](SECURITY.md) | Ranh giới bảo mật, cổng ghi cần người xác nhận và nguyên tắc không lưu khóa |
+| [`docs/low-resource.md`](docs/low-resource.md) | Chế độ tiết kiệm tài nguyên, biến môi trường và mẹo chạy |
 | [`docs/WORKFLOW.md`](docs/WORKFLOW.md) / [`docs/WORKFLOW.vi.md`](docs/WORKFLOW.vi.md) | Quy trình dùng hằng ngày |
-| [`docs/ROADMAP.md`](docs/ROADMAP.md) | Điều sắp làm và điều đã biết là thiếu |
+| [`docs/combos-probe.md`](docs/combos-probe.md) | Thăm dò combo thực tế, `RequestBudget` phía client và đối chiếu usage |
+| [`docs/known-issues.md`](docs/known-issues.md) | Các vấn đề đã ghi nhận và biện pháp khắc phục |
+| [`docs/CI.md`](docs/CI.md) | Sổ tay CI, mã thoát `ci-watch` và công cụ kiểm toán đa bề mặt |
+| [`docs/ROADMAP.md`](docs/ROADMAP.md) | Các hạng mục đã hoàn thành, đang làm và hoãn sau v1 |
 | [`docs/compat-matrix.md`](docs/compat-matrix.md) | Ma trận nền tảng và tính năng |
 | [`docs/adapters/`](docs/adapters/) | Ghi chú theo từng router và harness |
 | [`docs/adr/`](docs/adr/) | Biên bản quyết định kiến trúc |

@@ -29,6 +29,10 @@ describe('L2: docs/CI.md', () => {
       'no-personal-paths.mjs',
       'no-evidence-in-main.mjs',
       'no-force-push.mjs',
+      'pack-verify.mjs',
+      'resource-variance.mjs',
+      'security-audit.mjs',
+      'c44-track-w.mjs',
     ]) {
       assert.ok(text.includes(tool), `thiếu ${tool}`);
     }
