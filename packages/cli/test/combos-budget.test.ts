@@ -1,6 +1,6 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import { createServer } from 'node:http';
-import { writeFileSync, mkdtempSync, readFileSync } from 'node:fs';
+import { writeFileSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
@@ -12,8 +12,18 @@ import {
   providerDelayMs,
   providerOf,
   recentQuotaSteps,
+  reconcileSentVsUsage,
 } from '../src/commands/combos-budget.js';
 import { runCombosProbeCommand } from '../src/commands/combos-probe.js';
+
+const tempDirs: string[] = [];
+
+afterEach(() => {
+  while (tempDirs.length > 0) {
+    const dir = tempDirs.pop();
+    if (dir) rmSync(dir, { recursive: true, force: true });
+  }
+});
 
 describe('C40 X0: phân loại quota', () => {
   it('429 FreeUsageLimitError là RATE-LIMITED có chú thích quota', () => {
@@ -74,9 +84,44 @@ describe('C40 X0: ngân sách và nhịp provider', () => {
   });
 });
 
+describe('W2: chuẩn hoá recentQuotaSteps (#<attempt> + combo http=429) và reconcileSentVsUsage', () => {
+  it('recentQuotaSteps cắt hậu tố #1/#2 và nhận diện dòng combo http=429 + quota=1 trong cửa sổ 30 phút', () => {
+    const now = Date.parse('2026-11-23T12:00:00Z');
+    const text = [
+      `oc/a#1\tRATE-LIMITED\thttp=429\ttotal=10ms\tusage=-\tquota=1\tat=2026-11-23T11:50:00Z`,
+      `oc/a#2\tRATE-LIMITED\thttp=429\ttotal=11ms\tusage=-\tquota=1\tat=2026-11-23T11:51:00Z`,
+      `rs-fast\tOK\thttp=429\theader=14ms\tfirstByte=15ms\ttotal=15ms\ttokens_in=-\tusageAt=-ms\tusage=không có dòng usage\tquota=1\tat=2026-11-23T11:52:00Z`,
+      `9Router-Agent-1#2\tSLOW-OK\thttp=429\ttotal=20ms\tFreeUsageLimitError: limit reached\tat=2026-11-23T11:55:00Z`,
+      `rs-old\tOK\thttp=429\ttotal=12ms\tusage=-\tquota=1\tat=2026-11-23T10:00:00Z`,
+      `rs-plain-429\tOK\thttp=429\ttotal=12ms\tusage=-\ttoo many requests\tat=2026-11-23T11:58:00Z`,
+    ].join('\n');
+    expect(recentQuotaSteps(text, now)).toEqual(['oc/a', 'rs-fast', '9Router-Agent-1']);
+  });
+
+  it('reconcileSentVsUsage tính đúng độ lệch giữa client sent và usageHistory rows, kèm byProviderObject', () => {
+    expect(reconcileSentVsUsage(9, 0)).toEqual({
+      sentRequests: 9,
+      usageHistoryRows: 0,
+      delta: 9,
+    });
+    expect(reconcileSentVsUsage(18, 9)).toEqual({
+      sentRequests: 18,
+      usageHistoryRows: 9,
+      delta: 9,
+    });
+
+    const b = new RequestBudget(5);
+    expect(b.reserve('oc')).toBe(true);
+    expect(b.reserve('cf')).toBe(true);
+    expect(b.reserve('oc')).toBe(true);
+    expect(b.byProviderObject()).toEqual({ cf: 1, oc: 2 });
+  });
+});
+
 describe('C40 X0: thử thật với máy chủ giả', () => {
   it('dừng ở budget, bước SKIPPED-QUOTA không gửi request', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'rs-budget-'));
+    tempDirs.push(dir);
     const skip = join(dir, 'prior.out.txt');
     writeFileSync(
       skip,

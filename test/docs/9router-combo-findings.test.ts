@@ -1,8 +1,9 @@
 /**
  * test/docs/9router-combo-findings.test.ts
  *
- * R1-5: Provenance, privacy, and empirical completeness guards for
- * `docs/9router-combo-findings.md` (C32–C43 / Track R).
+ * R1-5 & W4: Provenance, privacy, comparison-direction, non-extrapolation,
+ * `chưa phân biệt` candidate labeling, and Track W empirical completeness
+ * guards for `docs/9router-combo-findings.md` (C32–C44 / Track R & Track W).
  */
 
 import { describe, expect, it } from 'vitest';
@@ -20,7 +21,7 @@ const PROVENANCE_BULLET_RE =
 const ALLOWED_SECTION_6_OPERATIONAL_RE =
   /^- (?:Dùng combo ngắn,|Với combo có sẵn,|Không restart router,)/;
 
-describe('R1-5: docs/9router-combo-findings.md provenance & Track R guards', () => {
+describe('R1-5 & W4: docs/9router-combo-findings.md provenance, Track R & Track W guards', () => {
   it('exists, is valid UTF-8 without replacement characters, and contains no personal paths or PII', () => {
     expect(fs.existsSync(FINDINGS_PATH)).toBe(true);
     const content = fs.readFileSync(FINDINGS_PATH, 'utf-8');
@@ -95,14 +96,15 @@ describe('R1-5: docs/9router-combo-findings.md provenance & Track R guards', () 
       }
     }
 
-    expect(labeledBulletCount).toBeGreaterThanOrEqual(18);
+    expect(labeledBulletCount).toBeGreaterThanOrEqual(22);
   });
 
-  it('updates summary range to C32–C43, clears stale R2 note, and preserves C32–C41 facts', () => {
+  it('updates summary range to C32–C44, clears stale R2 note, and preserves C32–C41 facts', () => {
     const content = fs.readFileSync(FINDINGS_PATH, 'utf-8');
 
-    expect(content).toContain('C32–C43');
+    expect(content).toContain('C32–C44');
     expect(content).not.toContain('C32–C40');
+    expect(content).not.toContain('C32–C43.');
     expect(content).not.toContain('R2 chưa chạy');
     expect(content).toContain('**chưa đo**');
 
@@ -157,7 +159,7 @@ describe('R1-5: docs/9router-combo-findings.md provenance & Track R guards', () 
     expect(content).toContain('RATE-LIMITED');
   });
 
-  it('documents R1 2x2 matrix results, combo_not_in_db, ponytailEnabled confounder, and promptTokens quota overhead', () => {
+  it('W4: fixes 826 < 2 900 comparison direction, deletes unrecorded extrapolations, and labels all 4 C44 §1.1 candidates chưa phân biệt', () => {
     const content = fs.readFileSync(FINDINGS_PATH, 'utf-8');
 
     expect(content).toContain('checkR1Gate');
@@ -165,6 +167,7 @@ describe('R1-5: docs/9router-combo-findings.md provenance & Track R guards', () 
     expect(content).toContain('1806245027');
     expect(content).toContain('18/18');
     expect(content).toContain('không tái hiện trong 18 mẫu');
+    expect(content).not.toContain('đã sửa');
     expect(content).toContain('combo_not_in_db');
     expect(content).toContain('stream_on_c1');
     expect(content).toContain('stream_off_c1');
@@ -172,8 +175,51 @@ describe('R1-5: docs/9router-combo-findings.md provenance & Track R guards', () 
     expect(content).toContain('stream_off_c2');
     expect(content).toContain('cloudflare-ai/@cf/meta/llama-3.3-70b-instruct-fp8-fast');
     expect(content).toContain('ponytailEnabled');
+
+    // Exact comparison direction & two empirical measurements across router versions
     expect(content).toContain('826');
     expect(content).toContain('7 434');
     expect(content).toContain('2 900');
+    expect(content).toMatch(/`?826`?\s+nhỏ hơn\s+`?2 900`?/);
+
+    // Zero unrecorded extrapolations
+    expect(content).not.toContain('14 868');
+    expect(content).not.toContain('14,868');
+    expect(content).not.toContain('15 000');
+    expect(content).not.toContain('15,000');
+
+    // All 4 candidate explanations explicitly labeled `chưa phân biệt`
+    const chuaPhanBietMatches = content.match(/chưa phân biệt/g) ?? [];
+    expect(chuaPhanBietMatches.length).toBeGreaterThanOrEqual(4);
+    expect(content).toContain('0.5.119');
+    expect(content).toContain('0.5.123');
+    expect(content).toContain('tiến trình');
+    expect(content).toContain('quota');
+    expect(content).toContain('RAM');
+  });
+
+  it('W4: includes Section 8 with empirical Track W (W1, W2, W3, W5) measurements on 9Router 0.5.123', () => {
+    const content = fs.readFileSync(FINDINGS_PATH, 'utf-8');
+
+    expect(content).toContain('## 8.');
+    expect(content).toContain('tools/agent/c44-track-w.mjs');
+    expect(content).toContain('packages/cli/src/commands/combos-budget.ts');
+    expect(content).toContain('evidence/c44');
+
+    // W1 contention probe results
+    expect(content).toContain('còn nghẽn');
+    expect(content).toMatch(/426[ ,]?861/);
+    expect(content).toContain('chờ chủ dự án');
+
+    // W2 client-side budget & reconciliation
+    expect(content).toContain('RequestBudget');
+    expect(content).toContain('reconcileSentVsUsage');
+
+    // W3 process-age sample (14.11h measured, 24h & 48h chưa đo) + W5 rs-fast chưa đo
+    expect(content).toContain('14.11');
+    expect(content).toContain('freeMemMB=1940');
+    expect(content).toContain('24');
+    expect(content).toContain('48');
+    expect(content).toContain('W5_RS_FAST=chưa đo');
   });
 });

@@ -14,6 +14,10 @@ Bộ công cụ, mã thoát, luật phân loại và ngưỡng nền hiện tạ
 | `tools/hooks/pre-commit` | Chặn commit trực tiếp trên `main` cục bộ. |
 | `tools/hooks/pre-push` | Chạy `prepush` + `tools/guard/no-force-push.mjs` (chặn đẩy non-fast-forward). |
 | `tools/guard/no-secrets.mjs`, `no-personal-paths.mjs`, `no-evidence-in-main.mjs`, `no-force-push.mjs` | Các guard trong `pnpm lint` và pre-push. |
+| `tools/agent/pack-verify.mjs` | Kiểm kê tarball 8 gói `@routersync/*` (allowlist, 0 `.map`/`.env`/secret), `npm publish --dry-run` và cài sạch ở thư mục tạm trên 5 OS. |
+| `tools/agent/resource-variance.mjs` | Đo 5 lượt liên tiếp độ ổn định RSS/thời gian cho kịch bản tài nguyên thấp và kiểm tra ngưỡng trần. |
+| `tools/agent/security-audit.mjs` | Kiểm toán bảo mật đa bề mặt (`repo-files`, `evidence/*`, tarballs, `--with-ci-logs`) và kiểm tra tự động 3 cổng ghi router (`grant`, `approval-token`, `--yes-write-router`). |
+| `tools/agent/c44-track-w.mjs` | Công cụ đo thực nghiệm có ngân sách cho Track W trên `9router@0.5.123` (`w1`, `w3`, `w5`). |
 | `tools/agent/capture-evidence.mjs` | Lớp bọc `capture.mjs` chuẩn: nạp danh sách tên riêng rồi ghi bản ghi có `sha256`. |
 | `tools/agent/verify-records.mjs`, `verify-package.mjs` | Kiểm gói bằng chứng. Xem §6. |
 | `tools/agent/scan-private-names.mjs` | Đếm (không in) số lần tên riêng xuất hiện ở một ref. |
@@ -54,22 +58,22 @@ Số in trực tiếp từ script, không gõ tay:
 node tools/agent/ci-stats.mjs
 ```
 
-Nền hiện tại (lần chạy 2026-11-23, `main` = `c28b7fb`):
+Nền hiện tại (lần chạy 2026-11-24, `main` = `1c51c68`):
 
 | Chỉ số | Giá trị |
 |---|---|
-| Cửa sổ | 100 run gần nhất, từ 2026-11-17 (65 commit) |
-| `push` trên `main` xanh lần đầu | 23/27 |
-| `push` trên `main` xanh lần đầu **liên tiếp** (chuỗi hiện tại) | 17 (`009d5b4` → `c28b7fb`) |
-| Commit của mình xanh lần đầu | 53/65 (82%) |
+| Cửa sổ | 100 run gần nhất, từ 2026-11-17 (76 commit) |
+| `push` trên `main` xanh lần đầu | 29/33 |
+| `push` trên `main` xanh lần đầu **liên tiếp** (chuỗi hiện tại) | 4 (`bc61436` → `1c51c68`) |
+| Commit của mình xanh lần đầu | 66/76 (87%) |
 | Run đang chờ (loại khỏi mẫu) | 0 |
-| Chạy dependabot (tách riêng) | 23 |
-| Đỏ của mình | code=6, infra=0, unknown=3 |
+| Chạy dependabot (tách riêng) | 12 |
+| Đỏ của mình | code=5, infra=0, unknown=3 |
 
 Dòng chuỗi liên tiếp in đúng dạng:
 
 ```
-push on main consecutive green first attempt: 17 (firstSha=009d5b4 lastSha=c28b7fb)
+push on main consecutive green first attempt: 4 (firstSha=bc61436 lastSha=1c51c68)
 ```
 
 Chuỗi đếm từ `push` mới nhất trên `main` lùi về, dừng ở commit đầu tiên không
