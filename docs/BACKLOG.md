@@ -1,4 +1,344 @@
-# BACKLOG.md — Danh sách Vé Thực thi M1–M5 & Track W cho RouterSync v0.1 RC (C44)
+# BACKLOG.md — Danh sách Vé Thực thi Chương trình C45 (Lộ trình 1.0.0) & Lưu trữ C44
+
+- **Nguồn sự thật duy nhất:** `docs/SPEC.md` (đặc tả `S1`–`S10` và bảng khoảng trống trên `main` @ `2ea12c4`)
+- **Mục tiêu phát hành:** `1.0.0` đầy đủ đặc tả (tùy chọn `1.0.0-rc.1` trên dist-tag `next` sau `WP9`); `0.1.0` là **bản chẩn đoán chỉ đọc (không phát hành)** — xem `docs/RELEASE-CANDIDATE.md`
+- **Điều phối:** CEO điều phối · Product Manager (PMO Lead) · CTO (kiến trúc) · COO (vận hành & ngân sách) · Researcher · Data-AI · Engineer · QA · Ops
+
+---
+
+## Chương trình C45 — Lộ trình 1.0.0 Đầy đủ Đặc tả S1–S10 (WP0–WP9)
+
+> **Cổng S10 bắt buộc:** Mọi vé và mọi Pull Request đều phải ghi rõ **`Phục vụ: S#`** (`S1`–`S10`). **PM từ chối mọi vé hoặc PR thiếu trường `Phục vụ: S#`.** Mọi hạng mục ngoài `S1`–`S9` chỉ được thực hiện khi chặn trực tiếp một gói `WP` và phải nêu rõ lý do chặn.
+
+### Ràng buộc C45 áp dụng cho toàn bộ WP0–WP9
+- **Đủ 7 trường chuẩn + `Phục vụ: S#`** cho mọi vé: `Phục vụ` · `1. Mục tiêu` · `2. Tiêu chí chấp nhận` · `3. Người làm` · `4. Người xác minh độc lập` · `5. Tệp dự kiến` · `6. Rủi ro` · `7. Lệnh kiểm chứng`.
+- **Chế độ thật 3 bậc theo mục tiêu:** `propose` (mặc định) / `auto-safe` / `off`; chỉ nâng lên `auto-safe` sau khi 1 lần áp `propose` thành công và `read-back` khớp.
+- **Bất biến ghi mọi bậc:** `backup → atomic write → read-back → auto-rollback`.
+- **Bản sao tạm & quyền hạn:** Đội chỉ thử ghi trên bản sao trong `os.tmpdir()`; tuyệt đối không ghi vào router thật hay cấu hình harness thật của chủ dự án (chỉ chủ dự án chạy ở `WP9`); đội không `npm publish`, không tạo/đẩy tag phát hành.
+- **Kỷ luật 0 token sản phẩm:** Mã sản phẩm RouterSync không gọi LLM.
+- **Ba nhánh bằng chứng (`[skip ci]`, <= 10 tệp, không PR, verifier chuẩn SẠCH):** `evidence/d1` (`WP0`–`WP3`), `evidence/d2` (`WP4`–`WP6`), `evidence/d3` (`WP7`–`WP9`).
+
+### Bảng tổng quan gói việc C45 (WP0–WP9)
+
+| Gói việc | Phục vụ | Nội dung chính | Nhánh bằng chứng đích | Chủ trì | Xác minh độc lập |
+|---|---|---|---|---|---|
+| **`WP0`** | `Phục vụ: S10` (nền tảng `S1–S9`) | Đặc tả chuẩn `docs/SPEC.md`, bảng khoảng trống `file:line`, lộ trình `1.0.0`, `RELEASE-CANDIDATE.md`, `prepare-v1-release.mjs`, `BACKLOG.md` | `evidence/d1` | Product Manager | QA |
+| **`WP1`** | `Phục vụ: S2, S3, S6` | Ma trận năng lực harness (bậc bằng chứng A/B/C) xuất `harness-matrix.md` & `harness-matrix.json` cho `mcp install` / `schedule install` | `evidence/d1` | Researcher + Engineer | QA |
+| **`WP2`** | `Phục vụ: S3` | Adapter ghi đầy đủ cho harness (`inspect`, `plan`, `apply`, `rollback`, `read-back`, bảo toàn byte định dạng/chú thích) | `evidence/d1` | Engineer (CTO duyệt) | QA |
+| **`WP3`** | `Phục vụ: S1, S3, S7` | Vòng nghiên cứu thời gian thực 2 tầng: Tầng 0 lịch 0-token + Tầng 1 MCP `submit_research` kiểm miền chính chủ + đo độ trễ phát hiện | `evidence/d1` | Engineer + Data-AI | QA |
+| **`WP4`** | `Phục vụ: S3, S4, S9` | Tự động hóa có kiểm soát: `standing consent` 30 ngày, MCP `apply_plan`, 3 bậc `propose/auto-safe/off`, bỏ khóa cứng `^test-\d+$`, lệnh `freeze` & `status` | `evidence/d2` | Engineer (CTO duyệt) | QA |
+| **`WP5`** | `Phục vụ: S4` | Bộ chọn chiến lược routing & combo cá nhân hóa (trần 12–15 bước, xếp theo độ ổn định, loại HANG/DEAD) + adapter LiteLLM | `evidence/d2` | Engineer + Data-AI | QA |
+| **`WP6`** | `Phục vụ: S5` | Kịch bản phỏng vấn thích ứng <= 12 câu (MCP prompt/skill + hướng dẫn theo harness, ví dụ đời thường, ghi giả định vào `profile.yaml`) | `evidence/d2` | Product Manager + Engineer | QA |
+| **`WP7`** | `Phục vụ: S6` | Thang lịch chạy 4 bậc theo từng harness (cron gốc 0-LLM → OS scheduler CI 5 OS → MCP `tick_if_due` → daemon) + `doctor` báo bậc & tuổi tick | `evidence/d3` | Engineer (CTO duyệt) | QA |
+| **`WP8`** | `Phục vụ: S7` | Sổ cái token (`tokens=0` + request theo miền cho tick; phiên nghiên cứu agent + trần tuần), MCP `cost_report`, test 0 lời gọi LLM | `evidence/d3` | Engineer + Data-AI | QA |
+| **`WP9`** | `Phục vụ: S9` | Sẵn sàng chạy thật: runbook `LIVE-E2E-v2.md` + lệnh `live-check`, tiêu chí đo thí điểm `propose` → `auto-safe` chờ chủ dự án tự chạy | `evidence/d3` | Engineer + Product Manager | QA |
+
+---
+
+### Vé `WP0` — Đặc tả chuẩn `SPEC.md`, bảng khoảng trống `S1`–`S10`, lộ trình `1.0.0` & chuẩn bị cắt bản
+
+- **Phục vụ: S10** (nền tảng truy xuất cho `S1`–`S9`)
+- **Nhánh bằng chứng đích:** `evidence/d1`
+
+1. **Mục tiêu:** Ban hành nguồn sự thật duy nhất `docs/SPEC.md` (chép nguyên văn `S1`–`S10`, lập bảng khoảng trống có kiểm chứng `file:line` trên `main` @ `2ea12c4` bao gồm đính chính 4 app của `apps inspect`, ghi đủ quy tắc an toàn C45); nâng Phase 5 và `auto-safe` ra khỏi danh sách hoãn trong `docs/ROADMAP.md`; định danh lại `0.1.0` thành "bản chẩn đoán chỉ đọc — không phát hành" trong `docs/RELEASE-CANDIDATE.md` và `CHANGELOG.md`; cung cấp `tools/release/prepare-v1-release.mjs` mặc định `--dry-run`; cập nhật `docs/BACKLOG.md` đủ vé `WP0`–`WP9`.
+2. **Tiêu chí chấp nhận:**
+   - `docs/SPEC.md` chứa nguyên văn `S1`–`S10`, bảng khoảng trống dẫn tệp/dòng thực tế đã kiểm chứng và 5 quy tắc C45 §3.
+   - `docs/ROADMAP.md` đưa Phase 5 & `auto-safe` lên công việc chính `1.0.0`, vượt qua 100% `test/docs/agent-docs.test.ts`.
+   - `docs/RELEASE-CANDIDATE.md`, `CHANGELOG.md` và `tools/release/prepare-v1-release.mjs` sẵn sàng cho chủ dự án cắt `1.0.0` / `1.0.0-rc.1` (giữ `package.json` tại `0.1.0` để `at-167` xanh); không có chuỗi git cấm K6.2.
+   - `test/docs/c45-wp0-spec.test.ts`, toàn bộ guard bảo mật và `scan-private-names.mjs` (delta = 0) đều xanh.
+3. **Người làm:** **Product Manager** (PMO Lead); **Ops** squash-merge sau khi QA ký.
+4. **Người xác minh độc lập:** **QA** (đọc diff, kiểm chứng dẫn dòng `SPEC.md`, chạy lại test docs & guards).
+5. **Tệp dự kiến:**
+   - `<REPO>/docs/SPEC.md`
+   - `<REPO>/docs/ROADMAP.md`
+   - `<REPO>/docs/RELEASE-CANDIDATE.md`
+   - `<REPO>/docs/BACKLOG.md`
+   - `<REPO>/CHANGELOG.md`
+   - `<REPO>/tools/release/prepare-v1-release.mjs`
+   - `<REPO>/test/docs/c45-wp0-spec.test.ts`
+6. **Rủi ro:** Viết nhầm lệnh CLI chưa tồn tại hoặc đường dẫn tệp chưa tồn tại vào `docs/ROADMAP.md` làm đỏ `agent-docs.test.ts`, hoặc vô tình chèn chuỗi git cấm K6.2 → giảm thiểu bằng chạy trực tiếp `agent-docs.test.ts` và `c45-wp0-spec.test.ts` trước khi đẩy nhánh.
+7. **Lệnh kiểm chứng:**
+   ```sh
+   pnpm build
+   pnpm test:file test/docs/agent-docs.test.ts test/docs/c45-wp0-spec.test.ts
+   pnpm typecheck:changed
+   node tools/guard/no-secrets.mjs
+   node tools/guard/no-personal-paths.mjs
+   node tools/guard/no-evidence-in-main.mjs
+   node tools/agent/scan-private-names.mjs origin/main HEAD
+   ```
+
+---
+
+### Vé `WP1` — Ma trận năng lực harness có kiểm chứng (A/B/C) & nguồn dữ liệu chung cho `mcp install` / `schedule install`
+
+- **Phục vụ: S2, S3, S6**
+- **Nhánh bằng chứng đích:** `evidence/d1`
+
+1. **Mục tiêu:** Khảo sát bằng tài liệu chính thức (kèm URL và ngày tra) và quan sát chỉ đọc trên máy chủ dự án (nếu đã cài) cho toàn bộ danh sách harness trong S2 (Hermes, Claude Code, Codex, Antigravity, OpenCode, Cursor, Grok bot, OpenMausBot). Xác minh 5 tiêu chí: (a) định dạng & vị trí cấu hình MCP + lệnh cài; (b) lịch chạy gốc và khả năng chạy script không qua LLM; (c) vị trí/định dạng danh sách provider & model, khả năng người dùng sửa tệp và nhu cầu nạp lại; (d) khả năng agent chạy lệnh shell; (e) bậc bằng chứng (A/B/C; ghi `CHƯA-XÁC-MINH` khi thiếu bằng chứng, tuyệt đối không đoán). Xuất `docs/harness-matrix.md` và `harness-matrix.json` làm nguồn dữ liệu trực tiếp cho `mcp install` và `schedule install`.
+2. **Tiêu chí chấp nhận:**
+   - Đủ cả 8 harness trong S2 với đầy đủ 5 tiêu chí (a)–(e), có URL + ngày kiểm chứng; harness chỉ chỉnh model qua UI được đánh dấu rõ "hướng A chỉ báo cáo & hướng dẫn, không ghi".
+   - Schema của `harness-matrix.json` có kiểm thử hợp đồng (Red-First); `mcp install` và `schedule install` đọc cấu hình từ `harness-matrix.json` thay vì danh sách cứng rời rạc.
+   - Không làm rò rỉ đường dẫn cá nhân, tên riêng hay secret từ quá trình quan sát chỉ đọc trên host; CI 5 OS xanh và QA ký độc lập.
+3. **Người làm:** **Researcher** (tra cứu chính thức + quan sát chỉ đọc), **Engineer** (JSON schema + nối `mcp install` / `schedule install`), **CTO** duyệt schema.
+4. **Người xác minh độc lập:** **QA** (kiểm tra từng URL/bậc A-B-C, chạy test hợp đồng & quét mẫu cá nhân).
+5. **Tệp dự kiến:**
+   - `<REPO>/docs/harness-matrix.md`
+   - `<REPO>/registry/harness-matrix.json` (hoặc vị trí chuẩn do CTO chốt)
+   - `<REPO>/packages/cli/src/commands/mcp-install.ts`
+   - `<REPO>/packages/cli/src/commands/schedule.ts`
+   - `<REPO>/test/docs/harness-matrix.test.ts`
+6. **Rủi ro:** Quan sát trên host dễ kéo đường dẫn cá nhân hoặc suy đoán cấu hình cho harness chưa cài → giảm thiểu bằng kiểm tra chỉ đọc qua placeholder chuẩn, gán `CHƯA-XÁC-MINH` (bậc C) khi thiếu bằng chứng và chạy `no-personal-paths.mjs` + `scan-private-names.mjs`.
+7. **Lệnh kiểm chứng:**
+   ```sh
+   pnpm build
+   pnpm test:changed
+   pnpm typecheck:changed
+   pnpm lint
+   node tools/agent/scan-private-names.mjs origin/main HEAD
+   ```
+
+---
+
+### Vé `WP2` — Adapter ghi đầy đủ cho harness (`inspect`, `plan`, `apply`, `rollback`, `read-back`)
+
+- **Phục vụ: S3**
+- **Nhánh bằng chứng đích:** `evidence/d1`
+
+1. **Mục tiêu:** Dựa trên ma trận `WP1`, xây dựng adapter ghi đầy đủ (`inspect`, `plan`, `apply`, `rollback`, `read-back`) cho các harness có tệp cấu hình model sửa được ở bậc A hoặc B, ưu tiên các harness chủ dự án đang dùng (Hermes, OpenMausBot, OpenCode, Codex nếu xác minh được). Tuân thủ nghiêm hợp đồng: chỉ sửa danh sách model của provider đã có key; không đụng key, base URL hay slot model mặc định (nếu model mặc định bị loại chỉ đề xuất, không tự đổi); bảo toàn chú thích và định dạng YAML/TOML/JSONC; nhận biết app đang chạy và cảnh báo cần nạp lại.
+2. **Tiêu chí chấp nhận:**
+   - **Đỏ trước – xanh sau:** Có test vòng khứ hồi bảo toàn từng byte (byte-preserving round-trip) cho phần không đổi và chú thích trên YAML/TOML/JSONC; test chứng minh không đụng key/base URL/default slot; test mô phỏng sai lệch `read-back` kích hoạt `auto-rollback` khôi phục khớp SHA-256 từng byte trong `os.tmpdir()`.
+   - Đủ kiểm thử đột biến của Engineer và QA cho mã ghi cấu hình harness và bảo vệ secret.
+   - CI 5 OS xanh; 0 thao tác lên cấu hình thật của chủ dự án.
+3. **Người làm:** **Engineer** (**CTO** duyệt thiết kế AST/CST bảo toàn định dạng và giao diện `@routersync/adapter-sdk`).
+4. **Người xác minh độc lập:** **QA** (chạy kiểm thử đột biến riêng, xác minh khứ hồi byte & rollback trên bản sao tạm).
+5. **Tệp dự kiến:**
+   - `<REPO>/packages/adapter-sdk/src/agent-app.ts`
+   - `<REPO>/packages/cli/src/apps/inspect.ts`
+   - `<REPO>/packages/cli/src/apps/write-*.ts` (adapter ghi từng harness bậc A/B)
+   - `<REPO>/packages/cli/test/apps-write-roundtrip.test.ts`
+6. **Rủi ro:** Parser JSON/YAML/TOML thông thường làm mất comment hoặc đảo thứ tự key dẫn tới hỏng cấu hình người dùng → giảm thiểu bằng bộ chỉnh sửa bảo toàn định dạng (CST/patch tối thiểu) kèm bài test khứ hồi byte bắt buộc.
+7. **Lệnh kiểm chứng:**
+   ```sh
+   pnpm build
+   pnpm test:changed
+   pnpm typecheck:changed
+   pnpm lint
+   node tools/agent/scan-private-names.mjs origin/main HEAD
+   ```
+
+---
+
+### Vé `WP3` — Vòng nghiên cứu thời gian thực 2 tầng & công cụ MCP `submit_research`
+
+- **Phục vụ: S1, S3, S7**
+- **Nhánh bằng chứng đích:** `evidence/d1`
+
+1. **Mục tiêu:** Hoàn thiện vòng phát hiện model 2 tầng: (1) **Tầng 0** chạy bằng lịch, 0 token — quét danh sách model provider bằng key trong RAM, trang/changelog chính thức và catalog thứ cấp, so với model đang cấu hình ở từng mục tiêu, ghi kế hoạch và hộp thư; (2) **Tầng 1** chỉ kích hoạt khi hàng đợi nghiên cứu có mục cần phán đoán (provider không có API liệt kê, thông báo ngừng mơ hồ, model mới cần phân loại miễn phí/trả phí, tên khác nhau giữa các nguồn) — agent harness tự dùng công cụ tìm web rồi nộp kết quả qua công cụ MCP mới `submit_research` (URL nguồn, trích dẫn, ngày; hệ thống kiểm miền nguồn chính chủ, nguồn thứ cấp bắt buộc gắn nhãn). `submit_research` chỉ ghi vào sổ bằng chứng của RouterSync, tuyệt đối không ghi vào router hay harness. Giữ luật loại model (cần bằng chứng chính thức hoặc vắng mặt ổn định nhiều chu kỳ, trần co 10%, `UNVERIFIABLE` không bị coi là vắng) và ghi độ trễ phát hiện vào nhật ký.
+2. **Tiêu chí chấp nhận:**
+   - **Đỏ trước – xanh sau:** Test xác nhận `submit_research` kiểm chặt miền nguồn chính chủ, từ chối URL giả/không hợp lệ, gắn nhãn nguồn thứ cấp, không ghi DB router/harness, giữ trần co <= 10% và không coi `UNVERIFIABLE` là vắng.
+   - Nhật ký ghi được độ trễ phát hiện (từ mốc nguồn thay đổi tới mốc sinh kế hoạch).
+   - Đủ kiểm thử đột biến Engineer & QA cho bộ kiểm miền và luật loại model; cập nhật số lượng công cụ MCP trong tài liệu & test đồng bộ; CI 5 OS xanh.
+3. **Người làm:** **Engineer** + **Data-AI** (**CTO** duyệt danh sách miền nguồn chính chủ và schema sổ bằng chứng).
+4. **Người xác minh độc lập:** **QA** (kiểm thử đột biến kiểm miền, kiểm tra độ trễ phát hiện và không vượt quyền ghi).
+5. **Tệp dự kiến:**
+   - `<REPO>/packages/mcp-server/src/server.ts`
+   - `<REPO>/packages/cli/src/commands/tick.ts`
+   - `<REPO>/packages/core/src/research/*` (sổ bằng chứng & kiểm miền nguồn chính chủ)
+   - `<REPO>/registry/providers.yaml`
+   - `<REPO>/packages/mcp-server/test/submit-research.test.ts`
+6. **Rủi ro:** Tấn công giả mạo URL/subdomain nguồn chính chủ hoặc injection trong trích dẫn nghiên cứu → giảm thiểu bằng parser URL chặt theo allowlist miền, bộ lọc chuỗi không tin cậy (AT-90) và test đột biến bảo mật.
+7. **Lệnh kiểm chứng:**
+   ```sh
+   pnpm build
+   pnpm test:changed
+   pnpm typecheck:changed
+   pnpm lint
+   node tools/agent/scan-private-names.mjs origin/main HEAD
+   ```
+
+---
+
+### Vé `WP4` — Tự động hóa có kiểm soát: `standing consent`, MCP `apply_plan`, 3 bậc `propose/auto-safe/off` & lệnh `freeze`
+
+- **Phục vụ: S3, S4, S9**
+- **Nhánh bằng chứng đích:** `evidence/d2`
+
+1. **Mục tiêu:** Xây dựng sự đồng ý đứng (`standing consent`) — tệp chính sách người dùng tạo 1 lần bằng xác nhận tương tác, có hạn mặc định 30 ngày, phạm vi theo từng mục tiêu ghi và bậc (`propose` / `auto-safe` / `off`), thay thế việc gõ xác nhận mỗi lần và thay giới hạn cứng `^test-\d+$` bằng phạm vi lấy từ chính sách (mặc định rỗng). Thêm công cụ MCP `apply_plan` chỉ chạy khi có sự đồng ý đứng còn hạn hoặc approval token của daemon và chỉ áp kế hoạch khớp `planHash`. Thực thi cổng thăng bậc bắt buộc (chỉ lên `auto-safe` sau 1 lần áp `propose` thành công + `read-back` khớp), luật `auto-safe` giữ bất biến `I1`–`I8` + thông báo hộp thư/webhook, lệnh khẩn cấp `freeze` (khóa mọi đường ghi ngay), mở rộng `status` hiển thị bậc từng mục tiêu, và phủ test tự động cho đường hoàn tác trên bản sao tạm.
+2. **Tiêu chí chấp nhận:**
+   - **Đỏ trước – xanh sau:** Test chứng minh từ chối ghi khi phạm vi mặc định rỗng, khi chính sách hết hạn, khi `planHash` lệch, khi chưa qua 1 lần `propose` + `read-back` khớp mà đòi bật `auto-safe`, hoặc khi đã kích hoạt `freeze`.
+   - Test chứng minh chuỗi `backup → atomic write → read-back → auto-rollback` chạy đủ ở cả `propose` và `auto-safe` trên bản sao tạm trong `os.tmpdir()`, kèm test hồi quy cho `undo` / `rollback`.
+   - Đủ kiểm thử đột biến của Engineer và QA cho cổng `standing consent`, `apply_plan`, `freeze` và kiểm tra `planHash`; CI 5 OS xanh.
+3. **Người làm:** **Engineer** (**CTO** duyệt mô hình đe dọa & định dạng tệp `standing consent`).
+4. **Người xác minh độc lập:** **QA** (kiểm thử đột biến bảo mật riêng trên toàn bộ cổng ghi, xác nhận `security-audit.mjs` sạch).
+5. **Tệp dự kiến:**
+   - `<REPO>/packages/core/src/policy/standing-consent.ts`
+   - `<REPO>/packages/cli/src/maintain/grant.ts`
+   - `<REPO>/packages/cli/src/commands/maintain.ts`
+   - `<REPO>/packages/cli/src/commands/freeze.ts`
+   - `<REPO>/packages/cli/src/commands/status.ts`
+   - `<REPO>/packages/mcp-server/src/server.ts`
+   - `<REPO>/test/security/standing-consent-apply-plan.test.ts`
+6. **Rủi ro:** Mở khóa khỏi `^test-\d+$` nếu cấu hình mặc định không rỗng có thể gây ghi ngoài ý muốn → giảm thiểu bằng mặc định phạm vi rỗng tuyệt đối (fail-closed), xác thực HMAC/chữ ký chính sách, cổng `freeze` tức thời và kiểm thử đột biến 2 lớp.
+7. **Lệnh kiểm chứng:**
+   ```sh
+   pnpm build
+   pnpm test:changed
+   node --test test/agent/security-audit.node.test.mjs
+   pnpm typecheck:changed
+   pnpm lint
+   node tools/agent/scan-private-names.mjs origin/main HEAD
+   ```
+
+---
+
+### Vé `WP5` — Bộ chọn chiến lược routing cá nhân hóa, bộ sinh combo theo độ ổn định & adapter LiteLLM
+
+- **Phục vụ: S4**
+- **Nhánh bằng chứng đích:** `evidence/d2`
+
+1. **Mục tiêu:** Xây bộ chọn chiến lược routing từ hồ sơ người dùng (`WP6`) và năng lực thực tế của từng router (`list_strategies`), giữ xoay vòng tài khoản ở cấp provider và dùng `fallback` ở cấp combo khi phù hợp. Combo do RouterSync sinh có trần số bước (mặc định 12–15), xếp theo độ ổn định đo được từ `combos reliability` (loại bỏ bước `HANG` và `DEAD`), xen kẽ provider và loại bỏ model chuyên dụng không phải chat. Triển khai adapter LiteLLM (đọc, kế hoạch, ghi vào tệp cấu hình, hoàn tác) hoặc ghi rõ bằng chứng kỹ thuật nếu chưa khả thi và giữ phương án xuất tệp.
+2. **Tiêu chí chấp nhận:**
+   - **Đỏ trước – xanh sau:** Test xác minh combo sinh ra luôn <= trần bước (12–15), không chứa bước `HANG`/`DEAD` hay model không phải chat, xen kẽ provider (giữ `I7`) và giữ nguyên `I1`–`I8`.
+   - Chiến lược routing thay đổi nhất quán theo từng app và hồ sơ người dùng.
+   - Adapter LiteLLM có test vòng đời `read → plan → apply → read-back → rollback` trên tệp cấu hình tạm trong `os.tmpdir()` (hoặc báo cáo bằng chứng kỹ thuật rõ ràng nếu giới hạn ở chế độ xuất tệp); CI 5 OS xanh.
+3. **Người làm:** **Engineer** + **Data-AI** (**CTO** duyệt kiến trúc adapter LiteLLM & thuật toán chọn chiến lược).
+4. **Người xác minh độc lập:** **QA** (kiểm chứng bất biến combo, kiểm thử đột biến cho đường ghi tệp LiteLLM).
+5. **Tệp dự kiến:**
+   - `<REPO>/packages/core/src/planner/strategy-selector.ts`
+   - `<REPO>/packages/core/src/planner/index.ts`
+   - `<REPO>/packages/cli/src/commands/combos-reliability.ts`
+   - `<REPO>/packages/adapter-litellm/*` hoặc `<REPO>/packages/cli/src/export/litellm.ts`
+   - `<REPO>/packages/core/test/strategy-selector.test.ts`
+6. **Rủi ro:** Tệp cấu hình LiteLLM thực tế đa dạng cấu trúc YAML/biến môi trường → giảm thiểu bằng kiểm chứng trên bộ fixture chuẩn, bảo toàn biến môi trường `os.environ/...` (không bao giờ giải mã hay ghi key trần) và kiểm thử rollback khứ hồi.
+7. **Lệnh kiểm chứng:**
+   ```sh
+   pnpm build
+   pnpm test:changed
+   pnpm typecheck:changed
+   pnpm lint
+   node tools/agent/scan-private-names.mjs origin/main HEAD
+   ```
+
+---
+
+### Vé `WP6` — Kịch bản phỏng vấn thích ứng <= 12 câu & đóng gói prompt/skill theo từng harness
+
+- **Phục vụ: S5**
+- **Nhánh bằng chứng đích:** `evidence/d2`
+
+1. **Mục tiêu:** Thay thế danh sách 12 câu hỏi cố định bằng kịch bản phỏng vấn thích ứng phát hành dưới dạng MCP prompt/skill và tệp hướng dẫn cho từng harness trong ma trận `WP1`. Bao phủ đầy đủ: mục tiêu sử dụng, các harness và router đang dùng, provider đã có key, ngân sách (chỉ miễn phí hay có trả phí), ưu tiên (tốc độ, chất lượng, ngữ cảnh dài), mức tự động mong muốn (3 bậc `propose` / `auto-safe` / `off`), lịch cập nhật. Tối đa 12 câu; câu trả lời mơ hồ thì áp mặc định hợp lý và ghi rõ giả định vào `profile.yaml` để người dùng sửa; người dùng không rành kỹ thuật thì hỏi bằng ví dụ đời thường; tuyệt đối không tự bịa dữ liệu hồ sơ.
+2. **Tiêu chí chấp nhận:**
+   - **Đỏ trước – xanh sau:** Test xác minh luồng hỏi thích ứng tối đa 12 câu cho cả 2 nhánh (người dùng kỹ thuật vs người dùng mơ hồ/không rành kỹ thuật), kiểm tra trường `assumptions` ghi rõ mọi mặc định vào `profile.yaml` và từ chối tự bịa trường chưa hỏi/chưa cung cấp.
+   - Đóng gói prompt/skill MCP + hướng dẫn đồng bộ với danh sách harness từ `WP1`; CI 5 OS xanh.
+3. **Người làm:** **Product Manager** (soạn kịch bản hỏi thích ứng & ví dụ đời thường) + **Engineer** (schema `profile.yaml` + MCP prompt/skill).
+4. **Người xác minh độc lập:** **QA** (kiểm thử cả luồng mơ hồ, luồng chi tiết, kiểm tra không bịa dữ liệu và đồng bộ tài liệu).
+5. **Tệp dự kiến:**
+   - `<REPO>/packages/core/src/profile/questions.ts`
+   - `<REPO>/packages/cli/src/profile/interview.ts`
+   - `<REPO>/packages/mcp-server/src/server.ts`
+   - `<REPO>/docs/ai/skill-routersync.md`
+   - `<REPO>/packages/cli/test/adaptive-interview.test.ts`
+6. **Rủi ro:** Câu hỏi rẽ nhánh phức tạp vượt trần 12 câu hoặc ghi đè tùy chỉnh cũ trong `profile.yaml` → giảm thiểu bằng bài test chặn cứng số câu <= 12 và chế độ merge không phá hủy trường người dùng đã xác nhận.
+7. **Lệnh kiểm chứng:**
+   ```sh
+   pnpm build
+   pnpm test:changed
+   pnpm typecheck:changed
+   pnpm lint
+   node tools/agent/scan-private-names.mjs origin/main HEAD
+   ```
+
+---
+
+### Vé `WP7` — Thang lịch chạy 4 bậc, MCP `tick_if_due` & chẩn đoán độ trễ trong `doctor`
+
+- **Phục vụ: S6**
+- **Nhánh bằng chứng đích:** `evidence/d3`
+
+1. **Mục tiêu:** Triển khai thang lịch chạy 4 bậc cho mọi harness trong ma trận `WP1`: (1) lịch gốc của harness chạy script không qua LLM nếu đã xác minh; (2) bộ lập lịch hệ điều hành qua `routersync schedule install` (Task Scheduler, launchd, systemd timer, cron) có kiểm thử chế độ chạy khô trên CI 5 OS; (3) tick theo yêu cầu khi MCP khởi động hoặc agent gọi công cụ mới `tick_if_due` (chạy nền nếu quá hạn, giữ cổng 15 phút + khóa tệp chống chạy chồng); (4) daemon. Nâng cấp `routersync doctor` báo bậc lịch đang dùng cho từng harness và tuổi tick gần nhất, cảnh báo khi tick cũ hơn gấp đôi chu kỳ, kèm một tài liệu quyết định cho người dùng.
+2. **Tiêu chí chấp nhận:**
+   - **Đỏ trước – xanh sau:** Test `schedule install` chạy khô qua cả 5 OS trong CI; test `tick_if_due` tôn trọng cổng 15 phút và khóa tệp (không chạy đúp song song); test `doctor` xuất đúng bậc lịch và phát cảnh báo khi `tickAge > 2 * interval`.
+   - Có tài liệu hướng dẫn quyết định chọn bậc lịch rõ ràng; CI 5 OS xanh.
+3. **Người làm:** **Engineer** (**CTO** duyệt cơ chế khóa tệp đa nền tảng & thang ưu tiên bậc lịch).
+4. **Người xác minh độc lập:** **QA** (xác minh test chạy khô trên đủ 5 OS, test tranh chấp khóa tệp & cảnh báo `doctor`).
+5. **Tệp dự kiến:**
+   - `<REPO>/packages/cli/src/commands/schedule.ts`
+   - `<REPO>/packages/cli/src/commands/doctor.ts`
+   - `<REPO>/packages/mcp-server/src/server.ts`
+   - `<REPO>/docs/schedule-decision-guide.md`
+   - `<REPO>/packages/cli/test/schedule-ladder.test.ts`
+6. **Rủi ro:** Khác biệt đường dẫn & cơ chế khóa tệp giữa Windows/macOS/Linux hoặc sinh tiến trình mồ côi khi chạy nền từ MCP → giảm thiểu bằng bài test đa nền tảng trên CI 5 OS và cơ chế khóa tệp có kiểm PID/stale-lock.
+7. **Lệnh kiểm chứng:**
+   ```sh
+   pnpm build
+   pnpm test:changed
+   pnpm typecheck:changed
+   pnpm lint
+   node tools/agent/scan-private-names.mjs origin/main HEAD
+   ```
+
+---
+
+### Vé `WP8` — Sổ cái token, trần nghiên cứu theo tuần, MCP `cost_report` & kiểm chứng 0 lời gọi LLM
+
+- **Phục vụ: S7**
+- **Nhánh bằng chứng đích:** `evidence/d3`
+
+1. **Mục tiêu:** Xây dựng sổ cái token bền vững: mỗi lần `tick` ghi `tokens=0` và số request mạng chi tiết theo từng miền; mỗi phiên nghiên cứu của agent (`submit_research`) ghi số lần gọi công cụ và lượng văn bản trả về; bổ sung công cụ MCP `cost_report` tóm tắt chi phí/lượt dùng theo tuần; thêm cấu hình trần số phiên nghiên cứu mỗi tuần (mặc định thấp). Bổ sung bộ test chứng minh mã sản phẩm RouterSync không gọi bất kỳ endpoint LLM nào và chỉ gửi request tới các miền trong danh sách cho phép.
+2. **Tiêu chí chấp nhận:**
+   - **Đỏ trước – xanh sau:** Test xác minh sổ cái ghi tách bạch `tick` (`tokens=0` + đếm request theo miền) với phiên nghiên cứu, chặn vượt trần số phiên/tuần, `cost_report` tổng hợp đúng theo tuần.
+   - Test chặn mạng chứng minh 100% đường chạy sản phẩm không gọi endpoint LLM và từ chối miền ngoài allowlist.
+   - Đủ kiểm thử đột biến Engineer & QA cho bộ đếm trần và lọc allowlist miền; CI 5 OS xanh.
+3. **Người làm:** **Engineer** + **Data-AI** (**COO** xác nhận ngưỡng trần mặc định và báo cáo tuần).
+4. **Người xác minh độc lập:** **QA** (kiểm thử đột biến cho trần tuần & kiểm tra cô lập mạng 0-LLM).
+5. **Tệp dự kiến:**
+   - `<REPO>/packages/core/src/ledger/token-ledger.ts`
+   - `<REPO>/packages/cli/src/commands/tick.ts`
+   - `<REPO>/packages/mcp-server/src/server.ts`
+   - `<REPO>/test/security/zero-llm-and-allowlist.test.ts`
+6. **Rủi ro:** Bỏ sót một nhánh HTTP phụ gọi ngoài allowlist hoặc đếm trùng request khi retry → giảm thiểu bằng interceptor mạng tập trung trong test tích hợp và ghi nhận chính xác từng lượt gọi thực tế.
+7. **Lệnh kiểm chứng:**
+   ```sh
+   pnpm build
+   pnpm test:changed
+   pnpm typecheck:changed
+   pnpm lint
+   node tools/agent/scan-private-names.mjs origin/main HEAD
+   ```
+
+---
+
+### Vé `WP9` — Sẵn sàng chạy thật: runbook `LIVE-E2E-v2.md` & công cụ `live-check`
+
+- **Phục vụ: S9**
+- **Nhánh bằng chứng đích:** `evidence/d3`
+
+1. **Mục tiêu:** Soạn runbook chạy thật `docs/runbook/LIVE-E2E-v2.md` và xây công cụ CLI `live-check` kiểm tra danh sách tiền điều kiện trước khi chạy thật (chỉ đọc, không tự ghi vào hệ thống thật): kiểm tra trạng thái `standing consent`, sao lưu/hoàn tác sẵn sàng, bậc mục tiêu (bắt đầu từ 1 combo router + 1 tệp cấu hình harness do chủ dự án chọn), quy trình từng bước `propose` → xác minh `read-back` → thăng bậc `auto-safe`, và 5 chỉ số đạt đo được (số model loại sai = 0, hoàn tác khớp từng byte, độ trễ phát hiện, token đã dùng, số lần phải can thiệp tay). Đội dừng tại trạng thái **"sẵn sàng chạy thật"** và bàn giao cho chủ dự án tự chạy; đội tuyệt đối không tự chạy chế độ thật.
+2. **Tiêu chí chấp nhận:**
+   - **Đỏ trước – xanh sau:** Test `live-check` trên môi trường bản sao tạm trong `os.tmpdir()` xác nhận báo PASS khi đủ tiền điều kiện và báo FAIL rõ nguyên nhân khi thiếu sao lưu, thiếu chính sách, hoặc đang bật `freeze`, với 0 byte thay đổi trên DB/cấu hình.
+   - `docs/runbook/LIVE-E2E-v2.md` đầy đủ danh sách kiểm, lệnh cụ thể, tiêu chí đạt lượng hóa và phương án dừng khẩn cấp (`freeze` + `rollback`).
+   - Toàn bộ gói `evidence/d3` đạt verifier SẠCH, CI 5 OS xanh, bàn giao rõ hàng đợi `chờ chủ dự án` (thí điểm thật + quyết định cắt `1.0.0` / `1.0.0-rc.1`).
+3. **Người làm:** **Engineer** (CLI `live-check`) + **Product Manager** (runbook `LIVE-E2E-v2.md` & bảng tiêu chí đạt); **Ops** kiểm đóng gói & squash-merge.
+4. **Người xác minh độc lập:** **QA** (kiểm chứng `live-check` không ghi vào mục tiêu, rà soát runbook với toàn bộ bất biến C45).
+5. **Tệp dự kiến:**
+   - `<REPO>/docs/runbook/LIVE-E2E-v2.md`
+   - `<REPO>/packages/cli/src/commands/live-check.ts`
+   - `<REPO>/packages/cli/src/index.ts`
+   - `<REPO>/packages/cli/test/live-check.test.ts`
+6. **Rủi ro:** `live-check` vô tình chạm cổng router thật hoặc ghi tệp cấu hình thật trong lúc kiểm tra tiền điều kiện → giảm thiểu bằng chỉ đọc tuyệt đối (so sánh SHA-256 trước/sau trong test) và từ chối mọi thao tác ghi.
+7. **Lệnh kiểm chứng:**
+   ```sh
+   pnpm build
+   pnpm test:changed
+   pnpm verify:release
+   node tools/agent/pack-verify.mjs
+   node tools/agent/scan-private-names.mjs origin/main HEAD
+   ```
+
+---
+
+## Lưu trữ lịch sử — Chương trình C44 (M1–M5 & Track W, nền 0.1.0 đã hoàn tất trên main @ 2ea12c4)
 
 - **Chương trình:** C44 — Nhiệm vụ lớn một lần: M3, M4, chuẩn bị M5 tới cổng phát hành, kèm Track W về `9Router 0.5.123` (tiếp nối Hiến chương C42 và Track R C43/C43A)
 - **Đồng lập & rà soát:** Product Manager (PMO Lead) & CTO (thiết kế kỹ thuật); CEO điều phối; COO theo dõi ngân sách & vận hành

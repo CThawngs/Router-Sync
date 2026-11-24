@@ -5,6 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.0] - Unreleased (C45 Full-Spec Target; optional 1.0.0-rc.1 on dist-tag next)
+
+Full-specification public release target fulfilling `S1`–`S10` (`docs/SPEC.md`), superseding the unreleased `0.1.0` read-only diagnostic snapshot. Owner will publish straight to `1.0.0` (with optional `1.0.0-rc.1` preview on npm dist-tag `next`) only after `WP0`–`WP9` complete and pass the owner's live pilot (`WP9`).
+
+### Added (C45 WP0 & M1–M4 Foundations Carried Into 1.0.0)
+- **Canonical Specification & Traceability (`WP0`, Phục vụ: S10):**
+  - `docs/SPEC.md` recording `S1`–`S10` verbatim as the single source of truth, a verified `file:line` gap table against `main` (`2ea12c4`), and the C45 safety invariants (`Phục vụ: S#`, 3-level per-target modes `propose` / `auto-safe` / `off` with promotion gate, mandatory `backup -> atomic write -> read-back -> auto-rollback`, sandbox-copy-only team testing, and 0 LLM calls in product code).
+  - Updated `docs/ROADMAP.md` promoting Phase 5 (multi-harness ecosystem) and controlled `auto-safe` out of deferred post-v1 into active `1.0.0` work.
+  - `docs/RELEASE-CANDIDATE.md` and `tools/release/prepare-v1-release.mjs` (dry-run by default; opt-in `--write` for owner-executed `1.0.0` / `1.0.0-rc.1` version bumps across the workspace).
+  - `docs/BACKLOG.md` C45 section defining `WP0`–`WP9` work packages with mandatory `Phục vụ: S#` traceability and automated contract verification (`test/docs/c45-wp0-spec.test.ts`).
+- **M1–M4 Hardening Foundations (`#57`–`#69`, `main` @ `2ea12c4`):**
+  - CI health signals (`E2E-DAEMON-HEALTH-SIGNAL`), OmniRoute `comboModels` & `comboNames` drift resolution (`M1`).
+  - Scoped `GrantFile` lifecycle (`ADR-MAINTAIN-02`), single-use HMAC `ApprovalToken`, outbound webhook alerts, and honest serving-path read-back (`M2`).
+  - 5-OS tarball packaging allowlist verifier (`tools/agent/pack-verify.mjs`), resource variance harness (`tools/agent/resource-variance.mjs`), and SQLite driver evaluation (`ADR-SQLITE-01`) (`M3`).
+  - Unified documentation & offline hermetic CLI fixture smoke tests, multi-surface security auditor (`tools/agent/security-audit.mjs`, `SECURITY.md`), and client-side stream probe `RequestBudget` / `reconcileSentVsUsage` (`M4`, `W2`).
+
+### Planned (`WP1`–`WP9` for `1.0.0`)
+- **`WP1` (`S2, S3, S6`):** Verified Harness Capability Matrix (evidence tiers A/B/C) feeding `mcp install` and `schedule install`.
+- **`WP2` (`S3`):** Full harness write adapters (`inspect`, `plan`, `apply`, `rollback`, `read-back`) preserving formatting/comments for key-present providers.
+- **`WP3` (`S1, S3, S7`):** Two-tier real-time research loop (Tier 0 scheduled 0-token scan + Tier 1 agent web research via `submit_research` MCP tool with official domain verification and detection latency logging).
+- **`WP4` (`S3, S4, S9`):** Controlled automation (`standing consent` policy file, `apply_plan` MCP tool, 3-level `propose` / `auto-safe` / `off` per target, policy-scoped targets replacing `^test-\d+$`, emergency `freeze` command, and automated rollback tests).
+- **`WP5` (`S4`):** Personalized strategy & combo selector (`list_strategies`, reliability-ranked 12–15 step cap excluding HANG/DEAD) and LiteLLM adapter.
+- **`WP6` (`S5`):** Adaptive user interview (`<= 12` questions, everyday non-technical examples, explicit assumptions in `profile.yaml`, MCP skill/prompt per harness).
+- **`WP7` (`S6`):** 4-tier schedule ladder (native zero-LLM harness cron → OS scheduler → MCP `tick_if_due` → daemon) and `doctor` staleness reporting.
+- **`WP8` (`S7`):** Token ledger separating `tokens=0` ticks from agent research sessions, weekly session cap, `cost_report` MCP tool, and 0-LLM-call product verification tests.
+- **`WP9` (`S9`):** Live pilot readiness (`LIVE-E2E-v2` runbook + `live-check` pre-flight tool, owner-only pilot execution gate).
+
 ## [Unreleased] — C13
 
 ### Added
@@ -33,10 +60,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.1.0] - 2026-11-17
 
-First release candidate. Read-only surface is stable.
+Read-only diagnostic snapshot (unreleased to npm; superseded by the 1.0.0 full-spec roadmap in C45).
 
 ### Added
-- **`routersync apps inspect`:** read-only view of provider/model configuration for Hermes Agent, DSH Desktop, OpenCode. No write flag by design.
+- **`routersync apps inspect`:** read-only view of provider/model configuration for Hermes Agent, DSH Desktop, OpenCode, and OpenMausBot. No write flag by design.
 - **`routersync apps drift`:** read-only drift detection between app agent model lists and router state (OK/DISABLED/MISSING/UNKNOWN/NOT-ROUTED). EXPERIMENTAL: OmniRoute read-back not yet verified; combo names not yet traced.
 - **Agent app inspection contract:** `AgentAppInspection` type in `@routersync/adapter-sdk` with certainty tiers (A/B/C), boolean-only secret exposure (`baseUrlPresent`/`keyPresent`), and error codes (`ENOENT`/`PARSE`/`TOO_LARGE`/`UNSUPPORTED`).
 - **Adapter for Hermes Agent, DSH Desktop, OpenCode:** synthetic fixtures (`<KEY>`, `https://example.invalid`), 21 contract tests including fake-key leak protection.
@@ -114,7 +141,7 @@ the stable part.
 
 ## [Unreleased]
 
-> Note: `0.1.0` will be the first public npm release, planned for Phase 5. All current work is pre-alpha internal development.
+> Historical note (superseded by C45): `0.1.0` was originally planned as the first public npm release, but under C45 (`docs/SPEC.md`, `docs/RELEASE-CANDIDATE.md`) `0.1.0` is retained as an unreleased read-only diagnostic snapshot and `1.0.0` (with optional `1.0.0-rc.1` on `next`) is the first public npm release target.
 
 ### C11 — Doctor tier labels and guard provider registry
 - **Changed:** `routersync doctor` now labels tier A explicitly as "A (models referenced by combos)" and adds `basis: combo-members` to each router in `--json`. This count is the number of models referenced by combos, not the number of enabled models.
