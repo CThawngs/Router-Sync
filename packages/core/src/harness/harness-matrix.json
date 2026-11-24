@@ -1,0 +1,1097 @@
+{
+  "version": 1,
+  "schemaVersion": "1.0.0",
+  "generatedAt": "2026-11-24",
+  "serves": ["S2", "S3", "S6"],
+  "evidenceTiers": {
+    "A": "Directly observed read-only on Windows 11 host (anonymized paths & structural schema keys) and corroborated by official vendor documentation",
+    "B": "Verified from official vendor documentation with canonical URL and access date",
+    "C": "CHƯA-XÁC-MINH (unverified; neither host observation nor official vendor documentation confirms)"
+  },
+  "harnesses": [
+    {
+      "id": "hermes",
+      "displayName": "Hermes Agent (Nous Research)",
+      "tier": "A",
+      "mcp": {
+        "supported": true,
+        "format": "yaml",
+        "paths": {
+          "win32": [
+            "%LOCALAPPDATA%/hermes/config.yaml",
+            "~/.hermes/config.yaml"
+          ],
+          "darwin": [
+            "~/.hermes/config.yaml"
+          ],
+          "linux": [
+            "~/.hermes/config.yaml"
+          ]
+        },
+        "envOverride": "HERMES_HOME",
+        "projectPaths": [],
+        "topLevelKey": "mcp_servers",
+        "entrySchema": {
+          "stdio": {
+            "command": "string",
+            "args": "string[]",
+            "env": "Record<string, string> (optional; supports ${VAR} and ${env:VAR})",
+            "enabled": "boolean (optional)"
+          },
+          "http": {
+            "url": "string",
+            "headers": "Record<string, string> (optional)",
+            "auth": "'oauth' (optional; tokens stored in <HERMES_HOME>/mcp-tokens/)",
+            "timeout": "number (optional)",
+            "trust": "string (optional)"
+          }
+        },
+        "nativeInstallCommand": "hermes mcp add <name> -- <command> <args...>",
+        "routersyncInstallStrategy": "yaml-comment-preserving-merge",
+        "notes": "Native Windows install stores data under %LOCALAPPDATA%/hermes/ while WSL2/macOS/Linux use ~/.hermes/. Prefer $HERMES_HOME/config.yaml, then %LOCALAPPDATA%/hermes/config.yaml on win32 if present, else ~/.hermes/config.yaml. Supports /reload-mcp in chat."
+      },
+      "scheduler": {
+        "hasNativeScheduler": true,
+        "schedulerType": "built-in-gateway-cron",
+        "zeroTokenScriptCapable": true,
+        "configPaths": {
+          "win32": [
+            "%LOCALAPPDATA%/hermes/cron/jobs.json",
+            "~/.hermes/cron/jobs.json"
+          ],
+          "darwin": [
+            "~/.hermes/cron/jobs.json"
+          ],
+          "linux": [
+            "~/.hermes/cron/jobs.json"
+          ]
+        },
+        "scriptsDir": "<HERMES_HOME>/scripts/",
+        "nativeCommand": "hermes cron create \"every 15m\" --no-agent --script routersync-tick.sh --name \"routersync-tick\"",
+        "jobRecordFields": {
+          "no_agent": true,
+          "script": "string (path resolving inside <HERMES_HOME>/scripts/)",
+          "schedule": "5-field cron | 'every Nm' | relative | ISO timestamp"
+        },
+        "fallbackStrategy": "os-scheduler",
+        "notes": "Officially supports Script-Only Cron Jobs (no_agent=true, 0 LLM tokens). Observed no_agent and script fields directly in %LOCALAPPDATA%/hermes/cron/jobs.json. Scripts do not inherit provider keys from Hermes process env and require Hermes gateway running; pair with OS scheduler if gateway is not always-on."
+      },
+      "modelsConfig": {
+        "format": "yaml",
+        "paths": {
+          "win32": [
+            "%LOCALAPPDATA%/hermes/config.yaml",
+            "~/.hermes/config.yaml"
+          ],
+          "darwin": [
+            "~/.hermes/config.yaml"
+          ],
+          "linux": [
+            "~/.hermes/config.yaml"
+          ]
+        },
+        "credentialsPath": "<HERMES_HOME>/.env",
+        "providerModelPath": "providers.<provider_id>.models & custom_providers[].models",
+        "userEditableOnDisk": true,
+        "defaultModelSlotsToPreserve": [
+          "model.default",
+          "model.provider",
+          "model.base_url",
+          "cron.model",
+          "cron.model_provider"
+        ],
+        "editSafetyNotes": "User-facing YAML with secrets isolated in .env. Preserve YAML comments, key order, API keys/key_env, base_url, and default model slots. Validate both providers.<id> (native Windows schema observed) and custom_providers."
+      },
+      "directionAMode": "write-adapter",
+      "shellCapable": true,
+      "reloadRequired": {
+        "mcp": true,
+        "models": true,
+        "mechanism": "Use /reload-mcp in active chat for MCP changes; restart gateway or start a new CLI turn for config.yaml model/provider changes."
+      },
+      "processNames": {
+        "win32": ["hermes.exe", "Hermes Desktop.exe", "python.exe"],
+        "darwin": ["hermes", "Hermes Desktop"],
+        "linux": ["hermes", "hermes-desktop"]
+      },
+      "sources": [
+        {
+          "kind": "host-observation",
+          "ref": "Read-only structural inspection of %LOCALAPPDATA%/hermes/config.yaml (providers.<id>.models, custom_providers, mcp_servers, cron), %LOCALAPPDATA%/hermes/cron/jobs.json (no_agent, script, schedule), ~/.hermes/config.yaml, and CLI binary presence on PATH",
+          "date": "2026-11-24"
+        },
+        {
+          "kind": "official-doc",
+          "ref": "https://hermes-agent.nousresearch.com/docs/user-guide/configuration",
+          "date": "2026-11-24"
+        },
+        {
+          "kind": "official-doc",
+          "ref": "https://hermes-agent.nousresearch.com/docs/user-guide/configuring-models",
+          "date": "2026-11-24"
+        },
+        {
+          "kind": "official-doc",
+          "ref": "https://hermes-agent.nousresearch.com/docs/user-guide/features/mcp",
+          "date": "2026-11-24"
+        },
+        {
+          "kind": "official-doc",
+          "ref": "https://hermes-agent.nousresearch.com/docs/user-guide/features/cron",
+          "date": "2026-11-24"
+        },
+        {
+          "kind": "official-doc",
+          "ref": "https://hermes-agent.nousresearch.com/docs/guides/cron-script-only",
+          "date": "2026-11-24"
+        },
+        {
+          "kind": "official-doc",
+          "ref": "https://hermes-agent.nousresearch.com/docs/user-guide/windows-native",
+          "date": "2026-11-24"
+        }
+      ]
+    },
+    {
+      "id": "claude-code",
+      "displayName": "Anthropic Claude Code",
+      "tier": "A",
+      "mcp": {
+        "supported": true,
+        "format": "json",
+        "paths": {
+          "win32": [
+            "~/.claude.json"
+          ],
+          "darwin": [
+            "~/.claude.json"
+          ],
+          "linux": [
+            "~/.claude.json"
+          ]
+        },
+        "projectPaths": [
+          "<project>/.mcp.json"
+        ],
+        "topLevelKey": "mcpServers",
+        "entrySchema": {
+          "stdio": {
+            "command": "string",
+            "args": "string[]",
+            "env": "Record<string, string> (optional)"
+          },
+          "http": {
+            "type": "'http' | 'streamable-http' | 'sse' | 'ws' (required for URL entries)",
+            "url": "string",
+            "headers": "Record<string, string> (optional)"
+          }
+        },
+        "nativeInstallCommand": "claude mcp add --scope user <name> -- <command> <args...>",
+        "routersyncInstallStrategy": "prefer-native-cli-else-atomic-json-merge",
+        "notes": "User scope writes mcpServers in ~/.claude.json (shared by Claude Code CLI and Desktop). Local scope writes per-project inside ~/.claude.json; project scope writes <project>/.mcp.json. Official docs confirm ~/.claude/.mcp.json, ~/.claude/mcp.json, and %APPDATA%/Claude/mcp.json are NOT read by Claude Code. Respects CLAUDE_CODE_CONFIG_LOCK_WAIT_MS."
+      },
+      "scheduler": {
+        "hasNativeScheduler": true,
+        "schedulerType": "llm-prompt-schedulers",
+        "zeroTokenScriptCapable": false,
+        "configPaths": {
+          "win32": [
+            "~/.claude/scheduled_tasks.json"
+          ],
+          "darwin": [
+            "~/.claude/scheduled_tasks.json"
+          ],
+          "linux": [
+            "~/.claude/scheduled_tasks.json"
+          ]
+        },
+        "fallbackStrategy": "os-scheduler-and-tick-if-due",
+        "notes": "Provides session /loop (7-day expiry, active session only), Desktop Scheduled Tasks (app must remain open), and Cloud Scheduled Tasks (/schedule, min 1h). All three invoke LLM prompt turns (consume tokens) and cannot run deterministic 0-token local shell scripts."
+      },
+      "modelsConfig": {
+        "format": "json",
+        "paths": {
+          "win32": [
+            "~/.claude/settings.json"
+          ],
+          "darwin": [
+            "~/.claude/settings.json"
+          ],
+          "linux": [
+            "~/.claude/settings.json"
+          ]
+        },
+        "providerModelPath": "model, availableModels, modelPicker.options, modelOverrides, modelSettings, env.ANTHROPIC_DEFAULT_*",
+        "userEditableOnDisk": true,
+        "defaultModelSlotsToPreserve": [
+          "model",
+          "fallbackModel",
+          "env.ANTHROPIC_BASE_URL",
+          "env.ANTHROPIC_MODEL",
+          "env.ANTHROPIC_DEFAULT_OPUS_MODEL",
+          "env.ANTHROPIC_DEFAULT_SONNET_MODEL",
+          "env.ANTHROPIC_DEFAULT_HAIKU_MODEL"
+        ],
+        "editSafetyNotes": "Claude Code is Anthropic-centric (official docs state routing to non-Claude models via gateways is unsupported) and does not maintain a multi-provider model catalog file per provider-with-key. Settings only pin single aliases, allowlists (availableModels), or custom /model rows (modelPicker/ANTHROPIC_CUSTOM_MODEL_OPTION). Also model is updated in-session by /model."
+      },
+      "directionAMode": "report-only",
+      "shellCapable": true,
+      "reloadRequired": {
+        "mcp": true,
+        "models": true,
+        "mechanism": "Restart Claude Code session to pick up ~/.claude.json MCP additions or ~/.claude/settings.json env changes."
+      },
+      "processNames": {
+        "win32": ["claude.exe", "Claude.exe"],
+        "darwin": ["claude", "Claude"],
+        "linux": ["claude"]
+      },
+      "sources": [
+        {
+          "kind": "host-observation",
+          "ref": "Read-only structural inspection of ~/.claude.json (mcpServers), ~/.claude/settings.json (model, modelSettings, enabledPlugins), ~/.claude/scheduled_tasks.json, CLI binary presence on PATH, and running process name",
+          "date": "2026-11-24"
+        },
+        {
+          "kind": "official-doc",
+          "ref": "https://code.claude.com/docs/en/mcp",
+          "date": "2026-11-24"
+        },
+        {
+          "kind": "official-doc",
+          "ref": "https://code.claude.com/docs/en/settings",
+          "date": "2026-11-24"
+        },
+        {
+          "kind": "official-doc",
+          "ref": "https://code.claude.com/docs/en/model-config",
+          "date": "2026-11-24"
+        },
+        {
+          "kind": "official-doc",
+          "ref": "https://code.claude.com/docs/en/scheduled-tasks",
+          "date": "2026-11-24"
+        }
+      ]
+    },
+    {
+      "id": "codex",
+      "displayName": "OpenAI Codex CLI (and Desktop / IDE Extension)",
+      "tier": "A",
+      "mcp": {
+        "supported": true,
+        "format": "toml",
+        "paths": {
+          "win32": [
+            "~/.codex/config.toml"
+          ],
+          "darwin": [
+            "~/.codex/config.toml"
+          ],
+          "linux": [
+            "~/.codex/config.toml"
+          ]
+        },
+        "envOverride": "CODEX_HOME",
+        "projectPaths": [
+          "<project>/.codex/config.toml"
+        ],
+        "topLevelKey": "mcp_servers",
+        "entrySchema": {
+          "stdio": {
+            "command": "string",
+            "args": "string[] (optional)",
+            "env": "Record<string, string> (optional inline table or [mcp_servers.<name>.env])",
+            "env_vars": "string[] (optional)",
+            "enabled": "boolean (optional, default true)",
+            "required": "boolean (optional)",
+            "startup_timeout_sec": "number (optional)"
+          },
+          "http": {
+            "url": "string",
+            "oauth": "table [mcp_servers.<name>.oauth] (optional)"
+          }
+        },
+        "nativeInstallCommand": "codex mcp add <name> -- <command> <args...>",
+        "routersyncInstallStrategy": "prefer-native-cli-else-toml-append-table",
+        "notes": "Shared across Codex CLI, Codex Desktop, and IDE extension. CRITICAL TOML rule: top-level keys (model, model_provider, model_catalog_json, openai_base_url) MUST stay above the first [table] header; always append [mcp_servers.<name>] at the end of config.toml."
+      },
+      "scheduler": {
+        "hasNativeScheduler": true,
+        "schedulerType": "desktop-cloud-llm-automations",
+        "zeroTokenScriptCapable": false,
+        "configPaths": {
+          "win32": [
+            "~/.codex/automations/<id>/automation.toml"
+          ],
+          "darwin": [
+            "~/.codex/automations/<id>/automation.toml"
+          ],
+          "linux": [
+            "~/.codex/automations/<id>/automation.toml"
+          ]
+        },
+        "fallbackStrategy": "os-scheduler-and-tick-if-due",
+        "notes": "Codex Desktop / ChatGPT Work supports scheduled automations (automation.toml with rrule/cron) that start LLM agent turns (consume tokens). Codex CLI itself has no native local cron daemon (0-token script execution unsupported)."
+      },
+      "modelsConfig": {
+        "format": "toml",
+        "paths": {
+          "win32": [
+            "~/.codex/config.toml"
+          ],
+          "darwin": [
+            "~/.codex/config.toml"
+          ],
+          "linux": [
+            "~/.codex/config.toml"
+          ]
+        },
+        "providerModelPath": "model, model_provider, [model_providers.<id>], optional model_catalog_json",
+        "userEditableOnDisk": true,
+        "defaultModelSlotsToPreserve": [
+          "model",
+          "model_provider",
+          "openai_base_url",
+          "model_reasoning_effort"
+        ],
+        "editSafetyNotes": "Official config.toml defines custom provider endpoints under [model_providers.<id>] (name, base_url, wire_api='responses', env_key/auth, model_catalog_url) but does NOT store an inline per-provider models array. Selectable catalogs come from OpenAI/provider remote model_catalog_url or an optional external JSON file pointed to by top-level model_catalog_json (not configured by default on host). Keep Direction A report-only unless user explicitly enables a local model_catalog_json."
+      },
+      "directionAMode": "report-only",
+      "shellCapable": true,
+      "reloadRequired": {
+        "mcp": true,
+        "models": true,
+        "mechanism": "Loaded at startup of Codex CLI, Desktop app, or IDE extension; restart session/app after editing config.toml."
+      },
+      "processNames": {
+        "win32": ["codex.exe", "Codex Web GPT.exe", "codex-windows-sandbox-service.exe"],
+        "darwin": ["codex", "Codex"],
+        "linux": ["codex"]
+      },
+      "sources": [
+        {
+          "kind": "host-observation",
+          "ref": "Read-only structural inspection of ~/.codex/config.toml (model, openai_base_url, [mcp_servers.<name>], no model_catalog_json), CLI binary presence on PATH, and running process names",
+          "date": "2026-11-24"
+        },
+        {
+          "kind": "official-doc",
+          "ref": "https://developers.openai.com/codex/config-reference",
+          "date": "2026-11-24"
+        },
+        {
+          "kind": "official-doc",
+          "ref": "https://developers.openai.com/codex/mcp",
+          "date": "2026-11-24"
+        }
+      ]
+    },
+    {
+      "id": "antigravity",
+      "displayName": "Google Antigravity (App, IDE, CLI agy, SDK)",
+      "tier": "A",
+      "mcp": {
+        "supported": true,
+        "format": "json",
+        "paths": {
+          "win32": [
+            "~/.gemini/config/mcp_config.json"
+          ],
+          "darwin": [
+            "~/.gemini/config/mcp_config.json"
+          ],
+          "linux": [
+            "~/.gemini/config/mcp_config.json"
+          ]
+        },
+        "legacyPaths": [
+          "~/.gemini/antigravity/mcp_config.json"
+        ],
+        "projectPaths": [
+          "<workspace>/.agents/mcp_config.json"
+        ],
+        "topLevelKey": "mcpServers",
+        "entrySchema": {
+          "stdio": {
+            "command": "string (absolute executable path recommended for GUI)",
+            "args": "string[] (optional)",
+            "env": "Record<string, string> (optional)",
+            "cwd": "string (optional)"
+          },
+          "http": {
+            "serverUrl": "string (Streamable HTTP; 'url' alias accepted; SSE/httpUrl unsupported)",
+            "headers": "Record<string, string> (optional)",
+            "timeoutSeconds": "number (optional)"
+          }
+        },
+        "nativeInstallCommand": null,
+        "routersyncInstallStrategy": "atomic-json-merge",
+        "notes": "Canonical global MCP config is ~/.gemini/config/mcp_config.json across App/IDE/CLI/SDK (observed 17 mcpServers on host; older ~/.gemini/antigravity/mcp_config.json is marked obsolete in official docs). Official docs specify: do NOT include a 'type' field on stdio entries."
+      },
+      "scheduler": {
+        "hasNativeScheduler": true,
+        "schedulerType": "sidecar-schedule-builtin",
+        "zeroTokenScriptCapable": true,
+        "configPaths": {
+          "win32": [
+            "~/.gemini/config/sidecars/<id>/sidecar.json",
+            "~/.gemini/config/config.json"
+          ],
+          "darwin": [
+            "~/.gemini/config/sidecars/<id>/sidecar.json",
+            "~/.gemini/config/config.json"
+          ],
+          "linux": [
+            "~/.gemini/config/sidecars/<id>/sidecar.json",
+            "~/.gemini/config/config.json"
+          ]
+        },
+        "jobRecordFields": {
+          "builtin": "schedule",
+          "args": "['CRON_TZ=<IANA> */15 * * * *', '<command>', '<arg1>']",
+          "restart_policy": "always"
+        },
+        "fallbackStrategy": "os-scheduler",
+        "notes": "Officially documented at antigravity.google/docs/sidecars#schedule-builtin: sidecar.json with builtin='schedule' executes arbitrary recurring commands directly with 0 LLM tokens (unlike /automation which invokes 'agentapi new-conversation' and uses LLM tokens). Requires explicit opt-in sidecars.<id>.enabled=true in ~/.gemini/config/config.json and Antigravity running; pair with OS scheduler for when Antigravity is closed."
+      },
+      "modelsConfig": {
+        "format": "ui-only",
+        "paths": {
+          "win32": [],
+          "darwin": [],
+          "linux": []
+        },
+        "providerModelPath": null,
+        "userEditableOnDisk": false,
+        "defaultModelSlotsToPreserve": [
+          "userSettings.orchestratorModel",
+          "userSettings.orchestratorExecutorModel"
+        ],
+        "editSafetyNotes": "Antigravity App/IDE/CLI serves a Google-curated model catalog (Gemini + partner Claude models) controlled by account tier/quotas in Settings > Models. ~/.gemini/config/config.json only stores orchestratorModel/orchestratorExecutorModel preferences and is actively written by the running app. (Local OpenAI-compatible/LiteRT models exist only programmatically in the Python SDK.)"
+      },
+      "directionAMode": "report-only",
+      "shellCapable": true,
+      "reloadRequired": {
+        "mcp": true,
+        "models": false,
+        "mechanism": "Restart MCP server via Customizations > Installed > MCP Servers (or restart Antigravity) after editing mcp_config.json."
+      },
+      "processNames": {
+        "win32": ["Antigravity.exe"],
+        "darwin": ["Antigravity", "agy"],
+        "linux": ["antigravity", "agy"]
+      },
+      "sources": [
+        {
+          "kind": "host-observation",
+          "ref": "Read-only structural inspection of ~/.gemini/config/mcp_config.json (17 mcpServers), ~/.gemini/config/config.json (userSettings, plugins, sidecars), ~/.gemini/config/sidecars/, ~/.gemini/antigravity-cli/settings.json, and running process Antigravity",
+          "date": "2026-11-24"
+        },
+        {
+          "kind": "official-doc",
+          "ref": "https://antigravity.google/docs/mcp",
+          "date": "2026-11-24"
+        },
+        {
+          "kind": "official-doc",
+          "ref": "https://antigravity.google/docs/sidecars",
+          "date": "2026-11-24"
+        },
+        {
+          "kind": "official-doc",
+          "ref": "https://antigravity.google/docs/models",
+          "date": "2026-11-24"
+        }
+      ]
+    },
+    {
+      "id": "opencode",
+      "displayName": "OpenCode",
+      "tier": "A",
+      "mcp": {
+        "supported": true,
+        "format": "jsonc",
+        "paths": {
+          "win32": [
+            "~/.config/opencode/opencode.json",
+            "~/.config/opencode/opencode.jsonc"
+          ],
+          "darwin": [
+            "~/.config/opencode/opencode.json",
+            "~/.config/opencode/opencode.jsonc"
+          ],
+          "linux": [
+            "~/.config/opencode/opencode.json",
+            "~/.config/opencode/opencode.jsonc"
+          ]
+        },
+        "envOverride": "OPENCODE_CONFIG",
+        "projectPaths": [
+          "<project>/opencode.json",
+          "<project>/opencode.jsonc"
+        ],
+        "topLevelKey": "mcp",
+        "entrySchema": {
+          "local": {
+            "type": "'local' (required)",
+            "command": "string[] (full argv array, e.g. ['npx', '-y', '...'])",
+            "environment": "Record<string, string> (optional; NOT 'env')",
+            "enabled": "boolean (optional, default true)",
+            "timeout": "number (ms, optional)"
+          },
+          "remote": {
+            "type": "'remote' (required)",
+            "url": "string",
+            "headers": "Record<string, string> (optional)",
+            "oauth": "object (optional)",
+            "enabled": "boolean (optional, default true)"
+          }
+        },
+        "nativeInstallCommand": "opencode mcp add",
+        "routersyncInstallStrategy": "jsonc-comment-preserving-merge",
+        "notes": "Uses top-level key 'mcp' (NOT 'mcpServers'), 'type': 'local', array 'command': [...], and 'environment' map. Observed directly in ~/.config/opencode/opencode.json."
+      },
+      "scheduler": {
+        "hasNativeScheduler": false,
+        "schedulerType": "none",
+        "zeroTokenScriptCapable": false,
+        "configPaths": {
+          "win32": [],
+          "darwin": [],
+          "linux": []
+        },
+        "fallbackStrategy": "os-scheduler-and-tick-if-due",
+        "notes": "No built-in local scheduler in OpenCode core. Official docs only cover GitHub Actions schedule workflows and list third-party community ecosystem plugin opencode-scheduler (which wraps OS launchd/systemd)."
+      },
+      "modelsConfig": {
+        "format": "jsonc",
+        "paths": {
+          "win32": [
+            "~/.config/opencode/opencode.json",
+            "~/.config/opencode/opencode.jsonc"
+          ],
+          "darwin": [
+            "~/.config/opencode/opencode.json",
+            "~/.config/opencode/opencode.jsonc"
+          ],
+          "linux": [
+            "~/.config/opencode/opencode.json",
+            "~/.config/opencode/opencode.jsonc"
+          ]
+        },
+        "credentialsPath": "~/.local/share/opencode/auth.json",
+        "providerModelPath": "provider.<provider_id>.models.<model_id>",
+        "userEditableOnDisk": true,
+        "defaultModelSlotsToPreserve": [
+          "model",
+          "small_model",
+          "agent.<name>.model"
+        ],
+        "editSafetyNotes": "Clean, explicitly user-editable JSON/JSONC schema ($schema: https://opencode.ai/config.json). Observed 3 providers on host with {npm, name, options:{baseURL, apiKey, timeout}, models:{<id>:{name, limit:{context, output}, tool_call}}}. Preserve JSONC comments, options.apiKey/baseURL, and default model slots."
+      },
+      "directionAMode": "write-adapter",
+      "shellCapable": true,
+      "reloadRequired": {
+        "mcp": true,
+        "models": true,
+        "mechanism": "Restart OpenCode TUI / start a new session to reload opencode.json changes."
+      },
+      "processNames": {
+        "win32": ["opencode.exe"],
+        "darwin": ["opencode"],
+        "linux": ["opencode"]
+      },
+      "sources": [
+        {
+          "kind": "host-observation",
+          "ref": "Read-only structural inspection of ~/.config/opencode/opencode.json (mcp.<name>, provider.<id>.{npm,name,options,models}) and CLI binary presence on PATH",
+          "date": "2026-11-24"
+        },
+        {
+          "kind": "official-doc",
+          "ref": "https://opencode.ai/docs/config/",
+          "date": "2026-11-24"
+        },
+        {
+          "kind": "official-doc",
+          "ref": "https://opencode.ai/docs/mcp-servers/",
+          "date": "2026-11-24"
+        },
+        {
+          "kind": "official-doc",
+          "ref": "https://opencode.ai/docs/providers/",
+          "date": "2026-11-24"
+        }
+      ]
+    },
+    {
+      "id": "cursor",
+      "displayName": "Cursor IDE (and Cursor CLI agent)",
+      "tier": "A",
+      "mcp": {
+        "supported": true,
+        "format": "json",
+        "paths": {
+          "win32": [
+            "~/.cursor/mcp.json"
+          ],
+          "darwin": [
+            "~/.cursor/mcp.json"
+          ],
+          "linux": [
+            "~/.cursor/mcp.json"
+          ]
+        },
+        "projectPaths": [
+          "<project>/.cursor/mcp.json"
+        ],
+        "topLevelKey": "mcpServers",
+        "entrySchema": {
+          "stdio": {
+            "command": "string",
+            "args": "string[] (optional)",
+            "env": "Record<string, string> (optional)"
+          },
+          "http": {
+            "url": "string",
+            "headers": "Record<string, string> (optional)"
+          }
+        },
+        "nativeInstallCommand": "agent mcp add <name> -- <command> <args...>",
+        "routersyncInstallStrategy": "atomic-json-merge",
+        "notes": "Global ~/.cursor/mcp.json (observed 13 mcpServers on host) and project .cursor/mcp.json are shared by Cursor IDE and Cursor CLI (agent). Also supports cursor://anysphere.cursor-deeplink/mcp/install deeplinks."
+      },
+      "scheduler": {
+        "hasNativeScheduler": true,
+        "schedulerType": "cloud-automations-and-agent-sdk",
+        "zeroTokenScriptCapable": false,
+        "configPaths": {
+          "win32": [],
+          "darwin": [],
+          "linux": []
+        },
+        "fallbackStrategy": "os-scheduler-and-tick-if-due",
+        "notes": "Cursor Automations (cursor.com/automations) run Cloud Agents on a schedule (LLM turns, Premium+ plan) and cannot execute local 0-token shell scripts on the user's host. Agent SDK Schedules (bot/schedules/*) are deploy-time cloud/SDK bot schedules, not a local IDE cron."
+      },
+      "modelsConfig": {
+        "format": "ui-only",
+        "paths": {
+          "win32": [
+            "%APPDATA%/Cursor/User/globalStorage/state.vscdb"
+          ],
+          "darwin": [
+            "~/Library/Application Support/Cursor/User/globalStorage/state.vscdb"
+          ],
+          "linux": [
+            "~/.config/Cursor/User/globalStorage/state.vscdb"
+          ]
+        },
+        "providerModelPath": null,
+        "userEditableOnDisk": false,
+        "defaultModelSlotsToPreserve": [],
+        "editSafetyNotes": "Observed %APPDATA%/Cursor/User/settings.json contains only editor settings and no provider/model catalog. Model toggles, custom OpenAI/Anthropic/Bedrock BYOK settings, and team model baselines are UI/cloud-managed and stored inside Cursor's internal SQLite state.vscdb owned by the running Electron app; hand-editing on disk is unsafe and unsupported."
+      },
+      "directionAMode": "report-only",
+      "shellCapable": true,
+      "reloadRequired": {
+        "mcp": true,
+        "models": false,
+        "mechanism": "Refresh MCP servers in Cursor Settings > MCP (or reload window) after editing ~/.cursor/mcp.json."
+      },
+      "processNames": {
+        "win32": ["Cursor.exe"],
+        "darwin": ["Cursor"],
+        "linux": ["cursor"]
+      },
+      "sources": [
+        {
+          "kind": "host-observation",
+          "ref": "Read-only structural inspection of ~/.cursor/mcp.json (13 mcpServers), %APPDATA%/Cursor/User/settings.json (no model/provider list), and CLI binary cursor presence on PATH",
+          "date": "2026-11-24"
+        },
+        {
+          "kind": "official-doc",
+          "ref": "https://cursor.com/docs/cli/mcp",
+          "date": "2026-11-24"
+        },
+        {
+          "kind": "official-doc",
+          "ref": "https://cursor.com/docs/mcp",
+          "date": "2026-11-24"
+        },
+        {
+          "kind": "official-doc",
+          "ref": "https://cursor.com/docs/models-and-pricing",
+          "date": "2026-11-24"
+        },
+        {
+          "kind": "official-doc",
+          "ref": "https://cursor.com/docs/agent-sdk/reference/schedules",
+          "date": "2026-11-24"
+        }
+      ]
+    },
+    {
+      "id": "grok-bot",
+      "displayName": "xAI Grok Bot (Cloud) [companion local CLI: Grok Build]",
+      "tier": "B",
+      "mcp": {
+        "supported": true,
+        "format": "unsupported",
+        "paths": {
+          "win32": [],
+          "darwin": [],
+          "linux": []
+        },
+        "projectPaths": [],
+        "topLevelKey": null,
+        "entrySchema": {
+          "remoteHttpsOnly": {
+            "url": "Public HTTPS Streamable HTTP or SSE endpoint (localhost/private IPs rejected unless tunneled)",
+            "auth": "OAuth via grok.com/manage-connectors, console.x.ai, or chat connector setup"
+          }
+        },
+        "nativeInstallCommand": null,
+        "routersyncInstallStrategy": "unsupported-local-stdio-guide-https-tunnel-or-grok-cli",
+        "notes": "Grok Bot runs on a persistent cloud computer and only accepts public HTTPS remote MCP connectors (rejecting 127.0.0.1/localhost/private IPs unless tunneled); it has no local stdio MCP config file on disk. See companionCli for xAI's local Grok Build CLI (~/.grok/config.toml)."
+      },
+      "scheduler": {
+        "hasNativeScheduler": true,
+        "schedulerType": "cloud-llm-routines",
+        "zeroTokenScriptCapable": false,
+        "configPaths": {
+          "win32": [],
+          "darwin": [],
+          "linux": []
+        },
+        "fallbackStrategy": "os-scheduler-and-tick-if-due",
+        "notes": "Grok Bot has cloud-hosted Routines (schedule in Bot timezone + Slack/GitHub/Linear/Sentry/PagerDuty/email/webhook triggers) that wake an LLM Bot turn in the cloud (consumes usage/tokens; cannot run 0-token local host scripts)."
+      },
+      "modelsConfig": {
+        "format": "ui-only",
+        "paths": {
+          "win32": [],
+          "darwin": [],
+          "linux": []
+        },
+        "providerModelPath": null,
+        "userEditableOnDisk": false,
+        "defaultModelSlotsToPreserve": [],
+        "editSafetyNotes": "Official xAI docs state Grok Bot has no manual model picker and automatically selects the backend model per task. No local model config file exists for Grok Bot."
+      },
+      "directionAMode": "report-only",
+      "shellCapable": true,
+      "reloadRequired": {
+        "mcp": false,
+        "models": false,
+        "mechanism": "Cloud connectors and Routines take effect immediately in the cloud workspace."
+      },
+      "processNames": {
+        "win32": [],
+        "darwin": [],
+        "linux": []
+      },
+      "companionCli": {
+        "id": "grok-build",
+        "displayName": "xAI Grok Build (grok CLI)",
+        "tier": "B",
+        "mcpFormat": "toml",
+        "mcpPaths": {
+          "win32": ["~/.grok/config.toml"],
+          "darwin": ["~/.grok/config.toml"],
+          "linux": ["~/.grok/config.toml"]
+        },
+        "envOverride": "GROK_HOME",
+        "topLevelKey": "mcp_servers",
+        "nativeInstallCommand": "grok mcp add <name> -- <command> <args...>",
+        "hasNativeScheduler": false,
+        "zeroTokenScriptCapable": false,
+        "modelsConfigPath": "~/.grok/config.toml ([models] and [model.\"<id>\"])",
+        "notes": "Verified at Tier B via official docs.x.ai/build/*. Host only had an empty ~/.grok/skills/ directory and no grok binary or config.toml installed."
+      },
+      "sources": [
+        {
+          "kind": "official-doc",
+          "ref": "https://docs.x.ai/grok-bot/how-grok-bot-works",
+          "date": "2026-11-24"
+        },
+        {
+          "kind": "official-doc",
+          "ref": "https://docs.x.ai/grok-bot/skills-routines-and-automations",
+          "date": "2026-11-24"
+        },
+        {
+          "kind": "official-doc",
+          "ref": "https://docs.x.ai/grok-bot/computer-and-apps",
+          "date": "2026-11-24"
+        },
+        {
+          "kind": "official-doc",
+          "ref": "https://docs.x.ai/build/features/mcp-servers",
+          "date": "2026-11-24"
+        },
+        {
+          "kind": "official-doc",
+          "ref": "https://docs.x.ai/build/cli/headless-scripting",
+          "date": "2026-11-24"
+        }
+      ]
+    },
+    {
+      "id": "openmausbot",
+      "displayName": "OpenMausBot",
+      "tier": "A",
+      "mcp": {
+        "supported": true,
+        "format": "json",
+        "paths": {
+          "win32": [
+            "~/.openmausbot/config.json"
+          ],
+          "darwin": [
+            "~/.openmausbot/config.json"
+          ],
+          "linux": [
+            "~/.openmausbot/config.json"
+          ]
+        },
+        "envOverride": "OMB_DATA_DIR",
+        "projectPaths": [],
+        "topLevelKey": "mcpServers",
+        "entrySchema": {
+          "stdio": {
+            "command": "string",
+            "args": "string[]",
+            "env": "Record<string, string> (optional)",
+            "enabled": "boolean"
+          },
+          "http": {
+            "type": "'http' | 'sse'",
+            "url": "string",
+            "headers": "Record<string, string> (optional)",
+            "enabled": "boolean"
+          }
+        },
+        "nativeInstallCommand": null,
+        "routersyncInstallStrategy": "atomic-json-merge",
+        "notes": "Directly observed 13 mcpServers in ~/.openmausbot/config.json. Users can also paste an mcpServers JSON block or 'claude mcp add' line under Plugins > MCP servers > Add server (OAuth tokens live separately in ~/.openmausbot/mcp-oauth.json). Stop OpenMausBot or restart after editing config.json on disk."
+      },
+      "scheduler": {
+        "hasNativeScheduler": true,
+        "schedulerType": "built-in-croner-llm-routines",
+        "zeroTokenScriptCapable": false,
+        "configPaths": {
+          "win32": [
+            "~/.openmausbot/routines.json"
+          ],
+          "darwin": [
+            "~/.openmausbot/routines.json"
+          ],
+          "linux": [
+            "~/.openmausbot/routines.json"
+          ]
+        },
+        "fallbackStrategy": "os-scheduler-and-tick-if-due",
+        "notes": "Built-in Croner 5-field cron + interval routines wake a bot LLM turn (official docs/routine-schedules.md explicitly state: 'shell commands, and arbitrary code are not accepted'). Moreover, routines.json belongs to the running app and MUST NEVER be hand-edited on disk (races next save)."
+      },
+      "modelsConfig": {
+        "format": "json",
+        "paths": {
+          "win32": [
+            "~/.openmausbot/config.json"
+          ],
+          "darwin": [
+            "~/.openmausbot/config.json"
+          ],
+          "linux": [
+            "~/.openmausbot/config.json"
+          ]
+        },
+        "providerModelPath": "instances.<instance_id>.config.managedModels (for driver='openai-compat')",
+        "userEditableOnDisk": true,
+        "defaultModelSlotsToPreserve": [
+          "defaultModelSelection",
+          "automaticRecovery.backup",
+          "decider.openrouterModel",
+          "instances.<instance_id>.config.model"
+        ],
+        "editSafetyNotes": "Official openmausbot-docs and docs/custom-engines.md explicitly designate ~/.openmausbot/config.json as the one file meant to be edited by hand (instances are read at boot, requiring app restart). Directly observed instances['openai-compat-<uuid>'].config.managedModels (string[]) alongside url, key, model. NEVER hand-edit bots.json or routines.json (owned by running app, race on save). Built-in drivers (openai, claudeApi, xaiApi, openrouter) and customAcp discover models dynamically and remain report-only."
+      },
+      "directionAMode": "write-adapter",
+      "shellCapable": true,
+      "reloadRequired": {
+        "mcp": true,
+        "models": true,
+        "mechanism": "Restart OpenMausBot app/server after editing ~/.openmausbot/config.json (instances are read only at boot)."
+      },
+      "processNames": {
+        "win32": ["OpenMausBot.exe"],
+        "darwin": ["OpenMausBot"],
+        "linux": ["openmausbot", "OpenMausBot"]
+      },
+      "sources": [
+        {
+          "kind": "host-observation",
+          "ref": "Read-only structural inspection of ~/.openmausbot/config.json (mcpServers, instances, openai-compat-<uuid>.config.managedModels, defaultModelSelection), ~/.openmausbot/bots.json, ~/.openmausbot/routines.json, bundled openmausbot-docs/SKILL.md, and running process OpenMausBot",
+          "date": "2026-11-24"
+        },
+        {
+          "kind": "official-doc",
+          "ref": "https://github.com/milind-soni/OpenMausBot/blob/main/docs/custom-engines.md",
+          "date": "2026-11-24"
+        },
+        {
+          "kind": "official-doc",
+          "ref": "https://github.com/milind-soni/OpenMausBot/blob/main/docs/custom-mcp-servers.md",
+          "date": "2026-11-24"
+        },
+        {
+          "kind": "official-doc",
+          "ref": "https://github.com/milind-soni/OpenMausBot/blob/main/docs/routine-schedules.md",
+          "date": "2026-11-24"
+        },
+        {
+          "kind": "official-doc",
+          "ref": "https://github.com/milind-soni/OpenMausBot/blob/main/docs/mcp-server.md",
+          "date": "2026-11-24"
+        }
+      ]
+    },
+    {
+      "id": "dsh",
+      "displayName": "DeepSeek Harness (dsh)",
+      "tier": "A",
+      "mcp": {
+        "supported": true,
+        "format": "yaml",
+        "paths": {
+          "win32": [
+            "~/.dsh/profiles/desktop/cordis.patch.yml",
+            "~/.dsh/cordis.patch.yml"
+          ],
+          "darwin": [
+            "~/.dsh/profiles/desktop/cordis.patch.yml",
+            "~/.dsh/cordis.patch.yml"
+          ],
+          "linux": [
+            "~/.dsh/profiles/desktop/cordis.patch.yml",
+            "~/.dsh/cordis.patch.yml"
+          ]
+        },
+        "envOverride": "DSH_HOME",
+        "projectPaths": [],
+        "topLevelKey": "insert[] (@deepseek-ai/dsh-mcp-client)",
+        "entrySchema": {
+          "stdio": {
+            "id": "string (e.g. 'mcp-<name>')",
+            "name": "'@deepseek-ai/dsh-mcp-client'",
+            "config": {
+              "serverName": "string ([A-Za-z0-9_-]{1,32})",
+              "transport": "'stdio'",
+              "command": "string",
+              "args": "string[]",
+              "env": "Record<string, string> (optional; ambient secrets are scrubbed by default)",
+              "toolCallTimeoutMs": "number (optional, default 60000)",
+              "failOnStartupError": "boolean (optional, default false)"
+            }
+          },
+          "http": {
+            "id": "string",
+            "name": "'@deepseek-ai/dsh-mcp-client'",
+            "config": {
+              "serverName": "string",
+              "transport": "'streamable-http'",
+              "url": "string",
+              "headers": "Record<string, string> (optional)"
+            }
+          }
+        },
+        "nativeInstallCommand": null,
+        "routersyncInstallStrategy": "yaml-cordis-insert-merge",
+        "notes": "Preserve existing RouterSync compatibility for ~/.dsh/profiles/desktop/cordis.patch.yml. New MCP plugin instances must live under '- insert:'; a malformed YAML row blocks DSH boot entirely."
+      },
+      "scheduler": {
+        "hasNativeScheduler": true,
+        "schedulerType": "built-in-dsh-schedule-llm-prompts",
+        "zeroTokenScriptCapable": false,
+        "configPaths": {
+          "win32": [
+            "~/.dsh/storages/schedule.json"
+          ],
+          "darwin": [
+            "~/.dsh/storages/schedule.json"
+          ],
+          "linux": [
+            "~/.dsh/storages/schedule.json"
+          ]
+        },
+        "fallbackStrategy": "os-scheduler-and-tick-if-due",
+        "notes": "Official @deepseek-ai/dsh-schedule delivers a prompt instruction to an existing or new Agent conversation (uses LLM tokens; no native 0-token shell script runner in core)."
+      },
+      "modelsConfig": {
+        "format": "yaml",
+        "paths": {
+          "win32": [
+            "~/.dsh/profiles/desktop/cordis.patch.yml"
+          ],
+          "darwin": [
+            "~/.dsh/profiles/desktop/cordis.patch.yml"
+          ],
+          "linux": [
+            "~/.dsh/profiles/desktop/cordis.patch.yml"
+          ]
+        },
+        "credentialsPath": "~/.dsh/.credentials.yaml",
+        "providerModelPath": "row[name='@deepseek-ai/dsh-llm-pi-ai'].config.providers.<provider_id>.models[]",
+        "userEditableOnDisk": true,
+        "defaultModelSlotsToPreserve": [
+          "config.provider",
+          "config.model",
+          "config.default",
+          "config.selectedDefault"
+        ],
+        "editSafetyNotes": "CRITICAL Cordis rules verified from official docs & host: (1) A Cordis patch row replaces the target row's entire config block (no deep merge) — adapter MUST preserve all sibling fields/providers untouched; (2) A bad row prevents boot; (3) Editing profiles/desktop/cordis.patch.yml while active turns run can terminate running sessions (upstream issue #8857) — check process/idle state before applying. Credentials live separately in ~/.dsh/.credentials.yaml and are referenced via apiKeyEnv."
+      },
+      "directionAMode": "write-adapter",
+      "shellCapable": true,
+      "reloadRequired": {
+        "mcp": true,
+        "models": false,
+        "mechanism": "@deepseek-ai/dsh-llm-pi-ai resolves provider profiles per request (no restart required); MCP/plugin row changes reload in place or on restart (avoid editing during active turns)."
+      },
+      "processNames": {
+        "win32": ["dsh.exe", "DeepSeek Harness.exe"],
+        "darwin": ["dsh", "DeepSeek Harness"],
+        "linux": ["dsh"]
+      },
+      "sources": [
+        {
+          "kind": "host-observation",
+          "ref": "Read-only structural inspection of ~/.dsh/profiles/desktop/cordis.patch.yml (providers.<id>.{displayName,apiKeyEnv,api,baseURL,models}, insert[] @deepseek-ai/dsh-mcp-client), ~/.dsh/cordis.patch.yml, ~/.dsh/.credentials.yaml, and CLI binary dsh presence on PATH",
+          "date": "2026-11-24"
+        },
+        {
+          "kind": "official-doc",
+          "ref": "https://github.com/deepseek-ai/deepseek-harness",
+          "date": "2026-11-24"
+        },
+        {
+          "kind": "official-doc",
+          "ref": "https://github.com/deepseek-ai/deepseek-harness/blob/master/packages/mcp/mcp-client/README.md",
+          "date": "2026-11-24"
+        },
+        {
+          "kind": "official-doc",
+          "ref": "https://github.com/deepseek-ai/deepseek-harness/blob/master/packages/llm/llm-pi-ai/README.md",
+          "date": "2026-11-24"
+        },
+        {
+          "kind": "official-doc",
+          "ref": "https://github.com/deepseek-ai/deepseek-harness/blob/master/packages/schedule/schedule/README.md",
+          "date": "2026-11-24"
+        }
+      ]
+    }
+  ]
+}

@@ -85,3 +85,5 @@ export * from './writers/model-writer.js';
 export * from './domain/model-state.js';
 // M2-02: Shared outbound actionable webhook notifier
 export * from './notify/webhook.js';
+// C45-WP1: Canonical Harness Capability Matrix (S2, S3, S6)
+export * from './harness/matrix.js';

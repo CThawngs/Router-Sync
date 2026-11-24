@@ -81,6 +81,9 @@ export const COMMAND_CLASSES: Record<string, CommandClass> = {
   'apps inspect': 'short',
   'apps drift': 'short',
   'apps drift-model': 'short',
+  'apps plan': 'short',
+  'apps apply': 'interactive',
+  'apps rollback': 'interactive',
   agents: 'short',
   'agents discover': 'short',
   'agents dry-run': 'short',
@@ -89,13 +92,10 @@ export const COMMAND_CLASSES: Record<string, CommandClass> = {
   'agents update': 'interactive',
   combos: 'short',
   'combos stale': 'short',
-  // C32 M1: probe l�m vi?c m?ng nhi?u ph�t, kh�ng du?c watchdog 120s c?t.
   'combos probe': 'long-running',
-  // C33 N3: plan đọc DB + ghi một file kế hoạch, tính bằng giây.
   'combos plan': 'short',
   'combos reliability': 'long-running',
-  // C35 R1: watch chạy nhiều phút, không bị watchdog 120s cắt.
-  'router': 'long-running',
+  router: 'long-running',
   'router watch': 'long-running',
 };
 
@@ -125,4 +125,3 @@ export function watchdogDelayMs(): number {
   const value = Number(raw);
   return Number.isFinite(value) && value >= 0 ? value : 120_000;
 }
-

@@ -62,7 +62,12 @@ import {
   runAgentsRollbackCommand,
   runAgentsUpdateCommand,
 } from './commands/agents.js';
-import { runAppsInspectCommand } from './commands/apps.js';
+import {
+  runAppsInspectCommand,
+  runAppsPlanCommand,
+  runAppsApplyCommand,
+  runAppsRollbackCommand,
+} from './commands/apps.js';
 import { runAppsDriftCommand } from './commands/drift.js';
 import { installConfiguredRouterDbPaths } from './config/loader.js';
 
@@ -141,7 +146,8 @@ export function createCliProgram(): Command {
   program.hook('preAction', (_thisCommand, actionCommand) => {
     const opts = actionCommand.opts() as { config?: string; configPath?: string };
     const isAgents = actionCommand.name() === 'agents' || actionCommand.parent?.name() === 'agents';
-    const cfg = actionCommand.name() === 'rank' || isAgents
+    const isAppsConfig = actionCommand.parent?.name() === 'apps' && actionCommand.name() !== 'drift';
+    const cfg = actionCommand.name() === 'rank' || isAgents || isAppsConfig
       ? undefined // rank's -c is ranking.yaml, agents' -c is agent config, not routersync.yaml
       : (opts.configPath ?? opts.config);
     installConfiguredRouterDbPaths(cfg);
@@ -246,8 +252,8 @@ export function createCliProgram(): Command {
 
   mcpCmd
     .command('install')
-    .description('Install read-only RouterSync MCP server into harness (Hermes, DSH, Claude Code, Cursor, Codex)')
-    .requiredOption('--client <client>', 'Harness client type (claude-code | cursor | codex | hermes | dsh)')
+    .description('Install read-only RouterSync MCP server into harness (all 9 WP1 harnesses)')
+    .requiredOption('--client <client>', 'Harness client type (hermes | claude-code | codex | antigravity | opencode | cursor | grok-bot | openmausbot | dsh)')
     .option('--print', 'Print harness configuration snippet without modifying files')
     .option('--write', 'Execute live file modification (requires interactive TTY confirmation)')
     .option('--yes', 'Rejected flag')
@@ -468,6 +474,7 @@ export function createCliProgram(): Command {
     .option('-c, --config <path>', 'Custom path to configuration file (routersync.yaml)')
     .option('--state-dir <dir>', 'Custom state directory')
     .option('--interval-minutes <n>', 'Scan interval in minutes (default 15)')
+    .option('--harness <id>', 'Resolve schedule capability from harness-matrix.json for target harness')
     .option('--mode <mode>', 'Autonomy mode for scheduled tick (default propose)', 'propose')
     .option('--dry-run', 'Print schedule artifacts for all 3 OSes without installing')
     .option('--json', 'Output artifacts or status in JSON format')
@@ -477,6 +484,7 @@ export function createCliProgram(): Command {
         opts: {
           config?: string;
           stateDir?: string;
+          harness?: string;
           intervalMinutes?: string;
           mode?: string;
           dryRun?: boolean;
@@ -1201,6 +1209,68 @@ export function createCliProgram(): Command {
         json: opts.json,
       });
     });
+
+  appsCmd
+    .command('plan')
+    .description('Compute Direction A model list plan for a target harness (read-only)')
+    .requiredOption('--app <app>', 'Target harness ID from harness-matrix.json')
+    .requiredOption('--catalog <path>', 'Path to verified provider catalog JSON')
+    .option('-c, --config <path>', 'Explicit harness config file path')
+    .option('--home <dir>', 'Custom user home directory')
+    .option('--json', 'Output plan in JSON format')
+    .action(async (opts: { app: string; catalog: string; config?: string; home?: string; json?: boolean }) => {
+      await runAppsPlanCommand(opts);
+    });
+
+  appsCmd
+    .command('apply')
+    .description('Apply lossless model list plan to an isolated sandbox copy (--sandbox-copy required)')
+    .requiredOption('--app <app>', 'Target harness ID from harness-matrix.json')
+    .requiredOption('-c, --config <path>', 'Path to isolated sandbox harness config copy in os.tmpdir()')
+    .requiredOption('--catalog <path>', 'Path to verified provider catalog JSON')
+    .option('--sandbox-copy', 'Confirm target config is an isolated sandbox copy')
+    .option('--plan-hash <hash>', 'Expected planHash from apps plan')
+    .option('--backup <path>', 'Custom backup file path')
+    .option('--json', 'Output apply result in JSON format')
+    .action(
+      async (opts: {
+        app: string;
+        config: string;
+        catalog: string;
+        sandboxCopy?: boolean;
+        planHash?: string;
+        backup?: string;
+        json?: boolean;
+      }) => {
+        await runAppsApplyCommand(opts);
+      }
+    );
+
+  appsCmd
+    .command('rollback')
+    .description('Restore sandbox harness config byte-for-byte from backup')
+    .requiredOption('--app <app>', 'Target harness ID from harness-matrix.json')
+    .requiredOption('-c, --config <path>', 'Path to sandbox harness config file')
+    .option('--backup <path>', 'Explicit backup file path')
+    .option('--expected-sha256 <hash>', 'Expected pre-apply SHA-256 hex')
+    .option('--json', 'Output rollback result in JSON format')
+    .action(
+      async (opts: {
+        app: string;
+        config: string;
+        backup?: string;
+        expectedSha256?: string;
+        json?: boolean;
+      }) => {
+        await runAppsRollbackCommand({
+          app: opts.app,
+          config: opts.config,
+          backup: opts.backup,
+          expectedPreSha256: opts.expectedSha256,
+          json: opts.json,
+        });
+      }
+    );
 
   // agents command group (Agent Configuration Management / Condition AGENT-WRITE-01)
   const agentsCmd = program
