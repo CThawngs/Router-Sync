@@ -73,6 +73,10 @@ jobs:
         # failures in the middle of the loop (C20 X0).
         run: node tools/ci/run-smoke.mjs
 
+      - name: Verify publishable tarballs and clean install (P4)
+        if: matrix.node == 24
+        run: node tools/agent/pack-verify.mjs --skip-publish-dry-run
+
       - name: Emit schedule artifacts (no install)
         run: node tools/ci/emit-schedule-artifacts.mjs "${{ runner.temp }}/schedule-artifacts"
 
