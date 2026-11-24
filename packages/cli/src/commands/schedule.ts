@@ -2,8 +2,8 @@
  * packages/cli/src/commands/schedule.ts
  *
  * Scheduler artifacts & CLI handler (`routersync schedule [install|status|uninstall]`).
- * Supports Windows Task Scheduler, macOS launchd, and Linux systemd --user timer
- * (default every 15 minutes).
+ * Supports Windows Task Scheduler, macOS launchd, Linux systemd --user timer, AND
+ * C45-WP1 `--harness <id>` capability lookup from `harness-matrix.json` (Phục vụ: S6).
  *
  * C4q/Q1: every artifact launches `<absolute node> <absolute dist/index.js> tick ...`
  * (see resolveTickInvocation) instead of a bare `routersync`, which only works
@@ -16,6 +16,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import * as readline from 'node:readline';
 import { fileURLToPath } from 'node:url';
+import { getHarnessCapability, listHarnessCapabilities } from '@routersync/core';
 import { resolveAutonomyMode } from './tick.js';
 import { resolveConfigFilePath } from '../config/loader.js';
 
@@ -41,6 +42,25 @@ export interface ScheduleOptions {
   invocation?: TickInvocation | undefined;
   /** Directory for launchd stdout/stderr logs. Default: the state dir. */
   logDir?: string | undefined;
+}
+
+export interface HarnessNativeScheduleArtifact {
+  kind: 'hermes-script-cron' | 'antigravity-schedule-sidecar';
+  preview: string;
+  command?: string | undefined;
+  notes: string;
+}
+
+export interface HarnessSchedulePlan {
+  harnessId: string;
+  displayName: string;
+  zeroTokenScriptCapable: boolean;
+  selectedTier: 'harness-native-zero-token' | 'os-scheduler';
+  reason: string;
+  nativePreview?: string | undefined;
+  nativeArtifact?: HarnessNativeScheduleArtifact | undefined;
+  osArtifacts: ScheduleArtifacts;
+  osFallbackArtifacts: ScheduleArtifacts;
 }
 
 export const DEFAULT_INTERVAL_MINUTES = 15;
@@ -221,6 +241,120 @@ export function buildTickScheduleArtifacts(
   });
 }
 
+/**
+ * C45-WP1 (`Phục vụ: S6`): Resolves the verified schedule plan for a given harness
+ * directly from `harness-matrix.json`, never overwriting live user `jobs.json` or
+ * `routines.json`.
+ */
+export function resolveHarnessSchedulePlan(
+  harnessId: string,
+  options: {
+    intervalMinutes?: number | undefined;
+    mode?: string | undefined;
+    invocation?: TickInvocation | undefined;
+    logDir?: string | undefined;
+    configPath?: string | undefined;
+    stateDir?: string | undefined;
+  } = {}
+): HarnessSchedulePlan {
+  const cap = getHarnessCapability(harnessId);
+  if (!cap) {
+    const valid = listHarnessCapabilities().map((h) => h.id).join(', ');
+    throw new Error(`Unknown --harness "${harnessId}". Supported harnesses: ${valid}`);
+  }
+
+  const minutes =
+    options.intervalMinutes !== undefined
+      ? validateIntervalMinutes(options.intervalMinutes)
+      : DEFAULT_INTERVAL_MINUTES;
+  const mode = resolveAutonomyMode(options.mode);
+  const inv = options.invocation ?? resolveTickInvocation();
+  const osArtifacts = buildTickScheduleArtifacts({
+    intervalMinutes: minutes,
+    mode,
+    invocation: inv,
+    logDir: options.logDir,
+    configPath: options.configPath,
+    stateDir: options.stateDir,
+  });
+
+  if (cap.scheduler.zeroTokenScriptCapable) {
+    if (cap.id === 'hermes') {
+      const jobDescriptor = {
+        name: 'routersync-tick',
+        schedule: `every ${minutes}m`,
+        no_agent: true,
+        script: 'routersync-tick.sh',
+      };
+      const scriptPreview = `#!/usr/bin/env sh\nexec "${inv.node.replace(/\\/g, '/')}" "${inv.script.replace(/\\/g, '/')}" tick --mode ${mode}\n`;
+      const preview = `${JSON.stringify(jobDescriptor, null, 2)}\n# routersync-tick.sh\n${scriptPreview}`;
+      return {
+        harnessId: cap.id,
+        displayName: cap.displayName,
+        zeroTokenScriptCapable: true,
+        selectedTier: 'harness-native-zero-token',
+        reason: `Hermes hỗ trợ Script-Only Cron Job gốc (no_agent=true, 0 token LLM) qua ${cap.scheduler.scriptsDir ?? '<HERMES_HOME>/scripts/'}; kết hợp dự phòng bộ lập lịch hệ điều hành khi gateway tắt.`,
+        nativePreview: preview,
+        nativeArtifact: {
+          kind: 'hermes-script-cron',
+          command: cap.scheduler.nativeCommand,
+          preview,
+          notes: cap.scheduler.notes,
+        },
+        osArtifacts,
+        osFallbackArtifacts: osArtifacts,
+      };
+    }
+
+    if (cap.id === 'antigravity') {
+      const cronStep = minutes <= 59 ? `*/${minutes} * * * *` : '0 * * * *';
+      const sidecarJson = {
+        builtin: 'schedule',
+        args: [`CRON_TZ=UTC ${cronStep}`, inv.node, inv.script, 'tick', '--mode', mode],
+        restart_policy: 'always',
+      };
+      const optInSnippet = {
+        sidecars: {
+          'routersync-tick': { enabled: true },
+        },
+      };
+      const preview =
+        `// ~/.gemini/config/sidecars/routersync-tick/sidecar.json\n` +
+        `${JSON.stringify(sidecarJson, null, 2)}\n` +
+        `// ~/.gemini/config/config.json opt-in\n` +
+        `${JSON.stringify(optInSnippet, null, 2)}`;
+      return {
+        harnessId: cap.id,
+        displayName: cap.displayName,
+        zeroTokenScriptCapable: true,
+        selectedTier: 'harness-native-zero-token',
+        reason:
+          'Google Antigravity hỗ trợ sidecar builtin="schedule" chạy trực tiếp lệnh định kỳ 0 token LLM; kết hợp dự phòng bộ lập lịch hệ điều hành khi đóng app.',
+        nativePreview: preview,
+        nativeArtifact: {
+          kind: 'antigravity-schedule-sidecar',
+          preview,
+          notes: cap.scheduler.notes,
+        },
+        osArtifacts,
+        osFallbackArtifacts: osArtifacts,
+      };
+    }
+  }
+
+  return {
+    harnessId: cap.id,
+    displayName: cap.displayName,
+    zeroTokenScriptCapable: false,
+    selectedTier: 'os-scheduler',
+    reason: `[${cap.displayName}] Không dùng cron gốc của harness (${cap.scheduler.schedulerType}): ${cap.scheduler.notes} -> Chọn bộ lập lịch hệ điều hành (Task Scheduler / launchd / systemd --user) chạy 0 token.`,
+    nativePreview: undefined,
+    nativeArtifact: undefined,
+    osArtifacts,
+    osFallbackArtifacts: osArtifacts,
+  };
+}
+
 /** Accepts the confirmation word with or without diacritics, in any case. */
 export function isConfirmAnswer(answer: string): boolean {
   const normalized = answer.trim().normalize('NFC').toLowerCase();
@@ -275,6 +409,7 @@ export function queryScheduleStatus(platform: NodeJS.Platform = process.platform
 
 export interface RunScheduleCommandOptions {
   action?: string | undefined;
+  harness?: string | undefined;
   intervalMinutes?: string | undefined;
   mode?: string | undefined;
   dryRun?: boolean | undefined;
@@ -286,21 +421,8 @@ export interface RunScheduleCommandOptions {
 
 export async function runScheduleCommand(options: RunScheduleCommandOptions = {}): Promise<void> {
   const action = (options.action ?? 'dry-run').toLowerCase();
-  // C4q/Q1: validate before generating files or touching the disk.
   const interval = validateIntervalMinutes(options.intervalMinutes);
   const mode = resolveAutonomyMode(options.mode);
-
-  if (action === 'status') {
-    const st = queryScheduleStatus();
-    if (options.json) {
-      console.log(JSON.stringify({ ...st, intervalMinutes: interval }, null, 2));
-    } else {
-      console.log(
-        `SCHEDULE-STATUS os=${st.os} task=${st.taskName} installed=${st.installed ? 'yes' : 'no'} interval=${interval}m detail=${st.detail}`
-      );
-    }
-    return;
-  }
 
   const explicitCfg = options.configPath ?? options.config;
   let resolvedConfig: string | undefined;
@@ -319,18 +441,74 @@ export async function runScheduleCommand(options: RunScheduleCommandOptions = {}
 
   const resolvedState = options.stateDir ? path.resolve(options.stateDir) : path.resolve(resolveStateDir());
 
-  const artifacts = buildTickScheduleArtifacts({
-    intervalMinutes: interval,
-    mode,
-    configPath: resolvedConfig,
-    stateDir: resolvedState,
-  });
+  const harnessPlan = options.harness
+    ? resolveHarnessSchedulePlan(options.harness, {
+        intervalMinutes: interval,
+        mode,
+        configPath: resolvedConfig,
+        stateDir: resolvedState,
+      })
+    : undefined;
+
+  if (action === 'status') {
+    const st = queryScheduleStatus();
+    if (options.json) {
+      console.log(
+        JSON.stringify(
+          {
+            ...st,
+            intervalMinutes: interval,
+            ...(harnessPlan ? { harnessPlan } : {}),
+          },
+          null,
+          2
+        )
+      );
+    } else {
+      console.log(
+        `SCHEDULE-STATUS os=${st.os} task=${st.taskName} installed=${st.installed ? 'yes' : 'no'} interval=${interval}m detail=${st.detail}`
+      );
+      if (harnessPlan) {
+        console.log(`HARNESS-SCHEDULE harness=${harnessPlan.harnessId} tier=${harnessPlan.selectedTier} reason=${harnessPlan.reason}`);
+      }
+    }
+    return;
+  }
+
+  const artifacts = harnessPlan
+    ? harnessPlan.osArtifacts
+    : buildTickScheduleArtifacts({
+        intervalMinutes: interval,
+        mode,
+        configPath: resolvedConfig,
+        stateDir: resolvedState,
+      });
 
   if (options.dryRun || action === 'dry-run' || (action !== 'install' && action !== 'uninstall')) {
     if (options.json) {
-      console.log(JSON.stringify({ dryRun: true, action, intervalMinutes: interval, mode, ...artifacts }, null, 2));
+      console.log(
+        JSON.stringify(
+          {
+            dryRun: true,
+            action,
+            intervalMinutes: interval,
+            mode,
+            ...(harnessPlan ? { harnessPlan } : {}),
+            ...artifacts,
+          },
+          null,
+          2
+        )
+      );
     } else {
       console.log(`DRY-RUN: chỉ sinh artifact (action=${action}, interval=${interval}m, mode=${mode}), không cài đặt gì cả.`);
+      if (harnessPlan) {
+        console.log(`--- harnessSchedule (${harnessPlan.harnessId} -> ${harnessPlan.selectedTier}) ---`);
+        console.log(harnessPlan.reason);
+        if (harnessPlan.nativePreview) {
+          console.log(harnessPlan.nativePreview);
+        }
+      }
       console.log('--- windowsXml (Windows Task Scheduler) ---');
       console.log(artifacts.windowsXml);
       console.log('--- launchdPlist (macOS launchd) ---');

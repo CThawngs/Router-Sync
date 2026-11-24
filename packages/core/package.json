@@ -31,7 +31,7 @@
     }
   },
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && node -e \"const fs=require('node:fs');fs.mkdirSync('dist/harness',{recursive:true});fs.copyFileSync('src/harness/harness-matrix.json','dist/harness/harness-matrix.json');\"",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },

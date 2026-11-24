@@ -1,11 +1,10 @@
 /**
  * packages/adapter-sdk/src/agent-app.ts
  *
- * Read-only inspection contract for agent apps (harnesses) that keep their own
- * provider/model lists — Hermes Agent, DSH Desktop, OpenCode, ...
- *
- * Scope: this contract is INSPECT ONLY. There is deliberately no write/apply
- * member; RouterSync must not modify an agent app's configuration through it.
+ * Read-only inspection contract (`AgentAppAdapter`) + C45-WP2 Direction A
+ * Harness Write Adapter contract (`HarnessWriteAdapter`, Phục vụ: S3) for agent
+ * harnesses (Hermes Agent, OpenMausBot, OpenCode, DSH Desktop, and report-only
+ * harnesses).
  *
  * Certainty tiers (docs/adapters/agent-apps.md):
  *   A — value read from an explicit field in the app's config.
@@ -50,7 +49,7 @@ export interface AgentAppInspection {
   /** Raw path. Mask with `maskHomePath` before writing it to a log or report. */
   configPath: string;
   format: AgentAppFormat;
-  /** Always true: the adapters never write. */
+  /** Always true on `AgentAppAdapter.inspect()`: inspection never writes. */
   readOnly: true;
   providers: AgentAppProvider[];
   models: AgentAppModel[];
@@ -84,6 +83,102 @@ export interface AgentAppAdapter {
 
 /** Reason an inspection could not produce a result. */
 export type AgentAppInspectErrorCode = 'ENOENT' | 'PARSE' | 'TOO_LARGE' | 'UNSUPPORTED';
+
+// ---------------------------------------------------------------------------
+// C45-WP2 Direction A Harness Write Adapter Contract (Phục vụ: S3)
+// ---------------------------------------------------------------------------
+
+export type HarnessDirectionAMode = 'write-adapter' | 'report-only' | 'CHƯA-XÁC-MINH';
+
+export interface HarnessProviderCatalog {
+  liveModels: string[];
+  deprecatedModels: string[];
+}
+
+export type HarnessCatalogInput = Record<string, HarnessProviderCatalog>;
+
+export interface HarnessModelAddition {
+  provider: string;
+  model: string;
+}
+
+export interface HarnessModelRemoval {
+  provider: string;
+  model: string;
+  reason: string;
+}
+
+export interface HarnessDefaultSlotWarning {
+  slot: string;
+  currentModel: string;
+  suggestion: string;
+}
+
+export interface HarnessModelPlan {
+  app: string;
+  configPath: string;
+  directionAMode: HarnessDirectionAMode;
+  editable: boolean;
+  targetProviders: string[];
+  additions: HarnessModelAddition[];
+  removals: HarnessModelRemoval[];
+  defaultSlotWarnings: HarnessDefaultSlotWarning[];
+  guidance: string[];
+  planHash: string;
+  reloadRequired: boolean;
+  runningProcesses: string[];
+}
+
+export interface HarnessApplyResult {
+  app: string;
+  configPath: string;
+  backupPath: string;
+  applied: boolean;
+  rolledBack: boolean;
+  readBackVerified: boolean;
+  reloadRequired: boolean;
+  runningProcesses: string[];
+  planHash: string;
+  preSha256: string;
+  postSha256: string;
+  message: string;
+}
+
+export interface HarnessRollbackResult {
+  app: string;
+  configPath: string;
+  backupPath: string;
+  restored: boolean;
+  byteIdenticalToPreApply: boolean;
+  postSha256: string;
+}
+
+export interface HarnessPlanOptions {
+  configPath?: string | undefined;
+  homeDir?: string | undefined;
+  catalog: HarnessCatalogInput;
+  processRunner?: (() => string[]) | undefined;
+}
+
+export interface HarnessApplyOptions extends HarnessPlanOptions {
+  expectedPlanHash?: string | undefined;
+  backupPath?: string | undefined;
+  injectReadBackFault?: boolean | ((content: string) => void) | undefined;
+}
+
+export interface HarnessRollbackOptions {
+  configPath: string;
+  backupPath?: string | undefined;
+  expectedPreSha256?: string | undefined;
+}
+
+export interface HarnessWriteAdapter {
+  readonly app: string;
+  readonly directionAMode: HarnessDirectionAMode;
+  plan(options: HarnessPlanOptions): Promise<HarnessModelPlan>;
+  apply(options: HarnessApplyOptions): Promise<HarnessApplyResult>;
+  rollback(options: HarnessRollbackOptions): Promise<HarnessRollbackResult>;
+}
 
 /**
  * Replaces the user's home directory with `<HOME>` so a path can be logged.
