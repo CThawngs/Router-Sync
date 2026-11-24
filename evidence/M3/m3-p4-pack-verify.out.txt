@@ -1,0 +1,19 @@
+PACK_TARBALL package=@routersync/adapter-sdk files=7 tarballBytes=3617 unpackedBytes=10875 maps=0 secrets=0 personalPaths=0
+PACK_TARBALL package=@routersync/core files=49 tarballBytes=65662 unpackedBytes=271083 maps=0 secrets=0 personalPaths=0
+PACK_TARBALL package=@routersync/adapter-9router files=3 tarballBytes=9775 unpackedBytes=38515 maps=0 secrets=0 personalPaths=0
+PACK_TARBALL package=@routersync/adapter-omniroute files=3 tarballBytes=7677 unpackedBytes=34173 maps=0 secrets=0 personalPaths=0
+PACK_TARBALL package=@routersync/sources files=29 tarballBytes=10388 unpackedBytes=44029 maps=0 secrets=0 personalPaths=0
+PACK_TARBALL package=@routersync/daemon files=63 tarballBytes=43115 unpackedBytes=164489 maps=0 secrets=0 personalPaths=0
+PACK_TARBALL package=@routersync/cli files=175 tarballBytes=324887 unpackedBytes=1281404 maps=0 secrets=0 personalPaths=0
+PACK_TARBALL package=@routersync/mcp-server files=15 tarballBytes=20200 unpackedBytes=78820 maps=0 secrets=0 personalPaths=0
+PACK_TOTALS packages=8 totalTarballBytes=485321 totalUnpackedBytes=1923388
+PACK_PUBLISH_DRY_RUN skipped=false verified=8
+PACK_REGISTRY package=@routersync/adapter-sdk status=unoccupied publishedVersion=none
+PACK_REGISTRY package=@routersync/core status=unoccupied publishedVersion=none
+PACK_REGISTRY package=@routersync/adapter-9router status=unoccupied publishedVersion=none
+PACK_REGISTRY package=@routersync/adapter-omniroute status=unoccupied publishedVersion=none
+PACK_REGISTRY package=@routersync/sources status=unoccupied publishedVersion=none
+PACK_REGISTRY package=@routersync/daemon status=unoccupied publishedVersion=none
+PACK_REGISTRY package=@routersync/cli status=unoccupied publishedVersion=none
+PACK_REGISTRY package=@routersync/mcp-server status=unoccupied publishedVersion=none
+PACK_CLEAN_SMOKE ok=true installMs=10596 nodeGyp=false version=0.1.0 doctorJson=true combosStale=0 verify=0

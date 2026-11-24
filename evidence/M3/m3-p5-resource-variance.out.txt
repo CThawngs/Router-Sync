@@ -1,0 +1,16 @@
+# RouterSync Resource Variance Benchmark (platform=win32/x64 node=v24.18.0 runs=7 idleMs=250)
+# Host Memory: totalMemMB=16086 freeMemStartMB=1562 freeMemMinMB=1376 freeMemEndMB=1376
+target                 |  n |   mean | stddev |    min |    max | unit
+-----------------------+----+--------+--------+--------+--------+-----
+cli_cold_start_ms      |  7 | 2341.71 | 1341.84 | 1758.00 | 5381.25 | ms
+cli_idle_rss_mb        |  7 |  88.83 |   0.28 |  88.45 |  89.23 | MB
+cli_idle_heap_mb       |  7 |  16.38 |   0.00 |  16.38 |  16.38 | MB
+daemon_cold_start_ms   |  7 | 288.50 |  56.13 | 227.64 | 400.17 | ms
+daemon_idle_rss_mb     |  7 |  67.10 |   0.25 |  66.68 |  67.43 | MB
+daemon_idle_heap_mb    |  7 |   8.16 |   0.00 |   8.16 |   8.16 | MB
+RESOURCE_VARIANCE target=cli_cold_start_ms n=7 mean=2341.71 stddev=1341.84 min=1758.00 max=5381.25 freeMemStartMB=1562 freeMemMinMB=1376 freeMemEndMB=1376
+RESOURCE_VARIANCE target=cli_idle_rss_mb n=7 mean=88.83 stddev=0.28 min=88.45 max=89.23 freeMemStartMB=1562 freeMemMinMB=1376 freeMemEndMB=1376
+RESOURCE_VARIANCE target=cli_idle_heap_mb n=7 mean=16.38 stddev=0.00 min=16.38 max=16.38 freeMemStartMB=1562 freeMemMinMB=1376 freeMemEndMB=1376
+RESOURCE_VARIANCE target=daemon_cold_start_ms n=7 mean=288.50 stddev=56.13 min=227.64 max=400.17 freeMemStartMB=1562 freeMemMinMB=1376 freeMemEndMB=1376
+RESOURCE_VARIANCE target=daemon_idle_rss_mb n=7 mean=67.10 stddev=0.25 min=66.68 max=67.43 freeMemStartMB=1562 freeMemMinMB=1376 freeMemEndMB=1376
+RESOURCE_VARIANCE target=daemon_idle_heap_mb n=7 mean=8.16 stddev=0.00 min=8.16 max=8.16 freeMemStartMB=1562 freeMemMinMB=1376 freeMemEndMB=1376
