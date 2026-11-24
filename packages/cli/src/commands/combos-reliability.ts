@@ -1,12 +1,13 @@
 /**
  * packages/cli/src/commands/combos-reliability.ts
  *
- * C37 V3 / C43 R2: độ ổn định từng bước, dựa trên `combos probe --mode step`.
+ * C37 V3 / C43 R2 / C44 W2: độ ổn định từng bước, dựa trên `combos probe --mode step`.
  * Mỗi bước: `rounds` vòng, mỗi vòng `repeat` request, cách `gapSec` giây,
  * hạn 30 s, max_tokens 8, stream bật, tuần tự.
  */
 import { readFileSync } from 'node:fs';
-import { perStepConclusion, type ComboProbeRow, type VerdictInput } from './combos-probe.js';
+import { openBetterSqlite3, locateRouterDb } from '@routersync/core';
+import { perStepConclusion, redact, type ComboProbeRow, type VerdictInput } from './combos-probe.js';
 import {
   classifyStep,
   interleaveProviders,
@@ -16,35 +17,44 @@ import {
   RequestBudget,
   DEFAULT_REQUEST_BUDGET,
 } from './combos-budget.js';
-import { createRequire } from 'node:module';
-import os from 'node:os';
-import path from 'node:path';
-const require = createRequire(import.meta.url);
 
-let cachedKey = '';
-function apiKey(): string {
-  if (cachedKey) return cachedKey;
+function resolveApiKey(dbPath?: string, explicitKey?: string): string {
+  if (explicitKey !== undefined) return explicitKey;
   try {
-    const Database = require('better-sqlite3');
-    const file = path.join(process.env.APPDATA || os.homedir(), '9router', 'db', 'data.sqlite');
-    const db = new Database(file, { readonly: true });
-    cachedKey = db.prepare('SELECT key FROM apiKeys WHERE isActive = 1 ORDER BY createdAt LIMIT 1').get().key;
-    db.close();
+    const explicit = dbPath?.trim() || process.env['ROUTERSYNC_9ROUTER_DB']?.trim();
+    const file = explicit || locateRouterDb('9router');
+    const db = openBetterSqlite3(file, { readOnly: true, busyTimeoutMs: 5000 });
+    try {
+      const row = db
+        .prepare('SELECT key FROM apiKeys WHERE isActive = 1 ORDER BY createdAt LIMIT 1')
+        .get() as { key?: string } | undefined;
+      return typeof row?.key === 'string' ? row.key : '';
+    } finally {
+      db.close();
+    }
   } catch {
-    cachedKey = '';
+    return '';
   }
-  return cachedKey;
 }
 
 async function probeStep(
   step: string,
-  opts: { maxTokens: number; timeoutMs: number; fetchImpl?: typeof fetch | undefined; baseUrl?: string | undefined }
+  opts: {
+    maxTokens: number;
+    timeoutMs: number;
+    key: string;
+    now: () => number;
+    fetchImpl?: typeof fetch | undefined;
+    baseUrl?: string | undefined;
+  }
 ): Promise<ComboProbeRow> {
-  const base = opts.baseUrl ?? process.env.ROUTERSYNC_9ROUTER_BASE_URL ?? 'http://127.0.0.1:20128';
+  const base = opts.baseUrl ?? process.env['ROUTERSYNC_9ROUTER_BASE_URL'] ?? 'http://127.0.0.1:20128';
   const fetchImpl = opts.fetchImpl ?? globalThis.fetch;
-  const key = apiKey();
+  const key = opts.key;
+  const startedAt = new Date(opts.now()).toISOString();
   const t0 = Date.now();
   let headerMs: number | null = null;
+  let firstByteMs: number | null = null;
   let status: number | null = null;
   let text = '';
   let timedOut = false;
@@ -52,17 +62,37 @@ async function probeStep(
     const res = await fetchImpl(`${base}/v1/chat/completions`, {
       method: 'POST',
       headers: { 'content-type': 'application/json', authorization: `Bearer ${key}` },
-      body: JSON.stringify({ model: step, messages: [{ role: 'user', content: 'ping' }], max_tokens: opts.maxTokens, stream: true }),
+      body: JSON.stringify({
+        model: step,
+        messages: [{ role: 'user', content: 'ping' }],
+        max_tokens: opts.maxTokens,
+        stream: true,
+      }),
       signal: AbortSignal.timeout(opts.timeoutMs),
     });
     headerMs = Date.now() - t0;
     status = res.status;
-    text = (await res.text()).slice(0, 300);
+    if (res.status >= 400) {
+      text = (await res.text()).slice(0, 300);
+      firstByteMs = Date.now() - t0;
+    } else {
+      const reader = res.body?.getReader();
+      if (reader) {
+        const decoder = new TextDecoder();
+        const first = await reader.read();
+        firstByteMs = Date.now() - t0;
+        text = decoder.decode(first.value ?? new Uint8Array()).slice(0, 300);
+        await reader.cancel().catch(() => undefined);
+      } else {
+        text = (await res.text()).slice(0, 300);
+        firstByteMs = Date.now() - t0;
+      }
+    }
   } catch (err) {
     timedOut = true;
     text = err instanceof Error ? err.message : String(err);
   }
-  const body = text.replace(new RegExp(key, 'g'), '<KEY>').slice(0, 200);
+  const body = redact(text, key ? [key] : []);
   const input: VerdictInput = {
     status,
     body,
@@ -77,9 +107,10 @@ async function probeStep(
   return {
     combo: '(step)',
     model: step,
+    startedAt,
     httpStatus: status,
     headerMs,
-    firstByteMs: headerMs,
+    firstByteMs: firstByteMs ?? headerMs,
     totalMs: Date.now() - t0,
     verdict: classified.verdict as ComboProbeRow['verdict'],
     quota: classified.quota,
@@ -159,10 +190,14 @@ export interface ReliabilityOptions {
   baseUrl?: string;
   fetchImpl?: typeof fetch;
   log?: (line: string) => void;
-  /** C40 X0 */
+  /** C40 X0 / C44 W2 */
   budget?: number | undefined;
   skipQuotaFrom?: string[] | undefined;
   sleepImpl?: (ms: number) => Promise<void> | undefined;
+  dbPath?: string | undefined;
+  apiKey?: string | undefined;
+  now?: (() => number) | undefined;
+  maxConsecutive429?: number | undefined;
 }
 
 export interface ReliabilityResult {
@@ -175,25 +210,28 @@ export interface ReliabilityResult {
 export async function runReliability(options: ReliabilityOptions): Promise<ReliabilityResult> {
   const log = options.log ?? ((l: string) => console.log(l));
   if (!options.from) throw new Error('--from là bắt buộc (tệp kết quả combos probe --mode step)');
-  const raw = await import('node:fs').then((fs) => fs.readFileSync(options.from, 'utf8'));
+  const raw = readFileSync(options.from, 'utf8');
   const targetSteps = raw
-    .split('\n')
-    .map((l) => l.trim().split('\t')[0] ?? '')
+    .split(/\r?\n/)
+    .map((l) => (l.trim().split('\t')[0] ?? '').replace(/#\d+$/, '').trim())
     .filter((s) => s.includes('/'))
     .filter((s, i, all) => all.indexOf(s) === i)
     .slice(0, 70);
   if (targetSteps.length === 0) throw new Error('không tìm thấy bước nào trong --from');
 
+  const clock = options.now ?? Date.now;
   const repeat = Math.max(1, Math.floor(options.repeat ?? 3));
   const rounds = Math.max(1, Math.floor(options.rounds ?? 2));
   const gapSec = Math.max(0, Math.floor(options.gapSec ?? 5));
+  const maxConsecutive429 = Math.max(1, Math.floor(options.maxConsecutive429 ?? 5));
   const budgetMs = Math.max(1, options.maxMinutes ?? 40) * 60_000;
-  const t0 = Date.now();
+  const t0 = clock();
+  const key = resolveApiKey(options.dbPath, options.apiKey);
 
   const skippedQuota = new Set<string>();
   for (const file of options.skipQuotaFrom ?? []) {
     try {
-      for (const step of recentQuotaSteps(readFileSync(file, 'utf8'), Date.now())) skippedQuota.add(step);
+      for (const step of recentQuotaSteps(readFileSync(file, 'utf8'), clock())) skippedQuota.add(step);
     } catch {
       // Không đọc được thì không bỏ qua bước nào.
     }
@@ -203,6 +241,8 @@ export async function runReliability(options: ReliabilityOptions): Promise<Relia
   const sleep = options.sleepImpl ?? ((ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms)));
   let lastProvider: string | null = null;
   let lastAtMs: number | null = null;
+  let consecutive429 = 0;
+  let stoppedOn429 = false;
 
   log(`bước cần đo: ${steps.length} (giới hạn 70)`);
   if (skippedQuota.size > 0) log(`SKIPPED-QUOTA=${skippedQuota.size}`);
@@ -213,40 +253,57 @@ export async function runReliability(options: ReliabilityOptions): Promise<Relia
       log(`${step}\tSKIPPED-QUOTA\thttp=-\ttotal=0ms\tusage=-\tquota=1`);
       continue;
     }
-    if (Date.now() - t0 > budgetMs) {
+    if (stoppedOn429 || clock() - t0 > budgetMs) {
       skipped.push(step);
       continue;
     }
     const provider = providerOf(step);
     const rows: ComboProbeRow[] = [];
     let exhausted = false;
-    for (let round = 1; round <= rounds && !exhausted; round += 1) {
+    for (let round = 1; round <= rounds && !exhausted && !stoppedOn429; round += 1) {
       for (let i = 1; i <= repeat; i += 1) {
-        const waitMs = providerDelayMs(lastProvider, provider, lastAtMs, Date.now());
+        if (consecutive429 >= maxConsecutive429) {
+          stoppedOn429 = true;
+          break;
+        }
+        const waitMs = providerDelayMs(lastProvider, provider, lastAtMs, clock());
         if (waitMs > 0) await sleep(waitMs);
         if (!budget.reserve(provider)) {
-          skipped.push(step);
+          if (rows.length === 0) skipped.push(step);
           exhausted = true;
           break;
         }
         lastProvider = provider;
-        lastAtMs = Date.now();
+        lastAtMs = clock();
         const r = await probeStep(step, {
           maxTokens: 8,
           timeoutMs: STEP_TIMEOUT_MS,
+          key,
+          now: clock,
           fetchImpl: options.fetchImpl,
           baseUrl: options.baseUrl,
         });
         rows.push(r);
+        if (r.httpStatus === 429 || r.verdict === 'RATE-LIMITED') {
+          consecutive429 += 1;
+        } else {
+          consecutive429 = 0;
+        }
+        if (consecutive429 >= maxConsecutive429) {
+          stoppedOn429 = true;
+          break;
+        }
         if (i < repeat || round < rounds) await sleep(gapSec * 1000);
       }
     }
     if (rows.length === 0) continue;
     const summary = summarizeAttempts(step, rows);
     out.push(summary);
-    const quotaTail = rows.some((r) => r.quota === true) ? '\tquota=1' : '';
+    const quotaRow = [...rows].reverse().find((r) => r.quota === true);
+    const quotaTail = quotaRow ? `\tquota=1\tat=${quotaRow.startedAt ?? new Date(clock()).toISOString()}` : '';
     log(`${step}\t${summary.label}\tok=${summary.ok}/${summary.attempts}\tp90=${summary.p90 ?? '-'}ms${quotaTail}`);
   }
+  if (stoppedOn429) log(`dừng sớm: ${maxConsecutive429} lần 429 liên tiếp`);
   if (skipped.length) log(`chưa đo: ${skipped.length} bước (hết ngân sách)`);
   log(budget.tally());
   return { steps: out, skipped, skippedQuota: [...skippedQuota], requests: budget.tally() };

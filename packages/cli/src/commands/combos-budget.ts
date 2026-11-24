@@ -1,7 +1,7 @@
 /**
  * packages/cli/src/commands/combos-budget.ts
  *
- * C40 X0: quota-aware probing helpers — pure functions plus a small counter.
+ * C40 X0 / C44 W2: quota-aware probing helpers — pure functions plus a small counter.
  * No router writes, no secrets. Every branch is pinned by a test.
  */
 
@@ -11,6 +11,25 @@ export const QUOTA_RE = /FreeUsageLimitError|free usage limit|insufficient_quota
 export const DEFAULT_REQUEST_BUDGET = 40;
 export const PROVIDER_GAP_MS = 3_000;
 export const MAX_CONSECUTIVE_SAME_PROVIDER = 3;
+
+export interface UsageReconciliation {
+  sentRequests: number;
+  usageHistoryRows: number;
+  delta: number;
+}
+
+export function reconcileSentVsUsage(
+  sentRequests: number,
+  usageHistoryRows: number
+): UsageReconciliation {
+  const sent = Number.isFinite(sentRequests) ? Math.max(0, Math.floor(sentRequests)) : 0;
+  const rows = Number.isFinite(usageHistoryRows) ? Math.max(0, Math.floor(usageHistoryRows)) : 0;
+  return {
+    sentRequests: sent,
+    usageHistoryRows: rows,
+    delta: sent - rows,
+  };
+}
 
 export function providerOf(step: string): string {
   return step.split('/')[0] ?? '(unknown)';
@@ -66,7 +85,7 @@ export function maxConsecutiveSameProvider(steps: string[]): number {
   return best;
 }
 
-/** Đếm request đã gửi, chia theo provider; từ chối khi vượt ngân sách. */
+/** Đếm request đã gửi phía client, chia theo provider; từ chối khi vượt ngân sách. */
 export class RequestBudget {
   readonly limit: number;
   private used = 0;
@@ -92,6 +111,12 @@ export class RequestBudget {
     return steps.slice(Math.max(0, startIndex));
   }
 
+  byProviderObject(): Record<string, number> {
+    return Object.fromEntries(
+      [...this.byProvider.entries()].sort((a, b) => a[0].localeCompare(b[0]))
+    );
+  }
+
   tally(): string {
     const parts = [...this.byProvider.entries()]
       .sort((a, b) => a[0].localeCompare(b[0]))
@@ -100,20 +125,20 @@ export class RequestBudget {
   }
 }
 
-/** Bước đã trả 429/quota trong cửa sổ gần đây thì bỏ qua, không tính là lỗi mới. */
+/** Bước hoặc combo đã trả 429/quota trong cửa sổ gần đây thì bỏ qua, không tính là lỗi mới. */
 export function recentQuotaSteps(text: string, nowMs: number, windowMs = 30 * 60_000): string[] {
   const out: string[] = [];
   for (const line of text.split(/\r?\n/)) {
     const p = line.trim().split('\t');
     if (p.length < 3) continue;
-    if (p[1] !== 'RATE-LIMITED') continue;
-    if (!p.some((x) => x === 'quota=1' || x.includes('FreeUsageLimitError'))) continue;
-    const step = p[0];
-    if (!step || !step.includes('/')) continue;
+    const target = (p[0] ?? '').replace(/#\d+$/, '').trim();
+    if (!target) continue;
+    if (p[1] !== 'RATE-LIMITED' && !p.includes('http=429')) continue;
+    if (!p.some((x) => x === 'quota=1' || isQuotaBody(x))) continue;
     const stamp = p.find((x) => x.startsWith('at='))?.slice(3);
     const at = stamp ? Date.parse(stamp) : nowMs;
     if (Number.isFinite(at) && nowMs - at > windowMs) continue;
-    if (!out.includes(step)) out.push(step);
+    if (!out.includes(target)) out.push(target);
   }
   return out;
 }
