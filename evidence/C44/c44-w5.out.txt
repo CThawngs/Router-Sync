@@ -1,0 +1,2 @@
+TRACK_W_BUDGET chatSent=6/30 chatRemaining=24 modelsGetSent=3/3 modelsGetRemaining=0 haltedReason=none
+W5_RS_FAST=chưa đo reason=combo_not_in_db

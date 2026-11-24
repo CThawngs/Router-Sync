@@ -1,0 +1,6 @@
+W3_SAMPLE pid=12680 processStart=2026-11-23T10:58:17.262Z ageHours=14.11 restarted=false freeMemMB=1940 routerRssMB=92 routerCpuSec=98.8
+TRACK_W_BUDGET chatSent=3/30 chatRemaining=27 modelsGetSent=3/3 modelsGetRemaining=0 haltedReason=none
+W3_PROBE attempt=1 ageHours=14.11 verdict=OK http=200 headerMs=811 totalMs=814 usage=-
+W3_PROBE attempt=2 ageHours=14.11 verdict=OK http=200 headerMs=609 totalMs=610 usage=-
+W3_PROBE attempt=3 ageHours=14.11 verdict=OK http=200 headerMs=777 totalMs=778 usage=-
+W3_RECONCILE sent=3 usageHistory=0 delta=3
