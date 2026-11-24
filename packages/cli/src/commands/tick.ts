@@ -20,8 +20,18 @@ import * as path from 'node:path';
 import * as os from 'node:os';
 import { acquireLock, releaseLock, readRouterCombos } from '@routersync/daemon';
 import {
+  appendApplyReceipt,
+  applyPlanSafe,
+  assertControlledWriteSandbox,
+  assertEligibleForAutoSafe,
   atomicWriteFileSync,
   canonicalizeResearchProvider,
+  planCombos,
+  readFreezeState,
+  readStandingConsent,
+  saveSnapshot,
+  validateInvariants,
+  type ModelInfo,
   getProviderAliases,
   isPathInsideDir,
   loadHarnessMatrix,
@@ -42,7 +52,10 @@ import {
   type RouterModelState,
   type WebhookDeliveryResult,
 } from '@routersync/core';
-import { loadConfigFile } from '../config/loader.js';
+import type { ComboDefinition, Plan } from '@routersync/adapter-sdk';
+import { loadConfigFile, resolveConfigFilePath, resolveRouterDbPath } from '../config/loader.js';
+import { createAdapterForRouter } from '../adapters.js';
+import { HARNESS_WRITE_ADAPTERS } from '../apps/write-adapter.js';
 import { buildViews } from './sync/sync-plan.js';
 import { fetchModelList, type ProviderTarget } from '../sync/providers.js';
 import {
@@ -62,14 +75,19 @@ import { isLowResource, applyLowResourcePriority } from '../low-resource.js';
 import { providerHasSingleModelGet } from '../verify/gateways.js';
 import { AGENT_APP_ADAPTERS } from '../apps/inspect.js';
 
-export type AutonomyMode = 'observe' | 'propose';
+export type AutonomyMode = 'observe' | 'propose' | 'auto-safe';
+export type EffectiveTickMode = AutonomyMode | 'FROZEN';
 
-export function resolveAutonomyMode(value: string | undefined): AutonomyMode {
+export function resolveAutonomyMode(
+  value: string | undefined,
+  opts?: { allowAutoSafe?: boolean | undefined }
+): AutonomyMode {
   if (value === undefined || value === null || value === '') return 'propose';
   const normalized = String(value).trim().toLowerCase();
   if (normalized === 'observe') return 'observe';
   if (normalized === 'propose') return 'propose';
   if (normalized === 'auto-safe') {
+    if (opts?.allowAutoSafe) return 'auto-safe';
     throw new Error(
       `Unknown --mode "${value}": "auto-safe" was removed in A8. Use "observe" (log only) or "propose" (also writes proposals into inbox.json).`
     );
@@ -256,7 +274,7 @@ export interface BlockedRemovalRecord {
 
 export interface TickPlanFile {
   version: 1;
-  mode: AutonomyMode;
+  mode: EffectiveTickMode;
   planCreatedAt: string;
   planHash: string;
   accounting: {
@@ -296,7 +314,7 @@ export interface TickCommandOptions {
 export interface TickRunSummary {
   timestamp: string;
   mode: AutonomyMode;
-  effectiveMode: AutonomyMode;
+  effectiveMode: EffectiveTickMode;
   requests: number;
   paidRequests: 0;
   tokens: 0;
@@ -578,12 +596,13 @@ export function resolveModelTier(
 
 export async function runTickCommand(options: TickCommandOptions = {}): Promise<TickRunSummary> {
   applyLowResourcePriority();
-  const requestedMode = resolveAutonomyMode(options.mode);
-  const effectiveMode: AutonomyMode = requestedMode;
+  const requestedMode = resolveAutonomyMode(options.mode, { allowAutoSafe: true });
   const graceCycles = validateGraceCycles(options.graceCycles);
   const maxShrinkRatio = validateMaxShrinkRatio(options.maxShrinkRatio);
 
   const sDir = resolveTickStateDir(options.stateDir);
+  const freezeState = readFreezeState(sDir);
+  const effectiveMode: EffectiveTickMode = freezeState.frozen ? 'FROZEN' : requestedMode;
   if (!fs.existsSync(sDir)) fs.mkdirSync(sDir, { recursive: true });
 
   const lockPath = path.join(sDir, 'tick.lock');
@@ -2142,9 +2161,371 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
     };
     atomicWriteFileSync(tickPlanPath, JSON.stringify(tickPlan, null, 2));
 
+    const autoSafeWebhookAlerts: ActionableWebhookAlert[] = [];
+
+    // C45-WP4 §3.1: Controlled auto-safe execution phase (strictly gated per target)
+    if (effectiveMode === 'auto-safe') {
+      const consent = readStandingConsent(sDir, nowMs);
+      if (consent.valid && consent.activeTargets.length > 0) {
+        const autoSafeTargets = new Set(
+          consent.activeTargets
+            .filter((entry) => entry.level === 'auto-safe')
+            .map((entry) => entry.target)
+        );
+        const configDir = path.dirname(path.resolve(resolveConfigFilePath(options.configPath)));
+
+        // 1. Router combo auto-safe execution
+        const groupedRouterActions = new Map<
+          string,
+          { routerKey: string; comboName: string; actions: TickRouterPlanAction[] }
+        >();
+        for (const action of routerActions) {
+          const gKey = `${action.router}::${action.comboName}`;
+          const existing = groupedRouterActions.get(gKey);
+          if (existing) {
+            existing.actions.push(action);
+          } else {
+            groupedRouterActions.set(gKey, {
+              routerKey: action.router,
+              comboName: action.comboName,
+              actions: [action],
+            });
+          }
+        }
+
+        for (const group of groupedRouterActions.values()) {
+          const routerCfg = config.routers.find(
+            (r) => r.id === group.routerKey || r.adapter === group.routerKey
+          );
+          if (!routerCfg) continue;
+
+          const primaryScope = `router:${routerCfg.id}/${group.comboName}`;
+          const adapterScope = `router:${routerCfg.adapter}/${group.comboName}`;
+          const matchedScope = autoSafeTargets.has(primaryScope)
+            ? primaryScope
+            : autoSafeTargets.has(adapterScope)
+              ? adapterScope
+              : null;
+          if (!matchedScope) continue;
+
+          // Defense-in-depth C45 §3.2 runtime gate (kills M1)
+          try {
+            assertEligibleForAutoSafe(sDir, matchedScope);
+          } catch {
+            continue;
+          }
+
+          const dbPath = resolveRouterDbPath(routerCfg, configDir);
+          assertControlledWriteSandbox(dbPath, 'router-db');
+
+          const adapter = createAdapterForRouter(routerCfg, sDir);
+          const liveCombos = await adapter.readCombos();
+          const liveCombo = liveCombos.find(
+            (c) => c.name === group.comboName || c.id === group.comboName
+          );
+          if (!liveCombo) continue;
+
+          const removeSteps = new Set(
+            group.actions.filter((a) => a.action === 'REMOVE_MODEL').map((a) => a.fullStep)
+          );
+          const addSteps = group.actions
+            .filter((a) => a.action === 'ADD_MODEL' || a.action === 'ENABLE_MODEL')
+            .map((a) => a.fullStep);
+
+          const nextModels = liveCombo.models.filter((m) => !removeSteps.has(m));
+          for (const step of addSteps) {
+            if (!nextModels.includes(step)) nextModels.push(step);
+          }
+
+          if (
+            nextModels.length === liveCombo.models.length &&
+            nextModels.every((m, idx) => m === liveCombo.models[idx])
+          ) {
+            continue;
+          }
+
+          const managedSpec = config.combos.find(
+            (c) => c.name === group.comboName && c.routers.includes(routerCfg.id)
+          );
+          let dbKindFree = false;
+          try {
+            const roDb = openBetterSqlite3(dbPath, { readOnly: true, busyTimeoutMs: 2000 });
+            try {
+              const row = roDb
+                .prepare('SELECT kind FROM combos WHERE name = ? OR id = ?')
+                .get(group.comboName, group.comboName) as { kind?: string | null } | undefined;
+              dbKindFree = row?.kind === 'free';
+            } finally {
+              roDb.close();
+            }
+          } catch {
+            // ignore
+          }
+          const freeOnly = Boolean(
+            managedSpec?.constraints?.freeOnly ||
+              (liveCombo as { freeOnly?: boolean }).freeOnly ||
+              dbKindFree
+          );
+
+          const modifiedCombo: ComboDefinition = {
+            ...liveCombo,
+            models: nextModels,
+            managed: Boolean(managedSpec) || Boolean(liveCombo.managed),
+            freeOnly,
+          };
+          const postCombos = liveCombos.map((c) =>
+            c.id === liveCombo.id || c.name === liveCombo.name ? modifiedCombo : c
+          );
+
+          const allReferencedSteps = new Set<string>();
+          for (const c of postCombos) {
+            for (const m of c.models) allReferencedSteps.add(m);
+          }
+
+          const catalog: ModelInfo[] = [...allReferencedSteps].map((step) => {
+            const slash = step.indexOf('/');
+            const prov = slash > 0 ? step.slice(0, slash) : 'unknown';
+            const modId = slash > 0 ? step.slice(slash + 1) : step;
+            const l2Entry =
+              l2Res.state.models[step] ??
+              l2Res.state.models[`${PROVIDER_ALIASES[prov.toLowerCase()] ?? prov}/${modId}`];
+            const ev = findEvidenceForModel(prov, modId);
+
+            let pricing: ModelInfo['pricing'] = undefined;
+            if (ev.official?.verdict === 'pricing_confirmed') {
+              pricing = { promptCostPerToken: 0, completionCostPerToken: 0 };
+            } else if (l2Entry && l2Entry.price !== null && l2Entry.price !== undefined) {
+              if (l2Entry.price > 0) {
+                pricing = {
+                  promptCostPerToken: l2Entry.price / 1_000_000,
+                  completionCostPerToken: l2Entry.price / 1_000_000,
+                };
+              } else if (!l2Entry.isZeroPriceHidden && l2Entry.source === 'both') {
+                pricing = { promptCostPerToken: 0, completionCostPerToken: 0 };
+              }
+            } else if (!freeOnly) {
+              pricing = { promptCostPerToken: 0, completionCostPerToken: 0 };
+            }
+
+            return {
+              id: step,
+              name: modId,
+              provider: prov,
+              contextLength: 128000,
+              status: 'active',
+              capabilities: { functionCalling: true, streaming: true, vision: false },
+              ...(pricing ? { pricing } : {}),
+            };
+          });
+
+          const singlePlan: Plan = {
+            id: `tick-auto-safe-${planHash}-${group.comboName}`,
+            target: routerCfg.id,
+            timestamp: nowIso,
+            additions: [],
+            modifications: [modifiedCombo],
+            deletions: [],
+            reasons: { [liveCombo.id]: `tick-auto-safe:${planHash}` },
+          };
+
+          const adoptedSet = new Set<string>([
+            group.comboName,
+            ...(config.adopt ?? [])
+              .filter((a) => a.router === routerCfg.id)
+              .map((a) => a.name),
+          ]);
+
+          // Mandatory I1..I8 pre-flight invariant check (kills M6)
+          const inv = validateInvariants({
+            combos: postCombos,
+            catalog,
+            plan: singlePlan,
+            adoptedCombos: Array.from(adoptedSet),
+            writeSequence: ['providers', 'models', 'combos', 'defaultSlots'],
+          });
+          if (!inv.valid) {
+            newInboxCandidates.push({
+              id: `auto-safe-blocked-inv-${group.comboName}-${planHash}`,
+              title: `[AUTO-SAFE-BLOCKED] Invariant violation on ${matchedScope}`,
+              type: 'warning',
+              timestamp: nowIso,
+              body: inv.violations.map((v) => `${v.code}: ${v.message}`).join('; '),
+              label: 'INVARIANT-BLOCKED',
+              proposed_by: { kind: 'system', source: 'tick' },
+            });
+            continue;
+          }
+
+          const snapshot = await adapter.createSnapshot();
+          saveSnapshot(snapshot);
+          const applyRes = await applyPlanSafe(adapter, singlePlan, { dryRun: false });
+
+          // I4 post-apply idempotency check
+          let i4Verified = Boolean(applyRes.success && applyRes.readBackVerified);
+          if (i4Verified) {
+            try {
+              const afterCombos = await adapter.readCombos();
+              const rePlan = planCombos(
+                afterCombos.filter((c) => c.name === group.comboName || c.id === group.comboName),
+                catalog,
+                [
+                  {
+                    comboId: liveCombo.id,
+                    name: group.comboName,
+                    strategy: liveCombo.strategy ?? 'priority',
+                    minSteps: 2,
+                    freeOnly,
+                    requiredCapabilities: [],
+                    excludedModels: [],
+                    pinnedModels: nextModels,
+                    maxSteps: Math.max(5, nextModels.length),
+                  },
+                ],
+                {
+                  target: routerCfg.id,
+                  adopt: Array.from(adoptedSet).map((name) => ({ name, mode: 'full' })),
+                }
+              );
+              if (
+                rePlan.additions.length > 0 ||
+                rePlan.modifications.length > 0 ||
+                rePlan.deletions.length > 0
+              ) {
+                await adapter.rollback(snapshot);
+                i4Verified = false;
+              }
+            } catch {
+              await adapter.rollback(snapshot);
+              i4Verified = false;
+            }
+          }
+
+          const finalSuccess = Boolean(applyRes.success && i4Verified);
+          appendApplyReceipt(sDir, {
+            target: matchedScope,
+            planHash,
+            appliedAt: nowIso,
+            appliedAtLevel: 'auto-safe',
+            authorizedVia: 'standing-consent',
+            success: finalSuccess,
+            readBackVerified: i4Verified,
+            readBackLevel: applyRes.readBackLevel ?? 'db-only',
+            rolledBack: Boolean(applyRes.rollbackExecuted || !finalSuccess),
+            snapshotOrBackupRef: snapshot.id,
+          });
+
+          if (finalSuccess) {
+            newInboxCandidates.push({
+              id: `auto-safe-applied-${group.comboName}-${planHash}`,
+              title: `[AUTO-SAFE-APPLIED] Updated ${matchedScope} (planHash=${planHash})`,
+              type: 'info',
+              timestamp: nowIso,
+              body: `Applied ${group.actions.length} verified action(s) to ${matchedScope}.`,
+              label: 'AUTO-SAFE-APPLIED',
+              proposed_by: { kind: 'system', source: 'tick' },
+            });
+            autoSafeWebhookAlerts.push({
+              kind: 'auto_safe_applied',
+              providerOrRouter: matchedScope,
+              code: 'AUTO_SAFE_APPLIED',
+              message: `[AUTO-SAFE-APPLIED] Updated ${matchedScope} (planHash=${planHash})`,
+            });
+          }
+        }
+
+        // 2. Harness config auto-safe execution
+        const groupedHarnessActions = new Map<string, TickHarnessPlanAction[]>();
+        for (const hAct of harnessActions) {
+          const list = groupedHarnessActions.get(hAct.harnessId) ?? [];
+          list.push(hAct);
+          groupedHarnessActions.set(hAct.harnessId, list);
+        }
+
+        for (const [harnessId, hActions] of groupedHarnessActions.entries()) {
+          const targetScope = `harness:${harnessId}`;
+          if (!autoSafeTargets.has(targetScope)) continue;
+          try {
+            assertEligibleForAutoSafe(sDir, targetScope);
+          } catch {
+            continue;
+          }
+          const writeAdapter = HARNESS_WRITE_ADAPTERS.find((w) => w.app === harnessId && w.directionAMode === 'write-adapter');
+          const cfgFile = hActions[0]?.configPath;
+          if (!writeAdapter || !cfgFile) continue;
+
+          assertControlledWriteSandbox(cfgFile, 'harness-config');
+          const ht = harnessTargets.find((x) => x.harnessId === harnessId);
+          const harnessCatalog: Record<string, { liveModels: string[]; deprecatedModels: string[] }> = {};
+          for (const hp of ht?.providers ?? []) {
+            const rems = hActions
+              .filter((a) => a.providerId === hp.providerId && a.action === 'REMOVE_MODEL')
+              .map((a) => a.modelId);
+            const adds = hActions
+              .filter((a) => a.providerId === hp.providerId && a.action === 'ADD_MODEL')
+              .map((a) => a.modelId);
+            harnessCatalog[hp.providerId] = {
+              liveModels: [...hp.models.filter((m) => !rems.includes(m)), ...adds],
+              deprecatedModels: rems,
+            };
+          }
+
+          try {
+            const hRes = await writeAdapter.apply({
+              configPath: cfgFile,
+              catalog: harnessCatalog,
+            });
+            appendApplyReceipt(sDir, {
+              target: targetScope,
+              planHash,
+              appliedAt: nowIso,
+              appliedAtLevel: 'auto-safe',
+              authorizedVia: 'standing-consent',
+              success: hRes.applied && !hRes.rolledBack,
+              readBackVerified: hRes.readBackVerified,
+              readBackLevel: 'file-byte-verified',
+              rolledBack: hRes.rolledBack,
+              snapshotOrBackupRef: hRes.backupPath,
+              preDigest: hRes.preSha256,
+              postDigest: hRes.postSha256,
+            });
+            if (hRes.applied && !hRes.rolledBack) {
+              newInboxCandidates.push({
+                id: `auto-safe-applied-harness-${harnessId}-${planHash}`,
+                title: `[AUTO-SAFE-APPLIED] Updated ${targetScope} (planHash=${planHash})`,
+                type: 'info',
+                timestamp: nowIso,
+                body: `Applied ${hActions.length} verified model list change(s) to ${targetScope}.`,
+                label: 'AUTO-SAFE-APPLIED',
+                proposed_by: { kind: 'system', source: 'tick' },
+              });
+              autoSafeWebhookAlerts.push({
+                kind: 'auto_safe_applied',
+                providerOrRouter: targetScope,
+                code: 'AUTO_SAFE_APPLIED',
+                message: `[AUTO-SAFE-APPLIED] Updated ${targetScope} (planHash=${planHash})`,
+              });
+            }
+          } catch {
+            appendApplyReceipt(sDir, {
+              target: targetScope,
+              planHash,
+              appliedAt: nowIso,
+              appliedAtLevel: 'auto-safe',
+              authorizedVia: 'standing-consent',
+              success: false,
+              readBackVerified: false,
+              readBackLevel: 'file-byte-verified',
+              rolledBack: true,
+              snapshotOrBackupRef: `${cfgFile}.routersync.bak`,
+            });
+          }
+        }
+      }
+    }
+
     let inboxAdded = 0;
     const newlyAddedInboxItems: TickInboxItem[] = [];
-    if (effectiveMode === 'propose') {
+    if (effectiveMode === 'propose' || effectiveMode === 'auto-safe') {
       const existingInbox = loadInboxItems(inboxPath);
       const existingIds = new Set(existingInbox.map((i) => i.id));
       for (const item of newInboxCandidates) {
@@ -2194,12 +2575,17 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
     const changedProviderNames = providerSummaries
       .filter((p) => p.changed)
       .map((p) => p.prefix);
-    const webhookAlerts: ActionableWebhookAlert[] = newlyAddedInboxItems.map((item) => ({
-      kind: 'inbox_item',
-      providerOrRouter: item.provider ?? 'unknown',
-      code: item.label ?? item.action ?? item.type,
-      message: `${item.title}: ${item.body}`,
-    }));
+    const webhookAlerts: ActionableWebhookAlert[] = [
+      ...autoSafeWebhookAlerts,
+      ...newlyAddedInboxItems
+        .filter((item) => item.label !== 'AUTO-SAFE-APPLIED')
+        .map((item) => ({
+          kind: 'inbox_item' as const,
+          providerOrRouter: item.provider ?? 'unknown',
+          code: item.label ?? item.action ?? item.type,
+          message: `${item.title}: ${item.body}`,
+        })),
+    ];
 
     const webhookDelivery = await sendActionableWebhook({
       url: resolvedWebhookUrl,

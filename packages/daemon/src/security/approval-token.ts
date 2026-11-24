@@ -1,14 +1,20 @@
 /**
  * packages/daemon/src/security/approval-token.ts
  *
- * Human Approval Token Management (Phase 3b / T3-DAEMON-SEC / M2-01 / SPEC §03).
+ * Human Approval Token Management (Phase 3b / T3-DAEMON-SEC / M2-01 / C45-WP4 / SPEC §03).
  *
  * Invariant: AI/MCP clients can never approve changes; only human-granted
  * HMAC-SHA256 signed tokens (`<nonceHex>.<sigHex>`) tied to a matching planHash
  * can authorize write actions. Tokens are single-use nonces with strict TTL.
+ *
+ * Cross-process mirroring (C45-WP4): When `ROUTERSYNC_STATE_DIR` points to an
+ * existing state directory, issued tokens are also mirrored/consumed atomically
+ * in `<stateDir>/approval-tokens.json` using `<stateDir>/consent-signing.key`.
  */
 
 import * as crypto from 'node:crypto';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
 
 export interface ApprovalTokenRecord {
   token: string;
@@ -20,7 +26,9 @@ export interface ApprovalTokenRecord {
 
 interface StoredApprovalNonceRecord {
   nonceHex: string;
+  sigHex: string;
   planHash: string;
+  allowedTargets?: string[] | undefined;
   createdAt: number;
   expiresAt: number;
   consumed: boolean;
@@ -40,6 +48,47 @@ export interface TokenVerificationResult {
 
 const DEFAULT_TTL_MS = 300_000; // 5 minutes
 const HEX_64_RE = /^[0-9a-f]{64}$/i;
+const CONSENT_SIGNING_KEY_FILE = 'consent-signing.key';
+const APPROVAL_TOKENS_FILE = 'approval-tokens.json';
+const MAX_PERSISTED_TOKENS = 250;
+
+function canonicalJson(value: unknown): string {
+  if (value === null || typeof value !== 'object') {
+    return JSON.stringify(value);
+  }
+  if (Array.isArray(value)) {
+    return `[${value.map((item) => canonicalJson(item)).join(',')}]`;
+  }
+  const obj = value as Record<string, unknown>;
+  const keys = Object.keys(obj)
+    .filter((k) => obj[k] !== undefined)
+    .sort();
+  return `{${keys.map((k) => `${JSON.stringify(k)}:${canonicalJson(obj[k])}`).join(',')}}`;
+}
+
+function atomicWriteStateFile(targetPath: string, content: string): void {
+  const dir = path.dirname(targetPath);
+  const tmpPath = path.join(
+    dir,
+    `${path.basename(targetPath)}.tmp.${process.pid}.${Date.now()}.${Math.random().toString(16).slice(2)}`
+  );
+  fs.writeFileSync(tmpPath, content, { encoding: 'utf8', mode: 0o600 });
+  fs.renameSync(tmpPath, targetPath);
+}
+
+function resolveExistingStateDir(): string | null {
+  const raw = process.env['ROUTERSYNC_STATE_DIR']?.trim();
+  if (!raw) return null;
+  const resolved = path.resolve(raw);
+  try {
+    if (fs.existsSync(resolved) && fs.statSync(resolved).isDirectory()) {
+      return resolved;
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
 
 export class ApprovalTokenManager {
   readonly #signingKey: Buffer = crypto.randomBytes(32);
@@ -49,29 +98,120 @@ export class ApprovalTokenManager {
     nonceHex: string,
     planHash: string,
     createdAt: number,
-    expiresAt: number
+    expiresAt: number,
+    allowedTargets?: string[] | undefined
   ): string {
-    return `${nonceHex}:${planHash}:${createdAt}:${expiresAt}`;
+    const suffix =
+      allowedTargets && allowedTargets.length > 0
+        ? `:${[...allowedTargets].sort().join(',')}`
+        : '';
+    return `${nonceHex}:${planHash}:${createdAt}:${expiresAt}${suffix}`;
   }
 
-  #signPayloadBuf(payload: string): Buffer {
-    return crypto.createHmac('sha256', this.#signingKey).update(payload, 'utf8').digest();
+  #readPersistentKeyIfPresent(stateDir: string): Buffer | null {
+    const keyPath = path.join(stateDir, CONSENT_SIGNING_KEY_FILE);
+    try {
+      if (!fs.existsSync(keyPath)) return null;
+      const hex = fs.readFileSync(keyPath, 'utf8').trim();
+      if (!HEX_64_RE.test(hex)) return null;
+      return Buffer.from(hex.toLowerCase(), 'hex');
+    } catch {
+      return null;
+    }
+  }
+
+  #ensurePersistentKey(stateDir: string): Buffer {
+    const existing = this.#readPersistentKeyIfPresent(stateDir);
+    if (existing) return existing;
+    const generated = crypto.randomBytes(32);
+    const keyPath = path.join(stateDir, CONSENT_SIGNING_KEY_FILE);
+    atomicWriteStateFile(keyPath, `${generated.toString('hex')}\n`);
+    return generated;
+  }
+
+  #readPersistedTokens(stateDir: string, keyBuf: Buffer): StoredApprovalNonceRecord[] | null {
+    const storePath = path.join(stateDir, APPROVAL_TOKENS_FILE);
+    if (!fs.existsSync(storePath)) return [];
+    try {
+      const parsed = JSON.parse(fs.readFileSync(storePath, 'utf8')) as Record<string, unknown>;
+      if (
+        !parsed ||
+        typeof parsed !== 'object' ||
+        parsed['version'] !== 1 ||
+        typeof parsed['updatedAt'] !== 'string' ||
+        !Array.isArray(parsed['tokens']) ||
+        typeof parsed['hmacSha256'] !== 'string' ||
+        !HEX_64_RE.test(parsed['hmacSha256'])
+      ) {
+        return null;
+      }
+      const canonical = canonicalJson({
+        version: 1,
+        updatedAt: parsed['updatedAt'],
+        tokens: parsed['tokens'],
+      });
+      const expectedMac = crypto.createHmac('sha256', keyBuf).update(canonical, 'utf8').digest();
+      const actualMac = Buffer.from(parsed['hmacSha256'].toLowerCase(), 'hex');
+      if (expectedMac.length !== actualMac.length || !crypto.timingSafeEqual(expectedMac, actualMac)) {
+        return null;
+      }
+      return parsed['tokens'] as StoredApprovalNonceRecord[];
+    } catch {
+      return null;
+    }
+  }
+
+  #writePersistedTokens(
+    stateDir: string,
+    keyBuf: Buffer,
+    tokens: StoredApprovalNonceRecord[]
+  ): void {
+    const bounded = tokens.slice(-MAX_PERSISTED_TOKENS);
+    const updatedAt = new Date().toISOString();
+    const canonical = canonicalJson({
+      version: 1,
+      updatedAt,
+      tokens: bounded,
+    });
+    const hmacSha256 = crypto.createHmac('sha256', keyBuf).update(canonical, 'utf8').digest('hex');
+    atomicWriteStateFile(
+      path.join(stateDir, APPROVAL_TOKENS_FILE),
+      `${JSON.stringify({ version: 1, updatedAt, tokens: bounded, hmacSha256 }, null, 2)}\n`
+    );
+  }
+
+  #signPayloadBuf(payload: string, keyBuf: Buffer): Buffer {
+    return crypto.createHmac('sha256', keyBuf).update(payload, 'utf8').digest();
   }
 
   issueToken(planHash: string, ttlMs = DEFAULT_TTL_MS): ApprovalTokenRecord {
     const nonceHex = crypto.randomBytes(32).toString('hex');
     const createdAt = Date.now();
     const expiresAt = createdAt + ttlMs;
-    const payload = this.#computeCanonicalPayload(nonceHex, planHash, createdAt, expiresAt);
-    const sigHex = this.#signPayloadBuf(payload).toString('hex');
+    const stateDir = resolveExistingStateDir();
+    const activeKey = stateDir ? this.#ensurePersistentKey(stateDir) : this.#signingKey;
 
-    this.#tokens.set(nonceHex, {
+    const payload = this.#computeCanonicalPayload(nonceHex, planHash, createdAt, expiresAt);
+    const sigHex = this.#signPayloadBuf(payload, activeKey).toString('hex');
+
+    const stored: StoredApprovalNonceRecord = {
       nonceHex,
+      sigHex,
       planHash,
       createdAt,
       expiresAt,
       consumed: false,
-    });
+    };
+    this.#tokens.set(nonceHex, stored);
+
+    if (stateDir) {
+      try {
+        const existing = this.#readPersistedTokens(stateDir, activeKey) ?? [];
+        this.#writePersistedTokens(stateDir, activeKey, [...existing, stored]);
+      } catch {
+        // Fallback to in-memory registry if state directory is read-only
+      }
+    }
 
     return {
       token: `${nonceHex}.${sigHex}`,
@@ -98,10 +238,26 @@ export class ApprovalTokenManager {
     const sigHex = parts[1]!.toLowerCase();
     const actualSigBuf = Buffer.from(sigHex, 'hex');
 
+    const stateDir = resolveExistingStateDir();
+    const persistentKey = stateDir ? this.#readPersistentKeyIfPresent(stateDir) : null;
+    const activeKey = persistentKey ?? this.#signingKey;
+
+    let diskTokens: StoredApprovalNonceRecord[] | null = null;
+    let diskIdx = -1;
+    if (stateDir && persistentKey) {
+      diskTokens = this.#readPersistedTokens(stateDir, persistentKey);
+      if (diskTokens) {
+        diskIdx = diskTokens.findIndex((t) => t.nonceHex.toLowerCase() === nonceHex);
+      }
+    }
+
+    const memRecord = this.#tokens.get(nonceHex);
+    const diskRecord = diskIdx >= 0 && diskTokens ? diskTokens[diskIdx] : undefined;
+    const record = diskRecord ?? memRecord;
+
     // Step 3: Constant-time HMAC verification BEFORE any state mutation
-    const record = this.#tokens.get(nonceHex);
     if (!record) {
-      const dummySigBuf = this.#signPayloadBuf(nonceHex);
+      const dummySigBuf = this.#signPayloadBuf(nonceHex, activeKey);
       crypto.timingSafeEqual(dummySigBuf, actualSigBuf);
       return { valid: false, reason: 'invalid_signature' };
     }
@@ -110,9 +266,10 @@ export class ApprovalTokenManager {
       record.nonceHex,
       record.planHash,
       record.createdAt,
-      record.expiresAt
+      record.expiresAt,
+      record.allowedTargets
     );
-    const expectedSigBuf = this.#signPayloadBuf(expectedPayload);
+    const expectedSigBuf = this.#signPayloadBuf(expectedPayload, activeKey);
     if (
       expectedSigBuf.length !== actualSigBuf.length ||
       !crypto.timingSafeEqual(expectedSigBuf, actualSigBuf)
@@ -120,8 +277,8 @@ export class ApprovalTokenManager {
       return { valid: false, reason: 'invalid_signature' };
     }
 
-    // Step 4: Replay check
-    if (record.consumed) {
+    // Step 4: Replay check across both memory and persistent ledger
+    if (record.consumed || memRecord?.consumed || diskRecord?.consumed) {
       return { valid: false, reason: 'token_already_consumed' };
     }
 
@@ -135,8 +292,24 @@ export class ApprovalTokenManager {
       return { valid: false, reason: 'plan_hash_mismatch' };
     }
 
-    // Step 7: Atomically mark consumed & succeed
-    record.consumed = true;
+    // Step 7: Atomically mark consumed in memory and persistent store
+    if (memRecord) {
+      memRecord.consumed = true;
+    } else {
+      this.#tokens.set(nonceHex, { ...record, consumed: true });
+    }
+
+    if (stateDir && persistentKey && diskTokens && diskIdx >= 0) {
+      try {
+        const nextDisk = diskTokens.map((item, idx) =>
+          idx === diskIdx ? { ...item, consumed: true } : item
+        );
+        this.#writePersistedTokens(stateDir, persistentKey, nextDisk);
+      } catch {
+        // ignore read-only fs errors
+      }
+    }
+
     return { valid: true };
   }
 
@@ -154,6 +327,17 @@ export class ApprovalTokenManager {
 
   reset(): void {
     this.#tokens.clear();
+    const stateDir = resolveExistingStateDir();
+    if (stateDir) {
+      const storePath = path.join(stateDir, APPROVAL_TOKENS_FILE);
+      try {
+        if (fs.existsSync(storePath)) {
+          fs.unlinkSync(storePath);
+        }
+      } catch {
+        // ignore cleanup errors
+      }
+    }
   }
 }
 

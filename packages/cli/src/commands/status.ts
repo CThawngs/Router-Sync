@@ -2,20 +2,49 @@
  * packages/cli/src/commands/status.ts
  *
  * Implements `routersync status` command.
- * Reports health, read-back tier (Condition A5), and schema status for all routers.
+ * Reports health, read-back tier (Condition A5), schema status, emergency freeze state,
+ * and per-target consent/read-back status (C45-WP4 §3.3.3).
+ *
+ * STRICTLY READ-ONLY (AT-157 lock): zero files or directories created in stateDir!
  */
 
 import { loadConfigFile } from '../config/loader.js';
 import { createAdapterForRouter, getRouterReadBackInfo } from '../adapters.js';
-import { hasWrittenEvidence } from '@routersync/core';
+import {
+  hasWrittenEvidence,
+  readApplyHistory,
+  readFreezeState,
+  readStandingConsent,
+  resolveControlStateDir,
+  type ApplyHistoryReceipt,
+} from '@routersync/core';
 import {
   normalizeReadBackLevel,
   type CanonicalReadBackLevel,
 } from '@routersync/adapter-sdk';
 
 export interface StatusCommandOptions {
-  configPath?: string;
-  json?: boolean;
+  configPath?: string | undefined;
+  stateDir?: string | undefined;
+  json?: boolean | undefined;
+}
+
+export interface StatusTargetItem {
+  target: string;
+  targetKind: 'router' | 'harness';
+  effectiveLevel: 'propose' | 'auto-safe' | 'off' | 'FROZEN';
+  configuredLevel: 'propose' | 'auto-safe' | 'off';
+  consentGranted: boolean;
+  consentExpiresAt: string | null;
+  autoSafeEligible: boolean;
+  lastReadBack: {
+    verified: boolean;
+    readBackLevel: string;
+    appliedAt: string;
+    appliedAtLevel: 'propose' | 'auto-safe';
+    planHash: string;
+    rolledBack: boolean;
+  } | null;
 }
 
 export interface RouterStatusItem {
@@ -45,10 +74,43 @@ export interface RouterStatusItem {
   combos: Array<{ name: string; strategy?: string | undefined; modelCount: number }>;
 }
 
+function findLatestReceipt(
+  receipts: ApplyHistoryReceipt[],
+  target: string
+): ApplyHistoryReceipt | undefined {
+  for (let i = receipts.length - 1; i >= 0; i--) {
+    const r = receipts[i];
+    if (r && r.target === target) return r;
+  }
+  return undefined;
+}
+
+function hasQualifyingProposeReceipt(
+  receipts: ApplyHistoryReceipt[],
+  target: string
+): boolean {
+  return receipts.some(
+    (r) =>
+      r.target === target &&
+      r.appliedAtLevel === 'propose' &&
+      r.success === true &&
+      r.readBackVerified === true &&
+      r.rolledBack === false
+  );
+}
+
 export async function runStatusCommand(options: StatusCommandOptions): Promise<void> {
   const { config, filePath } = loadConfigFile(options.configPath);
 
+  // Strictly read-only control plane inspection (AT-157: 0 mkdir, 0 writes)
+  const sDir = resolveControlStateDir(options.stateDir);
+  const freeze = readFreezeState(sDir);
+  const consent = readStandingConsent(sDir);
+  const history = readApplyHistory(sDir);
+  const validReceipts = history.valid ? history.receipts : [];
+
   const routersStatus: RouterStatusItem[] = [];
+  const discoveredTargets = new Set<string>();
 
   for (const router of config.routers) {
     const adapter = createAdapterForRouter(router);
@@ -67,6 +129,10 @@ export async function runStatusCommand(options: StatusCommandOptions): Promise<v
       // Ignore if DB not readable yet
     }
 
+    for (const c of comboList) {
+      discoveredTargets.add(`router:${router.id}/${c.name}`);
+    }
+
     const isLiveHealthy = health.ok && health.status !== 'down';
     const readBackLevel: 'full' | 'existence-only' | 'db-only (degraded)' = isLiveHealthy
       ? readBackInfo.level
@@ -77,16 +143,6 @@ export async function runStatusCommand(options: StatusCommandOptions): Promise<v
       ? readBackInfo.reason
       : `Router API unreachable (${health.message || health.status}) - serving path unconfirmed, degraded to db-only`;
 
-    // Spec §33.3 / AT-109 / D7 / R8-5:
-    // Only 'verified' when serving path API check actually succeeded.
-    // When down: do NOT assign applyState (omitted).
-    // When healthy but db-only (serving reflection unconfirmed): 'written-pending-reload'.
-    //
-    // R19-2 (DECISIONS 2026-10-18-01): 'written-pending-reload' describes a
-    // WRITE, so it may only be printed when there is EVIDENCE of that write
-    // (a snapshot of this target, or a managed-id entry of this target — see
-    // `hasWrittenEvidence`). Without evidence the state is 'unwritten'.
-    // The evidence check is READ-ONLY: `status` never creates a file.
     const hasEvidence = hasWrittenEvidence(router.adapter);
     const applyState: 'verified' | 'written-pending-reload' | 'unwritten' | undefined =
       !isLiveHealthy
@@ -117,6 +173,66 @@ export async function runStatusCommand(options: StatusCommandOptions): Promise<v
     });
   }
 
+  for (const c of config.combos ?? []) {
+    for (const rId of c.routers) {
+      discoveredTargets.add(`router:${rId}/${c.name}`);
+    }
+  }
+  for (const a of config.adopt ?? []) {
+    discoveredTargets.add(`router:${a.router}/${a.name}`);
+  }
+  if (consent.valid) {
+    for (const t of consent.targets) {
+      discoveredTargets.add(t.target);
+    }
+  }
+  for (const r of validReceipts) {
+    discoveredTargets.add(r.target);
+  }
+
+  const consentByTarget = new Map(
+    (consent.valid ? consent.targets : []).map((entry) => [entry.target, entry])
+  );
+
+  const targetsStatus: StatusTargetItem[] = [...discoveredTargets].sort().map((target) => {
+    const targetKind: 'router' | 'harness' = target.startsWith('harness:') ? 'harness' : 'router';
+    const entry = consentByTarget.get(target);
+    const isActiveEntry = Boolean(entry && !entry.expired && entry.level !== 'off');
+    const configuredLevel: 'propose' | 'auto-safe' | 'off' =
+      entry && !entry.expired ? entry.level : 'off';
+    const autoSafeEligible = hasQualifyingProposeReceipt(validReceipts, target);
+
+    let effectiveLevel: 'propose' | 'auto-safe' | 'off' | 'FROZEN';
+    if (freeze.frozen) {
+      effectiveLevel = 'FROZEN';
+    } else if (configuredLevel === 'auto-safe') {
+      effectiveLevel = autoSafeEligible ? 'auto-safe' : 'off';
+    } else {
+      effectiveLevel = configuredLevel;
+    }
+
+    const latest = findLatestReceipt(validReceipts, target);
+    return {
+      target,
+      targetKind,
+      effectiveLevel,
+      configuredLevel,
+      consentGranted: isActiveEntry,
+      consentExpiresAt: isActiveEntry && entry ? entry.expiresAt : null,
+      autoSafeEligible,
+      lastReadBack: latest
+        ? {
+            verified: latest.readBackVerified,
+            readBackLevel: latest.readBackLevel,
+            appliedAt: latest.appliedAt,
+            appliedAtLevel: latest.appliedAtLevel,
+            planHash: latest.planHash,
+            rolledBack: latest.rolledBack,
+          }
+        : null,
+    };
+  });
+
   if (options.json) {
     console.log(
       JSON.stringify(
@@ -124,7 +240,10 @@ export async function runStatusCommand(options: StatusCommandOptions): Promise<v
           ok: true,
           configFile: filePath,
           timestamp: new Date().toISOString(),
+          frozen: freeze.frozen,
+          freezeReason: freeze.reason,
           routers: routersStatus,
+          targets: targetsStatus,
         },
         null,
         2
@@ -134,9 +253,16 @@ export async function runStatusCommand(options: StatusCommandOptions): Promise<v
   }
 
   console.log(`[routersync] System Status (Config: ${filePath})`);
+  if (freeze.frozen) {
+    console.log(`  Emergency Freeze: FROZEN (${freeze.reason ?? 'manual-emergency-freeze'})`);
+  } else {
+    console.log(`  Emergency Freeze: off`);
+  }
   for (const r of routersStatus) {
     console.log(`\nRouter [${r.id}] (${r.adapter}):`);
-    console.log(`  Validation:      ${r.validated ? 'verified (REAL)' : 'unvalidated (Live test pending — G0-7: manual/shadow only)'}`);
+    console.log(
+      `  Validation:      ${r.validated ? 'verified (REAL)' : 'unvalidated (Live test pending — G0-7: manual/shadow only)'}`
+    );
     console.log(`  Health:          ${r.health.status} (${r.health.latencyMs ?? 0}ms)`);
     console.log(`  Read-Back Level: ${r.readBackLevel} [${r.degradedReason}]`);
     if (r.keyName) {
@@ -146,15 +272,26 @@ export async function runStatusCommand(options: StatusCommandOptions): Promise<v
     }
     console.log(
       `  Apply State:     ${r.applyState}` +
-      (r.applyState === 'written-pending-reload'
-        ? ' (serving-path reflection unconfirmed — combo visible on router after reload/refresh; daemon will NOT count as success)'
-        : r.applyState === 'unwritten'
-          ? ' (no evidence of a write for this target: no snapshot and no managed-id entry)'
-          : '')
+        (r.applyState === 'written-pending-reload'
+          ? ' (serving-path reflection unconfirmed — combo visible on router after reload/refresh; daemon will NOT count as success)'
+          : r.applyState === 'unwritten'
+            ? ' (no evidence of a write for this target: no snapshot and no managed-id entry)'
+            : '')
     );
     console.log(`  Combos (${r.combos.length}):`);
     for (const c of r.combos) {
       console.log(`    - ${c.name}${c.strategy ? ` [${c.strategy}]` : ''} (${c.modelCount} models)`);
+    }
+  }
+  if (targetsStatus.length > 0) {
+    console.log(`\nControlled Targets (${targetsStatus.length}):`);
+    for (const t of targetsStatus) {
+      const rb = t.lastReadBack
+        ? `lastReadBack=${t.lastReadBack.verified ? 'verified' : 'failed'}(${t.lastReadBack.readBackLevel})`
+        : 'lastReadBack=none';
+      console.log(
+        `  - ${t.target}: effective=${t.effectiveLevel} configured=${t.configuredLevel} autoSafeEligible=${t.autoSafeEligible ? 'yes' : 'no'} ${rb}`
+      );
     }
   }
 }

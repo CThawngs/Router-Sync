@@ -1,9 +1,9 @@
 /**
  * packages/cli/src/commands/maintain.ts
  *
- * Implements `routersync maintain plan` and `routersync maintain apply` commands.
- * Zero-token auto-maintenance planner for router models and combos.
- * Gated application requires interactive TTY, confirmation prompt, and plan hash verification.
+ * Implements `routersync maintain plan`, `maintain authorize`, `maintain create`,
+ * and `maintain apply` commands (C45-WP4 §3.2.2: policy-scoped targets replacing
+ * hardcoded `^test-\d+$`, emergency freeze gate, and ApplyHistoryReceipt persistence).
  */
 
 import * as fs from 'node:fs';
@@ -28,6 +28,8 @@ import {
   type TrackerStateInput,
 } from '../maintain/reduce-track.js';
 import {
+  SAFE_COMBO_SLUG_RE,
+  ALLOWED_AGENTS,
   getGrantFilePath,
   validateGrantFile,
   checkGrantScope,
@@ -37,7 +39,14 @@ import {
   type ApplyGrant,
 } from '../maintain/grant.js';
 import { classifyFree } from '../track/free-classify.js';
-import { applyPlanSafe, saveSnapshot } from '@routersync/core';
+import {
+  appendApplyReceipt,
+  applyPlanSafe,
+  assertControlledWriteSandbox,
+  readFreezeState,
+  readStandingConsent,
+  saveSnapshot,
+} from '@routersync/core';
 import type { Plan, ComboDefinition } from '@routersync/adapter-sdk';
 import { normalizeReadBackLevel } from '@routersync/adapter-sdk';
 
@@ -102,8 +111,8 @@ export interface MaintainApplyOptions {
   secretResolver?: (() => string | undefined) | undefined;
 }
 
-const STRICT_ONLY_LIST_RE = /^test-\d+(,test-\d+)*$/;
-const STRICT_AGENT_SEGMENT_RE = /^(hermes|dsh)$/;
+const SAFE_COMBO_LIST_RE =
+  /^[a-zA-Z0-9][a-zA-Z0-9._-]{0,127}(,[a-zA-Z0-9][a-zA-Z0-9._-]{0,127})*$/;
 
 function parseStrictOnlyCombos(only: string | undefined, commandLabel: string): string[] {
   if (!only || only.trim() === '') {
@@ -113,9 +122,9 @@ function parseStrictOnlyCombos(only: string | undefined, commandLabel: string): 
   }
 
   const trimmedOnly = only.trim();
-  if (!STRICT_ONLY_LIST_RE.test(trimmedOnly)) {
+  if (!SAFE_COMBO_LIST_RE.test(trimmedOnly)) {
     console.error(
-      `${commandLabel} only permitted for test combos matching ^test-\\d+(,test-\\d+)*$, got '${only}'`
+      `${commandLabel} invalid --only combo slug list '${only}'`
     );
     console.error('MAINTAIN-REFUSED reason=only-pattern');
     process.exit(1);
@@ -131,14 +140,18 @@ function parseStrictAgents(rawAgents: string | undefined, commandLabel: string):
 
   const trimmed = rawAgents.trim();
   if (trimmed === '') {
-    console.error(`${commandLabel} --agents only accepts 'hermes' or 'dsh', got '${rawAgents}'`);
+    console.error(
+      `${commandLabel} --agents only accepts ${[...ALLOWED_AGENTS].join(', ')}, got '${rawAgents}'`
+    );
     console.error('MAINTAIN-REFUSED reason=agents-invalid');
     process.exit(1);
   }
 
   const rawSegments = trimmed.split(',');
-  if (rawSegments.some((seg) => !STRICT_AGENT_SEGMENT_RE.test(seg))) {
-    console.error(`${commandLabel} --agents only accepts 'hermes' or 'dsh', got '${rawAgents}'`);
+  if (rawSegments.some((seg) => !ALLOWED_AGENTS.has(seg))) {
+    console.error(
+      `${commandLabel} --agents only accepts ${[...ALLOWED_AGENTS].join(', ')}, got '${rawAgents}'`
+    );
     console.error('MAINTAIN-REFUSED reason=agents-invalid');
     process.exit(1);
   }
@@ -147,7 +160,7 @@ function parseStrictAgents(rawAgents: string | undefined, commandLabel: string):
 }
 
 /**
- * Returns state directory for track-events and track-state.
+ * Returns state directory for track-events, grants, and standing-consent.json.
  */
 function getTrackStateDir(customDir?: string): string {
   if (customDir) return customDir;
@@ -155,6 +168,35 @@ function getTrackStateDir(customDir?: string): string {
     return process.env.ROUTERSYNC_STATE_DIR;
   }
   return path.join(os.homedir(), '.routersync');
+}
+
+/**
+ * Load active consented router combo names from `<stateDir>/standing-consent.json`.
+ * Defaults to empty set (`[]`) when `standing-consent.json` is absent or invalid!
+ */
+function getConsentedRouterCombos(stateDir?: string, routerHint?: string): Set<string> {
+  const sDir = getTrackStateDir(stateDir);
+  const consent = readStandingConsent(sDir);
+  if (!consent.valid) return new Set();
+
+  const allowed = new Set<string>();
+  for (const entry of consent.activeTargets) {
+    if (
+      entry.targetKind === 'router' &&
+      entry.comboName &&
+      (entry.level === 'propose' || entry.level === 'auto-safe')
+    ) {
+      if (
+        !routerHint ||
+        entry.routerId === routerHint ||
+        entry.routerId === '9router' ||
+        entry.routerId === 'omniroute'
+      ) {
+        allowed.add(entry.comboName);
+      }
+    }
+  }
+  return allowed;
 }
 
 /**
@@ -492,10 +534,28 @@ export async function runMaintainAuthorizeCommand(options: MaintainAuthorizeOpti
     hours = parseInt(hTrim, 10);
   }
 
-  // Refusal guard 4: strict --agents grammar (hermes, dsh)
+  // Refusal guard 4: strict --agents grammar
   const agents = parseStrictAgents(options.agents, 'maintain authorize');
 
-  // Refusal guard 5: no-tty (K1: grant issuance is TTY-only; programmatic seam is internal API only)
+  // Refusal guard 5: emergency freeze check
+  const sDir = getTrackStateDir(options.stateDir);
+  if (readFreezeState(sDir).frozen) {
+    console.error('maintain authorize blocked: emergency freeze is active');
+    console.error('MAINTAIN-REFUSED reason=frozen');
+    process.exit(1);
+  }
+
+  // Refusal guard 6: policy scope check (default [] when standing-consent.json is absent)
+  const consented = getConsentedRouterCombos(options.stateDir);
+  if (targetComboNames.some((c) => !consented.has(c))) {
+    console.error(
+      `maintain authorize only permitted for combos consented in standing-consent.json, got '${options.only}'`
+    );
+    console.error('MAINTAIN-REFUSED reason=only-pattern');
+    process.exit(1);
+  }
+
+  // Refusal guard 7: no-tty (K1: grant issuance is TTY-only; programmatic seam is internal API only)
   const isTTY = options.isTTY ?? Boolean(process.stdin.isTTY);
 
   if (!isTTY) {
@@ -610,9 +670,6 @@ export async function runMaintainRevokeGrantCommand(options: MaintainRevokeGrant
 
 /**
  * CLI command `routersync maintain secret-selftest`
- * C3u U3a: tạo grant tạm trong --state-dir, gọi resolveGrantSecret()
- * (biến môi trường ROUTERSYNC_GRANT_SECRET hoặc nhắc ẩn trên TTY), xác thực
- * với grant, in SECRET-SELFTEST. Không mở router, không ghi DB thật.
  */
 export async function runMaintainSecretSelftestCommand(options: { stateDir?: string | undefined }): Promise<void> {
   const tty = Boolean(process.stdin.isTTY);
@@ -647,8 +704,8 @@ export async function runMaintainSecretSelftestCommand(options: { stateDir?: str
  */
 export async function runMaintainCreateCommand(options: MaintainCreateOptions): Promise<void> {
   const comboName = options.name?.trim();
-  if (!comboName || !/^test-\d+$/.test(comboName)) {
-    console.error(`maintain create only permitted for test combos matching ^test-\\d+$, got '${options.name}'`);
+  if (!comboName || !SAFE_COMBO_SLUG_RE.test(comboName)) {
+    console.error(`maintain create invalid combo slug '${options.name}'`);
     console.error('MAINTAIN-REFUSED reason=only-pattern');
     process.exit(1);
   }
@@ -662,8 +719,14 @@ export async function runMaintainCreateCommand(options: MaintainCreateOptions): 
     throw new Error(`maintain create requires at least 2 models, got ${modelList.length}`);
   }
 
+  const sDir = getTrackStateDir(options.stateDir);
+  if (readFreezeState(sDir).frozen) {
+    console.error('maintain create blocked: emergency freeze is active');
+    console.error('MAINTAIN-REFUSED reason=frozen');
+    process.exit(1);
+  }
+
   const isTTY = options.isTTY ?? Boolean(process.stdin.isTTY);
-  // L3(b): env alone never bypasses production; needs injected allowTestBypass.
   const isTestBypass =
     options.allowTestBypass === true &&
     process.env.VITEST === 'true' &&
@@ -693,6 +756,12 @@ export async function runMaintainCreateCommand(options: MaintainCreateOptions): 
     }
     activeGrant = grantCheck.grant;
   } else {
+    const consented = getConsentedRouterCombos(options.stateDir, options.router);
+    if (!isTestBypass && !consented.has(comboName)) {
+      console.error(`Combo '${comboName}' is not authorized in standing-consent.json`);
+      console.error('MAINTAIN-REFUSED reason=only-pattern');
+      process.exit(1);
+    }
     if (!isTTY && !isTestBypass) {
       console.error('maintain create requires an interactive TTY or a valid write grant');
       console.error('MAINTAIN-REFUSED reason=no-tty');
@@ -707,6 +776,8 @@ export async function runMaintainCreateCommand(options: MaintainCreateOptions): 
       console.error('MAINTAIN-REFUSED reason=test-db-outside-tmp');
       process.exit(1);
     }
+  } else if (!options.dryRun) {
+    assertControlledWriteSandbox(preflightDb, 'router-db');
   }
 
   const prompt = options.promptFn ?? promptForConfirmation;
@@ -736,9 +807,8 @@ export async function runMaintainCreateCommand(options: MaintainCreateOptions): 
   const liveCombos = await adapter.readCombos();
 
   if (options.free) {
-    const stateDir = getTrackStateDir(options.stateDir);
     let ownerConfig: any = null;
-    const ownerConfigFile = path.join(stateDir, 'owner-config.json');
+    const ownerConfigFile = path.join(sDir, 'owner-config.json');
     if (fs.existsSync(ownerConfigFile)) {
       try {
         ownerConfig = JSON.parse(fs.readFileSync(ownerConfigFile, 'utf8'));
@@ -748,7 +818,7 @@ export async function runMaintainCreateCommand(options: MaintainCreateOptions): 
     }
 
     const metaMap = new Map<string, boolean>();
-    const metaFile = path.join(stateDir, 'model-meta.json');
+    const metaFile = path.join(sDir, 'model-meta.json');
     if (fs.existsSync(metaFile)) {
       try {
         const metaData = JSON.parse(fs.readFileSync(metaFile, 'utf8'));
@@ -849,6 +919,21 @@ export async function runMaintainCreateCommand(options: MaintainCreateOptions): 
     throw new Error(`maintain create write failed: ${applyResult.error}`);
   }
 
+  if (!options.dryRun) {
+    appendApplyReceipt(sDir, {
+      target: `router:${routerCfg.id}/${comboName}`,
+      planHash: targetPlan.id,
+      appliedAt: targetPlan.timestamp,
+      appliedAtLevel: 'propose',
+      authorizedVia: activeGrant ? 'legacy-grant' : 'interactive-tty',
+      success: applyResult.success,
+      readBackVerified: Boolean(applyResult.readBackVerified),
+      readBackLevel: applyResult.readBackLevel ?? 'db-only',
+      rolledBack: Boolean(applyResult.rollbackExecuted),
+      snapshotOrBackupRef: snapshot.id,
+    });
+  }
+
   const grantId = activeGrant ? activeGrant.id : '0000000000000000';
   console.log(`MAINTAIN-APPLY changed=1 combos=${comboName} snapshot=${snapshot.id} grant=${grantId}`);
   const canonicalCreate =
@@ -885,23 +970,19 @@ export async function runMaintainCreateCommand(options: MaintainCreateOptions): 
 /**
  * CLI command `routersync maintain apply`
  *
- * Enforces refusal guards and gate restrictions:
+ * Enforces refusal guards and gate restrictions (preserving security-audit.mjs Gate 1):
  * 1. Missing --only -> MAINTAIN-REFUSED reason=no-only
- * 2. Invalid combo pattern -> MAINTAIN-REFUSED reason=only-pattern
+ * 2. Invalid combo slug syntax -> MAINTAIN-REFUSED reason=only-pattern
  * 3. --yes flag present -> MAINTAIN-REFUSED reason=yes-flag
  * 4. Agents invalid -> MAINTAIN-REFUSED reason=agents-invalid
- * 5. Grant check (invalid/expired/scope) or non-interactive TTY -> MAINTAIN-REFUSED reason=no-tty
- * 6. Test DB located outside os.tmpdir() -> MAINTAIN-REFUSED reason=test-db-outside-tmp
- * 7. Mandatory --plan-hash matching computed plan
- * 8. Human confirmation prompt typing 'chay' (bypassed if valid grant)
- * 9. Pre-write snapshot persisted
- * 10. Read-back verification with rollback on mismatch
+ * 5. Emergency freeze active -> MAINTAIN-REFUSED reason=frozen
+ * 6. Policy scope (standing-consent.json, default []) or active grant -> MAINTAIN-REFUSED reason=only-pattern / grant-* / no-tty
  */
 export async function runMaintainApplyCommand(options: MaintainApplyOptions): Promise<void> {
-  // Refusal guards 1 & 2: strict --only grammar
+  // Refusal guards 1 & 2: strict --only slug list grammar
   const targetComboNames = parseStrictOnlyCombos(options.only, 'maintain apply');
 
-  // Refusal guard 3: yes-flag (cannot bypass with --yes or -y)
+  // Refusal guard 3: yes-flag (MUST precede policy scope check for security-audit.mjs:921!)
   if (options.yes) {
     console.error('maintain apply does not allow --yes');
     console.error('MAINTAIN-REFUSED reason=yes-flag');
@@ -911,9 +992,16 @@ export async function runMaintainApplyCommand(options: MaintainApplyOptions): Pr
   // Refusal guard 4: strict --agents grammar
   const targetAgents = parseStrictAgents(options.agents, 'maintain apply');
 
-  // Refusal guard 5: Grant check & TTY check
+  // Refusal guard 5: emergency freeze check
+  const sDir = getTrackStateDir(options.stateDir);
+  if (readFreezeState(sDir).frozen) {
+    console.error('maintain apply blocked: emergency freeze is active');
+    console.error('MAINTAIN-REFUSED reason=frozen');
+    process.exit(1);
+  }
+
+  // Refusal guard 6: Grant check, Policy scope check (default []), & TTY check
   const isTTY = options.isTTY ?? Boolean(process.stdin.isTTY);
-  // L3(b): env alone never bypasses production; needs injected allowTestBypass.
   const isTestBypass =
     options.allowTestBypass === true &&
     process.env.VITEST === 'true' &&
@@ -943,6 +1031,14 @@ export async function runMaintainApplyCommand(options: MaintainApplyOptions): Pr
     }
     activeGrant = grantCheck.grant;
   } else {
+    const consented = getConsentedRouterCombos(options.stateDir, options.router);
+    if (!isTestBypass && targetComboNames.some((c) => !consented.has(c))) {
+      console.error(
+        `maintain apply only permitted for combos consented in standing-consent.json, got '${options.only}'`
+      );
+      console.error('MAINTAIN-REFUSED reason=only-pattern');
+      process.exit(1);
+    }
     if (!isTTY && !isTestBypass) {
       console.error('maintain apply requires an interactive TTY or a valid write grant');
       console.error('MAINTAIN-REFUSED reason=no-tty');
@@ -950,7 +1046,7 @@ export async function runMaintainApplyCommand(options: MaintainApplyOptions): Pr
     }
   }
 
-  // Refusal guard 6: test-db-outside-tmp
+  // Refusal guard 7: test-db-outside-tmp / sandbox guard
   const preflightDb = resolvePreflightDbPath(options);
   if (isTestBypass) {
     if (!isUnderDir(preflightDb, os.tmpdir())) {
@@ -958,6 +1054,8 @@ export async function runMaintainApplyCommand(options: MaintainApplyOptions): Pr
       console.error('MAINTAIN-REFUSED reason=test-db-outside-tmp');
       process.exit(1);
     }
+  } else if (!options.dryRun) {
+    assertControlledWriteSandbox(preflightDb, 'router-db');
   }
 
   // Gate: Mandatory --plan-hash
@@ -1046,11 +1144,11 @@ export async function runMaintainApplyCommand(options: MaintainApplyOptions): Pr
   const snapshotPath = saveSnapshot(snapshot);
   console.log(`SNAPSHOT id=${snapshot.id} saved to ${snapshotPath}`);
 
-  // Build target plan
+  const nowIso = new Date().toISOString();
   const targetPlan: Plan = {
     id: `maintain-${planResult.planHash}`,
     target: routerCfg.id,
-    timestamp: new Date().toISOString(),
+    timestamp: nowIso,
     additions: [],
     modifications,
     deletions: [],
@@ -1075,6 +1173,23 @@ export async function runMaintainApplyCommand(options: MaintainApplyOptions): Pr
   }
   if (!applyResult.success) {
     throw new Error(`maintain apply write failed: ${applyResult.error}`);
+  }
+
+  if (!options.dryRun) {
+    for (const comboName of targetComboNames) {
+      appendApplyReceipt(sDir, {
+        target: `router:${routerCfg.id}/${comboName}`,
+        planHash: planResult.planHash,
+        appliedAt: nowIso,
+        appliedAtLevel: 'propose',
+        authorizedVia: activeGrant ? 'legacy-grant' : 'interactive-tty',
+        success: applyResult.success,
+        readBackVerified: Boolean(applyResult.readBackVerified),
+        readBackLevel: applyResult.readBackLevel ?? 'db-only',
+        rolledBack: Boolean(applyResult.rollbackExecuted),
+        snapshotOrBackupRef: snapshot.id,
+      });
+    }
   }
 
   console.log(

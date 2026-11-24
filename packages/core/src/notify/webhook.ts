@@ -2,7 +2,7 @@
  * packages/core/src/notify/webhook.ts
  *
  * Shared, timeout-bounded, URL-validated, zero-secret/zero-PII outbound webhook
- * notifier for actionable RouterSync alerts (M2-02 / Slice P3.2).
+ * notifier for actionable RouterSync alerts (M2-02 / Slice P3.2 / C45-WP4).
  *
  * Safe to re-export from both `@routersync/core` and `@routersync/core/readonly`:
  * contains zero database write primitives and zero router mutation capabilities.
@@ -33,8 +33,22 @@ export type WebhookUrlValidationResult =
       reason: WebhookUrlRejectionReason;
     };
 
+export type ActionableWebhookAlertKind =
+  | 'inbox_item'
+  | 'router_drift'
+  | 'degraded_target'
+  | 'plan_applied'
+  | 'auto_safe_applied'
+  | 'auto_rollback';
+
+export type ActionableWebhookSource =
+  | 'cli.tick'
+  | 'daemon.fast_loop'
+  | 'cli.apply'
+  | 'mcp.apply_plan';
+
 export interface ActionableWebhookAlert {
-  kind: 'inbox_item' | 'router_drift' | 'degraded_target';
+  kind: ActionableWebhookAlertKind;
   providerOrRouter: string;
   code: string;
   message: string;
@@ -43,7 +57,7 @@ export interface ActionableWebhookAlert {
 export interface ActionableWebhookPayload {
   schemaVersion: '1.0';
   event: 'routersync.actionable_alert';
-  source: 'cli.tick' | 'daemon.fast_loop';
+  source: ActionableWebhookSource;
   timestamp: string;
   summary: {
     alertCount: number;
@@ -70,7 +84,7 @@ export interface RedactWebhookOptions {
 
 export interface SendActionableWebhookInput {
   url?: string | undefined;
-  source: 'cli.tick' | 'daemon.fast_loop';
+  source: ActionableWebhookSource;
   timestamp?: string | undefined;
   inboxAdded?: number | undefined;
   driftCount?: number | undefined;

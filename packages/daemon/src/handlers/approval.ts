@@ -1,11 +1,15 @@
 /**
  * packages/daemon/src/handlers/approval.ts
  *
- * Handler for POST /api/v1/changes/approve (Phase 3b / T3-DAEMON-SEC / M2-01 / SPEC §03).
+ * Handler for POST /api/v1/changes/approve (Phase 3b / T3-DAEMON-SEC / M2-01 / C45-WP4 / SPEC §03).
  *
- * Verifies human approval token HMAC signature and planHash before granting plan approval.
+ * Verifies emergency freeze state, human approval token HMAC signature, and planHash
+ * before granting plan approval.
  */
 
+import * as fs from 'node:fs';
+import * as os from 'node:os';
+import * as path from 'node:path';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { sendJson } from '../security/network.js';
 import { verifyAndConsumeApprovalToken } from '../security/approval-token.js';
@@ -17,6 +21,29 @@ const REJECTION_HTTP_STATUS: Record<string, number> = {
   token_already_consumed: 403,
   plan_hash_mismatch: 403,
 };
+
+function isDaemonEmergencyFrozen(): boolean {
+  const envState = process.env['ROUTERSYNC_STATE_DIR']?.trim();
+  const envHome = process.env['ROUTERSYNC_HOME']?.trim();
+  const stateDir = envState
+    ? path.resolve(envState)
+    : envHome
+      ? path.resolve(envHome, 'state')
+      : path.join(os.homedir(), '.routersync');
+  const freezePath = path.join(stateDir, 'freeze.json');
+  if (!fs.existsSync(freezePath)) {
+    return false;
+  }
+  try {
+    const parsed = JSON.parse(fs.readFileSync(freezePath, 'utf8')) as Record<string, unknown>;
+    if (!parsed || typeof parsed !== 'object' || typeof parsed['frozen'] !== 'boolean') {
+      return true; // Fail closed on corrupt freeze.json
+    }
+    return parsed['frozen'] === true;
+  } catch {
+    return true; // Fail closed on unreadable/malformed freeze.json
+  }
+}
 
 export async function handleApprove(req: IncomingMessage, res: ServerResponse): Promise<void> {
   const nowIso = new Date().toISOString();
@@ -32,6 +59,16 @@ export async function handleApprove(req: IncomingMessage, res: ServerResponse): 
       });
       return;
     }
+  }
+
+  // Emergency Freeze Gate (C45-WP4): fail closed before evaluating or consuming tokens
+  if (isDaemonEmergencyFrozen()) {
+    sendJson(res, 403, {
+      meta: { source: 'unavailable', reason: 'write_frozen', generatedAt: nowIso },
+      error: 'Approval blocked: system is frozen',
+      approved: false,
+    });
+    return;
   }
 
   let parsed: { planHash?: unknown; token?: unknown };

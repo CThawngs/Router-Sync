@@ -1,10 +1,13 @@
 /**
  * packages/mcp-server/src/server.ts
  *
- * RouterSync MCP Server (Condition C1, Spec §13.2 + C45-WP3).
+ * RouterSync MCP Server (Condition C1, Spec §13.2 + C45-WP3 + C45-WP4).
  *  - READ_ONLY_TOOL_NAMES: 25 strictly read-only inspection, diagnostic, and query tools (0 writes).
  *  - LEDGER_APPEND_TOOL_NAMES: ['submit_research'] — appends sanitized evidence ONLY to
  *    <stateDir>/research-evidence.json (ZERO router DB or harness config writes).
+ *  - CONTROLLED_WRITE_TOOL_NAMES: ['apply_plan'] — applies an explicitly authorized subset of
+ *    targets from a pre-computed plan gated by freeze, SHA-256 planHash, standing consent or
+ *    single-use daemon approvalToken, sandbox guards, I1..I8 invariants, and read-back/rollback.
  *
  * Every tool reads a real source: a router adapter, a state file the daemon
  * writes, the documentation tree, or a runtime Zod schema. When the source is
@@ -31,7 +34,9 @@ import {
   hasWrittenEvidence,
   locateRouterDb,
   planCombos,
+  readFreezeState,
   readRouterModelState,
+  readStandingConsent,
   resolveConfiguredDbPaths,
   setConfiguredRouterDbPaths,
   getConfiguredRouterDbPath,
@@ -45,6 +50,7 @@ import {
   type ResearchQueueReason,
   type TieredModelEntry,
 } from '@routersync/core';
+import { registerApplyPlanTool } from './apply-plan.js';
 import { paginateArray } from './pagination.js';
 import { sanitizeObject, sanitizeUntrustedString } from './sanitize.js';
 import { searchDocs } from './docs.js';
@@ -95,13 +101,17 @@ export const READ_ONLY_TOOL_NAMES = [
 
 export const LEDGER_APPEND_TOOL_NAMES = ['submit_research'] as const;
 
+export const CONTROLLED_WRITE_TOOL_NAMES = ['apply_plan'] as const;
+
 export const ALL_MCP_TOOL_NAMES = [
   ...READ_ONLY_TOOL_NAMES,
   ...LEDGER_APPEND_TOOL_NAMES,
+  ...CONTROLLED_WRITE_TOOL_NAMES,
 ] as const;
 
 export type ReadOnlyToolName = typeof READ_ONLY_TOOL_NAMES[number];
 export type LedgerAppendToolName = typeof LEDGER_APPEND_TOOL_NAMES[number];
+export type ControlledWriteToolName = typeof CONTROLLED_WRITE_TOOL_NAMES[number];
 export type McpToolName = typeof ALL_MCP_TOOL_NAMES[number];
 
 export interface ServerOptions {
@@ -178,7 +188,7 @@ function isQueueItemResolvedByOfficialEvidence(
   const itemTimestampMs = Date.parse(item.updatedAt ?? item.verifiedAt ?? '');
 
   const matchingOfficial = evidenceRecords.filter((rec) => {
-    if (rec.sourceTier !== 'official' || !rec.domainVerified || rec.verdict === 'inconclusive') {
+    if (rec.sourceTier !== 'official' || !recordHasVerifiedDomain(rec) || rec.verdict === 'inconclusive') {
       return false;
     }
     const submittedMs = Date.parse(rec.submittedAt);
@@ -204,6 +214,10 @@ function isQueueItemResolvedByOfficialEvidence(
   return reasons.every((reason) =>
     matchingOfficial.some((rec) => doesEvidenceResolveReason(rec, reason))
   );
+}
+
+function recordHasVerifiedDomain(rec: ResearchEvidenceRecord): boolean {
+  return rec.domainVerified === true;
 }
 
 function matchSubmittedEvidenceForModel(
@@ -1419,7 +1433,7 @@ export function createRouterSyncMcpServer(options: ServerOptions = {}): McpServe
   // 23. autopilot_status
   server.tool(
     'autopilot_status',
-    'Reads the autopilot policy file and the newest generated plan, reporting the mode that is actually configured',
+    'Reads the autopilot policy file, emergency freeze state, standing consent summary, and newest generated plan (strictly read-only)',
     {},
     async () => {
       const paths = resolveStatePaths();
@@ -1453,11 +1467,32 @@ export function createRouterSyncMcpServer(options: ServerOptions = {}): McpServe
           : { file: path.basename(newestPlan), reason: describeReadFailure(planRead).reason };
       }
 
+      const freeze = readFreezeState(paths.stateDir);
+      const consent = readStandingConsent(paths.stateDir);
+      const consentTargets = consent.targets.map((entry) => ({
+        target: entry.target,
+        targetKind: entry.targetKind,
+        level: entry.level,
+        effectiveLevel: freeze.frozen
+          ? 'FROZEN'
+          : entry.expired || !consent.valid
+            ? 'off'
+            : entry.level,
+        expiresAt: entry.expiresAt,
+        expired: entry.expired,
+      }));
+
       return respond({
         policyPath: paths.autopilotPolicy,
         policyPresent: policyStat.exists,
         policyBytes: policyStat.bytes ?? null,
         mode,
+        effectiveMode: freeze.frozen ? 'FROZEN' : mode,
+        frozen: freeze.frozen,
+        freezeReason: freeze.reason,
+        consentPresent: consent.present,
+        consentValid: consent.valid,
+        consentTargets,
         policyError,
         plansDir: paths.plansDir,
         newestPlan: planSummary,
@@ -1631,6 +1666,9 @@ export function createRouterSyncMcpServer(options: ServerOptions = {}): McpServe
       }
     }
   );
+
+  // 27. apply_plan (Tier 2 Controlled-Write Tool — C45-WP4)
+  registerApplyPlanTool(server, { configPath: options.configPath });
 
   return server;
 }

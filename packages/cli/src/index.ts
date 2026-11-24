@@ -198,10 +198,11 @@ export function createCliProgram(): Command {
     .command('apply')
     .description('Apply calculated plan to routers (dry-run by default; requires --write)')
     .option('-c, --config-path <path>', 'Path to routersync.yaml configuration')
-    .option('--write', 'Execute live changes (requires interactive TTY confirmation)')
+    .option('--state-dir <dir>', 'Custom control-plane state directory')
+    .option('--write', 'Execute live changes (requires interactive TTY or active standing consent)')
     .option('--yes', 'Prohibited by security policy — will be rejected')
     .option('--json', 'Output result in JSON format')
-    .action(async (opts: { configPath?: string; write?: boolean; yes?: boolean; json?: boolean }) => {
+    .action(async (opts: { configPath?: string; stateDir?: string; write?: boolean; yes?: boolean; json?: boolean }) => {
       await runApplyCommand(opts);
     });
 
@@ -219,11 +220,85 @@ export function createCliProgram(): Command {
   // status command
   program
     .command('status')
-    .description('Display status, health, and read-back levels for all routers')
+    .description('Display status, health, freeze state, and per-target consent/read-back levels')
     .option('-c, --config-path <path>', 'Path to routersync.yaml configuration')
+    .option('--state-dir <dir>', 'Custom control-plane state directory')
     .option('--json', 'Output result in JSON format')
-    .action(async (opts: { configPath?: string; json?: boolean }) => {
+    .action(async (opts: { configPath?: string; stateDir?: string; json?: boolean }) => {
       await runStatusCommand(opts);
+    });
+
+  // consent command group (C45-WP4 §3.3.1 — lazy loaded)
+  const consentCmd = program
+    .command('consent')
+    .description('Manage per-target standing consent policy (30-day TTL, propose | auto-safe | off)');
+
+  consentCmd
+    .command('grant')
+    .description('Grant standing consent for a specific router combo or writable harness target')
+    .requiredOption('--target <target>', 'Canonical target scope (router:<routerId>/<combo> | harness:<id>)')
+    .option('--level <level>', 'Consent level: propose | auto-safe | off', 'propose')
+    .option('--days <days>', 'Consent TTL in days (1..90, default 30)', '30')
+    .option('--state-dir <dir>', 'Custom control-plane state directory')
+    .option('--yes', 'Prohibited by security policy — will be rejected')
+    .option('--json', 'Output result in JSON format')
+    .action(
+      async (opts: {
+        target: string;
+        level?: string;
+        days?: string;
+        stateDir?: string;
+        yes?: boolean;
+        json?: boolean;
+      }) => {
+        const { runConsentGrantCommand } = await import('./commands/consent.js');
+        await runConsentGrantCommand(opts);
+      }
+    );
+
+  consentCmd
+    .command('status')
+    .description('Display active standing consent policy and expiry status (read-only)')
+    .option('--state-dir <dir>', 'Custom control-plane state directory')
+    .option('--json', 'Output result in JSON format')
+    .action(async (opts: { stateDir?: string; json?: boolean }) => {
+      const { runConsentStatusCommand } = await import('./commands/consent.js');
+      await runConsentStatusCommand(opts);
+    });
+
+  consentCmd
+    .command('revoke')
+    .description('Revoke standing consent for a target or all targets')
+    .option('--target <target>', 'Canonical target scope (or --all)')
+    .option('--all', 'Revoke standing consent for all targets')
+    .option('--state-dir <dir>', 'Custom control-plane state directory')
+    .option('--json', 'Output result in JSON format')
+    .action(async (opts: { target?: string; all?: boolean; stateDir?: string; json?: boolean }) => {
+      const { runConsentRevokeCommand } = await import('./commands/consent.js');
+      await runConsentRevokeCommand(opts);
+    });
+
+  // freeze & unfreeze commands (C45-WP4 §3.3.2 — lazy loaded)
+  program
+    .command('freeze')
+    .description('Immediately activate emergency write freeze across CLI, Daemon, and MCP')
+    .option('--reason <text>', 'Optional reason recorded in freeze.json')
+    .option('--state-dir <dir>', 'Custom control-plane state directory')
+    .option('--json', 'Output result in JSON format')
+    .action(async (opts: { reason?: string; stateDir?: string; json?: boolean }) => {
+      const { runFreezeCommand } = await import('./commands/freeze.js');
+      await runFreezeCommand(opts);
+    });
+
+  program
+    .command('unfreeze')
+    .description('Deactivate emergency write freeze (requires interactive TTY confirmation)')
+    .option('--state-dir <dir>', 'Custom control-plane state directory')
+    .option('--yes', 'Prohibited by security policy — will be rejected')
+    .option('--json', 'Output result in JSON format')
+    .action(async (opts: { stateDir?: string; yes?: boolean; json?: boolean }) => {
+      const { runUnfreezeCommand } = await import('./commands/freeze.js');
+      await runUnfreezeCommand(opts);
     });
 
   // doctor command (Condition C4 & AT-95)
