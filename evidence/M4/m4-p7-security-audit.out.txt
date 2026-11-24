@@ -1,0 +1,6 @@
+SEC_AUDIT_SURFACE surface=repo-files ok=true files=650 findings=0
+SEC_AUDIT_SURFACE surface=evidence-refs ok=true refs=6 blobs=759 findings=0
+SEC_AUDIT_SURFACE surface=tarballs ok=true status=packed_workspace_packages packages=8 findings=0
+SEC_AUDIT_SURFACE surface=ci-logs ok=true status=scanned runs=4 findings=0
+SEC_AUDIT_SURFACE surface=write-gates ok=true findings=0
+SEC_AUDIT_SUMMARY ok=true high=0 medium=0 low=0
