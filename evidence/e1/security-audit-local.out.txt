@@ -1,0 +1,53 @@
+{
+  "ok": true,
+  "highCount": 0,
+  "mediumCount": 0,
+  "lowCount": 0,
+  "surfaces": {
+    "repoFiles": {
+      "ok": true,
+      "filesScanned": 731,
+      "findingsCount": 0
+    },
+    "evidenceRefs": {
+      "ok": true,
+      "refsScanned": 27,
+      "blobsScanned": 1154,
+      "findingsCount": 0
+    },
+    "tarballs": {
+      "ok": true,
+      "status": "packed_workspace_packages",
+      "packagesScanned": 8,
+      "findingsCount": 0
+    },
+    "ciLogs": {
+      "ok": true,
+      "status": "skipped_offline_flag",
+      "runsScanned": 0,
+      "findingsCount": 0
+    },
+    "writeGates": {
+      "ok": true,
+      "gates": {
+        "grant": {
+          "ok": true,
+          "checksPassed": 5,
+          "checksTotal": 5
+        },
+        "approvalToken": {
+          "ok": true,
+          "checksPassed": 5,
+          "checksTotal": 5
+        },
+        "yesWriteRouter": {
+          "ok": true,
+          "checksPassed": 2,
+          "checksTotal": 2
+        }
+      },
+      "findingsCount": 0
+    }
+  },
+  "findings": []
+}

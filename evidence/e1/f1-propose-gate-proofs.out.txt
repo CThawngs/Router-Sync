@@ -1,0 +1,37 @@
+
+> routersync@0.1.0 test:file <private-provider-2>
+> vitest run "packages/cli/test/c46-f1-propose-gate.test.ts" "packages/mcp-server/test/c46-f1-apply-plan-propose.test.ts"
+
+
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.12 [39m[90m<HOME>/.openmausbot/tmp/agy/4c4db2442357/rs-e1-ea920d02[39m
+
+[90mstdout[2m | packages/cli/test/c46-f1-propose-gate.test.ts[2m > [22m[2mC46-F1 CLI Propose Human-Approval Gate & Receipt Integrity[2m > [22m[2m6. Regression guards: maintain apply refuses non-TTY without grant at propose, and tick performs 0 writes on propose-only targets in both propose and auto-safe modes
+[22m[39mTICK-SUMMARY mode=propose scanned=1 skipped=0 changed=1 unchanged=0 backoff=0 inbox_added=5
+  PROVIDER prefix=openai label=OK status=200 models=11 changed=yes added=1 grace=1 dead=0
+TICK requests=8 paid-requests=0 tokens=0 llm-calls=0
+
+[90mstdout[2m | packages/cli/test/c46-f1-propose-gate.test.ts[2m > [22m[2mC46-F1 CLI Propose Human-Approval Gate & Receipt Integrity[2m > [22m[2m6. Regression guards: maintain apply refuses non-TTY without grant at propose, and tick performs 0 writes on propose-only targets in both propose and auto-safe modes
+[22m[39mTICK-SUMMARY mode=auto-safe scanned=1 skipped=0 changed=1 unchanged=0 backoff=0 inbox_added=0
+  PROVIDER prefix=openai label=OK status=200 models=10 changed=yes added=0 grace=0 dead=1
+TICK requests=1 paid-requests=0 tokens=0 llm-calls=0
+
+ [32m✓[39m [30m[45m packages [49m[39m packages/cli/test/c46-f1-propose-gate.test.ts [2m([22m[2m9 tests[22m[2m)[22m[33m 6444[2mms[22m[39m
+     [33m[2m✓[22m[39m 1. REJECTS non-TTY apply --write when standing consent is only propose (0 DB changes, 0 receipts ? kills M1) [33m 650[2mms[22m[39m
+     [33m[2m✓[22m[39m 2. REQUIRES interactive TTY typing chay at propose; cancels on no/empty and records interactive-tty + propose on chay (still rejects non-TTY afterwards while at propose) [33m 809[2mms[22m[39m
+     [33m[2m✓[22m[39m 3. SUCCEEDS without prompting in non-TTY apply --write AFTER promotion to auto-safe and records standing-consent + auto-safe (kills M3) [33m 766[2mms[22m[39m
+     [33m[2m✓[22m[39m 4. REJECTS auto-safe apply --write with AUTO_SAFE_RECEIPT_MISSING when apply-history.json is deleted or propose receipt has rolledBack: true (kills M2) [33m 609[2mms[22m[39m
+     [33m[2m✓[22m[39m 5. NEVER accepts a standing-consent receipt in findVerifiedProposeReceipt even if appliedAtLevel is propose (kills M5) [33m 451[2mms[22m[39m
+     [33m[2m✓[22m[39m 6. Regression guards: maintain apply refuses non-TTY without grant at propose, and tick performs 0 writes on propose-only targets in both propose and auto-safe modes [33m 1125[2mms[22m[39m
+     [33m[2m✓[22m[39m 7. REJECTS non-TTY apply --write on mixed multi-combo batch (1 auto-safe + 1 propose) with 0 DB mutations on both combos, and stamps interactive-tty + propose on chay (kills Q1b) [33m 740[2mms[22m[39m
+     [33m[2m✓[22m[39m 8. REJECTS non-TTY apply --write on dual-scope conflict when router:9router/coding-primary is auto-safe and router:nine/coding-primary is propose (kills Q1a) [33m 547[2mms[22m[39m
+     [33m[2m✓[22m[39m 9. ISOLATES single negative flags in findVerifiedProposeReceipt (readBackVerified=false, success=false, appliedAtLevel=auto-safe) with valid HMAC (kills Q2b, Q2c, Q2d) [33m 743[2mms[22m[39m
+ [32m✓[39m [30m[45m packages [49m[39m packages/mcp-server/test/c46-f1-apply-plan-propose.test.ts [2m([22m[2m3 tests[22m[2m)[22m[33m 16930[2mms[22m[39m
+     [33m[2m✓[22m[39m 1. REJECTS apply_plan without approvalToken when target consent is propose (APPROVAL_TOKEN_REQUIRED, 0 DB/harness writes, 0 receipts ? kills M4) [33m 467[2mms[22m[39m
+     [33m[2m✓[22m[39m 2. SUCCEEDS at propose WITH single-use approvalToken (records approval-token + propose), STILL requires token before promotion, and SUCCEEDS WITHOUT token at auto-safe (records standing-consent + auto-safe) [33m 10875[2mms[22m[39m
+     [33m[2m✓[22m[39m 3. REJECTS auto-safe apply_plan without approvalToken when apply-history.json is missing, tampered, or only has a standing-consent receipt (AUTO_SAFE_RECEIPT_MISSING ? kills M5) [33m 5585[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m2 passed[39m[22m[90m (2)[39m
+[2m      Tests [22m [1m[32m12 passed[39m[22m[90m (12)[39m
+[2m   Start at [22m 16:34:26
+[2m   Duration [22m 24.90s[2m (transform 7.63s, setup 6.12s, import 7.21s, tests 23.37s, environment 0ms)[22m
+

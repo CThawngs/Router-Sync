@@ -1,0 +1,34 @@
+
+> routersync@0.1.0 test:file <private-provider-2>
+> vitest run "packages/core/test/c46-f5-research-and-cost-gates.test.ts" "packages/mcp-server/test/c46-f5-mcp-negative-gates.test.ts" "packages/cli/test/c46-f5-freeze-and-cli-gates.test.ts"
+
+
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.12 [39m[90m<HOME>/.openmausbot/tmp/agy/4c4db2442357/rs-e1-ea920d02[39m
+
+ [32m✓[39m [30m[45m packages [49m[39m packages/core/test/c46-f5-research-and-cost-gates.test.ts [2m([22m[2m13 tests[22m[2m)[22m[33m 1110[2mms[22m[39m
+     [33m[2m✓[22m[39m F5-4: enforces weekly research session cap at 5/5 (rejects s-6 and omitted sessionId with WEEKLY_RESEARCH_CAP_EXCEEDED and unchanged SHA-256) and honors maxWeeklyResearchSessions: 0 (kills M6) [33m 630[2mms[22m[39m
+ [32m✓[39m [30m[45m packages [49m[39m packages/mcp-server/test/c46-f5-mcp-negative-gates.test.ts [2m([22m[2m6 tests[22m[2m)[22m[33m 13989[2mms[22m[39m
+     [33m[2m✓[22m[39m F5-1 & F5-2: MCP submit_research rejects spoofed/cross-provider/unlisted official domains, disallowed URL authorities, and non-HTTPS schemes with 0 files written in stateDir [33m 9553[2mms[22m[39m
+     [33m[2m✓[22m[39m F5-3: MCP submit_research rejects secret-like content separately in quote, conclusion, and replacementModelId with SECRET_DETECTED_IN_EVIDENCE, never echoes secret, and writes 0 evidence/cost-ledger bytes [33m 371[2mms[22m[39m
+     [33m[2m✓[22m[39m F5-4 & F5-5: MCP submit_research enforces weekly 5-session cap, maxWeeklyResearchSessions=0, same-week sessionId reuse + dedup vs consumedAt, and rejects cross-week W48->W49 sessionId replay [33m 1834[2mms[22m[39m
+     [33m[2m✓[22m[39m F5-6, F5-7 & F5-8: MCP apply_plan enforces missing/off/unconsented token gates, single-use consumed approvalToken replay rejection, and wrong planHash / tampered HMAC / expired TTL rejections with 0 mutations [33m 1118[2mms[22m[39m
+     [33m[2m✓[22m[39m F5-9 (MCP): active freeze AND corrupted freeze.json block apply_plan WITH valid token AND WITHOUT token (auto-safe) on router + harness without consuming approvalToken (kills M10) [33m 884[2mms[22m[39m
+[90mstdout[2m | packages/cli/test/c46-f5-freeze-and-cli-gates.test.ts[2m > [22m[2mC46-F5 CLI Research Secret Gate & Unified Freeze Circuit Breaker[2m > [22m[2mF5-9 (CLI + MCP + Tick): active runFreezeCommand AND corrupted freeze.json ("{broken") fail closed across runApplyCommand (write+TTY), MCP apply_plan (with token & auto-safe), and runTickCommand (auto-safe) with 0 mutations and unconsumed token (kills M10)
+[22m[39mTICK-SUMMARY mode=FROZEN scanned=1 skipped=0 changed=1 unchanged=0 backoff=0 inbox_added=0
+  PROVIDER prefix=openai label=OK status=200 models=11 changed=yes added=1 grace=1 dead=0
+TICK requests=8 paid-requests=0 tokens=0 llm-calls=0
+
+[90mstdout[2m | packages/cli/test/c46-f5-freeze-and-cli-gates.test.ts[2m > [22m[2mC46-F5 CLI Research Secret Gate & Unified Freeze Circuit Breaker[2m > [22m[2mF5-9 (CLI + MCP + Tick): active runFreezeCommand AND corrupted freeze.json ("{broken") fail closed across runApplyCommand (write+TTY), MCP apply_plan (with token & auto-safe), and runTickCommand (auto-safe) with 0 mutations and unconsumed token (kills M10)
+[22m[39mTICK-SUMMARY mode=FROZEN scanned=1 skipped=0 changed=1 unchanged=0 backoff=0 inbox_added=0
+  PROVIDER prefix=openai label=OK status=200 models=10 changed=yes added=0 grace=0 dead=1
+TICK requests=1 paid-requests=0 tokens=0 llm-calls=0
+
+ [32m✓[39m [30m[45m packages [49m[39m packages/cli/test/c46-f5-freeze-and-cli-gates.test.ts [2m([22m[2m3 tests[22m[2m)[22m[33m 4821[2mms[22m[39m
+     [33m[2m✓[22m[39m F5-3 (CLI): research submit <file> rejects sk-..., ghp_..., AIza..., Bearer ..., api_key=..., and PEM private key in quote, conclusion, and replacementModelId with SECRET_DETECTED_IN_EVIDENCE and 0 ledger/inbox mutations [33m 1071[2mms[22m[39m
+     [33m[2m✓[22m[39m F5-9 (CLI + MCP + Tick): active runFreezeCommand AND corrupted freeze.json ("{broken") fail closed across runApplyCommand (write+TTY), MCP apply_plan (with token & auto-safe), and runTickCommand (auto-safe) with 0 mutations and unconsumed token (kills M10) [33m 3462[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m3 passed[39m[22m[90m (3)[39m
+[2m      Tests [22m [1m[32m22 passed[39m[22m[90m (22)[39m
+[2m   Start at [22m 16:35:04
+[2m   Duration [22m 30.74s[2m (transform 19.44s, setup 7.29s, import 28.92s, tests 19.92s, environment 1ms)[22m
+
