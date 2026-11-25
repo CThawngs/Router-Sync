@@ -1,0 +1,24 @@
+
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.12 [39m[90m<HOME>/.openmausbot/tmp/agy/4c4db2442357/rs-ev-d3[39m
+
+ [32m✓[39m [30m[45m packages [49m[39m packages/core/test/wp8-zero-llm-and-allowlist.test.ts [2m([22m[2m6 tests[22m[2m)[22m[33m 609[2mms[22m[39m
+     [33m[2m✓[22m[39m has ZERO forbidden LLM inference endpoint paths across all automated runtime modules [33m 301[2mms[22m[39m
+[90mstdout[2m | packages/cli/test/wp7-schedule-ladder.test.ts[2m > [22m[2mC45-WP7: Linux Crontab Artifact, Fallback & 9-Harness Dry-Run CLI[2m > [22m[2mfalls back from systemd to cron on Linux when --scheduler auto sees unavailable systemctl --user
+[22m[39mSCHEDULE-INSTALLED os=linux scheduler=cron interval=15m
+
+[90mstdout[2m | packages/cli/test/wp7-schedule-ladder.test.ts[2m > [22m[2mC45-WP7: Linux Crontab Artifact, Fallback & 9-Harness Dry-Run CLI[2m > [22m[2mfalls back from systemd to cron on Linux when --scheduler auto sees unavailable systemctl --user
+[22m[39mSCHEDULE-UNINSTALLED os=linux task=routersync-daemon.timer
+
+ [32m✓[39m [30m[45m packages [49m[39m packages/cli/test/wp7-schedule-ladder.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 42[2mms[22m[39m
+ [32m✓[39m [30m[45m root-tools [49m[39m test/docs/c45-wp9-live-readiness.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 19[2mms[22m[39m
+ [32m✓[39m [30m[45m packages [49m[39m packages/cli/test/wp9-live-check.test.ts [2m([22m[2m10 tests[22m[2m)[22m[33m 4456[2mms[22m[39m
+     [33m[2m✓[22m[39m returns READY_FOR_OWNER_LIVE_PILOT with 100% zero mutation on routerDir, harnessDir, stateDir, and cleans up os.tmpdir() (M2) [32m 300[2mms[22m[39m
+     [33m[2m✓[22m[39m tracks consent & promotion lifecycle across READY_FOR_PROPOSE_STEP -> READY_FOR_AUTO_SAFE_PROMOTION -> AUTO_SAFE_ACTIVE [33m 464[2mms[22m[39m
+     [33m[2m✓[22m[39m blocks when cost-ledger.json records non-zero Tier-0 tokens/LLM calls or weekly research budgetExceeded (kills M5) [33m 319[2mms[22m[39m
+     [33m[2m✓[22m[39m executes compiled CLI live-check --json with exit code 0 when ready and 1 when blocked [33m 2293[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m4 passed[39m[22m[90m (4)[39m
+[2m      Tests [22m [1m[32m24 passed[39m[22m[90m (24)[39m
+[2m   Start at [22m 07:29:57
+[2m   Duration [22m 8.25s[2m (transform 3.78s, setup 4.00s, import 2.86s, tests 5.13s, environment 1ms)[22m
+

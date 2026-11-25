@@ -1,0 +1,2073 @@
+
+> routersync@0.1.0 verify:release <private-provider-2>
+> pnpm typecheck && pnpm lint && pnpm build && pnpm test && pnpm e2e
+
+
+> routersync@0.1.0 typecheck <private-provider-2>
+> node tools/agent/heavy.mjs -- pnpm typecheck
+
+Scope: 9 of 10 workspace projects
+packages/adapter-sdk typecheck$ tsc --noEmit
+packages/ui typecheck$ tsc --noEmit
+packages/adapter-sdk typecheck: Done
+packages/ui typecheck: Done
+packages/core typecheck$ tsc --noEmit
+packages/core typecheck: Done
+packages/adapter-9router typecheck$ tsc --noEmit
+packages/adapter-omniroute typecheck$ tsc --noEmit
+packages/daemon typecheck$ tsc --noEmit
+packages/sources typecheck$ tsc --noEmit
+packages/adapter-omniroute typecheck: Done
+packages/adapter-9router typecheck: Done
+packages/daemon typecheck: Done
+packages/sources typecheck: Done
+packages/mcp-server typecheck$ tsc --noEmit
+packages/cli typecheck$ tsc --noEmit
+packages/mcp-server typecheck: Done
+packages/cli typecheck: Done
+
+> routersync@0.1.0 lint <private-provider-2>
+> node tools/guard/no-secrets.mjs && node tools/guard/no-personal-paths.mjs && node tools/guard/no-evidence-in-main.mjs
+
+[SECURITY GUARD] Clean. Scanned 726 files (tracked + untracked). No secrets or personal paths detected.
+[PASS] No personal paths detected across 726 tracked/staged files.
+no-evidence-in-main: OK, evidence/ is not tracked
+
+> routersync@0.1.0 build <private-provider-2>
+> node tools/agent/heavy.mjs -- pnpm build
+
+Scope: 9 of 10 workspace projects
+packages/adapter-sdk build$ tsc
+packages/ui build$ tsc -p tsconfig.build.json && vite build
+packages/adapter-sdk build: Done
+packages/ui build: [36mvite v6.4.6 [32mbuilding for production...[36m[39m
+packages/ui build: transforming...
+packages/ui build: [32m✓[39m 68 modules transformed.
+packages/ui build: rendering chunks...
+packages/ui build: computing gzip size...
+packages/ui build: [2mdist/[22m[32mindex.html                                                     [39m[1m[2m  0.80 kB[22m[1m[22m[2m │ gzip:   0.47 kB[22m
+packages/ui build: [2mdist/[22m[32massets/plus-jakarta-sans-vietnamese-800-normal-CIUgXMHX.woff2  [39m[1m[2m  4.12 kB[22m[1m[22m
+packages/ui build: [2mdist/[22m[32massets/plus-jakarta-sans-vietnamese-600-normal-CC6hLFtX.woff2  [39m[1m[2m  4.13 kB[22m[1m[22m
+packages/ui build: [2mdist/[22m[32massets/jetbrains-mono-greek-400-normal-SMrb6SvR.woff2          [39m[1m[2m  4.22 kB[22m[1m[22m
+packages/ui build: [2mdist/[22m[32massets/plus-jakarta-sans-vietnamese-700-normal-M8Q6kGfw.woff2  [39m[1m[2m  4.23 kB[22m[1m[22m
+packages/ui build: [2mdist/[22m[32massets/plus-jakarta-sans-vietnamese-500-normal-DV0RQ-PV.woff2  [39m[1m[2m  4.24 kB[22m[1m[22m
+packages/ui build: [2mdist/[22m[32massets/jetbrains-mono-greek-500-normal-DDx6Qb4X.woff2          [39m[1m[2m  4.29 kB[22m[1m[22m
+packages/ui build: [2mdist/[22m[32massets/jetbrains-mono-cyrillic-500-normal-BbQvSTgA.woff2       [39m[1m[2m  5.28 kB[22m[1m[22m
+packages/ui build: [2mdist/[22m[32massets/jetbrains-mono-cyrillic-400-normal-DduX7Cxz.woff2       [39m[1m[2m  5.29 kB[22m[1m[22m
+packages/ui build: [2mdist/[22m[32massets/jetbrains-mono-vietnamese-400-normal-DQPePN4I.woff      [39m[1m[2m  5.34 kB[22m[1m[22m
+packages/ui build: [2mdist/[22m[32massets/jetbrains-mono-vietnamese-500-normal-CvEhONT9.woff      [39m[1m[2m  5.44 kB[22m[1m[22m
+packages/ui build: [2mdist/[22m[32massets/plus-jakarta-sans-vietnamese-400-normal-C8e2rZwZ.woff   [39m[1m[2m  5.57 kB[22m[1m[22m
+packages/ui build: [2mdist/[22m[32massets/jetbrains-mono-greek-400-normal-CL28JpsE.woff           [39m[1m[2m  5.64 kB[22m[1m[22m
+packages/ui build: [2mdist/[22m[32massets/plus-jakarta-sans-vietnamese-800-normal-RfBnhMhO.woff   [39m[1m[2m  5.66 kB[22m[1m[22m
+packages/ui build: [2mdist/[22m[32massets/jetbrains-mono-greek-500-normal-j-3100QQ.woff           [39m[1m[2m  5.69 kB[22m[1m[22m
+packages/ui build: [2mdist/[22m[32massets/plus-jakarta-sans-vietnamese-600-normal-DeS4BEfh.woff   [39m[1m[2m  5.73 kB[22m[1m[22m
+packages/ui build: [2mdist/[22m[32massets/plus-jakarta-sans-vietnamese-700-normal-CZVFApIP.woff   [39m[1m[2m  5.75 kB[22m[1m[22m
+packages/ui build: [2mdist/[22m[32massets/plus-jakarta-sans-vietnamese-500-normal-B82lGh9n.woff   [39m[1m[2m  5.76 kB[22m[1m[22m
+packages/ui build: [2mdist/[22m[32massets/jetbrains-mono-cyrillic-400-normal-Ddg-ESa-.woff        [39m[1m[2m  6.94 kB[22m[1m[22m
+packages/ui build: [2mdist/[22m[32massets/jetbrains-mono-cyrillic-500-normal-BcSK4SWt.woff        [39m[1m[2m  6.98 kB[22m[1m[22m
+packages/ui build: [2mdist/[22m[32massets/jetbrains-mono-latin-ext-400-normal-Dn-Q5RzH.woff2      [39m[1m[2m  7.08 kB[22m[1m[22m
+packages/ui build: [2mdist/[22m[32massets/jetbrains-mono-latin-ext-500-normal-CtOyLjTY.woff2      [39m[1m[2m  7.23 kB[22m[1m[22m
+packages/ui build: [2mdist/[22m[32massets/jetbrains-mono-latin-ext-400-normal-Br5SKFH9.woff       [39m[1m[2m  9.83 kB[22m[1m[22m
+packages/ui build: [2mdist/[22m[32massets/jetbrains-mono-latin-ext-500-normal-DmoeaKY2.woff       [39m[1m[2m 10.02 kB[22m[1m[22m
+packages/ui build: [2mdist/[22m[32massets/plus-jakarta-sans-latin-ext-400-normal-DoLIX7aW.woff2   [39m[1m[2m 10.50 kB[22m[1m[22m
+packages/ui build: [2mdist/[22m[32massets/plus-jakarta-sans-latin-ext-800-normal-BMV1Jgrj.woff2   [39m[1m[2m 10.86 kB[22m[1m[22m
+packages/ui build: [2mdist/[22m[32massets/plus-jakarta-sans-latin-ext-500-normal-CPn9LCJy.woff2   [39m[1m[2m 10.87 kB[22m[1m[22m
+packages/ui build: [2mdist/[22m[32massets/plus-jakarta-sans-latin-ext-700-normal-DvYoLYTT.woff2   [39m[1m[2m 10.89 kB[22m[1m[22m
+packages/ui build: [2mdist/[22m[32massets/plus-jakarta-sans-latin-ext-600-normal-CnFlO-3n.woff2   [39m[1m[2m 10.96 kB[22m[1m[22m
+packages/ui build: [2mdist/[22m[32massets/plus-jakarta-sans-latin-400-normal-BEreAzRs.woff2       [39m[1m[2m 11.88 kB[22m[1m[22m
+packages/ui build: [2mdist/[22m[32massets/plus-jakarta-sans-latin-800-normal-r4GdUuSS.woff2       [39m[1m[2m 12.04 kB[22m[1m[22m
+packages/ui build: [2mdist/[22m[32massets/plus-jakarta-sans-latin-600-normal-DZHTH_YQ.woff2       [39m[1m[2m 12.23 kB[22m[1m[22m
+packages/ui build: [33m
+packages/ui build: (!) Some chunks are larger than 500 kB after minification. Consider:
+packages/ui build: - Using dynamic import() to code-split the application
+packages/ui build: - Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+packages/ui build: - Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.[39m
+packages/ui build: [2mdist/[22m[32massets/plus-jakarta-sans-latin-700-normal-ByV-LENh.woff2       [39m[1m[2m 12.36 kB[22m[1m[22m
+packages/ui build: [2mdist/[22m[32massets/plus-jakarta-sans-latin-500-normal-QJgU3aHP.woff2       [39m[1m[2m 12.38 kB[22m[1m[22m
+packages/ui build: [2mdist/[22m[32massets/plus-jakarta-sans-latin-ext-400-normal-BsqZKeor.woff    [39m[1m[2m 15.34 kB[22m[1m[22m
+packages/ui build: [2mdist/[22m[32massets/plus-jakarta-sans-latin-ext-800-normal-1CQ5az79.woff    [39m[1m[2m 15.42 kB[22m[1m[22m
+packages/ui build: [2mdist/[22m[32massets/plus-jakarta-sans-latin-ext-600-normal-CB6G-JUj.woff    [39m[1m[2m 15.64 kB[22m[1m[22m
+packages/ui build: [2mdist/[22m[32massets/plus-jakarta-sans-latin-ext-700-normal-CKyey7Yb.woff    [39m[1m[2m 15.64 kB[22m[1m[22m
+packages/ui build: [2mdist/[22m[32massets/plus-jakarta-sans-latin-ext-500-normal-B3NWVrCc.woff    [39m[1m[2m 15.64 kB[22m[1m[22m
+packages/ui build: [2mdist/[22m[32massets/plus-jakarta-sans-latin-400-normal-B430qp47.woff        [39m[1m[2m 15.88 kB[22m[1m[22m
+packages/ui build: [2mdist/[22m[32massets/plus-jakarta-sans-latin-800-normal-Bf2otDjJ.woff        [39m[1m[2m 15.92 kB[22m[1m[22m
+packages/ui build: [2mdist/[22m[32massets/plus-jakarta-sans-latin-600-normal-BGO7_dKe.woff        [39m[1m[2m 16.23 kB[22m[1m[22m
+packages/ui build: [2mdist/[22m[32massets/plus-jakarta-sans-latin-700-normal-B-Gqp1pw.woff        [39m[1m[2m 16.26 kB[22m[1m[22m
+packages/ui build: [2mdist/[22m[32massets/plus-jakarta-sans-latin-500-normal-8oBgpzDE.woff        [39m[1m[2m 16.28 kB[22m[1m[22m
+packages/ui build: [2mdist/[22m[32massets/jetbrains-mono-latin-400-normal-BrRFx4uz.woff2          [39m[1m[2m 21.09 kB[22m[1m[22m
+packages/ui build: [2mdist/[22m[32massets/jetbrains-mono-latin-500-normal-BybgyI72.woff2          [39m[1m[2m 21.82 kB[22m[1m[22m
+packages/ui build: [2mdist/[22m[32massets/jetbrains-mono-latin-400-normal-BKFenxV8.woff           [39m[1m[2m 27.90 kB[22m[1m[22m
+packages/ui build: [2mdist/[22m[32massets/jetbrains-mono-latin-500-normal-DdS651vr.woff           [39m[1m[2m 28.62 kB[22m[1m[22m
+packages/ui build: [2mdist/[22m[35massets/index-B6zctV3j.css                                      [39m[1m[2m 59.27 kB[22m[1m[22m[2m │ gzip:  30.66 kB[22m
+packages/ui build: [2mdist/[22m[36massets/index-8Yi4A2Ue.js                                       [39m[1m[33m595.87 kB[39m[22m[2m │ gzip: 150.94 kB[22m
+packages/ui build: [32m✓ built in 1.40s[39m
+packages/ui build: Done
+packages/core build$ tsc && node -e "const fs=require('node:fs');fs.mkdirSync('dist/harness',{recursive:true});fs.copyFileSync('src/harness/harness-matrix.json','dist/harness/harness-matrix.json');"
+packages/core build: Done
+packages/adapter-omniroute build$ tsc
+packages/adapter-9router build$ tsc
+packages/daemon build$ tsc
+packages/sources build$ tsc
+packages/adapter-omniroute build: Done
+packages/adapter-9router build: Done
+packages/daemon build: Done
+packages/sources build: Done
+packages/cli build$ tsc
+packages/mcp-server build$ tsc
+packages/mcp-server build: Done
+packages/cli build: Done
+
+> routersync@0.1.0 test <private-provider-2>
+> node tools/agent/heavy.mjs -- pnpm test
+
+
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.12 [39m[90m<HOME>/.openmausbot/tmp/agy/4c4db2442357/rs-ev-d3[39m
+
+[90mstdout[2m | packages/cli/test/verify.test.ts[2m > [22m[2mRound C4c1 Verification Engine & Wire-Up[2m > [22m[2mA4 & A5: Canonical Verification Labels & Word-Boundary Matching[2m > [22m[2mA4: word-boundary matching prevents cross-model deprecation notice leaks
+[22m[39mVERIFY-SUMMARY models=2 remaining=0 proposals=2
+  LABEL ĐÃ-XÁC-NHẬN-CÒN: 2
+  LABEL ĐÃ-XÁC-NHẬN-NGỪNG: 0
+  LABEL SẮP-NGỪNG: 0
+  LABEL NGHI-NGỪNG: 0
+  LABEL CHƯA-XÁC-MINH: 0
+  LABEL QUOTA: 0
+  LABEL CHƯA-QUÉT: 0
+  LABEL QUOTA-NO-LIST: 0
+  PROPOSALS (F5): 2 combo/agent updates staged
+VERIFY requests=7 paid=0 tokens=0 llm-calls=0
+
+[90mstdout[2m | packages/cli/test/verify.test.ts[2m > [22m[2mRound C4c1 Verification Engine & Wire-Up[2m > [22m[2mA8: Research Submission & Inbox Management[2m > [22m[2mresearch submit validates schema, truncates snippet to <= 300, and does zero router writes
+[22m[39mRESEARCH-SUBMIT id=test-provider/test-model conclusion=ĐÃ-NGỪNG-HOÀN-TOÀN sourceTier=secondary url=https://official-docs.example.com/deprecations snippet_len=300 sessionId=auto-2026-W48-6c80e5c2-a24 status=ACCEPTED (untrusted evidence saved, zero router writes)
+
+[90mstdout[2m | packages/cli/test/verify.test.ts[2m > [22m[2mRound C4c1 Verification Engine & Wire-Up[2m > [22m[2mA8: Research Submission & Inbox Management[2m > [22m[2minbox list, ack, and snooze manage items without router writes
+[22m[39mINBOX-ACK id=item-1 status=ACKNOWLEDGED at=2026-11-25T00:26:14.607Z
+
+[90mstdout[2m | packages/cli/test/verify.test.ts[2m > [22m[2mRound C4c1 Verification Engine & Wire-Up[2m > [22m[2mA8: Research Submission & Inbox Management[2m > [22m[2minbox list, ack, and snooze manage items without router writes
+[22m[39mINBOX-SNOOZE id=item-2 days=3 snoozeUntil=2026-11-28T00:26:14.611Z status=SNOOZED
+
+[90mstdout[2m | packages/cli/test/verify.test.ts[2m > [22m[2mRound C4c1 Verification Engine & Wire-Up[2m > [22m[2mA9 & A3: Tick Idempotency, 15m Gate, and Unified Accounting[2m > [22m[2msecond tick run within 15 minutes yields 0 requests and UNCHANGED
+[22m[39mTICK-SUMMARY mode=propose scanned=2 skipped=0 changed=2 unchanged=0 backoff=0 inbox_added=2
+  PROVIDER prefix=node-b label=OK status=200 models=2 changed=yes added=0 grace=0 dead=0
+  PROVIDER prefix=groq label=OK status=200 models=2 changed=yes added=0 grace=0 dead=0
+TICK requests=9 paid-requests=0 tokens=0 llm-calls=0
+
+[90mstdout[2m | packages/cli/test/verify.test.ts[2m > [22m[2mRound C4c1 Verification Engine & Wire-Up[2m > [22m[2mA9 & A3: Tick Idempotency, 15m Gate, and Unified Accounting[2m > [22m[2msecond tick run within 15 minutes yields 0 requests and UNCHANGED
+[22m[39mTICK-SUMMARY mode=propose scanned=2 skipped=0 changed=0 unchanged=2 backoff=0 inbox_added=0
+  PROVIDER prefix=node-b label=UNCHANGED status=200 models=2 changed=no reason=MIN_INTERVAL_SKIPPED added=0 grace=0 dead=0
+  PROVIDER prefix=groq label=UNCHANGED status=200 models=2 changed=no reason=MIN_INTERVAL_SKIPPED added=0 grace=0 dead=0
+TICK requests=0 paid-requests=0 tokens=0 llm-calls=0
+
+[90mstdout[2m | packages/cli/test/verify.test.ts[2m > [22m[2mRound C4c1 Verification Engine & Wire-Up[2m > [22m[2mA9 & A3: Tick Idempotency, 15m Gate, and Unified Accounting[2m > [22m[2mrecords AUTH_ERROR and alerts inbox when provider returns HTTP 401
+[22m[39mTICK-SUMMARY mode=propose scanned=2 skipped=0 changed=0 unchanged=0 backoff=0 inbox_added=2
+  PROVIDER prefix=node-b label=AUTH_ERROR status=401 models=0 changed=no reason=AUTH_ERROR added=0 grace=0 dead=0 backoff=120s
+  PROVIDER prefix=groq label=AUTH_ERROR status=401 models=0 changed=no reason=AUTH_ERROR added=0 grace=0 dead=0 backoff=120s
+TICK requests=9 paid-requests=0 tokens=0 llm-calls=0
+
+[90mstdout[2m | packages/cli/test/verify.test.ts[2m > [22m[2mRound C4c1 Verification Engine & Wire-Up[2m > [22m[2mA9 & A3: Tick Idempotency, 15m Gate, and Unified Accounting[2m > [22m[2mE8: tick generates ABSENT-STABLE across 3 cycles (>=24h) and does not re-add after 4th cycle
+[22m[39mTICK-SUMMARY mode=propose scanned=2 skipped=0 changed=2 unchanged=0 backoff=0 inbox_added=3
+  PROVIDER prefix=node-b label=OK status=200 models=9 changed=yes added=0 grace=0 dead=1
+  PROVIDER prefix=groq label=OK status=200 models=9 changed=yes added=0 grace=0 dead=0
+TICK requests=9 paid-requests=0 tokens=0 llm-calls=0
+
+[90mstdout[2m | packages/cli/test/verify.test.ts[2m > [22m[2mRound C4c1 Verification Engine & Wire-Up[2m > [22m[2mA9 & A3: Tick Idempotency, 15m Gate, and Unified Accounting[2m > [22m[2mE8: tick generates ABSENT-STABLE across 3 cycles (>=24h) and does not re-add after 4th cycle
+[22m[39mTICK-SUMMARY mode=propose scanned=2 skipped=0 changed=1 unchanged=1 backoff=0 inbox_added=0
+  PROVIDER prefix=node-b label=OK status=200 models=9 changed=yes added=0 grace=0 dead=1
+  PROVIDER prefix=groq label=UNCHANGED status=200 models=9 changed=no added=0 grace=0 dead=0
+TICK requests=9 paid-requests=0 tokens=0 llm-calls=0
+
+[90mstdout[2m | packages/cli/test/verify.test.ts[2m > [22m[2mRound C4c1 Verification Engine & Wire-Up[2m > [22m[2mA9 & A3: Tick Idempotency, 15m Gate, and Unified Accounting[2m > [22m[2mE9: node-b 94->69 bulk drop capped; no ABSENT-STABLE created when shrink > 10%
+[22m[39mTICK-SUMMARY mode=propose scanned=2 skipped=0 changed=2 unchanged=0 backoff=0 inbox_added=53
+  PROVIDER prefix=node-b label=OK status=200 models=69 changed=yes added=0 grace=0 dead=25
+  PROVIDER prefix=groq label=OK status=200 models=69 changed=yes added=0 grace=0 dead=0
+TICK requests=9 paid-requests=0 tokens=0 llm-calls=0
+
+[90mstdout[2m | packages/cli/test/verify.test.ts[2m > [22m[2mRound C4c1 Verification Engine & Wire-Up[2m > [22m[2mA9 & A3: Tick Idempotency, 15m Gate, and Unified Accounting[2m > [22m[2mE9: node-b 94->69 bulk drop capped; no ABSENT-STABLE created when shrink > 10%
+[22m[39mTICK-SUMMARY mode=propose scanned=2 skipped=0 changed=1 unchanged=1 backoff=0 inbox_added=0
+  PROVIDER prefix=node-b label=OK status=200 models=69 changed=yes added=0 grace=0 dead=25
+  PROVIDER prefix=groq label=UNCHANGED status=200 models=69 changed=no added=0 grace=0 dead=0
+TICK requests=9 paid-requests=0 tokens=0 llm-calls=0
+
+[90mstdout[2m | packages/cli/test/verify.test.ts[2m > [22m[2mRound C4c1 Verification Engine & Wire-Up[2m > [22m[2mA9 & A3: Tick Idempotency, 15m Gate, and Unified Accounting[2m > [22m[2mE10: tick prunes absenceCounts older than 7 days for groq
+[22m[39mTICK-SUMMARY mode=propose scanned=2 skipped=0 changed=2 unchanged=0 backoff=0 inbox_added=1
+  PROVIDER prefix=node-b label=OK status=200 models=1 changed=yes added=0 grace=0 dead=0
+  PROVIDER prefix=groq label=OK status=200 models=1 changed=yes added=0 grace=0 dead=0
+TICK requests=9 paid-requests=0 tokens=0 llm-calls=0
+
+[90mstdout[2m | packages/cli/test/verify.test.ts[2m > [22m[2mRound C4c1 Verification Engine & Wire-Up[2m > [22m[2mA9 & A3: Tick Idempotency, 15m Gate, and Unified Accounting[2m > [22m[2mG3a: NEW-CANDIDATE skips blacklisted model id
+[22m[39mTICK-SUMMARY mode=propose scanned=2 skipped=0 changed=2 unchanged=0 backoff=0 inbox_added=3
+  PROVIDER prefix=node-b label=OK status=200 models=3 changed=yes added=2 grace=0 dead=0
+  PROVIDER prefix=groq label=OK status=200 models=1 changed=yes added=0 grace=0 dead=0
+TICK requests=9 paid-requests=0 tokens=0 llm-calls=0
+
+[90mstdout[2m | packages/cli/test/verify.test.ts[2m > [22m[2mRound C4c1 Verification Engine & Wire-Up[2m > [22m[2mA9 & A3: Tick Idempotency, 15m Gate, and Unified Accounting[2m > [22m[2mG3b: isAdded only true for provider that actually added the model
+[22m[39mTICK-SUMMARY mode=propose scanned=2 skipped=0 changed=2 unchanged=0 backoff=0 inbox_added=1
+  PROVIDER prefix=node-b label=OK status=200 models=2 changed=yes added=1 grace=0 dead=0
+  PROVIDER prefix=groq label=OK status=200 models=1 changed=yes added=0 grace=0 dead=0
+TICK requests=9 paid-requests=0 tokens=0 llm-calls=0
+
+[90mstdout[2m | packages/cli/test/verify.test.ts[2m > [22m[2mRound C4c1 Verification Engine & Wire-Up[2m > [22m[2mA9 & A3: Tick Idempotency, 15m Gate, and Unified Accounting[2m > [22m[2mG3c: AUTH_ERROR inbox id stable across two ticks
+[22m[39mTICK-SUMMARY mode=propose scanned=2 skipped=0 changed=0 unchanged=0 backoff=0 inbox_added=2
+  PROVIDER prefix=node-b label=AUTH_ERROR status=401 models=0 changed=no reason=AUTH_ERROR added=0 grace=0 dead=0 backoff=120s
+  PROVIDER prefix=groq label=AUTH_ERROR status=401 models=0 changed=no reason=AUTH_ERROR added=0 grace=0 dead=0 backoff=120s
+TICK requests=9 paid-requests=0 tokens=0 llm-calls=0
+
+ [32m✓[39m [30m[45m packages [49m[39m packages/mcp-server/test/mcp.test.ts [2m([22m[2m22 tests[22m[2m)[22m[33m 1219[2mms[22m[39m
+[90mstdout[2m | packages/cli/test/verify.test.ts[2m > [22m[2mRound C4c1 Verification Engine & Wire-Up[2m > [22m[2mA9 & A3: Tick Idempotency, 15m Gate, and Unified Accounting[2m > [22m[2mG3c: AUTH_ERROR inbox id stable across two ticks
+[22m[39mTICK-SUMMARY mode=propose scanned=2 skipped=0 changed=0 unchanged=0 backoff=0 inbox_added=0
+  PROVIDER prefix=node-b label=AUTH_ERROR status=401 models=0 changed=no reason=AUTH_ERROR added=0 grace=0 dead=0 backoff=240s
+  PROVIDER prefix=groq label=AUTH_ERROR status=401 models=0 changed=no reason=AUTH_ERROR added=0 grace=0 dead=0 backoff=240s
+TICK requests=9 paid-requests=0 tokens=0 llm-calls=0
+
+[90mstdout[2m | packages/cli/test/verify.test.ts[2m > [22m[2mRound C4c1 Verification Engine & Wire-Up[2m > [22m[2mA9 & A3: Tick Idempotency, 15m Gate, and Unified Accounting[2m > [22m[2mG3d: inbox trim keeps unacknowledged and active snoozed items past 200
+[22m[39mTICK-SUMMARY mode=propose scanned=2 skipped=0 changed=0 unchanged=0 backoff=0 inbox_added=0
+  PROVIDER prefix=node-b label=TRANSIENT status=200 models=0 changed=no reason=TRANSIENT added=0 grace=0 dead=0 backoff=120s
+  PROVIDER prefix=groq label=TRANSIENT status=200 models=0 changed=no reason=TRANSIENT added=0 grace=0 dead=0 backoff=120s
+TICK requests=9 paid-requests=0 tokens=0 llm-calls=0
+
+[90mstdout[2m | packages/cli/test/verify.test.ts[2m > [22m[2mRound C4c1 Verification Engine & Wire-Up[2m > [22m[2mA9 & A3: Tick Idempotency, 15m Gate, and Unified Accounting[2m > [22m[2mG4: rank preview writes zero new files in temp dir without write flags
+[22m[39m==============================================================================
+ROUTERSYNC MODEL RANKING — PREVIEW ONLY (Policy §8.4 + Dynamic Tiers + D1)
+==============================================================================
+Lost Providers Count (Target 0): 0
+Config: <HOME>\.openmausbot\tmp\agy\4c4db2442357\rs-policy-lEbfb4\routersync\ranking.yaml (custom loaded)
+Active Tiers in Config: (neutral - no custom tiers)
+Excluded Combos: test-1, test-2, test-3
+Mode: PREVIEW-ONLY (Không thay đổi dữ liệu trong router DB)
+Criteria: Lexicographic Priority (1:Phân cấp thứ bậc mô hình -> 2:Độ lớn ngữ cảnh (Context Window))
+Tail Interleaving (D1): Bật (xen kẽ provider round-robin ở Fallback & UNRATED)
+------------------------------------------------------------------------------
+
+[9ROUTER] Combo: test-combo
+  Số bước: 2 -> 2 (Loại bỏ: 0 [])
+  Số bước đổi vị trí: 0
+  Nhà cung cấp mất đại diện: 0
+  Top 5 Trước:
+    1. provider-a/model-1
+    2. provider-a/model-2
+  Top 5 Sau khi Xếp Hạng:
+    1. [UNRATED] provider-a/model-1
+    2. [UNRATED] provider-a/model-2
+  Độ phủ Provider Sau: provider-a:2
+
+[OMNIROUTE] Combo: omni-test-combo
+  Số bước: 2 -> 2 (Loại bỏ: 0 [])
+  Số bước đổi vị trí: 0
+  Nhà cung cấp mất đại diện: 0
+  Top 5 Trước:
+    1. provider-b/model-1
+    2. provider-b/model-2
+  Top 5 Sau khi Xếp Hạng:
+    1. [UNRATED] provider-b/model-1
+    2. [UNRATED] provider-b/model-2
+  Độ phủ Provider Sau: provider-b:2
+
+==============================================================================
+TỔNG KẾT: Hoàn thành xếp hạng xem trước trên 2 combo.
+TỔNG NHÀ CUNG CẤP MẤT ĐẠI DIỆN: 0
+LƯU Ý: Đây là bản xem trước an toàn (PREVIEW-ONLY). Router DB hoàn toàn giữ nguyên.
+==============================================================================
+
+[90mstdout[2m | packages/cli/test/verify.test.ts[2m > [22m[2mRound C4c1 Verification Engine & Wire-Up[2m > [22m[2mA9 & A3: Tick Idempotency, 15m Gate, and Unified Accounting[2m > [22m[2mG4: rank preview writes zero new files in temp dir without write flags
+[22m[39m==============================================================================
+ROUTERSYNC MODEL RANKING — PREVIEW ONLY (Policy §8.4 + Dynamic Tiers + D1)
+==============================================================================
+Lost Providers Count (Target 0): 0
+Config: <HOME>\.openmausbot\tmp\agy\4c4db2442357\rs-policy-lEbfb4\routersync\ranking.yaml (custom loaded)
+Active Tiers in Config: (neutral - no custom tiers)
+Excluded Combos: test-1, test-2, test-3
+Mode: PREVIEW-ONLY (Không thay đổi dữ liệu trong router DB)
+Criteria: Lexicographic Priority (1:Phân cấp thứ bậc mô hình -> 2:Độ lớn ngữ cảnh (Context Window))
+Tail Interleaving (D1): Bật (xen kẽ provider round-robin ở Fallback & UNRATED)
+------------------------------------------------------------------------------
+
+[9ROUTER] Combo: test-combo
+  Số bước: 2 -> 2 (Loại bỏ: 0 [])
+  Số bước đổi vị trí: 0
+  Nhà cung cấp mất đại diện: 0
+  Top 5 Trước:
+    1. provider-a/model-1
+    2. provider-a/model-2
+  Top 5 Sau khi Xếp Hạng:
+    1. [UNRATED] provider-a/model-1
+    2. [UNRATED] provider-a/model-2
+  Độ phủ Provider Sau: provider-a:2
+
+[OMNIROUTE] Combo: omni-test-combo
+  Số bước: 2 -> 2 (Loại bỏ: 0 [])
+  Số bước đổi vị trí: 0
+  Nhà cung cấp mất đại diện: 0
+  Top 5 Trước:
+    1. provider-b/model-1
+    2. provider-b/model-2
+  Top 5 Sau khi Xếp Hạng:
+    1. [UNRATED] provider-b/model-1
+    2. [UNRATED] provider-b/model-2
+  Độ phủ Provider Sau: provider-b:2
+
+==============================================================================
+TỔNG KẾT: Hoàn thành xếp hạng xem trước trên 2 combo.
+TỔNG NHÀ CUNG CẤP MẤT ĐẠI DIỆN: 0
+LƯU Ý: Đây là bản xem trước an toàn (PREVIEW-ONLY). Router DB hoàn toàn giữ nguyên.
+==============================================================================
+
+ [32m✓[39m [30m[45m packages [49m[39m packages/cli/test/verify.test.ts [2m([22m[2m33 tests[22m[2m)[22m[33m 1797[2mms[22m[39m
+[90mstdout[2m | packages/cli/test/c4p-safeguards.test.ts[2m > [22m[2mRound C4p & C4q Hermetic Safeguards & Verifications[2m > [22m[2mP2, Q2 & P6: Incomplete Scan Safeguards, Baseline Preservation & 7-Layer Safe GET[2m > [22m[2mQ2(a): has_more: true without cursor sets signalWithoutCursor, marks tick TRANSIENT/INCOMPLETE-PAGINATION, and preserves seeded baseline
+[22m[39mTICK-SUMMARY mode=propose scanned=1 skipped=0 changed=0 unchanged=0 backoff=0 inbox_added=0
+  PROVIDER prefix=fake-prov label=TRANSIENT status=200 models=2 changed=no reason=incomplete-pagination added=0 grace=0 dead=0 backoff=120s
+TICK requests=8 paid-requests=0 tokens=0 llm-calls=0
+
+[90mstdout[2m | packages/cli/test/c4p-safeguards.test.ts[2m > [22m[2mRound C4p & C4q Hermetic Safeguards & Verifications[2m > [22m[2mP2, Q2 & P6: Incomplete Scan Safeguards, Baseline Preservation & 7-Layer Safe GET[2m > [22m[2mQ2(b): detectNextPage discarding a FORBIDDEN_INFERENCE_PATH_PATTERN URL sets forbiddenDiscarded, marks tick TRANSIENT/INCOMPLETE-PAGINATION, and preserves seeded baseline
+[22m[39mTICK-SUMMARY mode=propose scanned=1 skipped=0 changed=0 unchanged=0 backoff=0 inbox_added=0
+  PROVIDER prefix=fake-prov label=TRANSIENT status=200 models=2 changed=no reason=incomplete-pagination added=0 grace=0 dead=0 backoff=120s
+TICK requests=8 paid-requests=0 tokens=0 llm-calls=0
+
+[90mstdout[2m | packages/cli/test/c4p-safeguards.test.ts[2m > [22m[2mRound C4p & C4q Hermetic Safeguards & Verifications[2m > [22m[2mP2, Q2 & P6: Incomplete Scan Safeguards, Baseline Preservation & 7-Layer Safe GET[2m > [22m[2mQ2(c): single page returning > SCAN_MAX_MODELS (rawCount > all.length) sets incomplete: true, marks tick TRANSIENT/INCOMPLETE-PAGINATION, and preserves seeded baseline
+[22m[39mTICK-SUMMARY mode=propose scanned=1 skipped=0 changed=0 unchanged=0 backoff=0 inbox_added=0
+  PROVIDER prefix=fake-prov label=TRANSIENT status=200 models=2 changed=no reason=incomplete-pagination added=0 grace=0 dead=0 backoff=120s
+TICK requests=8 paid-requests=0 tokens=0 llm-calls=0
+
+[90mstdout[2m | packages/cli/test/c4p-safeguards.test.ts[2m > [22m[2mRound C4p & C4q Hermetic Safeguards & Verifications[2m > [22m[2mP2, Q2 & P6: Incomplete Scan Safeguards, Baseline Preservation & 7-Layer Safe GET[2m > [22m[2mQ2(d): blocked redirect returns skipReason: redirect-blocked (not incomplete-pagination), marks tick TRANSIENT/redirect-blocked, and preserves seeded baseline
+[22m[39mTICK-SUMMARY mode=propose scanned=1 skipped=0 changed=0 unchanged=0 backoff=0 inbox_added=0
+  PROVIDER prefix=fake-prov label=TRANSIENT status=302 models=2 changed=no reason=redirect-blocked added=0 grace=0 dead=0 backoff=120s
+TICK requests=8 paid-requests=0 tokens=0 llm-calls=0
+
+[90mstdout[2m | packages/cli/test/c4p-safeguards.test.ts[2m > [22m[2mRound C4p & C4q Hermetic Safeguards & Verifications[2m > [22m[2mP2, Q2 & P6: Incomplete Scan Safeguards, Baseline Preservation & 7-Layer Safe GET[2m > [22m[2mQ2(e): readBodyCapped cancels res.body.getReader() mid-stream when chunks exceed SCAN_MAX_BYTES_PER_PAGE and preserves seeded baseline in tick
+[22m[39mTICK-SUMMARY mode=propose scanned=1 skipped=0 changed=0 unchanged=0 backoff=0 inbox_added=0
+  PROVIDER prefix=fake-prov label=TRANSIENT status=200 models=2 changed=no reason=TRANSIENT added=0 grace=0 dead=0 backoff=120s
+TICK requests=8 paid-requests=0 tokens=0 llm-calls=0
+
+ [32m✓[39m [30m[45m packages [49m[39m packages/mcp-server/test/apply-plan.test.ts [2m([22m[2m8 tests[22m[2m)[22m[33m 2663[2mms[22m[39m
+     [33m[2m✓[22m[39m rejects apply_plan without consent/token, on planHash mismatch or tampered plan actions (M3), on freeze (M2), on off target, and on expired/tampered consent (M4) [33m 332[2mms[22m[39m
+     [33m[2m✓[22m[39m rejects invariant violations I3 (< 2 models) and I6 (paid model in freeOnly combo) with zero writes (M6) [33m 307[2mms[22m[39m
+     [33m[2m✓[22m[39m applies router + lossless harness plan via standing consent OR single-use daemon approvalToken, verifies read-back + I4, writes apply-history + inbox + sanitized webhook [33m 446[2mms[22m[39m
+     [33m[2m✓[22m[39m automatically rolls back BOTH router SQLite DB and harness config byte-for-byte on post-write read-back fault (M5) and denies auto-safe eligibility [33m 438[2mms[22m[39m
+     [33m[2m✓[22m[39m F4: aligns MCP harness-apply with WP2 (Hermes custom_providers + models insertion, OpenMausBot managedModels insertion + openai-compat guard, unkeyed provider refusal, active default-slot protection, DSH non-models digest) [33m 431[2mms[22m[39m
+[90mstdout[2m | packages/cli/test/c4p-safeguards.test.ts[2m > [22m[2mRound C4p & C4q Hermetic Safeguards & Verifications[2m > [22m[2mP5: Doctor Diagnostics for Invalid Config[2m > [22m[2mrecords configError and marks ready: false when config file is invalid YAML or schema
+[22m[39m
+======================================================
+[routersync doctor] Chẩn đoán sức khỏe hệ thống
+Thời gian: 2026-11-25T00:26:19.392Z
+======================================================
+[!] LỖI CẤU HÌNH (configError): YAML syntax error in <HOME>\.openmausbot\tmp\agy\4c4db2442357\rs-c4q-hermetic-72OkLZ\bad-config.yaml: Flow sequence in block collection must be sufficiently indented and end with a ] at line 2, column 20:
+
+  - invalid_yaml: [}
+                   ^
+
+Khóa xác thực router đã cấu hình:
+  - [omni] (omniroute): OMNIROUTE_API_KEY (phạm vi: elevated)
+  - [nine] (9router): NINE_ROUTER_API_KEY (phạm vi: elevated)
+------------------------------------------------------
+Lịch định kỳ (Schedule): tier=none installed=no interval=15m lastTickAge=n/a
+------------------------------------------------------
+Tầng model theo router (chỉ đọc):
+  - [omni] (omniroute): không đọc được tiers
+  - [nine] (9router): không đọc được tiers
+------------------------------------------------------
+✓ Không phát hiện phụ thuộc vòng giữa harness và router.
+✓ Đã có bằng chứng sao lưu; cờ `validated` trong cấu hình chưa đổi.
+
+Khuyến nghị:
+  * Router 'omni' (omniroute): Đã có bằng chứng sao lưu gần nhất (2026-11-10T17:17:32.821Z).
+  * Router 'nine' (9router): Đã có bằng chứng sao lưu gần nhất (2026-11-10T17:17:32.821Z).
+  * Router 'omni' (omniroute) is using elevated key OMNIROUTE_API_KEY. Consider setting a client-scoped key (OMNIROUTE_CLIENT_KEY) for read-back per least privilege.
+  * Router 'nine' (9router) is using elevated key NINE_ROUTER_API_KEY. Consider setting a client-scoped key (NINEROUTER_CLIENT_KEY) for read-back per least privilege.
+======================================================
+
+
+
+ [32m✓[39m [30m[45m packages [49m[39m packages/cli/test/c4p-safeguards.test.ts [2m([22m[2m23 tests[22m[2m)[22m[33m 2599[2mms[22m[39m
+       [33m[2m✓[22m[39m Q2(b): detectNextPage discarding a FORBIDDEN_INFERENCE_PATH_PATTERN URL sets forbiddenDiscarded, marks tick TRANSIENT/INCOMPLETE-PAGINATION, and preserves seeded baseline [33m 381[2mms[22m[39m
+       [33m[2m✓[22m[39m Q2(c): single page returning > SCAN_MAX_MODELS (rawCount > all.length) sets incomplete: true, marks tick TRANSIENT/INCOMPLETE-PAGINATION, and preserves seeded baseline [33m 311[2mms[22m[39m
+       [33m[2m✓[22m[39m records configError and marks ready: false when config file is invalid YAML or schema [33m 575[2mms[22m[39m
+ [32m✓[39m [30m[45m packages [49m[39m packages/cli/test/c45-wp2-harness-write.test.ts [2m([22m[2m8 tests[22m[2m)[22m[33m 943[2mms[22m[39m
+     [33m[2m✓[22m[39m 2. openmausbot (JSON): updates instances.<id>.config.managedModels on keyed openai-compat only (M1), preserves key/url/model & automaticRecovery.backup (M2 / Bug #3), ignores maxTokens false-positive (Bug #5), refuses bots.json & routines.json, and round-trips byte-identically [33m 745[2mms[22m[39m
+[90mstdout[2m | packages/cli/test/wp4-controlled-automation.test.ts[2m > [22m[2mC45-WP4 Controlled Automation CLI Lifecycle[2m > [22m[2mexecutes full progression: deny auto-safe (M1) -> grant propose -> propose apply on real combo coding-primary -> promote auto-safe -> tick auto-safe -> freeze/unfreeze
+[22m[39mTICK-SUMMARY mode=auto-safe scanned=1 skipped=0 changed=1 unchanged=0 backoff=0 inbox_added=5
+  PROVIDER prefix=openai label=OK status=200 models=11 changed=yes added=1 grace=1 dead=0
+TICK requests=8 paid-requests=0 tokens=0 llm-calls=0
+
+[90mstdout[2m | packages/cli/test/wp4-controlled-automation.test.ts[2m > [22m[2mC45-WP4 Controlled Automation CLI Lifecycle[2m > [22m[2mexecutes full progression: deny auto-safe (M1) -> grant propose -> propose apply on real combo coding-primary -> promote auto-safe -> tick auto-safe -> freeze/unfreeze
+[22m[39mTICK-SUMMARY mode=FROZEN scanned=1 skipped=0 changed=1 unchanged=0 backoff=0 inbox_added=0
+  PROVIDER prefix=openai label=OK status=200 models=10 changed=yes added=0 grace=0 dead=1
+TICK requests=1 paid-requests=0 tokens=0 llm-calls=0
+
+[90mstdout[2m | packages/cli/test/tick-c4s-tiers-and-errors.test.ts[2m > [22m[2mC4s S2: Tier-Aware Proposal Generation and Error Suppression in tick[2m > [22m[2mTier-Aware Proposals on newly added models[2m > [22m[2mskips Tier A models, proposes ENABLE_MODEL for Tier B, and proposes ADD_MODEL for Tier C
+[22m[39mTICK-SUMMARY mode=propose scanned=1 skipped=0 changed=1 unchanged=0 backoff=0 inbox_added=6
+  PROVIDER prefix=testprov label=OK status=200 models=4 changed=yes added=3 grace=0 dead=0
+TICK requests=8 paid-requests=0 tokens=0 llm-calls=0
+
+[90mstdout[2m | packages/cli/test/wp4-controlled-automation.test.ts[2m > [22m[2mC45-WP4 Controlled Automation CLI Lifecycle[2m > [22m[2menforces unconditional adapter.rollback(snapshot) in applyPlanSafe even when staleDetected is false (M5) and blocks I6 invariant violations in auto-safe tick (M6)
+[22m[39mTICK-SUMMARY mode=auto-safe scanned=1 skipped=0 changed=1 unchanged=0 backoff=0 inbox_added=3
+  PROVIDER prefix=openai label=OK status=200 models=11 changed=yes added=1 grace=0 dead=0
+TICK requests=6 paid-requests=0 tokens=0 llm-calls=0
+
+[90mstdout[2m | packages/cli/test/tick-c4s-tiers-and-errors.test.ts[2m > [22m[2mC4s S2: Tier-Aware Proposal Generation and Error Suppression in tick[2m > [22m[2mTier-Aware Proposals on newly added models[2m > [22m[2mC4t T2.1/T2.2: evaluates models on first scan when prevIds is empty and creates grouped proposals with modelIds
+[22m[39mTICK-SUMMARY mode=propose scanned=1 skipped=0 changed=1 unchanged=0 backoff=0 inbox_added=2
+  PROVIDER prefix=testprov label=OK status=200 models=4 changed=yes added=0 grace=0 dead=0
+TICK requests=8 paid-requests=0 tokens=0 llm-calls=0
+
+[90mstdout[2m | packages/cli/test/tick-c4s-tiers-and-errors.test.ts[2m > [22m[2mC4s S2: Tier-Aware Proposal Generation and Error Suppression in tick[2m > [22m[2mTier-Aware Proposals on newly added models[2m > [22m[2mU3: OmniRoute models outside combos remain UNKNOWN and do NOT generate ADD_MODEL proposals
+[22m[39mTICK-SUMMARY mode=propose scanned=1 skipped=0 changed=1 unchanged=0 backoff=0 inbox_added=0
+  PROVIDER prefix=testprov label=OK status=200 models=2 changed=yes added=0 grace=0 dead=0
+TICK requests=8 paid-requests=0 tokens=0 llm-calls=0
+
+[90mstdout[2m | packages/cli/test/tick-c4s-tiers-and-errors.test.ts[2m > [22m[2mC4s S2: Tier-Aware Proposal Generation and Error Suppression in tick[2m > [22m[2mTier-Aware Proposals on newly added models[2m > [22m[2mV5(a): custom enabled model outside combos is classified as Tier A and does NOT generate proposals
+[22m[39mTICK-SUMMARY mode=propose scanned=1 skipped=0 changed=1 unchanged=0 backoff=0 inbox_added=0
+  PROVIDER prefix=testprov label=OK status=200 models=2 changed=yes added=0 grace=0 dead=0
+TICK requests=8 paid-requests=0 tokens=0 llm-calls=0
+
+[90mstdout[2m | packages/cli/test/tick-c4s-tiers-and-errors.test.ts[2m > [22m[2mC4s S2: Tier-Aware Proposal Generation and Error Suppression in tick[2m > [22m[2mTier-Aware Proposals on newly added models[2m > [22m[2mV5(b): same model id on two providers, disabled on provider X: provider Y is NOT classified as B
+[22m[39mTICK-SUMMARY mode=propose scanned=1 skipped=0 changed=1 unchanged=0 backoff=0 inbox_added=1
+  PROVIDER prefix=testprov label=OK status=200 models=1 changed=yes added=0 grace=0 dead=0
+TICK requests=8 paid-requests=0 tokens=0 llm-calls=0
+
+[90mstdout[2m | packages/cli/test/tick-c4s-tiers-and-errors.test.ts[2m > [22m[2mC4s S2: Tier-Aware Proposal Generation and Error Suppression in tick[2m > [22m[2mPrevent REMOVE_MODEL proposals on Tier C models[2m > [22m[2mprevents REMOVE_MODEL on Tier C models and only proposes REMOVE_MODEL for Tier A/B models
+[22m[39mTICK-SUMMARY mode=propose scanned=1 skipped=0 changed=1 unchanged=0 backoff=0 inbox_added=6
+  PROVIDER prefix=testprov label=OK status=200 models=1 changed=yes added=1 grace=0 dead=2
+TICK requests=8 paid-requests=0 tokens=0 llm-calls=0
+
+[90mstdout[2m | packages/cli/test/tick-c4s-tiers-and-errors.test.ts[2m > [22m[2mC4s S2: Tier-Aware Proposal Generation and Error Suppression in tick[2m > [22m[2mError Suppression in tick[2m > [22m[2msuppresses errors and sets QUOTA for HTTP 429 without dropping catalog
+[22m[39mTICK-SUMMARY mode=propose scanned=1 skipped=0 changed=0 unchanged=0 backoff=0 inbox_added=0
+  PROVIDER prefix=testprov label=QUOTA status=429 models=2 changed=no reason=QUOTA added=0 grace=0 dead=0 backoff=120s
+TICK requests=8 paid-requests=0 tokens=0 llm-calls=0
+
+[90mstdout[2m | packages/cli/test/tick-c4s-tiers-and-errors.test.ts[2m > [22m[2mC4s S2: Tier-Aware Proposal Generation and Error Suppression in tick[2m > [22m[2mError Suppression in tick[2m > [22m[2msuppresses errors, sets AUTH_ERROR, and generates warning alert for HTTP 401/403
+[22m[39mTICK-SUMMARY mode=propose scanned=1 skipped=0 changed=0 unchanged=0 backoff=0 inbox_added=1
+  PROVIDER prefix=testprov label=AUTH_ERROR status=403 models=1 changed=no reason=AUTH_ERROR added=0 grace=0 dead=0 backoff=120s
+TICK requests=8 paid-requests=0 tokens=0 llm-calls=0
+
+[90mstdout[2m | packages/cli/test/wp4-controlled-automation.test.ts[2m > [22m[2mC45-WP4 Controlled Automation CLI Lifecycle[2m > [22m[2mF5: emits sanitized [AUTO-ROLLBACK] to inbox.json + outbound webhook (auto_rollback) and trips emergency freeze.json circuit breaker on auto-safe rollback
+[22m[39mTICK-SUMMARY mode=auto-safe scanned=1 skipped=0 changed=1 unchanged=0 backoff=0 inbox_added=3
+  PROVIDER prefix=openai label=OK status=200 models=11 changed=yes added=1 grace=0 dead=0
+TICK requests=8 paid-requests=0 tokens=0 llm-calls=0
+
+ [32m✓[39m [30m[45m packages [49m[39m packages/cli/test/wp4-controlled-automation.test.ts [2m([22m[2m4 tests[22m[2m)[22m[33m 2493[2mms[22m[39m
+     [33m[2m✓[22m[39m keeps status strictly read-only on an empty stateDir (AT-157 / M7) and rejects unconsented combos including test-1 with only-pattern [33m 339[2mms[22m[39m
+     [33m[2m✓[22m[39m executes full progression: deny auto-safe (M1) -> grant propose -> propose apply on real combo coding-primary -> promote auto-safe -> tick auto-safe -> freeze/unfreeze [33m 921[2mms[22m[39m
+     [33m[2m✓[22m[39m enforces unconditional adapter.rollback(snapshot) in applyPlanSafe even when staleDetected is false (M5) and blocks I6 invariant violations in auto-safe tick (M6) [33m 488[2mms[22m[39m
+     [33m[2m✓[22m[39m F5: emits sanitized [AUTO-ROLLBACK] to inbox.json + outbound webhook (auto_rollback) and trips emergency freeze.json circuit breaker on auto-safe rollback [33m 742[2mms[22m[39m
+[90mstdout[2m | packages/cli/test/tick-c4s-tiers-and-errors.test.ts[2m > [22m[2mC4s S2: Tier-Aware Proposal Generation and Error Suppression in tick[2m > [22m[2mError Suppression in tick[2m > [22m[2mU5: suppresses errors and sets AUTH_ERROR for HTTP 401 with inbox invariance
+[22m[39mTICK-SUMMARY mode=propose scanned=1 skipped=0 changed=0 unchanged=0 backoff=0 inbox_added=1
+  PROVIDER prefix=testprov label=AUTH_ERROR status=401 models=1 changed=no reason=AUTH_ERROR added=0 grace=0 dead=0 backoff=120s
+TICK requests=8 paid-requests=0 tokens=0 llm-calls=0
+
+[90mstdout[2m | packages/cli/test/tick-c4s-tiers-and-errors.test.ts[2m > [22m[2mC4s S2: Tier-Aware Proposal Generation and Error Suppression in tick[2m > [22m[2mError Suppression in tick[2m > [22m[2msuppresses errors and sets TRANSIENT for HTTP 500/502/503
+[22m[39mTICK-SUMMARY mode=propose scanned=1 skipped=0 changed=0 unchanged=0 backoff=0 inbox_added=0
+  PROVIDER prefix=testprov label=TRANSIENT status=500 models=1 changed=no reason=TRANSIENT added=0 grace=0 dead=0 backoff=120s
+TICK requests=8 paid-requests=0 tokens=0 llm-calls=0
+
+[90mstdout[2m | packages/cli/test/tick-c4s-tiers-and-errors.test.ts[2m > [22m[2mC4s S2: Tier-Aware Proposal Generation and Error Suppression in tick[2m > [22m[2mError Suppression in tick[2m > [22m[2msuppresses errors and sets TRANSIENT for network timeouts (HTTP 408 / connection error)
+[22m[39mTICK-SUMMARY mode=propose scanned=1 skipped=0 changed=0 unchanged=0 backoff=0 inbox_added=0
+  PROVIDER prefix=testprov label=TRANSIENT status=408 models=1 changed=no reason=TRANSIENT added=0 grace=0 dead=0 backoff=120s
+TICK requests=8 paid-requests=0 tokens=0 llm-calls=0
+
+[90mstdout[2m | packages/cli/test/tick-c4s-tiers-and-errors.test.ts[2m > [22m[2mC4s S2: Tier-Aware Proposal Generation and Error Suppression in tick[2m > [22m[2mError Suppression in tick[2m > [22m[2msuppresses errors and sets skipReason incomplete-pagination on incomplete payload
+[22m[39mTICK-SUMMARY mode=propose scanned=1 skipped=0 changed=0 unchanged=0 backoff=0 inbox_added=0
+  PROVIDER prefix=testprov label=TRANSIENT status=200 models=1 changed=no reason=incomplete-pagination added=0 grace=0 dead=0 backoff=120s
+TICK requests=8 paid-requests=0 tokens=0 llm-calls=0
+
+[90mstdout[2m | packages/cli/test/tick-c4s-tiers-and-errors.test.ts[2m > [22m[2mC4s S2: Tier-Aware Proposal Generation and Error Suppression in tick[2m > [22m[2mError Suppression in tick[2m > [22m[2msuppresses errors and sets skipReason redirect-blocked on cross-origin redirects
+[22m[39mTICK-SUMMARY mode=propose scanned=1 skipped=0 changed=0 unchanged=0 backoff=0 inbox_added=0
+  PROVIDER prefix=testprov label=TRANSIENT status=301 models=1 changed=no reason=redirect-blocked added=0 grace=0 dead=0 backoff=120s
+TICK requests=8 paid-requests=0 tokens=0 llm-calls=0
+
+[90mstdout[2m | packages/cli/test/tick-c4s-tiers-and-errors.test.ts[2m > [22m[2mC4s S2: Tier-Aware Proposal Generation and Error Suppression in tick[2m > [22m[2mError Suppression in tick[2m > [22m[2mV5(c): inbox invariance across 429, 5xx, 408, incomplete payload, and redirect errors
+[22m[39mTICK-SUMMARY mode=propose scanned=1 skipped=0 changed=0 unchanged=0 backoff=0 inbox_added=0
+  PROVIDER prefix=testprov label=QUOTA status=429 models=1 changed=no reason=QUOTA added=0 grace=0 dead=0 backoff=120s
+TICK requests=8 paid-requests=0 tokens=0 llm-calls=0
+
+[90mstdout[2m | packages/cli/test/tick-c4s-tiers-and-errors.test.ts[2m > [22m[2mC4s S2: Tier-Aware Proposal Generation and Error Suppression in tick[2m > [22m[2mError Suppression in tick[2m > [22m[2mV5(c): inbox invariance across 429, 5xx, 408, incomplete payload, and redirect errors
+[22m[39mTICK-SUMMARY mode=propose scanned=1 skipped=0 changed=0 unchanged=0 backoff=0 inbox_added=0
+  PROVIDER prefix=testprov label=TRANSIENT status=500 models=1 changed=no reason=TRANSIENT added=0 grace=0 dead=0 backoff=120s
+TICK requests=1 paid-requests=0 tokens=0 llm-calls=0
+
+[90mstdout[2m | packages/cli/test/tick-c4s-tiers-and-errors.test.ts[2m > [22m[2mC4s S2: Tier-Aware Proposal Generation and Error Suppression in tick[2m > [22m[2mError Suppression in tick[2m > [22m[2mV5(c): inbox invariance across 429, 5xx, 408, incomplete payload, and redirect errors
+[22m[39mTICK-SUMMARY mode=propose scanned=1 skipped=0 changed=0 unchanged=0 backoff=0 inbox_added=0
+  PROVIDER prefix=testprov label=TRANSIENT status=408 models=1 changed=no reason=TRANSIENT added=0 grace=0 dead=0 backoff=120s
+TICK requests=1 paid-requests=0 tokens=0 llm-calls=0
+
+[90mstdout[2m | packages/cli/test/tick-c4s-tiers-and-errors.test.ts[2m > [22m[2mC4s S2: Tier-Aware Proposal Generation and Error Suppression in tick[2m > [22m[2mError Suppression in tick[2m > [22m[2mV5(c): inbox invariance across 429, 5xx, 408, incomplete payload, and redirect errors
+[22m[39mTICK-SUMMARY mode=propose scanned=1 skipped=0 changed=0 unchanged=0 backoff=0 inbox_added=0
+  PROVIDER prefix=testprov label=TRANSIENT status=200 models=1 changed=no reason=incomplete-pagination added=0 grace=0 dead=0 backoff=120s
+TICK requests=1 paid-requests=0 tokens=0 llm-calls=0
+
+[90mstdout[2m | packages/cli/test/tick-c4s-tiers-and-errors.test.ts[2m > [22m[2mC4s S2: Tier-Aware Proposal Generation and Error Suppression in tick[2m > [22m[2mError Suppression in tick[2m > [22m[2mV5(c): inbox invariance across 429, 5xx, 408, incomplete payload, and redirect errors
+[22m[39mTICK-SUMMARY mode=propose scanned=1 skipped=0 changed=0 unchanged=0 backoff=0 inbox_added=0
+  PROVIDER prefix=testprov label=TRANSIENT status=301 models=1 changed=no reason=redirect-blocked added=0 grace=0 dead=0 backoff=120s
+TICK requests=1 paid-requests=0 tokens=0 llm-calls=0
+
+ [32m✓[39m [30m[45m packages [49m[39m packages/cli/test/tick-c4s-tiers-and-errors.test.ts [2m([22m[2m16 tests[22m[2m)[22m[33m 1697[2mms[22m[39m
+       [33m[2m✓[22m[39m V5(c): inbox invariance across 429, 5xx, 408, incomplete payload, and redirect errors [33m 349[2mms[22m[39m
+ [32m✓[39m [30m[45m packages [49m[39m packages/cli/test/drift.test.ts [2m([22m[2m35 tests[22m[2m)[22m[33m 603[2mms[22m[39m
+[90mstdout[2m | packages/cli/test/webhook-notify.test.ts[2m > [22m[2mM2-02: Outbound Webhook for Actionable Alerts (100% Fake Local 127.0.0.1:0 HTTP Target)[2m > [22m[2mM2-02-T1: delivers versioned actionable alert POST via options.env & config.webhook without leaking URL token
+[22m[39mTICK-SUMMARY mode=propose scanned=1 skipped=0 changed=1 unchanged=0 backoff=0 inbox_added=1
+  PROVIDER prefix=openai label=OK status=200 models=2 changed=yes added=0 grace=0 dead=0
+TICK requests=1 paid-requests=0 tokens=0 llm-calls=0
+
+[90mstdout[2m | packages/cli/test/webhook-notify.test.ts[2m > [22m[2mM2-02: Outbound Webhook for Actionable Alerts (100% Fake Local 127.0.0.1:0 HTTP Target)[2m > [22m[2mM2-02-T1: delivers versioned actionable alert POST via options.env & config.webhook without leaking URL token
+[22m[39mTICK-SUMMARY mode=propose scanned=1 skipped=0 changed=1 unchanged=0 backoff=0 inbox_added=1
+  PROVIDER prefix=openai label=OK status=200 models=2 changed=yes added=0 grace=0 dead=0
+TICK requests=1 paid-requests=0 tokens=0 llm-calls=0
+
+[90mstdout[2m | packages/cli/test/webhook-notify.test.ts[2m > [22m[2mM2-02: Outbound Webhook for Actionable Alerts (100% Fake Local 127.0.0.1:0 HTTP Target)[2m > [22m[2mM2-02-T2: enforces zero-noise suppression when alerts === 0 or webhook URL is unconfigured/disabled
+[22m[39mTICK-SUMMARY mode=propose scanned=1 skipped=0 changed=1 unchanged=0 backoff=0 inbox_added=0
+  PROVIDER prefix=openai label=OK status=200 models=1 changed=yes added=0 grace=0 dead=0
+TICK requests=1 paid-requests=0 tokens=0 llm-calls=0
+
+[90mstdout[2m | packages/cli/test/webhook-notify.test.ts[2m > [22m[2mM2-02: Outbound Webhook for Actionable Alerts (100% Fake Local 127.0.0.1:0 HTTP Target)[2m > [22m[2mM2-02-T2: enforces zero-noise suppression when alerts === 0 or webhook URL is unconfigured/disabled
+[22m[39mTICK-SUMMARY mode=propose scanned=1 skipped=0 changed=1 unchanged=0 backoff=0 inbox_added=1
+  PROVIDER prefix=openai label=OK status=200 models=2 changed=yes added=0 grace=0 dead=0
+TICK requests=1 paid-requests=0 tokens=0 llm-calls=0
+
+[90mstdout[2m | packages/cli/test/webhook-notify.test.ts[2m > [22m[2mM2-02: Outbound Webhook for Actionable Alerts (100% Fake Local 127.0.0.1:0 HTTP Target)[2m > [22m[2mM2-02-T3: handles HTTP 500, 80ms timeout against 2500ms slow target, and 302 redirect non-fatally
+[22m[39mTICK-SUMMARY mode=propose scanned=1 skipped=0 changed=1 unchanged=0 backoff=0 inbox_added=1
+  PROVIDER prefix=openai label=OK status=200 models=2 changed=yes added=0 grace=0 dead=0
+TICK requests=1 paid-requests=0 tokens=0 llm-calls=0
+
+[90mstdout[2m | packages/cli/test/webhook-notify.test.ts[2m > [22m[2mM2-02: Outbound Webhook for Actionable Alerts (100% Fake Local 127.0.0.1:0 HTTP Target)[2m > [22m[2mM2-02-T3: handles HTTP 500, 80ms timeout against 2500ms slow target, and 302 redirect non-fatally
+[22m[39mTICK-SUMMARY mode=propose scanned=1 skipped=0 changed=1 unchanged=0 backoff=0 inbox_added=1
+  PROVIDER prefix=openai label=OK status=200 models=2 changed=yes added=0 grace=0 dead=0
+TICK requests=1 paid-requests=0 tokens=0 llm-calls=0
+
+[90mstdout[2m | packages/cli/test/webhook-notify.test.ts[2m > [22m[2mM2-02: Outbound Webhook for Actionable Alerts (100% Fake Local 127.0.0.1:0 HTTP Target)[2m > [22m[2mM2-02-T3: handles HTTP 500, 80ms timeout against 2500ms slow target, and 302 redirect non-fatally
+[22m[39mTICK-SUMMARY mode=propose scanned=1 skipped=0 changed=1 unchanged=0 backoff=0 inbox_added=1
+  PROVIDER prefix=openai label=OK status=200 models=2 changed=yes added=0 grace=0 dead=0
+TICK requests=1 paid-requests=0 tokens=0 llm-calls=0
+
+ [32m✓[39m [30m[45m packages [49m[39m packages/cli/test/webhook-notify.test.ts [2m([22m[2m5 tests[22m[2m)[22m[33m 1533[2mms[22m[39m
+     [33m[2m✓[22m[39m M2-02-T1: delivers versioned actionable alert POST via options.env & config.webhook without leaking URL token [33m 536[2mms[22m[39m
+     [33m[2m✓[22m[39m M2-02-T2: enforces zero-noise suppression when alerts === 0 or webhook URL is unconfigured/disabled [33m 358[2mms[22m[39m
+     [33m[2m✓[22m[39m M2-02-T3: handles HTTP 500, 80ms timeout against 2500ms slow target, and 302 redirect non-fatally [33m 627[2mms[22m[39m
+[90mstdout[2m | packages/cli/test/wp3-research-loop.test.ts[2m > [22m[2mC45-WP3 Part 3 & 4: Tier 0 <-> Tier 1 Real-Time Research Loop[2m > [22m[2menforces 4-trigger research-queue.json precision and zero-token accounting while excluding healthy & 429/5xx/401
+[22m[39mTICK-SUMMARY mode=propose scanned=4 skipped=1 changed=1 unchanged=0 backoff=0 inbox_added=4
+  PROVIDER prefix=openai label=OK status=200 models=4 changed=yes added=1 grace=1 dead=0
+  PROVIDER prefix=custom-no-list label=SKIPPED status=0 models=0 changed=no reason=unknown-prefix
+  PROVIDER prefix=groq label=QUOTA status=429 models=0 changed=no reason=QUOTA added=0 grace=0 dead=0 backoff=120s
+  PROVIDER prefix=mistral label=TRANSIENT status=503 models=0 changed=no reason=TRANSIENT added=0 grace=0 dead=0 backoff=120s
+  PROVIDER prefix=deepseek label=AUTH_ERROR status=401 models=0 changed=no reason=AUTH_ERROR added=0 grace=0 dead=0 backoff=120s
+TICK requests=11 paid-requests=0 tokens=0 llm-calls=0
+
+[90mstdout[2m | packages/cli/test/wp3-research-loop.test.ts[2m > [22m[2mC45-WP3 Part 3 & 4: Tier 0 <-> Tier 1 Real-Time Research Loop[2m > [22m[2mexecutes closed loop (tick -> secondary blocked -> official resolves & plans router + harness REMOVE_MODEL with detectionLatencyMs)
+[22m[39mTICK-SUMMARY mode=propose scanned=1 skipped=0 changed=1 unchanged=0 backoff=0 inbox_added=1
+  PROVIDER prefix=anthropic label=OK status=200 models=10 changed=yes added=0 grace=0 dead=0
+TICK requests=8 paid-requests=0 tokens=0 llm-calls=0
+
+[90mstdout[2m | packages/cli/test/wp3-research-loop.test.ts[2m > [22m[2mC45-WP3 Part 3 & 4: Tier 0 <-> Tier 1 Real-Time Research Loop[2m > [22m[2mexecutes closed loop (tick -> secondary blocked -> official resolves & plans router + harness REMOVE_MODEL with detectionLatencyMs)
+[22m[39mTICK-SUMMARY mode=propose scanned=1 skipped=0 changed=0 unchanged=1 backoff=0 inbox_added=0
+  PROVIDER prefix=anthropic label=UNCHANGED status=200 models=10 changed=no added=0 grace=0 dead=0
+TICK requests=1 paid-requests=0 tokens=0 llm-calls=0
+
+[90mstdout[2m | packages/cli/test/wp3-research-loop.test.ts[2m > [22m[2mC45-WP3 Part 3 & 4: Tier 0 <-> Tier 1 Real-Time Research Loop[2m > [22m[2mexecutes closed loop (tick -> secondary blocked -> official resolves & plans router + harness REMOVE_MODEL with detectionLatencyMs)
+[22m[39mTICK-SUMMARY mode=propose scanned=1 skipped=0 changed=0 unchanged=1 backoff=0 inbox_added=3
+  PROVIDER prefix=anthropic label=UNCHANGED status=200 models=10 changed=no added=0 grace=0 dead=0
+TICK requests=1 paid-requests=0 tokens=0 llm-calls=0
+
+[90mstdout[2m | packages/cli/test/wp3-research-loop.test.ts[2m > [22m[2mC45-WP3 Part 3 & 4: Tier 0 <-> Tier 1 Real-Time Research Loop[2m > [22m[2menforces 10% per-cycle removal shrink cap (SHRINK_CAP_EXCEEDED) on both 5-model and 10-model router & harness targets
+[22m[39mTICK-SUMMARY mode=propose scanned=1 skipped=0 changed=1 unchanged=0 backoff=0 inbox_added=3
+  PROVIDER prefix=openai label=OK status=200 models=4 changed=yes added=0 grace=0 dead=0
+TICK requests=8 paid-requests=0 tokens=0 llm-calls=0
+
+[90mstdout[2m | packages/cli/test/wp3-research-loop.test.ts[2m > [22m[2mC45-WP3 Part 3 & 4: Tier 0 <-> Tier 1 Real-Time Research Loop[2m > [22m[2menforces UNVERIFIABLE != ABSENT across 5 consecutive ticks (> 48h): absenceCount stays 0 and zero REMOVE_MODEL actions
+[22m[39mTICK-SUMMARY mode=propose scanned=0 skipped=1 changed=0 unchanged=0 backoff=0 inbox_added=0
+  PROVIDER prefix=custom-unscanned label=SKIPPED status=0 models=0 changed=no reason=no-key
+TICK requests=7 paid-requests=0 tokens=0 llm-calls=0
+
+[90mstdout[2m | packages/cli/test/wp3-research-loop.test.ts[2m > [22m[2mC45-WP3 Part 3 & 4: Tier 0 <-> Tier 1 Real-Time Research Loop[2m > [22m[2menforces UNVERIFIABLE != ABSENT across 5 consecutive ticks (> 48h): absenceCount stays 0 and zero REMOVE_MODEL actions
+[22m[39mTICK-SUMMARY mode=propose scanned=0 skipped=1 changed=0 unchanged=0 backoff=0 inbox_added=0
+  PROVIDER prefix=custom-unscanned label=SKIPPED status=0 models=0 changed=no reason=no-key
+TICK requests=2 paid-requests=0 tokens=0 llm-calls=0
+
+[90mstdout[2m | packages/cli/test/wp3-research-loop.test.ts[2m > [22m[2mC45-WP3 Part 3 & 4: Tier 0 <-> Tier 1 Real-Time Research Loop[2m > [22m[2menforces UNVERIFIABLE != ABSENT across 5 consecutive ticks (> 48h): absenceCount stays 0 and zero REMOVE_MODEL actions
+[22m[39mTICK-SUMMARY mode=propose scanned=0 skipped=1 changed=0 unchanged=0 backoff=0 inbox_added=0
+  PROVIDER prefix=custom-unscanned label=SKIPPED status=0 models=0 changed=no reason=no-key
+TICK requests=7 paid-requests=0 tokens=0 llm-calls=0
+
+[90mstdout[2m | packages/cli/test/wp3-research-loop.test.ts[2m > [22m[2mC45-WP3 Part 3 & 4: Tier 0 <-> Tier 1 Real-Time Research Loop[2m > [22m[2menforces UNVERIFIABLE != ABSENT across 5 consecutive ticks (> 48h): absenceCount stays 0 and zero REMOVE_MODEL actions
+[22m[39mTICK-SUMMARY mode=propose scanned=0 skipped=1 changed=0 unchanged=0 backoff=0 inbox_added=0
+  PROVIDER prefix=custom-unscanned label=SKIPPED status=0 models=0 changed=no reason=no-key
+TICK requests=2 paid-requests=0 tokens=0 llm-calls=0
+
+[90mstdout[2m | packages/cli/test/wp3-research-loop.test.ts[2m > [22m[2mC45-WP3 Part 3 & 4: Tier 0 <-> Tier 1 Real-Time Research Loop[2m > [22m[2menforces UNVERIFIABLE != ABSENT across 5 consecutive ticks (> 48h): absenceCount stays 0 and zero REMOVE_MODEL actions
+[22m[39mTICK-SUMMARY mode=propose scanned=0 skipped=1 changed=0 unchanged=0 backoff=0 inbox_added=0
+  PROVIDER prefix=custom-unscanned label=SKIPPED status=0 models=0 changed=no reason=no-key
+TICK requests=7 paid-requests=0 tokens=0 llm-calls=0
+
+ [32m✓[39m [30m[45m packages [49m[39m packages/cli/test/wp3-research-loop.test.ts [2m([22m[2m5 tests[22m[2m)[22m[33m 984[2mms[22m[39m
+     [33m[2m✓[22m[39m executes closed loop (tick -> secondary blocked -> official resolves & plans router + harness REMOVE_MODEL with detectionLatencyMs) [33m 320[2mms[22m[39m
+     [33m[2m✓[22m[39m enforces UNVERIFIABLE != ABSENT across 5 consecutive ticks (> 48h): absenceCount stays 0 and zero REMOVE_MODEL actions [33m 355[2mms[22m[39m
+ [32m✓[39m [30m[45m packages [49m[39m packages/cli/test/wp9-live-check.test.ts [2m([22m[2m10 tests[22m[2m)[22m[33m 3358[2mms[22m[39m
+     [33m[2m✓[22m[39m tracks consent & promotion lifecycle across READY_FOR_PROPOSE_STEP -> READY_FOR_AUTO_SAFE_PROMOTION -> AUTO_SAFE_ACTIVE [33m 364[2mms[22m[39m
+     [33m[2m✓[22m[39m executes compiled CLI live-check --json with exit code 0 when ready and 1 when blocked [33m 1666[2mms[22m[39m
+ [32m✓[39m [30m[45m packages [49m[39m packages/cli/test/maintain-grant-lifecycle.test.ts [2m([22m[2m34 tests[22m[2m)[22m[33m 1001[2mms[22m[39m
+       [33m[2m✓[22m[39m runs full authorize -> grant-status --json (zero-leak) -> apply -> scope/secret/MAC/expiry checks -> revoke lifecycle (including real combo coding-main) [33m 749[2mms[22m[39m
+ [32m✓[39m [30m[45m packages [49m[39m packages/cli/test/c45-wp1-matrix.test.ts [2m([22m[2m27 tests[22m[2m)[22m[32m 172[2mms[22m[39m
+ [32m✓[39m [30m[45m packages [49m[39m packages/core/test/standing-consent.test.ts [2m([22m[2m10 tests[22m[2m)[22m[32m 246[2mms[22m[39m
+ [32m✓[39m [30m[45m packages [49m[39m packages/cli/test/rank-comparator.test.ts [2m([22m[2m25 tests[22m[2m)[22m[32m 64[2mms[22m[39m
+ [32m✓[39m [30m[45m packages [49m[39m packages/daemon/test/daemon.test.ts [2m([22m[2m12 tests[22m[2m)[22m[33m 954[2mms[22m[39m
+     [33m[2m✓[22m[39m M2-02-T1 & M2-02-T2: FastLoop emits webhook once on drift transition, suppresses consecutive identical drift, and fires again after recovery + new drift [33m 326[2mms[22m[39m
+ [32m✓[39m [30m[45m packages [49m[39m packages/core/test/model-tiers-ui-parity.test.ts [2m([22m[2m9 tests[22m[2m)[22m[33m 2437[2mms[22m[39m
+     [33m[2m✓[22m[39m marks exactly the models the 9Router UI lists as available as Tier A [33m 313[2mms[22m[39m
+     [33m[2m✓[22m[39m keeps direct router evidence separate from the shipped provider snapshot [33m 310[2mms[22m[39m
+     [33m[2m✓[22m[39m maps direct connection aliases to every equivalent provider prefix [33m 354[2mms[22m[39m
+     [33m[2m✓[22m[39m can exclude a custom-provider combo reference from stale diagnostics [33m 303[2mms[22m[39m
+     [33m[2m✓[22m[39m enforces 9Router appVersion check against 0.5.119 and classifies non-kv models as UNKNOWN on mismatch (Z2) [33m 301[2mms[22m[39m
+ [32m✓[39m [30m[45m packages [49m[39m packages/adapter-9router/test/ninerouter.test.ts [2m([22m[2m8 tests[22m[2m)[22m[33m 1332[2mms[22m[39m
+     [33m[2m✓[22m[39m M2-03-T1: /v1/models delayed reflection is polled until the added/modified combos are served [33m 332[2mms[22m[39m
+     [33m[2m✓[22m[39m M2-03-T4: stale serving path triggers applier rollback and SQLite returns to the exact pre-apply snapshot [33m 384[2mms[22m[39m
+ [32m✓[39m [30m[45m packages [49m[39m packages/cli/test/maintain-readback.test.ts [2m([22m[2m8 tests[22m[2m)[22m[33m 3338[2mms[22m[39m
+     [33m[2m✓[22m[39m M2-03-T1 CLI: 9Router delayed reflection ends in READBACK ok=yes [33m 587[2mms[22m[39m
+     [33m[2m✓[22m[39m M2-03-T2 CLI: OmniRoute apiKeyEnv + delayed reflection ends in READBACK ok=yes [33m 510[2mms[22m[39m
+     [33m[2m✓[22m[39m M2-03-T4 CLI: stale serving path exits 1 with rollback banner and restored SQLite [33m 536[2mms[22m[39m
+     [33m[2m✓[22m[39m M2-03-T5 CLI: isolated 9Router prints READBACK db-only, never ok=yes [33m 324[2mms[22m[39m
+     [33m[2m✓[22m[39m M2-03-T5 CLI: --dry-run never prints READBACK ok=yes [33m 362[2mms[22m[39m
+     [33m[2m✓[22m[39m M2-03-T1 CLI: maintain create --dry-run never prints READBACK ok=yes [33m 377[2mms[22m[39m
+     [33m[2m✓[22m[39m M2-03-T5 CLI: maintain create isolated prints READBACK db-only, never ok=yes [33m 367[2mms[22m[39m
+ [32m✓[39m [30m[45m packages [49m[39m packages/cli/test/wp5-litellm-adapter.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 217[2mms[22m[39m
+ [32m✓[39m [30m[45m packages [49m[39m packages/core/test/model-tiers.test.ts [2m([22m[2m8 tests[22m[2m)[22m[33m 591[2mms[22m[39m
+ [32m✓[39m [30m[45m packages [49m[39m packages/cli/test/wp5-combo-selector.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 25[2mms[22m[39m
+ [32m✓[39m [30m[45m packages [49m[39m packages/core/test/wp7-tick-gate-and-harness-schedule.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 128[2mms[22m[39m
+ [32m✓[39m [30m[45m packages [49m[39m packages/core/test/model-writer.test.ts [2m([22m[2m13 tests[22m[2m)[22m[33m 1399[2mms[22m[39m
+ [32m✓[39m [30m[45m packages [49m[39m packages/cli/test/combos-probe-r1.test.ts [2m([22m[2m4 tests[22m[2m)[22m[33m 745[2mms[22m[39m
+[90mstdout[2m | packages/cli/test/roundC3s.test.ts[2m > [22m[2mC3s S0a grant validate line[2m > [22m[2mprints GRANT-VALIDATE with forgeable=no computed from S0b result
+[22m[39mGRANT-VALIDATE fn=validateGrantFile file=packages/cli/src/maintain/grant.ts:293 keyStore=secret-hash mac=hmac-sha256 forgeable=no
+
+[90mstdout[2m | packages/cli/test/roundC3s.test.ts[2m > [22m[2mC3s S0b script-written grant refused at apply gate[2m > [22m[2mmaintain apply with literal grant, no secret -> grant-secret-missing, DB BẰNG
+[22m[39mGATE-FORGE | maintain apply | exit=1 | reason=grant-secret-missing | trước=2f188ec5aa3c649b sau=2f188ec5aa3c649b BẰNG | script-written-grant
+
+ [32m✓[39m [30m[45m packages [49m[39m packages/cli/test/stale-official.test.ts [2m([22m[2m26 tests[22m[2m)[22m[32m 159[2mms[22m[39m
+[90mstdout[2m | packages/cli/test/roundC3s.test.ts[2m > [22m[2mC3s S0c tampered and wrong-secret grants[2m > [22m[2mtampered scope with correct secret -> grant-mac-invalid
+[22m[39mGATE-FORGE | maintain apply | exit=1 | reason=grant-mac-invalid | trước=2f188ec5aa3c649b sau=2f188ec5aa3c649b BẰNG | tampered-scope
+
+[90mstdout[2m | packages/cli/test/roundC3s.test.ts[2m > [22m[2mC3s S0c tampered and wrong-secret grants[2m > [22m[2mwrong secret -> grant-secret-wrong
+[22m[39mGATE-FORGE | maintain apply | exit=1 | reason=grant-secret-wrong | trước=2f188ec5aa3c649b sau=2f188ec5aa3c649b BẰNG | wrong-secret
+
+[90mstdout[2m | packages/cli/test/router-db-path.test.ts[2m > [22m[2mC4n/N5: read path and write path resolve the same database[2m > [22m[2mC4o/O1: tick combo resolution reads from configured DB path even in fresh process state (cleared paths)
+[22m[39mTICK-SUMMARY mode=observe scanned=0 skipped=0 changed=0 unchanged=0 backoff=0 inbox_added=0
+TICK requests=7 paid-requests=0 tokens=0 llm-calls=0
+
+[90mstdout[2m | packages/cli/test/router-db-path.test.ts[2m > [22m[2mC4n/N5: read path and write path resolve the same database[2m > [22m[2mC4o/O2: rank preview, tick, doctor, and status all resolve the same configured database path
+[22m[39m{
+  "ok": true,
+  "configFile": "C:\\Users\\<USER>\\.openmausbot\\tmp\\agy\\4c4db2442357\\rs-c4n-dbpath-EymFMn\\o2-config.yaml",
+  "timestamp": "2026-11-25T00:26:44.188Z",
+  "frozen": false,
+  "freezeReason": null,
+  "routers": [
+    {
+      "id": "nine",
+      "adapter": "9router",
+      "validated": false,
+      "health": {
+        "status": "ok",
+        "ok": true,
+        "latencyMs": 37
+      },
+      "readBackLevel": "existence-only",
+      "canonicalReadBackLevel": "existence-only",
+      "degradedReason": "Elevated API key configured for read-back [NINE_ROUTER_API_KEY, elevated]",
+      "keyName": "NINE_ROUTER_API_KEY",
+      "keyScope": "elevated",
+      "applyState": "unwritten",
+      "combos": [
+        {
+          "name": "combo-from-configured",
+          "strategy": "round-robin",
+          "modelCount": 1
+        }
+      ]
+    }
+  ],
+  "targets": [
+    {
+      "target": "router:nine/combo-from-configured",
+      "targetKind": "router",
+      "effectiveLevel": "off",
+      "configuredLevel": "off",
+      "consentGranted": false,
+      "consentExpiresAt": null,
+      "autoSafeEligible": false,
+      "lastReadBack": null
+    },
+    {
+      "target": "router:nine/rs-coder",
+      "targetKind": "router",
+      "effectiveLevel": "off",
+      "configuredLevel": "off",
+      "consentGranted": false,
+      "consentExpiresAt": null,
+      "autoSafeEligible": false,
+      "lastReadBack": null
+    }
+  ]
+}
+
+[90mstdout[2m | packages/cli/test/roundC3s.test.ts[2m > [22m[2mC3s S0c tampered and wrong-secret grants[2m > [22m[2mexpired -> grant-expired
+[22m[39mGATE-FORGE | maintain apply | exit=1 | reason=grant-expired | trước=2f188ec5aa3c649b sau=2f188ec5aa3c649b BẰNG | expired
+
+[90mstdout[2m | packages/cli/test/router-db-path.test.ts[2m > [22m[2mC4n/N5: read path and write path resolve the same database[2m > [22m[2mC4o/O2: rank preview, tick, doctor, and status all resolve the same configured database path
+[22m[39m{
+  "ok": true,
+  "ready": true,
+  "configError": null,
+  "os": "win32",
+  "arch": "x64",
+  "node": "v24.18.0",
+  "pnpm": "10.20.0",
+  "build": true,
+  "stateDir": "C:\\Users\\<USER>\\AppData\\Local\\routersync",
+  "tickStateDir": "C:\\Users\\<USER>\\.openmausbot\\tmp\\agy\\4c4db2442357\\routersync-test-state-rROqtI",
+  "syncStateDir": "C:\\Users\\<USER>\\AppData\\Local\\routersync",
+  "configPath": "C:\\Users\\<USER>\\.openmausbot\\tmp\\agy\\4c4db2442357\\rs-c4n-dbpath-EymFMn\\o2-config.yaml",
+  "rankingPolicy": {
+    "present": true,
+    "path": "C:\\Users\\<USER>\\AppData\\Roaming\\routersync\\ranking.yaml"
+  },
+  "routers": [
+    {
+      "routerId": "nine",
+      "adapter": "9router",
+      "dbPath": "C:\\Users\\<USER>\\.openmausbot\\tmp\\agy\\4c4db2442357\\rs-c4n-dbpath-EymFMn\\o2-configured.sqlite",
+      "found": true,
+      "readable": true,
+      "tiers": {
+        "A": 1,
+        "B": 0,
+        "C": 0,
+        "total": 1
+      },
+      "basis": "combo-members",
+      "available": 0
+    }
+  ],
+  "apps": [
+    {
+      "name": "Hermes Agent",
+      "configPath": null,
+      "detected": false
+    },
+    {
+      "name": "DSH Desktop",
+      "configPath": null,
+      "detected": false
+    },
+    {
+      "name": "Claude Code",
+      "configPath": "C:\\Users\\<USER>\\.claude.json",
+      "detected": true
+    },
+    {
+      "name": "OpenCode",
+      "configPath": "C:\\Users\\<USER>\\.config\\opencode\\opencode.json",
+      "detected": true
+    },
+    {
+      "name": "Codex",
+      "configPath": "C:\\Users\\<USER>\\.codex\\config.toml",
+      "detected": true
+    },
+    {
+      "name": "Antigravity",
+      "configPath": "C:\\Users\\<USER>\\.gemini\\antigravity",
+      "detected": true
+    }
+  ],
+  "schedule": {
+    "installed": false,
+    "detail": "No routersync tick schedule detected. Run `routersync schedule install --dry-run` or `routersync schedule install`.",
+    "activeTier": "none",
+    "configuredIntervalMinutes": 15,
+    "lastTickAt": null,
+    "lastTickAgeMinutes": null,
+    "staleTickWarning": false,
+    "staleThresholdMinutes": 30
+  },
+  "harnessSchedules": [
+    {
+      "harnessId": "hermes",
+      "displayName": "Hermes Agent (Nous Research)",
+      "detected": true,
+      "zeroTokenNativeCapable": true,
+      "recommendedTier": "harness-native",
+      "activeTier": "none",
+      "detail": "Supports Tier 1 zero-token native schedule (built-in-gateway-cron)"
+    },
+    {
+      "harnessId": "claude-code",
+      "displayName": "Anthropic Claude Code",
+      "detected": true,
+      "zeroTokenNativeCapable": false,
+      "recommendedTier": "os-scheduler",
+      "activeTier": "none",
+      "detail": "Uses Tier 2 OS scheduler + Tier 3 MCP tick_if_due (llm-prompt-schedulers)"
+    },
+    {
+      "harnessId": "codex",
+      "displayName": "OpenAI Codex CLI (and Desktop / IDE Extension)",
+      "detected": true,
+      "zeroTokenNativeCapable": false,
+      "recommendedTier": "os-scheduler",
+      "activeTier": "none",
+      "detail": "Uses Tier 2 OS scheduler + Tier 3 MCP tick_if_due (desktop-cloud-llm-automations)"
+    },
+    {
+      "harnessId": "antigravity",
+      "displayName": "Google Antigravity (App, IDE, CLI agy, SDK)",
+      "detected": true,
+      "zeroTokenNativeCapable": true,
+      "recommendedTier": "harness-native",
+      "activeTier": "none",
+      "detail": "Supports Tier 1 zero-token native schedule (sidecar-schedule-builtin)"
+    },
+    {
+      "harnessId": "opencode",
+      "displayName": "OpenCode",
+      "detected": true,
+      "zeroTokenNativeCapable": false,
+      "recommendedTier": "os-scheduler",
+      "activeTier": "none",
+      "detail": "Uses Tier 2 OS scheduler + Tier 3 MCP tick_if_due (none)"
+    },
+    {
+      "harnessId": "cursor",
+      "displayName": "Cursor IDE (and Cursor CLI agent)",
+      "detected": true,
+      "zeroTokenNativeCapable": false,
+      "recommendedTier": "os-scheduler",
+      "activeTier": "none",
+      "detail": "Uses Tier 2 OS scheduler + Tier 3 MCP tick_if_due (cloud-automations-and-agent-sdk)"
+    },
+    {
+      "harnessId": "grok-bot",
+      "displayName": "xAI Grok Bot (Cloud) [companion local CLI: Grok Build]",
+      "detected": false,
+      "zeroTokenNativeCapable": false,
+      "recommendedTier": "os-scheduler",
+      "activeTier": "none",
+      "detail": "Uses Tier 2 OS scheduler + Tier 3 MCP tick_if_due (cloud-llm-routines)"
+    },
+    {
+      "harnessId": "openmausbot",
+      "displayName": "OpenMausBot",
+      "detected": false,
+      "zeroTokenNativeCapable": false,
+      "recommendedTier": "os-scheduler",
+      "activeTier": "none",
+      "detail": "Uses Tier 2 OS scheduler + Tier 3 MCP tick_if_due (built-in-croner-llm-routines)"
+    },
+    {
+      "harnessId": "dsh",
+      "displayName": "DeepSeek Harness (dsh)",
+      "detected": false,
+      "zeroTokenNativeCapable": false,
+      "recommendedTier": "os-scheduler",
+      "activeTier": "none",
+      "detail": "Uses Tier 2 OS scheduler + Tier 3 MCP tick_if_due (built-in-dsh-schedule-llm-prompts)"
+    }
+  ],
+  "nextSteps": [
+    "Set up a scheduled `routersync tick` run (`routersync schedule install`) for zero-token catalogue watches."
+  ],
+  "circularWarnings": [],
+  "validationWarnings": [],
+  "authKeys": [
+    {
+      "routerId": "nine",
+      "adapter": "9router",
+      "keyName": "NINE_ROUTER_API_KEY",
+      "keyScope": "elevated"
+    }
+  ],
+  "recommendations": [
+    "Router 'nine' (9router): Đã có bằng chứng sao lưu gần nhất (2026-11-10T17:17:32.821Z).",
+    "Router 'nine' (9router) is using elevated key NINE_ROUTER_API_KEY. Consider setting a client-scoped key (NINEROUTER_CLIENT_KEY) for read-back per least privilege."
+  ],
+  "timestamp": "2026-11-25T00:26:44.189Z",
+  "lowResource": true,
+  "lowResourceReason": "auto: availableMem 1.9 GiB < 2 GiB"
+}
+
+[90mstdout[2m | packages/cli/test/router-db-path.test.ts[2m > [22m[2mC4n/N5: read path and write path resolve the same database[2m > [22m[2mC4o/O2: rank preview, tick, doctor, and status all resolve the same configured database path
+[22m[39mTICK-SUMMARY mode=observe scanned=0 skipped=0 changed=0 unchanged=0 backoff=0 inbox_added=0
+TICK requests=7 paid-requests=0 tokens=0 llm-calls=0
+
+ [32m✓[39m [30m[45m packages [49m[39m packages/cli/test/router-db-path.test.ts [2m([22m[2m8 tests[22m[2m)[22m[33m 1771[2mms[22m[39m
+     [33m[2m✓[22m[39m C4o/O1: tick combo resolution reads from configured DB path even in fresh process state (cleared paths) [33m 357[2mms[22m[39m
+     [33m[2m✓[22m[39m C4o/O2: rank preview, tick, doctor, and status all resolve the same configured database path [33m 823[2mms[22m[39m
+[90mstdout[2m | packages/cli/test/roundC3s.test.ts[2m > [22m[2mC3s S0c tampered and wrong-secret grants[2m > [22m[2mwrong scope with correct secret -> grant-scope
+[22m[39mGATE-FORGE | maintain apply | exit=1 | reason=grant-scope | trước=2f188ec5aa3c649b sau=2f188ec5aa3c649b BẰNG | wrong-scope
+
+[90mstdout[2m | packages/cli/test/roundC3s.test.ts[2m > [22m[2mC3s S0c tampered and wrong-secret grants[2m > [22m[2mwrong planHash with correct secret -> plan-hash-mismatch
+[22m[39mGATE-FORGE | maintain apply | exit=1 | reason=unknown | trước=2f188ec5aa3c649b sau=2f188ec5aa3c649b BẰNG | wrong-planHash
+
+ [32m✓[39m [30m[45m packages [49m[39m packages/adapter-omniroute/test/omniroute.test.ts [2m([22m[2m7 tests[22m[2m)[22m[33m 1126[2mms[22m[39m
+     [33m[2m✓[22m[39m M2-03-T4: stale /api/combos (including stale models) triggers rollback and exact SQLite restore [33m 301[2mms[22m[39m
+ [32m✓[39m [30m[45m packages [49m[39m packages/core/test/research-ledger.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 39[2mms[22m[39m
+ [32m✓[39m [30m[45m packages [49m[39m packages/cli/test/combos-reorder.test.ts [2m([22m[2m12 tests[22m[2m)[22m[32m 9[2mms[22m[39m
+ [32m✓[39m [30m[45m packages [49m[39m packages/cli/test/c4i-fixes.test.ts [2m([22m[2m23 tests[22m[2m)[22m[32m 55[2mms[22m[39m
+ [32m✓[39m [30m[45m packages [49m[39m packages/mcp-server/test/submit-research.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 256[2mms[22m[39m
+[90mstdout[2m | packages/core/test/assert-not-live.test.ts[2m > [22m[2mlive-DB safety rails (assertNotLiveRouterDb / isSameDbFile)[2m > [22m[2misSameDbFile[2m > [22m[2msymlink resolves to the same file (skipped: symlink creation not permitted on this environment (EPERM))
+[22m[39m[skip] symlink: symlink creation not permitted on this environment (EPERM)
+
+[90mstdout[2m | packages/cli/test/roundC3s.test.ts[2m > [22m[2mC3s S0d valid grant reaches write layer on tmp DB copy[2m > [22m[2mapply with correct secret + planHash writes tmp DB, real DB hash BẰNG
+[22m[39mGATE-VALID | maintain apply | exit=0 | tmp-db-changed=yes | thật-băm=BẰNG
+
+ [32m✓[39m [30m[45m packages [49m[39m packages/core/test/assert-not-live.test.ts [2m([22m[2m20 tests[22m[2m | [22m[33m1 skipped[39m[2m)[22m[33m 2422[2mms[22m[39m
+       [33m[2m✓[22m[39m never conflates distinct files that share a directory (win32 file index keeps full precision) [33m 1021[2mms[22m[39m
+[90mstdout[2m | packages/cli/test/roundC3s.test.ts[2m > [22m[2mC3s S0e agents gate[2m > [22m[2magents update with script-written grant, no secret -> grant-secret-missing
+[22m[39mGATE-FORGE | agents update | exit=1 | reason=grant-secret-missing | trước=581d35d59df5ae62 sau=581d35d59df5ae62 BẰNG | script-written-grant
+
+ [32m✓[39m [30m[45m packages [49m[39m packages/cli/test/roundC3s.test.ts [2m([22m[2m9 tests[22m[2m)[22m[33m 12335[2mms[22m[39m
+     [33m[2m✓[22m[39m maintain apply with literal grant, no secret -> grant-secret-missing, DB BẰNG [33m 693[2mms[22m[39m
+     [33m[2m✓[22m[39m tampered scope with correct secret -> grant-mac-invalid [33m 813[2mms[22m[39m
+     [33m[2m✓[22m[39m wrong secret -> grant-secret-wrong [33m 730[2mms[22m[39m
+     [33m[2m✓[22m[39m expired -> grant-expired [33m 724[2mms[22m[39m
+     [33m[2m✓[22m[39m wrong scope with correct secret -> grant-scope [33m 732[2mms[22m[39m
+     [33m[2m✓[22m[39m wrong planHash with correct secret -> plan-hash-mismatch [33m 779[2mms[22m[39m
+     [33m[2m✓[22m[39m apply with correct secret + planHash writes tmp DB, real DB hash BẰNG [33m 6939[2mms[22m[39m
+     [33m[2m✓[22m[39m agents update with script-written grant, no secret -> grant-secret-missing [33m 740[2mms[22m[39m
+ [32m✓[39m [30m[45m packages [49m[39m packages/cli/test/status-down.test.ts [2m([22m[2m4 tests[22m[2m)[22m[33m 509[2mms[22m[39m
+ [32m✓[39m [30m[45m packages [49m[39m packages/cli/test/apps.test.ts [2m([22m[2m25 tests[22m[2m)[22m[32m 110[2mms[22m[39m
+ [32m✓[39m [30m[45m packages [49m[39m packages/mcp-server/test/wp7-wp8-mcp-schedule-and-cost.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 278[2mms[22m[39m
+[90mstdout[2m | packages/cli/test/wp8-tick-and-research-cost.test.ts[2m > [22m[2mC45-WP8: Tick Cost Accounting, Toast & CLI Research Weekly Cap[2m > [22m[2menforces 5-session weekly cap in CLI research submit and reports budgetExceeded read-only in research queue
+[22m[39mRESEARCH-SUBMIT id=openai/gpt-4o-mini-1 conclusion=ĐÃ-XÁC-NHẬN-CÒN sourceTier=official url=https://platform.openai.com/docs/models snippet_len=14 sessionId=cli-sess-1 status=ACCEPTED (untrusted evidence saved, zero router writes)
+
+[90mstdout[2m | packages/cli/test/wp8-tick-and-research-cost.test.ts[2m > [22m[2mC45-WP8: Tick Cost Accounting, Toast & CLI Research Weekly Cap[2m > [22m[2menforces 5-session weekly cap in CLI research submit and reports budgetExceeded read-only in research queue
+[22m[39mRESEARCH-SUBMIT id=openai/gpt-4o-mini-2 conclusion=ĐÃ-XÁC-NHẬN-CÒN sourceTier=official url=https://platform.openai.com/docs/models snippet_len=14 sessionId=cli-sess-2 status=ACCEPTED (untrusted evidence saved, zero router writes)
+
+[90mstdout[2m | packages/cli/test/wp8-tick-and-research-cost.test.ts[2m > [22m[2mC45-WP8: Tick Cost Accounting, Toast & CLI Research Weekly Cap[2m > [22m[2menforces 5-session weekly cap in CLI research submit and reports budgetExceeded read-only in research queue
+[22m[39mRESEARCH-SUBMIT id=openai/gpt-4o-mini-3 conclusion=ĐÃ-XÁC-NHẬN-CÒN sourceTier=official url=https://platform.openai.com/docs/models snippet_len=14 sessionId=cli-sess-3 status=ACCEPTED (untrusted evidence saved, zero router writes)
+
+[90mstdout[2m | packages/cli/test/wp8-tick-and-research-cost.test.ts[2m > [22m[2mC45-WP8: Tick Cost Accounting, Toast & CLI Research Weekly Cap[2m > [22m[2menforces 5-session weekly cap in CLI research submit and reports budgetExceeded read-only in research queue
+[22m[39mRESEARCH-SUBMIT id=openai/gpt-4o-mini-4 conclusion=ĐÃ-XÁC-NHẬN-CÒN sourceTier=official url=https://platform.openai.com/docs/models snippet_len=14 sessionId=cli-sess-4 status=ACCEPTED (untrusted evidence saved, zero router writes)
+
+[90mstdout[2m | packages/cli/test/wp8-tick-and-research-cost.test.ts[2m > [22m[2mC45-WP8: Tick Cost Accounting, Toast & CLI Research Weekly Cap[2m > [22m[2menforces 5-session weekly cap in CLI research submit and reports budgetExceeded read-only in research queue
+[22m[39mRESEARCH-SUBMIT id=openai/gpt-4o-mini-5 conclusion=ĐÃ-XÁC-NHẬN-CÒN sourceTier=official url=https://platform.openai.com/docs/models snippet_len=14 sessionId=cli-sess-5 status=ACCEPTED (untrusted evidence saved, zero router writes)
+
+ [32m✓[39m [30m[45m packages [49m[39m packages/cli/test/wp8-tick-and-research-cost.test.ts [2m([22m[2m3 tests[22m[2m)[22m[33m 802[2mms[22m[39m
+     [33m[2m✓[22m[39m records deterministic tier0_tick cost ledger entry with per-domain HTTP counts and prints --toast line [33m 390[2mms[22m[39m
+ [32m✓[39m [30m[45m packages [49m[39m packages/cli/test/combos-reliability.test.ts [2m([22m[2m13 tests[22m[2m)[22m[32m 108[2mms[22m[39m
+ [32m✓[39m [30m[45m packages [49m[39m packages/cli/test/provider-registry-local.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 200[2mms[22m[39m
+ [32m✓[39m [30m[45m packages [49m[39m packages/cli/test/round63.test.ts [2m([22m[2m23 tests[22m[2m)[22m[32m 7[2mms[22m[39m
+ [32m✓[39m [30m[45m packages [49m[39m packages/cli/test/doctor-json.test.ts [2m([22m[2m12 tests[22m[2m)[22m[33m 7368[2mms[22m[39m
+     [33m[2m✓[22m[39m emits valid JSON with all required top-level fields [33m 576[2mms[22m[39m
+     [33m[2m✓[22m[39m rankingPolicy has present and path fields [33m 565[2mms[22m[39m
+     [33m[2m✓[22m[39m every router entry has the required fields [33m 497[2mms[22m[39m
+     [33m[2m✓[22m[39m every app entry has the required fields [33m 558[2mms[22m[39m
+     [33m[2m✓[22m[39m schedule has installed and detail fields [33m 517[2mms[22m[39m
+     [33m[2m✓[22m[39m honors options.configPath in doctor report [33m 523[2mms[22m[39m
+     [33m[2m✓[22m[39m labels tier A as combo members and reports available models [33m 882[2mms[22m[39m
+     [33m[2m✓[22m[39m reads sync-last.json from ROUTERSYNC_SYNC_STATE_DIR override [33m 525[2mms[22m[39m
+     [33m[2m✓[22m[39m on an empty machine, ready is false and nextSteps is non-empty [33m 494[2mms[22m[39m
+     [33m[2m✓[22m[39m does not print any secret or personal path in report object and JSON [33m 523[2mms[22m[39m
+     [33m[2m✓[22m[39m prints "Khuyến nghị" with the recommendation lines [33m 597[2mms[22m[39m
+     [33m[2m✓[22m[39m the text output and the JSON output carry the same recommendations [33m 1107[2mms[22m[39m
+ [32m✓[39m [30m[45m packages [49m[39m packages/cli/test/providers-safety.test.ts [2m([22m[2m10 tests[22m[2m)[22m[32m 109[2mms[22m[39m
+[90mstdout[2m | packages/cli/test/r1-1-skipreason.test.ts[2m > [22m[2mR1.1: skipReason reset on 304 and unchanged-hash branches[2m > [22m[2mCycle 1 (429) -> Cycle 2 (304) -> Cycle 3 (200 unchanged hash)
+[22m[39mTICK-SUMMARY mode=propose scanned=1 skipped=0 changed=0 unchanged=0 backoff=0 inbox_added=0
+  PROVIDER prefix=fake-r1 label=QUOTA status=429 models=1 changed=no reason=QUOTA added=0 grace=0 dead=0 backoff=120s
+TICK requests=8 paid-requests=0 tokens=0 llm-calls=0
+
+[90mstdout[2m | packages/cli/test/r1-1-skipreason.test.ts[2m > [22m[2mR1.1: skipReason reset on 304 and unchanged-hash branches[2m > [22m[2mCycle 1 (429) -> Cycle 2 (304) -> Cycle 3 (200 unchanged hash)
+[22m[39mVERIFY-SUMMARY models=255 remaining=0 proposals=0
+  LABEL ĐÃ-XÁC-NHẬN-CÒN: 0
+  LABEL ĐÃ-XÁC-NHẬN-NGỪNG: 0
+  LABEL SẮP-NGỪNG: 0
+  LABEL NGHI-NGỪNG: 0
+  LABEL CHƯA-XÁC-MINH: 0
+  LABEL QUOTA: 0
+  LABEL CHƯA-QUÉT: 255
+  LABEL QUOTA-NO-LIST: 0
+VERIFY requests=7 paid=0 tokens=0 llm-calls=0
+
+[90mstdout[2m | packages/cli/test/r1-1-skipreason.test.ts[2m > [22m[2mR1.1: skipReason reset on 304 and unchanged-hash branches[2m > [22m[2mCycle 1 (429) -> Cycle 2 (304) -> Cycle 3 (200 unchanged hash)
+[22m[39mTICK-SUMMARY mode=propose scanned=1 skipped=0 changed=0 unchanged=1 backoff=0 inbox_added=0
+  PROVIDER prefix=fake-r1 label=UNCHANGED status=304 models=1 changed=no reason=304_NOT_MODIFIED added=0 grace=0 dead=0
+TICK requests=8 paid-requests=0 tokens=0 llm-calls=0
+
+[90mstdout[2m | packages/cli/test/r1-1-skipreason.test.ts[2m > [22m[2mR1.1: skipReason reset on 304 and unchanged-hash branches[2m > [22m[2mCycle 1 (429) -> Cycle 2 (304) -> Cycle 3 (200 unchanged hash)
+[22m[39mVERIFY-SUMMARY models=255 remaining=0 proposals=0
+  LABEL ĐÃ-XÁC-NHẬN-CÒN: 1
+  LABEL ĐÃ-XÁC-NHẬN-NGỪNG: 0
+  LABEL SẮP-NGỪNG: 0
+  LABEL NGHI-NGỪNG: 0
+  LABEL CHƯA-XÁC-MINH: 0
+  LABEL QUOTA: 0
+  LABEL CHƯA-QUÉT: 254
+  LABEL QUOTA-NO-LIST: 0
+VERIFY requests=7 paid=0 tokens=0 llm-calls=0
+
+[90mstdout[2m | packages/cli/test/r1-1-skipreason.test.ts[2m > [22m[2mR1.1: skipReason reset on 304 and unchanged-hash branches[2m > [22m[2mCycle 1 (429) -> Cycle 2 (304) -> Cycle 3 (200 unchanged hash)
+[22m[39mTICK-SUMMARY mode=propose scanned=1 skipped=0 changed=0 unchanged=1 backoff=0 inbox_added=0
+  PROVIDER prefix=fake-r1 label=UNCHANGED status=200 models=1 changed=no added=0 grace=0 dead=0
+TICK requests=8 paid-requests=0 tokens=0 llm-calls=0
+
+[90mstdout[2m | packages/cli/test/r1-1-skipreason.test.ts[2m > [22m[2mR1.1: skipReason reset on 304 and unchanged-hash branches[2m > [22m[2mCycle 1 (429) -> Cycle 2 (304) -> Cycle 3 (200 unchanged hash)
+[22m[39mVERIFY-SUMMARY models=255 remaining=0 proposals=0
+  LABEL ĐÃ-XÁC-NHẬN-CÒN: 1
+  LABEL ĐÃ-XÁC-NHẬN-NGỪNG: 0
+  LABEL SẮP-NGỪNG: 0
+  LABEL NGHI-NGỪNG: 0
+  LABEL CHƯA-XÁC-MINH: 0
+  LABEL QUOTA: 0
+  LABEL CHƯA-QUÉT: 254
+  LABEL QUOTA-NO-LIST: 0
+VERIFY requests=7 paid=0 tokens=0 llm-calls=0
+
+ [32m✓[39m [30m[45m packages [49m[39m packages/cli/test/r1-1-skipreason.test.ts [2m([22m[2m1 test[22m[2m)[22m[33m 1034[2mms[22m[39m
+     [33m[2m✓[22m[39m Cycle 1 (429) -> Cycle 2 (304) -> Cycle 3 (200 unchanged hash) [33m 1032[2mms[22m[39m
+ [32m✓[39m [30m[45m packages [49m[39m packages/core/test/wp8-zero-llm-and-allowlist.test.ts [2m([22m[2m6 tests[22m[2m)[22m[33m 376[2mms[22m[39m
+ [32m✓[39m [30m[45m packages [49m[39m packages/cli/test/schedule-c4q.test.ts [2m([22m[2m15 tests[22m[2m)[22m[32m 27[2mms[22m[39m
+ [32m✓[39m [30m[45m packages [49m[39m packages/core/test/model-state-omniroute.test.ts [2m([22m[2m3 tests[22m[2m)[22m[33m 360[2mms[22m[39m
+ [32m✓[39m [30m[45m packages [49m[39m packages/core/test/adaptive-interview.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 12[2mms[22m[39m
+[90mstdout[2m | packages/cli/test/roundC3t.test.ts[2m > [22m[2mC3t T0c maintain create gate[2m > [22m[2mGATE-FORGE maintain create with script-written grant -> grant-secret-missing
+[22m[39mGATE-FORGE | maintain create | exit=1 | reason=grant-secret-missing | trước=858484a75d2a9464 sau=858484a75d2a9464 BẰNG | script-written-grant
+
+ [32m✓[39m [30m[45m packages [49m[39m packages/core/test/planner.test.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 8[2mms[22m[39m
+ [32m✓[39m [30m[45m packages [49m[39m packages/cli/test/roundC3m-pipe.test.ts [2m([22m[2m11 tests[22m[2m)[22m[33m 3321[2mms[22m[39m
+     [33m[2m✓[22m[39m 5 pipe cases stdin closed non-TTY refuse [33m 2943[2mms[22m[39m
+ [32m✓[39m [30m[45m packages [49m[39m packages/cli/test/agents.test.ts [2m([22m[2m8 tests[22m[2m)[22m[33m 312[2mms[22m[39m
+ [32m✓[39m [30m[45m packages [49m[39m packages/cli/test/combos-budget.test.ts [2m([22m[2m12 tests[22m[2m)[22m[32m 48[2mms[22m[39m
+[90mstdout[2m | packages/cli/test/roundC3t.test.ts[2m > [22m[2mC3t T0c2 maintain create valid grant[2m > [22m[2mGATE-VALID maintain create with secret writes tmp DB, real DB hash stays BẰNG
+[22m[39mGATE-VALID | maintain create | exit=0 | tmp-db-changed=yes | thật-băm=BẰNG
+
+ [32m✓[39m [30m[45m packages [49m[39m packages/core/test/wp8-cost-ledger.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 168[2mms[22m[39m
+[90mstdout[2m | packages/cli/test/roundC3t.test.ts[2m > [22m[2mC3t T0d grant file has no plaintext secret[2m > [22m[2mGRANT-FILE-CHECK plaintext-secret-in-file=no
+[22m[39mGRANT-FILE-CHECK plaintext-secret-in-file=no
+
+[90mstdout[2m | packages/cli/test/roundC3t.test.ts[2m > [22m[2mC3t T0e agents tty-only needs confirm[2m > [22m[2mGATE-UNIT agents tty-only without grant -> confirm-required
+[22m[39mGATE-UNIT | agents tty-only | authorized=no | reason=confirm-required
+
+[90mstdout[2m | packages/cli/test/roundC3t.test.ts[2m > [22m[2mC3t T2b coverage sum check[2m > [22m[2mcomputeCoverage ok+quota+unscanned = total (kiểm: tổng bằng)
+[22m[39mCOVERAGE-UNIT ok=2 quota=1 unscanned=1 sum=4 total=4 (kiểm: tổng bằng)
+
+ [32m✓[39m [30m[45m packages [49m[39m packages/cli/test/roundC3t.test.ts [2m([22m[2m5 tests[22m[2m)[22m[33m 6970[2mms[22m[39m
+     [33m[2m✓[22m[39m GATE-FORGE maintain create with script-written grant -> grant-secret-missing [33m 683[2mms[22m[39m
+     [33m[2m✓[22m[39m GATE-VALID maintain create with secret writes tmp DB, real DB hash stays BẰNG [33m 6107[2mms[22m[39m
+[90mstdout[2m | packages/cli/test/r3-1-safeguards.test.ts[2m > [22m[2mR3.1: 429/403/5xx do not generate removal proposals[2m > [22m[2mHTTP 429 response generates zero removal proposals and preserves baseline
+[22m[39mTICK-SUMMARY mode=propose scanned=1 skipped=0 changed=0 unchanged=0 backoff=0 inbox_added=0
+  PROVIDER prefix=fake-r3 label=QUOTA status=429 models=2 changed=no reason=QUOTA added=0 grace=0 dead=0 backoff=120s
+TICK requests=8 paid-requests=0 tokens=0 llm-calls=0
+
+ [32m✓[39m [30m[45m packages [49m[39m packages/cli/test/combos-stale-omniroute.test.ts [2m([22m[2m6 tests[22m[2m)[22m[33m 673[2mms[22m[39m
+[90mstdout[2m | packages/cli/test/r3-1-safeguards.test.ts[2m > [22m[2mR3.1: 429/403/5xx do not generate removal proposals[2m > [22m[2mHTTP 403 response generates zero removal proposals and preserves baseline
+[22m[39mTICK-SUMMARY mode=propose scanned=1 skipped=0 changed=0 unchanged=0 backoff=0 inbox_added=1
+  PROVIDER prefix=fake-r3 label=AUTH_ERROR status=403 models=2 changed=no reason=AUTH_ERROR added=0 grace=0 dead=0 backoff=120s
+TICK requests=8 paid-requests=0 tokens=0 llm-calls=0
+
+ [32m✓[39m [30m[45m packages [49m[39m packages/cli/test/r3-1-safeguards.test.ts [2m([22m[2m2 tests[22m[2m)[22m[33m 688[2mms[22m[39m
+     [33m[2m✓[22m[39m HTTP 429 response generates zero removal proposals and preserves baseline [33m 404[2mms[22m[39m
+[90mstdout[2m | packages/cli/test/roundC3n.test.ts[2m > [22m[2mC3n N1(d) write gates via subprocess (pipe stdin)[2m > [22m[2msync --apply refuses on pipe stdin
+[22m[39mGATE | sync --apply | exit=1 | refused=Write Execution Blocked | trước=43aceb49910cb17d sau=43aceb49910cb17d BẰNG
+
+[90mstdout[2m | packages/cli/test/roundC3n.test.ts[2m > [22m[2mC3n N1(d) write gates via subprocess (pipe stdin)[2m > [22m[2mundo --apply refuses on pipe stdin
+[22m[39mGATE | undo --apply | exit=1 | refused=Write Execution Blocked | trước=43aceb49910cb17d sau=43aceb49910cb17d BẰNG
+
+[90mstdout[2m | packages/cli/test/roundC3n.test.ts[2m > [22m[2mC3n N1(d) write gates via subprocess (pipe stdin)[2m > [22m[2mapply --write refuses on pipe stdin
+[22m[39mGATE | apply --write | exit=1 | refused=Write Execution Blocked | trước=43aceb49910cb17d sau=43aceb49910cb17d BẰNG
+
+[90mstdout[2m | packages/cli/test/roundC3n.test.ts[2m > [22m[2mC3n N1(d) write gates via subprocess (pipe stdin)[2m > [22m[2mmaintain apply refuses on pipe stdin
+[22m[39mGATE | maintain apply | exit=1 | refused=MAINTAIN-REFUSED | trước=43aceb49910cb17d sau=43aceb49910cb17d BẰNG
+
+ [32m✓[39m [30m[45m packages [49m[39m packages/cli/test/c14-behaviors.test.ts [2m([22m[2m10 tests[22m[2m)[22m[33m 3997[2mms[22m[39m
+     [33m[2m✓[22m[39m shows forced-on mode and manual reason [33m 1337[2mms[22m[39m
+     [33m[2m✓[22m[39m shows forced-off mode with null reason [33m 1835[2mms[22m[39m
+[90mstdout[2m | packages/cli/test/roundC3n.test.ts[2m > [22m[2mC3n N1(d) write gates via subprocess (pipe stdin)[2m > [22m[2mrollback --write refuses on pipe stdin
+[22m[39mGATE | rollback fake1 --write | exit=1 | refused=Write Execution Blocked | trước=43aceb49910cb17d sau=43aceb49910cb17d BẰNG
+
+ [32m✓[39m [30m[45m packages [49m[39m packages/cli/test/roundC3n.test.ts [2m([22m[2m7 tests[22m[2m)[22m[33m 4134[2mms[22m[39m
+     [33m[2m✓[22m[39m sync --apply refuses on pipe stdin [33m 626[2mms[22m[39m
+     [33m[2m✓[22m[39m undo --apply refuses on pipe stdin [33m 746[2mms[22m[39m
+     [33m[2m✓[22m[39m apply --write refuses on pipe stdin [33m 926[2mms[22m[39m
+     [33m[2m✓[22m[39m maintain apply refuses on pipe stdin [33m 1049[2mms[22m[39m
+     [33m[2m✓[22m[39m rollback --write refuses on pipe stdin [33m 717[2mms[22m[39m
+ [32m✓[39m [30m[45m packages [49m[39m packages/cli/test/combos-plan.test.ts [2m([22m[2m13 tests[22m[2m)[22m[32m 20[2mms[22m[39m
+[90mstdout[2m | packages/cli/test/wp7-schedule-ladder.test.ts[2m > [22m[2mC45-WP7: Linux Crontab Artifact, Fallback & 9-Harness Dry-Run CLI[2m > [22m[2mfalls back from systemd to cron on Linux when --scheduler auto sees unavailable systemctl --user
+[22m[39mSCHEDULE-INSTALLED os=linux scheduler=cron interval=15m
+
+[90mstdout[2m | packages/cli/test/wp7-schedule-ladder.test.ts[2m > [22m[2mC45-WP7: Linux Crontab Artifact, Fallback & 9-Harness Dry-Run CLI[2m > [22m[2mfalls back from systemd to cron on Linux when --scheduler auto sees unavailable systemctl --user
+[22m[39mSCHEDULE-UNINSTALLED os=linux task=routersync-daemon.timer
+
+ [32m✓[39m [30m[45m packages [49m[39m packages/cli/test/wp7-schedule-ladder.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 29[2mms[22m[39m
+ [32m✓[39m [30m[45m packages [49m[39m packages/cli/test/agents-update-chain.test.ts [2m([22m[2m4 tests[22m[2m)[22m[33m 948[2mms[22m[39m
+     [33m[2m✓[22m[39m reports AGENT-SKIPPED with a reason instead of crashing when nothing can be added [33m 365[2mms[22m[39m
+ [32m✓[39m [30m[45m packages [49m[39m packages/cli/test/maintain-plan.test.ts [2m([22m[2m10 tests[22m[2m)[22m[32m 8[2mms[22m[39m
+ [32m✓[39m [30m[45m packages [49m[39m packages/core/test/invariants.test.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 6[2mms[22m[39m
+ [32m✓[39m [30m[45m packages [49m[39m packages/cli/test/wp7-doctor-schedule.test.ts [2m([22m[2m3 tests[22m[2m)[22m[33m 2406[2mms[22m[39m
+     [33m[2m✓[22m[39m reports all 9 harnessSchedules in canonical matrix order with zero disk mutations [33m 437[2mms[22m[39m
+     [33m[2m✓[22m[39m enforces exact > 2x stale-tick threshold: 29m and 30m clean, 31m triggers staleTickWarning + recommendation (kills M3) [33m 1153[2mms[22m[39m
+     [33m[2m✓[22m[39m honors explicit policy.schedule.sync ("every 1h" -> 120m threshold) and detects OS / daemon tiers [33m 814[2mms[22m[39m
+ [32m✓[39m [30m[45m packages [49m[39m packages/cli/test/combos-stale.test.ts [2m([22m[2m11 tests[22m[2m)[22m[32m 13[2mms[22m[39m
+ [32m✓[39m [30m[45m packages [49m[39m packages/core/test/platform-paths.test.ts [2m([22m[2m16 tests[22m[2m)[22m[32m 10[2mms[22m[39m
+ [32m✓[39m [30m[45m packages [49m[39m packages/cli/test/roundC1d.test.ts [2m([22m[2m15 tests[22m[2m)[22m[32m 11[2mms[22m[39m
+[90mstdout[2m | packages/cli/test/roundC3q.test.ts[2m > [22m[2mC3q Q4a classify extra[2m > [22m[2mcổng thật đã đóng -> refused và in ERR-SHAPE
+[22m[39mERR-SHAPE closed-port name=TypeError code=- cause.code=ECONNREFUSED errors0=-
+
+ [32m✓[39m [30m[45m packages [49m[39m packages/cli/test/reduce-track.test.ts [2m([22m[2m11 tests[22m[2m)[22m[32m 8[2mms[22m[39m
+[90mstdout[2m | packages/cli/test/roundC3q.test.ts[2m > [22m[2mC3q Q4b GATE-FORGE[2m > [22m[2mgrant thiếu chữ ký bị từ chối, DB không đổi
+[22m[39mGATE-FORGE | maintain apply | exit=1 | reason=grant-invalid | trước=5f05aaa66166c7f3 sau=5f05aaa66166c7f3 BẰNG | missing-signature
+
+[90mstdout[2m | packages/cli/test/roundC3q.test.ts[2m > [22m[2mC3q Q4b GATE-FORGE[2m > [22m[2mgrant sai chữ ký bị từ chối, DB không đổi
+[22m[39mGATE-FORGE | maintain apply | exit=1 | reason=grant-secret-missing | trước=5f05aaa66166c7f3 sau=5f05aaa66166c7f3 BẰNG | wrong-signature
+
+ [32m✓[39m [30m[45m packages [49m[39m packages/mcp-server/test/strategy-interview.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 63[2mms[22m[39m
+[90mstdout[2m | packages/cli/test/roundC3q.test.ts[2m > [22m[2mC3q Q4b GATE-FORGE[2m > [22m[2mgrant hết hạn bị từ chối, DB không đổi
+[22m[39mGATE-FORGE | maintain apply | exit=1 | reason=grant-expired | trước=5f05aaa66166c7f3 sau=5f05aaa66166c7f3 BẰNG | expired
+
+[90mstdout[2m | packages/cli/test/cli.test.ts[2m > [22m[2mCLI Commands and Safety Rails (Condition A1 & AT-100)[2m > [22m[2mA1: init generates valid configuration file
+[22m[39m[routersync] Initialized configuration file at: <HOME>\.openmausbot\tmp\agy\4c4db2442357\rs_cli_test_1795566446357_0ccd\config.yaml
+Edit this file or run `routersync scan` to verify your routers.
+
+[90mstdout[2m | packages/cli/test/cli.test.ts[2m > [22m[2mCLI Commands and Safety Rails (Condition A1 & AT-100)[2m > [22m[2mA1: apply defaults to dry-run without writing changes
+[22m[39m[routersync] [DRY-RUN] Evaluated 2 router(s).
+  No changes were written to any router.
+  To execute changes, run `routersync apply --write` in an interactive terminal.
+
+[90mstdout[2m | packages/cli/test/roundC3q.test.ts[2m > [22m[2mC3q Q4b GATE-FORGE[2m > [22m[2mgrant sai phạm vi combo bị từ chối, DB không đổi
+[22m[39mGATE-FORGE | maintain apply | exit=1 | reason=grant-secret-missing | trước=5f05aaa66166c7f3 sau=5f05aaa66166c7f3 BẰNG | wrong-scope
+
+ [32m✓[39m [30m[45m packages [49m[39m packages/cli/test/cli.test.ts [2m([22m[2m6 tests[22m[2m)[22m[33m 507[2mms[22m[39m
+[90mstdout[2m | packages/cli/test/roundC3q.test.ts[2m > [22m[2mC3q Q4b GATE-FORGE[2m > [22m[2msai planHash bị từ chối, DB không đổi
+[22m[39mGATE-FORGE | maintain apply | exit=1 | reason=grant-secret-missing | trước=5f05aaa66166c7f3 sau=5f05aaa66166c7f3 BẰNG | wrong-planHash
+
+ [32m✓[39m [30m[45m packages [49m[39m packages/cli/test/roundC3q.test.ts [2m([22m[2m12 tests[22m[2m)[22m[33m 3404[2mms[22m[39m
+     [33m[2m✓[22m[39m grant thiếu chữ ký bị từ chối, DB không đổi [33m 659[2mms[22m[39m
+     [33m[2m✓[22m[39m grant sai chữ ký bị từ chối, DB không đổi [33m 651[2mms[22m[39m
+     [33m[2m✓[22m[39m grant hết hạn bị từ chối, DB không đổi [33m 670[2mms[22m[39m
+     [33m[2m✓[22m[39m grant sai phạm vi combo bị từ chối, DB không đổi [33m 648[2mms[22m[39m
+     [33m[2m✓[22m[39m sai planHash bị từ chối, DB không đổi [33m 728[2mms[22m[39m
+ [32m✓[39m [30m[45m packages [49m[39m packages/core/test/router-key.test.ts [2m([22m[2m19 tests[22m[2m)[22m[32m 7[2mms[22m[39m
+ [32m✓[39m [30m[45m packages [49m[39m packages/cli/test/rank-health.test.ts [2m([22m[2m8 tests[22m[2m)[22m[33m 353[2mms[22m[39m
+ [32m✓[39m [30m[45m packages [49m[39m packages/core/test/applier.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 6[2mms[22m[39m
+[90mstdout[2m | packages/cli/test/roundC3u.test.ts[2m > [22m[2mC3u U0b GATE-FLOW agents tty-confirm[2m > [22m[2mtyped=chay -> authorized=yes, tmp config changed
+[22m[39mGATE-FLOW | agents tty-confirm | typed=chay | authorized=yes | tmp-config-changed=yes
+
+[90mstdout[2m | packages/cli/test/roundC3u.test.ts[2m > [22m[2mC3u U0b GATE-FLOW agents tty-confirm[2m > [22m[2mtyped=no -> authorized=no, tmp config unchanged
+[22m[39mGATE-FLOW | agents tty-confirm | typed=no | authorized=no | tmp-config-changed=no
+
+[90mstdout[2m | packages/cli/test/roundC3u.test.ts[2m > [22m[2mC3u U2a ISOLATION-CHECK child env[2m > [22m[2mchild HOME/APPDATA/state-dir point to tmp, real 9router DB not visible
+[22m[39mISOLATION-CHECK child-env-home=tmp appdata=tmp state-dir=tmp real-9router-db-visible=no
+
+[90mstdout[2m | packages/cli/test/roundC3u.test.ts[2m > [22m[2mC3u U3a SECRET-SELFTEST non-TTY[2m > [22m[2mmaintain secret-selftest without TTY -> result=missing tty=no
+[22m[39mSECRET-SELFTEST result=missing tty=no grants-checked=1
+
+ [32m✓[39m [30m[45m packages [49m[39m packages/cli/test/roundC3u.test.ts [2m([22m[2m4 tests[22m[2m)[22m[33m 678[2mms[22m[39m
+     [33m[2m✓[22m[39m maintain secret-selftest without TTY -> result=missing tty=no [33m 610[2mms[22m[39m
+[90mstdout[2m | packages/cli/test/tick-c4n.test.ts[2m > [22m[2mC4n/N6.3 & N8: absent models & snooze expiration in runTickCommand[2m > [22m[2mN8: prunes expired snoozed items when inbox exceeds capacity using nowMs
+[22m[39mTICK-SUMMARY mode=propose scanned=0 skipped=0 changed=0 unchanged=0 backoff=0 inbox_added=0
+TICK requests=7 paid-requests=0 tokens=0 llm-calls=0
+
+ [32m✓[39m [30m[45m packages [49m[39m packages/cli/test/tick-c4n.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 235[2mms[22m[39m
+ [32m✓[39m [30m[45m packages [49m[39m packages/cli/test/wp6-adaptive-interview.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 41[2mms[22m[39m
+ [32m✓[39m [30m[45m packages [49m[39m packages/cli/test/profile.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 22[2mms[22m[39m
+ [32m✓[39m [30m[45m packages [49m[39m packages/cli/test/round65.test.ts [2m([22m[2m14 tests[22m[2m)[22m[32m 8[2mms[22m[39m
+ [32m✓[39m [30m[45m packages [49m[39m packages/mcp-server/test/at-109-mcp.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 75[2mms[22m[39m
+ [32m✓[39m [30m[45m packages [49m[39m packages/cli/test/combos-stale-evidence.test.ts [2m([22m[2m5 tests[22m[2m)[22m[33m 363[2mms[22m[39m
+ [32m✓[39m [30m[45m packages [49m[39m packages/cli/test/router-watch.test.ts [2m([22m[2m6 tests[22m[2m)[22m[33m 2836[2mms[22m[39m
+     [33m[2m✓[22m[39m tổng số mẫu bị chặn bởi thời gian [33m 2774[2mms[22m[39m
+ [32m✓[39m [30m[45m packages [49m[39m packages/core/test/fingerprint.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 165[2mms[22m[39m
+ [32m✓[39m [30m[45m packages [49m[39m packages/cli/test/sync-normalize.test.ts [2m([22m[2m16 tests[22m[2m)[22m[32m 7[2mms[22m[39m
+ [32m✓[39m [30m[45m packages [49m[39m packages/cli/test/roundC1c.test.ts [2m([22m[2m11 tests[22m[2m)[22m[32m 12[2mms[22m[39m
+ [32m✓[39m [30m[45m packages [49m[39m packages/cli/test/roundC3-sim-limits.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 280[2mms[22m[39m
+ [32m✓[39m [30m[45m packages [49m[39m packages/cli/test/combos-probe-http.test.ts [2m([22m[2m6 tests[22m[2m)[22m[33m 13357[2mms[22m[39m
+     [33m[2m✓[22m[39m treo không header → TIMEOUT-NO-HEADER và có hạn [33m 1210[2mms[22m[39m
+     [33m[2m✓[22m[39m dừng sau 5 lần 429 liên tiếp [33m 12036[2mms[22m[39m
+ [32m✓[39m [30m[45m packages [49m[39m packages/cli/test/low-resource.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 270[2mms[22m[39m
+ [32m✓[39m [30m[45m packages [49m[39m packages/cli/test/roundC1b.test.ts [2m([22m[2m15 tests[22m[2m)[22m[32m 12[2mms[22m[39m
+ [32m✓[39m [30m[45m packages [49m[39m packages/cli/test/roundC2b-sim.test.ts [2m([22m[2m4 tests[22m[2m)[22m[33m 500[2mms[22m[39m
+ [32m✓[39m [30m[45m packages [49m[39m packages/cli/test/roundC2-discover-guard.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 9[2mms[22m[39m
+ [32m✓[39m [30m[45m packages [49m[39m packages/cli/test/roundC3k-scan.test.ts [2m([22m[2m12 tests[22m[2m)[22m[32m 10[2mms[22m[39m
+ [32m✓[39m [30m[45m packages [49m[39m packages/cli/test/roundC3k-gates.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 80[2mms[22m[39m
+ [32m✓[39m [30m[45m packages [49m[39m packages/cli/test/roundC3p.test.ts [2m([22m[2m10 tests[22m[2m)[22m[32m 38[2mms[22m[39m
+ [32m✓[39m [30m[45m packages [49m[39m packages/cli/test/combos-probe.test.ts [2m([22m[2m13 tests[22m[2m)[22m[32m 15[2mms[22m[39m
+ [32m✓[39m [30m[45m packages [49m[39m packages/cli/test/c3d-d3d9.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 34[2mms[22m[39m
+ [32m✓[39m [30m[45m packages [49m[39m packages/cli/test/roundC2-daemon.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 14[2mms[22m[39m
+ [32m✓[39m [30m[45m packages [49m[39m packages/cli/test/round64.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 9[2mms[22m[39m
+ [32m✓[39m [30m[45m packages [49m[39m packages/core/test/sqlite-concurrency.test.ts [2m([22m[2m2 tests[22m[2m)[22m[33m 452[2mms[22m[39m
+     [33m[2m✓[22m[39m handles write contention safely with BEGIN IMMEDIATE without corrupting database [33m 371[2mms[22m[39m
+ [32m✓[39m [30m[45m packages [49m[39m packages/cli/test/combos-probe-c33.test.ts [2m([22m[2m10 tests[22m[2m)[22m[32m 6[2mms[22m[39m
+ [32m✓[39m [30m[45m packages [49m[39m packages/cli/test/roundC3-provider-alerts.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 8[2mms[22m[39m
+ [32m✓[39m [30m[45m packages [49m[39m packages/cli/test/config.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 34[2mms[22m[39m
+ [32m✓[39m [30m[45m packages [49m[39m packages/cli/test/combos-probe-usage.test.ts [2m([22m[2m4 tests[22m[2m)[22m[33m 3820[2mms[22m[39m
+     [33m[2m✓[22m[39m header sau 400 ms → vẫn OK (dưới ngưỡng 120 s) [33m 419[2mms[22m[39m
+     [33m[2m✓[22m[39m treo + có dòng usage trước hạn → HANG-AFTER-USAGE, ghi firstUsageMs [33m 338[2mms[22m[39m
+     [33m[2m✓[22m[39m treo + không có dòng usage → HANG-NO-USAGE [33m 304[2mms[22m[39m
+[90mstdout[2m | packages/cli/test/roundC3o.test.ts[2m > [22m[2mC3o O3(e) lỗi 127.0.0.1:1[2m > [22m[2min hình dạng lỗi thật (name/code/cause.code/errors[0].code)
+[22m[39mERR-SHAPE 127.0.0.1:1 name=TypeError code=undefined cause.code=undefined errors[0].code=undefined
+ERR-DETAIL message=fetch failed
+ERR-DETAIL cause.message=bad port cause.errors=null
+
+ [32m✓[39m [30m[45m packages [49m[39m packages/cli/test/roundC3o.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 8[2mms[22m[39m
+ [32m✓[39m [30m[45m packages [49m[39m packages/sources/test/anthropic-scanner.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 6[2mms[22m[39m
+ [32m✓[39m [30m[45m packages [49m[39m packages/cli/test/router-db-path-guard.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 165[2mms[22m[39m
+ [32m✓[39m [30m[45m packages [49m[39m packages/cli/test/apps-drift-y2.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 12[2mms[22m[39m
+ [32m✓[39m [30m[45m packages [49m[39m packages/cli/test/roundC2b-profile.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 17[2mms[22m[39m
+ [32m✓[39m [30m[45m packages [49m[39m packages/cli/test/roundC3-fence-table.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 7[2mms[22m[39m
+ [32m✓[39m [30m[45m packages [49m[39m packages/cli/test/roundC2b-health-discover.test.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 7[2mms[22m[39m
+ [32m✓[39m [30m[45m packages [49m[39m packages/core/test/normalizer.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 9[2mms[22m[39m
+ [32m✓[39m [30m[45m packages [49m[39m packages/cli/test/combos-probe-timeline.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 58[2mms[22m[39m
+ [32m✓[39m [30m[45m packages [49m[39m packages/cli/test/c15-low-resource.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 13[2mms[22m[39m
+ [32m✓[39m [30m[45m packages [49m[39m packages/sources/test/openrouter.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 39[2mms[22m[39m
+ [32m✓[39m [30m[45m packages [49m[39m packages/core/test/schema.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 16[2mms[22m[39m
+[90mstdout[2m | packages/cli/test/init.test.ts[2m > [22m[2mroutersync init command[2m > [22m[2mcreates configuration file when target does not exist
+[22m[39m[routersync] Initialized configuration file at: <HOME>\.openmausbot\tmp\agy\4c4db2442357\routersync-init-test-3LAjvd\config.yaml
+Edit this file or run `routersync scan` to verify your routers.
+
+[90mstdout[2m | packages/cli/test/init.test.ts[2m > [22m[2mroutersync init command[2m > [22m[2moverwrites with --force when target file already exists
+[22m[39m[routersync] Initialized configuration file at: <HOME>\.openmausbot\tmp\agy\4c4db2442357\routersync-init-test-XlQrp5\config.yaml
+Edit this file or run `routersync scan` to verify your routers.
+
+ [32m✓[39m [30m[45m packages [49m[39m packages/cli/test/init.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 25[2mms[22m[39m
+ [32m✓[39m [30m[45m packages [49m[39m packages/cli/test/roundC2b-scan.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 7[2mms[22m[39m
+ [32m✓[39m [30m[45m packages [49m[39m packages/cli/test/roundC2-profile.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 14[2mms[22m[39m
+ [32m✓[39m [30m[45m packages [49m[39m packages/cli/test/roundC1.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 7[2mms[22m[39m
+ [32m✓[39m [30m[45m packages [49m[39m packages/core/test/path-inside-dir.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 5[2mms[22m[39m
+ [32m✓[39m [30m[45m packages [49m[39m packages/cli/test/lazy-load.test.ts [2m([22m[2m25 tests[22m[2m)[22m[32m 9[2mms[22m[39m
+ [32m✓[39m [30m[45m packages [49m[39m packages/sources/test/litellm.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 9[2mms[22m[39m
+ [32m✓[39m [30m[45m packages [49m[39m packages/cli/test/roundC3i-confirm-tty.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 6[2mms[22m[39m
+ [32m✓[39m [30m[45m packages [49m[39m packages/core/test/query-only.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 152[2mms[22m[39m
+ [32m✓[39m [30m[45m packages [49m[39m packages/cli/test/perf-hook.test.ts [2m([22m[2m3 tests[22m[2m)[22m[33m 1349[2mms[22m[39m
+     [33m[2m✓[22m[39m does not emit perf JSON when ROUTERSYNC_PERF is unset [33m 677[2mms[22m[39m
+     [33m[2m✓[22m[39m emits maxRssMB > 0 for a real --version run with ROUTERSYNC_PERF=1 [33m 668[2mms[22m[39m
+ [32m✓[39m [30m[45m packages [49m[39m packages/cli/test/c15-schedule-priority.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 4[2mms[22m[39m
+ [32m✓[39m [30m[45m packages [49m[39m packages/cli/test/c14-priority.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 7[2mms[22m[39m
+ [32m✓[39m [30m[45m packages [49m[39m packages/cli/test/c14-verify-deadline.test.ts [2m([22m[2m2 tests[22m[2m)[22m[33m 307[2mms[22m[39m
+ [32m✓[39m [30m[45m packages [49m[39m packages/cli/test/quota-status.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 4[2mms[22m[39m
+ [32m✓[39m [30m[45m root-tools [49m[39m test/acceptance/at-108.test.ts [2m([22m[2m5 tests[22m[2m)[22m[33m 1377[2mms[22m[39m
+     [33m[2m✓[22m[39m 9Router: logical rollback restores managed combos while preserving concurrent external router writes [33m 396[2mms[22m[39m
+     [33m[2m✓[22m[39m OmniRoute: logical rollback restores managed combos while preserving concurrent external router writes [33m 312[2mms[22m[39m
+ [32m✓[39m [30m[45m root-tools [49m[39m test/acceptance/at-98.test.ts [2m([22m[2m8 tests[22m[2m)[22m[33m 1129[2mms[22m[39m
+ [32m✓[39m [30m[45m root-tools [49m[39m test/acceptance/at-123-daemon-no-sample.test.ts [2m([22m[2m33 tests[22m[2m)[22m[33m 1882[2mms[22m[39m
+     [33m[2m✓[22m[39m asserts uptime is dynamic and increments between requests spaced >= 1.1s (timeout: 15s) [33m 1237[2mms[22m[39m
+ [32m✓[39m [30m[45m root-tools [49m[39m test/acceptance/at-143-combo-strategy.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 300[2mms[22m[39m
+[90mstdout[2m | test/acceptance/at-101.test.ts[2m > [22m[2mAcceptance Test AT-101: Existence-Only Read-Back with Client Key (Condition G0-5)[2m > [22m[2mstatus and scan commands report readBackLevel clearly for each router
+[22m[39m[routersync] Initialized configuration file at: <HOME>\.openmausbot\tmp\agy\4c4db2442357\at101_cfg_1795566492410_25bup\config.yaml
+Edit this file or run `routersync scan` to verify your routers.
+
+ [32m✓[39m [30m[45m root-tools [49m[39m test/acceptance/at-101.test.ts [2m([22m[2m6 tests[22m[2m)[22m[33m 1204[2mms[22m[39m
+     [33m[2m✓[22m[39m zero secret leak: API keys never appear in log output, ApplyResult, or snapshot [33m 463[2mms[22m[39m
+ [32m✓[39m [30m[45m root-tools [49m[39m test/docs/c45-wp0-spec.test.ts [2m([22m[2m9 tests[22m[2m)[22m[33m 493[2mms[22m[39m
+     [33m[2m✓[22m[39m applies 1.0.0-rc.1 version bump cleanly on an isolated os.tmpdir() copy and rejects invalid targets [33m 357[2mms[22m[39m
+ [32m✓[39m [30m[45m root-tools [49m[39m test/acceptance/at-150-doctor-c2.test.ts [2m([22m[2m10 tests[22m[2m)[22m[33m 441[2mms[22m[39m
+ [32m✓[39m [30m[45m root-tools [49m[39m test/acceptance/at-157-status-unwritten.test.ts [2m([22m[2m6 tests[22m[2m)[22m[33m 490[2mms[22m[39m
+ [32m✓[39m [30m[45m root-tools [49m[39m test/acceptance/at-109.test.ts [2m([22m[2m4 tests[22m[2m)[22m[33m 348[2mms[22m[39m
+ [32m✓[39m [30m[45m root-tools [49m[39m test/acceptance/at-172-round50-maintain-track-mcp.test.ts [2m([22m[2m14 tests[22m[2m)[22m[33m 349[2mms[22m[39m
+ [32m✓[39m [30m[45m root-tools [49m[39m test/docs/9router-combo-findings.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 18[2mms[22m[39m
+ [32m✓[39m [30m[45m root-tools [49m[39m test/acceptance/at-112.test.ts [2m([22m[2m7 tests[22m[2m)[22m[33m 1635[2mms[22m[39m
+     [33m[2m✓[22m[39m persisted snapshot file contains no secret-looking strings [33m 552[2mms[22m[39m
+ [32m✓[39m [30m[45m root-tools [49m[39m test/acceptance/at-125-daemon-probe-up.test.ts [2m([22m[2m6 tests[22m[2m)[22m[33m 1167[2mms[22m[39m
+     [33m[2m✓[22m[39m classifies response timeout as down [33m 804[2mms[22m[39m
+[90mstdout[2m | test/acceptance/at-99.test.ts[2m > [22m[2mAcceptance Test AT-99: Real DB Copy Contract Test & Zero Live Modification Verification
+[22m[39m[AT-99] Pre-test live OmniRoute logical hash: 8c364827343e1017...
+[AT-99] Pre-test live 9Router logical hash:   4d5322ab57ea4081...
+
+ [32m✓[39m [30m[45m root-tools [49m[39m test/docs/agent-docs.test.ts [2m([22m[2m19 tests[22m[2m)[22m[33m 22796[2mms[22m[39m
+     [33m[2m✓[22m[39m runs --help, doctor, combos stale (9router & omniroute), and verify against os.tmpdir() fixture with 0 router writes [33m 7676[2mms[22m[39m
+     [33m[2m✓[22m[39m passes node --test test/agent/security-audit.node.test.mjs [33m 14572[2mms[22m[39m
+     [33m[2m✓[22m[39m no publishable tracked or doc files contain dangerous git publish strings [33m 465[2mms[22m[39m
+ [32m✓[39m [30m[45m root-tools [49m[39m test/acceptance/at-128-doctor-c5.test.ts [2m([22m[2m5 tests[22m[2m)[22m[33m 7799[2mms[22m[39m
+     [33m[2m✓[22m[39m with c1..c4 and c6 passing, overallStatus is not "error" because of c5 [33m 1132[2mms[22m[39m
+[90mstdout[2m | test/acceptance/at-99.test.ts[2m > [22m[2mAcceptance Test AT-99: Real DB Copy Contract Test & Zero Live Modification Verification
+[22m[39m[AT-99] OmniRoute: backed up live DB using SQLite backup API to tmpdir
+
+[90mstdout[2m | test/acceptance/at-99.test.ts[2m > [22m[2mAcceptance Test AT-99: Real DB Copy Contract Test & Zero Live Modification Verification
+[22m[39m[AT-99] 9Router: backed up live DB using SQLite backup API to tmpdir
+
+[90mstdout[2m | test/acceptance/at-99.test.ts[2m > [22m[2mAcceptance Test AT-99: Real DB Copy Contract Test & Zero Live Modification Verification
+[22m[39m[AT-99] Post-test live OmniRoute logical hash: 8c364827343e1017...
+[AT-99] Post-test live 9Router logical hash:   4d5322ab57ea4081...
+
+ [32m✓[39m [30m[45m root-tools [49m[39m test/acceptance/at-99.test.ts [2m([22m[2m2 tests[22m[2m)[22m[33m 13018[2mms[22m[39m
+ [32m✓[39m [30m[45m root-tools [49m[39m test/no-secrets-guard.test.mjs [2m([22m[2m17 tests[22m[2m)[22m[33m 689[2mms[22m[39m
+     [33m[2m✓[22m[39m J3 - catches secrets in untracked files via git ls-files -co --exclude-standard [33m 654[2mms[22m[39m
+ [32m✓[39m [30m[45m root-tools [49m[39m test/acceptance/at-165-daemon-threat-model-approval.test.ts [2m([22m[2m7 tests[22m[2m)[22m[33m 657[2mms[22m[39m
+ [32m✓[39m [30m[45m root-tools [49m[39m test/acceptance/at-135-reader-schema.test.ts [2m([22m[2m3 tests[22m[2m)[22m[33m 341[2mms[22m[39m
+ [32m✓[39m [30m[45m root-tools [49m[39m test/acceptance/at-161-provider-discovery-guard.test.ts [2m([22m[2m11 tests[22m[2m)[22m[32m 11[2mms[22m[39m
+ [32m✓[39m [30m[45m root-tools [49m[39m test/ci/budgets.test.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 231[2mms[22m[39m
+ [32m✓[39m [30m[45m root-tools [49m[39m test/acceptance/at-4.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 8[2mms[22m[39m
+ [32m✓[39m [30m[45m root-tools [49m[39m test/acceptance/at-127-hermetic-guard.test.ts [2m([22m[2m6 tests[22m[2m)[22m[33m 314[2mms[22m[39m
+ [32m✓[39m [30m[45m root-tools [49m[39m test/acceptance/at-164-sync-worker-fast-loop.test.ts [2m([22m[2m5 tests[22m[2m)[22m[33m 737[2mms[22m[39m
+ [32m✓[39m [30m[45m root-tools [49m[39m test/acceptance/at-119-daemon-network.test.ts [2m([22m[2m9 tests[22m[2m)[22m[33m 357[2mms[22m[39m
+ [32m✓[39m [30m[45m root-tools [49m[39m test/acceptance/at-8.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 8[2mms[22m[39m
+ [32m✓[39m [30m[45m root-tools [49m[39m test/acceptance/at-118-daemon-isolation.test.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 258[2mms[22m[39m
+ [32m✓[39m [30m[45m root-tools [49m[39m test/no-personal-paths-guard.test.mjs [2m([22m[2m14 tests[22m[2m)[22m[32m 19[2mms[22m[39m
+ [32m✓[39m [30m[45m root-tools [49m[39m test/acceptance/at-113.test.ts [2m([22m[2m3 tests[22m[2m)[22m[33m 317[2mms[22m[39m
+ [32m✓[39m [30m[45m root-tools [49m[39m test/acceptance/at-166-ui-live-integration.test.ts [2m([22m[2m5 tests[22m[2m)[22m[33m 446[2mms[22m[39m
+ [32m✓[39m [30m[45m root-tools [49m[39m test/acceptance/at-162-catalog-store.test.ts [2m([22m[2m4 tests[22m[2m)[22m[33m 469[2mms[22m[39m
+ [32m✓[39m [30m[45m root-tools [49m[39m test/acceptance/at-102.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 23[2mms[22m[39m
+ [32m✓[39m [30m[45m root-tools [49m[39m test/acceptance/at-171-omniroute-strategy-integrity.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 122[2mms[22m[39m
+ [32m✓[39m [30m[45m root-tools [49m[39m test/acceptance/at-130-combos-merge.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 213[2mms[22m[39m
+ [32m✓[39m [30m[45m root-tools [49m[39m test/acceptance/at-170-hermetic-daemon-network.test.ts [2m([22m[2m1 test[22m[2m)[22m[33m 332[2mms[22m[39m
+     [33m[2m✓[22m[39m boots daemon and serves 6 GET routes with 0 external requests and 0 calls to ports 20128/30128/3128 [33m 330[2mms[22m[39m
+ [32m✓[39m [30m[45m root-tools [49m[39m test/acceptance/at-129-targets-combos.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 223[2mms[22m[39m
+ [32m✓[39m [30m[45m root-tools [49m[39m test/docs/c45-wp9-live-readiness.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 11[2mms[22m[39m
+ [32m✓[39m [30m[45m root-tools [49m[39m test/acceptance/at-126-ui-proxy-e2e.test.ts [2m([22m[2m3 tests[22m[2m)[22m[33m 593[2mms[22m[39m
+ [32m✓[39m [30m[45m root-tools [49m[39m test/acceptance/at-103-cross-platform-paths.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 6[2mms[22m[39m
+ [32m✓[39m [30m[45m root-tools [49m[39m test/acceptance/at-97.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 104[2mms[22m[39m
+ [32m✓[39m [30m[45m root-tools [49m[39m test/acceptance/at-163-daemon-live-models-providers.test.ts [2m([22m[2m3 tests[22m[2m)[22m[33m 323[2mms[22m[39m
+ [32m✓[39m [30m[45m root-tools [49m[39m test/acceptance/at-120-daemon-sanitize.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 229[2mms[22m[39m
+[90mstdout[2m | test/acceptance/at-94.test.ts[2m > [22m[2mAcceptance Test AT-94: MCP Install & Non-Destructive Harness Configuration (Condition C2)[2m > [22m[2mHermes: defaults to dry-run without writing to file and shows non-destructive diff
+[22m[39m{
+  "client": "hermes",
+  "mode": "dry-run",
+  "configFile": "C:\\Users\\<USER>\\.openmausbot\\tmp\\agy\\4c4db2442357\\rs_mcp_test_ojppUV\\mcp_config.json",
+  "diff": "--- C:\\Users\\<USER>\\.openmausbot\\tmp\\agy\\4c4db2442357\\rs_mcp_test_ojppUV\\mcp_config.json (before)\n+++ C:\\Users\\<USER>\\.openmausbot\\tmp\\agy\\4c4db2442357\\rs_mcp_test_ojppUV\\mcp_config.json (after)\n+ \"routersync\": { command: \"node\", args: [\"<private-provider-1>/packages/mcp-server/dist/index.js\"] }",
+  "success": true,
+  "message": "Dry-run successful. Zero files modified. Run with --write to apply.",
+  "timestamp": "2026-11-25T00:28:52.040Z"
+}
+
+[90mstdout[2m | test/acceptance/at-94.test.ts[2m > [22m[2mAcceptance Test AT-94: MCP Install & Non-Destructive Harness Configuration (Condition C2)[2m > [22m[2mHermes: non-destructively preserves existing servers and keys when written
+[22m[39m[routersync] [DRY-RUN] Previewing Hermes Agent (Nous Research) MCP configuration:
+Target: <HOME>\.openmausbot\tmp\agy\4c4db2442357\rs_mcp_test_DzfPyw\mcp_config.json
+--- <HOME>\.openmausbot\tmp\agy\4c4db2442357\rs_mcp_test_DzfPyw\mcp_config.json (before)
++++ <HOME>\.openmausbot\tmp\agy\4c4db2442357\rs_mcp_test_DzfPyw\mcp_config.json (after)
++ "routersync": { command: "node", args: ["<private-provider-1>/packages/mcp-server/dist/index.js"] }
+
+[90mstdout[2m | test/acceptance/at-94.test.ts[2m > [22m[2mAcceptance Test AT-94: MCP Install & Non-Destructive Harness Configuration (Condition C2)[2m > [22m[2mDSH: defaults to dry-run and formats non-destructive Cordis patch entry
+[22m[39m{
+  "client": "dsh",
+  "mode": "dry-run",
+  "configFile": "C:\\Users\\<USER>\\.openmausbot\\tmp\\agy\\4c4db2442357\\rs_mcp_test_DpjXAK\\cordis.patch.yml",
+  "diff": "--- C:\\Users\\<USER>\\.openmausbot\\tmp\\agy\\4c4db2442357\\rs_mcp_test_DpjXAK\\cordis.patch.yml (before)\n+++ C:\\Users\\<USER>\\.openmausbot\\tmp\\agy\\4c4db2442357\\rs_mcp_test_DpjXAK\\cordis.patch.yml (after)\n+ insert: mcpServers.routersync -> command: node, args: [\"<private-provider-1>/packages/mcp-server/dist/index.js\"]",
+  "success": true,
+  "message": "Dry-run successful. Zero files modified. Run with --write to apply.",
+  "timestamp": "2026-11-25T00:28:52.052Z"
+}
+
+ [32m✓[39m [30m[45m root-tools [49m[39m test/acceptance/at-94.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 21[2mms[22m[39m
+ [32m✓[39m [30m[45m root-tools [49m[39m test/ci/run-smoke.test.mjs [2m([22m[2m2 tests[22m[2m)[22m[33m 3141[2mms[22m[39m
+     [33m[2m✓[22m[39m exits non-zero when a middle command is over budget and passes at the end [33m 1585[2mms[22m[39m
+     [33m[2m✓[22m[39m passes with exactly one RETRY line when the failure clears on the second attempt [33m 1554[2mms[22m[39m
+ [32m✓[39m [30m[45m root-tools [49m[39m test/ci/footprint.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 9[2mms[22m[39m
+ [32m✓[39m [30m[45m root-tools [49m[39m test/acceptance/at-1.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 8[2mms[22m[39m
+ [32m✓[39m [30m[45m root-tools [49m[39m test/acceptance/at-167-release-packaging.test.ts [2m([22m[2m5 tests[22m[2m)[22m[33m 843[2mms[22m[39m
+     [33m[2m✓[22m[39m validates CLI binary entrypoint and executable shebang [33m 832[2mms[22m[39m
+ [32m✓[39m [30m[45m root-tools [49m[39m test/docs/wp6-harness-skills.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 23[2mms[22m[39m
+ [32m✓[39m [30m[45m root-tools [49m[39m test/acceptance/at-121-daemon-honesty.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 224[2mms[22m[39m
+ [32m✓[39m [30m[45m root-tools [49m[39m test/acceptance/at-96.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 17[2mms[22m[39m
+ [32m✓[39m [30m[45m root-tools [49m[39m test/acceptance/at-168-package-hygiene.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 22[2mms[22m[39m
+[90mstdout[2m | test/acceptance/at-95.test.ts[2m > [22m[2mAcceptance Test AT-95: Doctor Circular Dependency Check (Condition C4)[2m > [22m[2mdetects circular dependency when Hermes config points to managed OmniRoute port (30128)
+[22m[39m{
+  "ok": false,
+  "ready": false,
+  "configError": null,
+  "os": "win32",
+  "arch": "x64",
+  "node": "v24.18.0",
+  "pnpm": "10.20.0",
+  "build": true,
+  "stateDir": "C:\\Users\\<USER>\\AppData\\Local\\routersync",
+  "tickStateDir": "C:\\Users\\<USER>\\.openmausbot\\tmp\\agy\\4c4db2442357\\routersync-test-state-QenSeo",
+  "syncStateDir": "C:\\Users\\<USER>\\AppData\\Local\\routersync",
+  "configPath": "C:\\Users\\<USER>\\.openmausbot\\tmp\\agy\\4c4db2442357\\rs_doctor_test_PwRQcE\\config.yaml",
+  "rankingPolicy": {
+    "present": true,
+    "path": "C:\\Users\\<USER>\\AppData\\Roaming\\routersync\\ranking.yaml"
+  },
+  "routers": [
+    {
+      "routerId": "omni",
+      "adapter": "omniroute",
+      "dbPath": "C:\\Users\\<USER>\\.omniroute\\storage.sqlite",
+      "found": true,
+      "readable": true,
+      "tiers": {
+        "A": 254,
+        "B": 0,
+        "C": 0,
+        "total": 254
+      },
+      "basis": "combo-members",
+      "available": "UNKNOWN (reader not implemented)"
+    },
+    {
+      "routerId": "nine",
+      "adapter": "9router",
+      "dbPath": "C:\\Users\\<USER>\\AppData\\Roaming\\9router\\db\\data.sqlite",
+      "found": true,
+      "readable": true,
+      "tiers": {
+        "A": 232,
+        "B": 32,
+        "C": 0,
+        "total": 264
+      },
+      "basis": "combo-members",
+      "available": 434
+    }
+  ],
+  "apps": [
+    {
+      "name": "Hermes Agent",
+      "configPath": null,
+      "detected": false
+    },
+    {
+      "name": "DSH Desktop",
+      "configPath": null,
+      "detected": false
+    },
+    {
+      "name": "Claude Code",
+      "configPath": "C:\\Users\\<USER>\\.claude.json",
+      "detected": true
+    },
+    {
+      "name": "OpenCode",
+      "configPath": "C:\\Users\\<USER>\\.config\\opencode\\opencode.json",
+      "detected": true
+    },
+    {
+      "name": "Codex",
+      "configPath": "C:\\Users\\<USER>\\.codex\\config.toml",
+      "detected": true
+    },
+    {
+      "name": "Antigravity",
+      "configPath": "C:\\Users\\<USER>\\.gemini\\antigravity",
+      "detected": true
+    }
+  ],
+  "schedule": {
+    "installed": false,
+    "detail": "No routersync tick schedule detected. Run `routersync schedule install --dry-run` or `routersync schedule install`.",
+    "activeTier": "none",
+    "configuredIntervalMinutes": 15,
+    "lastTickAt": null,
+    "lastTickAgeMinutes": null,
+    "staleTickWarning": false,
+    "staleThresholdMinutes": 30
+  },
+  "harnessSchedules": [
+    {
+      "harnessId": "hermes",
+      "displayName": "Hermes Agent (Nous Research)",
+      "detected": true,
+      "zeroTokenNativeCapable": true,
+      "recommendedTier": "harness-native",
+      "activeTier": "none",
+      "detail": "Supports Tier 1 zero-token native schedule (built-in-gateway-cron)"
+    },
+    {
+      "harnessId": "claude-code",
+      "displayName": "Anthropic Claude Code",
+      "detected": true,
+      "zeroTokenNativeCapable": false,
+      "recommendedTier": "os-scheduler",
+      "activeTier": "none",
+      "detail": "Uses Tier 2 OS scheduler + Tier 3 MCP tick_if_due (llm-prompt-schedulers)"
+    },
+    {
+      "harnessId": "codex",
+      "displayName": "OpenAI Codex CLI (and Desktop / IDE Extension)",
+      "detected": true,
+      "zeroTokenNativeCapable": false,
+      "recommendedTier": "os-scheduler",
+      "activeTier": "none",
+      "detail": "Uses Tier 2 OS scheduler + Tier 3 MCP tick_if_due (desktop-cloud-llm-automations)"
+    },
+    {
+      "harnessId": "antigravity",
+      "displayName": "Google Antigravity (App, IDE, CLI agy, SDK)",
+      "detected": true,
+      "zeroTokenNativeCapable": true,
+      "recommendedTier": "harness-native",
+      "activeTier": "none",
+      "detail": "Supports Tier 1 zero-token native schedule (sidecar-schedule-builtin)"
+    },
+    {
+      "harnessId": "opencode",
+      "displayName": "OpenCode",
+      "detected": true,
+      "zeroTokenNativeCapable": false,
+      "recommendedTier": "os-scheduler",
+      "activeTier": "none",
+      "detail": "Uses Tier 2 OS scheduler + Tier 3 MCP tick_if_due (none)"
+    },
+    {
+      "harnessId": "cursor",
+      "displayName": "Cursor IDE (and Cursor CLI agent)",
+      "detected": true,
+      "zeroTokenNativeCapable": false,
+      "recommendedTier": "os-scheduler",
+      "activeTier": "none",
+      "detail": "Uses Tier 2 OS scheduler + Tier 3 MCP tick_if_due (cloud-automations-and-agent-sdk)"
+    },
+    {
+      "harnessId": "grok-bot",
+      "displayName": "xAI Grok Bot (Cloud) [companion local CLI: Grok Build]",
+      "detected": false,
+      "zeroTokenNativeCapable": false,
+      "recommendedTier": "os-scheduler",
+      "activeTier": "none",
+      "detail": "Uses Tier 2 OS scheduler + Tier 3 MCP tick_if_due (cloud-llm-routines)"
+    },
+    {
+      "harnessId": "openmausbot",
+      "displayName": "OpenMausBot",
+      "detected": false,
+      "zeroTokenNativeCapable": false,
+      "recommendedTier": "os-scheduler",
+      "activeTier": "none",
+      "detail": "Uses Tier 2 OS scheduler + Tier 3 MCP tick_if_due (built-in-croner-llm-routines)"
+    },
+    {
+      "harnessId": "dsh",
+      "displayName": "DeepSeek Harness (dsh)",
+      "detected": false,
+      "zeroTokenNativeCapable": false,
+      "recommendedTier": "os-scheduler",
+      "activeTier": "none",
+      "detail": "Uses Tier 2 OS scheduler + Tier 3 MCP tick_if_due (built-in-dsh-schedule-llm-prompts)"
+    }
+  ],
+  "nextSteps": [
+    "Set up a scheduled `routersync tick` run (`routersync schedule install`) for zero-token catalogue watches.",
+    "Break circular dependencies: point the agent harness at a direct provider API key or non-managed fallback endpoint."
+  ],
+  "circularWarnings": [
+    {
+      "harness": "hermes",
+      "harnessConfigPath": "C:\\Users\\<USER>\\.openmausbot\\tmp\\agy\\4c4db2442357\\rs_doctor_test_PwRQcE\\hermes_config.json",
+      "routerId": "omni",
+      "routerUrl": "http://localhost:30128",
+      "severity": "WARNING",
+      "message": "Circular dependency detected: Harness 'hermes' is configured to use router 'omni' (http://localhost:30128) as upstream provider. Modifying this router may self-interrupt agent execution."
+    }
+  ],
+  "validationWarnings": [],
+  "authKeys": [
+    {
+      "routerId": "omni",
+      "adapter": "omniroute",
+      "keyName": "OMNIROUTE_API_KEY",
+      "keyScope": "elevated"
+    },
+    {
+      "routerId": "nine",
+      "adapter": "9router",
+      "keyName": "NINE_ROUTER_API_KEY",
+      "keyScope": "elevated"
+    }
+  ],
+  "recommendations": [
+    "Router 'omni' (omniroute): Đã có bằng chứng sao lưu gần nhất (2026-11-10T17:17:32.821Z).",
+    "Router 'nine' (9router): Đã có bằng chứng sao lưu gần nhất (2026-11-10T17:17:32.821Z).",
+    "Use a direct provider API key or non-managed fallback endpoint for the agent harness itself.",
+    "Remember: `routersync rollback` can always be executed independently via CLI without AI assistance.",
+    "Combo 'OmniRoute-Dev' (omni): timeout=420000ms > 120000ms — gợi ý đặt per-attempt timeout <= 120000ms để tránh treo tiến trình (đây là gợi ý cấu hình, không phải lỗi).",
+    "Combo 'OmniRoute-Agent' (omni): timeout=420000ms > 120000ms — gợi ý đặt per-attempt timeout <= 120000ms để tránh treo tiến trình (đây là gợi ý cấu hình, không phải lỗi).",
+    "Combo 'OmniRoute-Coder-1' (omni): timeout=420000ms > 120000ms — gợi ý đặt per-attempt timeout <= 120000ms để tránh treo tiến trình (đây là gợi ý cấu hình, không phải lỗi).",
+    "Combo 'OmniRoute-Coder-2' (omni): timeout=420000ms > 120000ms — gợi ý đặt per-attempt timeout <= 120000ms để tránh treo tiến trình (đây là gợi ý cấu hình, không phải lỗi).",
+    "Combo 'OmniRoute-Coder-3' (omni): timeout=420000ms > 120000ms — gợi ý đặt per-attempt timeout <= 120000ms để tránh treo tiến trình (đây là gợi ý cấu hình, không phải lỗi).",
+    "Combo 'OmniRoute-Agent-1' (omni): timeout=420000ms > 120000ms — gợi ý đặt per-attempt timeout <= 120000ms để tránh treo tiến trình (đây là gợi ý cấu hình, không phải lỗi).",
+    "Combo 'OmniRoute-Agent-2' (omni): timeout=420000ms > 120000ms — gợi ý đặt per-attempt timeout <= 120000ms để tránh treo tiến trình (đây là gợi ý cấu hình, không phải lỗi).",
+    "Router 'omni' (omniroute) is using elevated key OMNIROUTE_API_KEY. Consider setting a client-scoped key (OMNIROUTE_CLIENT_KEY) for read-back per least privilege.",
+    "Router 'nine' (9router) is using elevated key NINE_ROUTER_API_KEY. Consider setting a client-scoped key (NINEROUTER_CLIENT_KEY) for read-back per least privilege."
+  ],
+  "timestamp": "2026-11-25T00:28:57.076Z",
+  "lowResource": true,
+  "lowResourceReason": "auto: availableMem 1.2 GiB < 2 GiB"
+}
+
+[90mstdout[2m | test/acceptance/at-95.test.ts[2m > [22m[2mAcceptance Test AT-95: Doctor Circular Dependency Check (Condition C4)[2m > [22m[2mdetects circular dependency when DSH config points to managed 9Router port (20128)
+[22m[39m{
+  "ok": false,
+  "ready": false,
+  "configError": null,
+  "os": "win32",
+  "arch": "x64",
+  "node": "v24.18.0",
+  "pnpm": "10.20.0",
+  "build": true,
+  "stateDir": "C:\\Users\\<USER>\\AppData\\Local\\routersync",
+  "tickStateDir": "C:\\Users\\<USER>\\.openmausbot\\tmp\\agy\\4c4db2442357\\routersync-test-state-QenSeo",
+  "syncStateDir": "C:\\Users\\<USER>\\AppData\\Local\\routersync",
+  "configPath": "C:\\Users\\<USER>\\.openmausbot\\tmp\\agy\\4c4db2442357\\rs_doctor_test_h6pqni\\config.yaml",
+  "rankingPolicy": {
+    "present": true,
+    "path": "C:\\Users\\<USER>\\AppData\\Roaming\\routersync\\ranking.yaml"
+  },
+  "routers": [
+    {
+      "routerId": "omni",
+      "adapter": "omniroute",
+      "dbPath": "C:\\Users\\<USER>\\.omniroute\\storage.sqlite",
+      "found": true,
+      "readable": true,
+      "tiers": {
+        "A": 254,
+        "B": 0,
+        "C": 0,
+        "total": 254
+      },
+      "basis": "combo-members",
+      "available": "UNKNOWN (reader not implemented)"
+    },
+    {
+      "routerId": "nine",
+      "adapter": "9router",
+      "dbPath": "C:\\Users\\<USER>\\AppData\\Roaming\\9router\\db\\data.sqlite",
+      "found": true,
+      "readable": true,
+      "tiers": {
+        "A": 232,
+        "B": 32,
+        "C": 0,
+        "total": 264
+      },
+      "basis": "combo-members",
+      "available": 434
+    }
+  ],
+  "apps": [
+    {
+      "name": "Hermes Agent",
+      "configPath": null,
+      "detected": false
+    },
+    {
+      "name": "DSH Desktop",
+      "configPath": null,
+      "detected": false
+    },
+    {
+      "name": "Claude Code",
+      "configPath": "C:\\Users\\<USER>\\.claude.json",
+      "detected": true
+    },
+    {
+      "name": "OpenCode",
+      "configPath": "C:\\Users\\<USER>\\.config\\opencode\\opencode.json",
+      "detected": true
+    },
+    {
+      "name": "Codex",
+      "configPath": "C:\\Users\\<USER>\\.codex\\config.toml",
+      "detected": true
+    },
+    {
+      "name": "Antigravity",
+      "configPath": "C:\\Users\\<USER>\\.gemini\\antigravity",
+      "detected": true
+    }
+  ],
+  "schedule": {
+    "installed": false,
+    "detail": "No routersync tick schedule detected. Run `routersync schedule install --dry-run` or `routersync schedule install`.",
+    "activeTier": "none",
+    "configuredIntervalMinutes": 15,
+    "lastTickAt": null,
+    "lastTickAgeMinutes": null,
+    "staleTickWarning": false,
+    "staleThresholdMinutes": 30
+  },
+  "harnessSchedules": [
+    {
+      "harnessId": "hermes",
+      "displayName": "Hermes Agent (Nous Research)",
+      "detected": true,
+      "zeroTokenNativeCapable": true,
+      "recommendedTier": "harness-native",
+      "activeTier": "none",
+      "detail": "Supports Tier 1 zero-token native schedule (built-in-gateway-cron)"
+    },
+    {
+      "harnessId": "claude-code",
+      "displayName": "Anthropic Claude Code",
+      "detected": true,
+      "zeroTokenNativeCapable": false,
+      "recommendedTier": "os-scheduler",
+      "activeTier": "none",
+      "detail": "Uses Tier 2 OS scheduler + Tier 3 MCP tick_if_due (llm-prompt-schedulers)"
+    },
+    {
+      "harnessId": "codex",
+      "displayName": "OpenAI Codex CLI (and Desktop / IDE Extension)",
+      "detected": true,
+      "zeroTokenNativeCapable": false,
+      "recommendedTier": "os-scheduler",
+      "activeTier": "none",
+      "detail": "Uses Tier 2 OS scheduler + Tier 3 MCP tick_if_due (desktop-cloud-llm-automations)"
+    },
+    {
+      "harnessId": "antigravity",
+      "displayName": "Google Antigravity (App, IDE, CLI agy, SDK)",
+      "detected": true,
+      "zeroTokenNativeCapable": true,
+      "recommendedTier": "harness-native",
+      "activeTier": "none",
+      "detail": "Supports Tier 1 zero-token native schedule (sidecar-schedule-builtin)"
+    },
+    {
+      "harnessId": "opencode",
+      "displayName": "OpenCode",
+      "detected": true,
+      "zeroTokenNativeCapable": false,
+      "recommendedTier": "os-scheduler",
+      "activeTier": "none",
+      "detail": "Uses Tier 2 OS scheduler + Tier 3 MCP tick_if_due (none)"
+    },
+    {
+      "harnessId": "cursor",
+      "displayName": "Cursor IDE (and Cursor CLI agent)",
+      "detected": true,
+      "zeroTokenNativeCapable": false,
+      "recommendedTier": "os-scheduler",
+      "activeTier": "none",
+      "detail": "Uses Tier 2 OS scheduler + Tier 3 MCP tick_if_due (cloud-automations-and-agent-sdk)"
+    },
+    {
+      "harnessId": "grok-bot",
+      "displayName": "xAI Grok Bot (Cloud) [companion local CLI: Grok Build]",
+      "detected": false,
+      "zeroTokenNativeCapable": false,
+      "recommendedTier": "os-scheduler",
+      "activeTier": "none",
+      "detail": "Uses Tier 2 OS scheduler + Tier 3 MCP tick_if_due (cloud-llm-routines)"
+    },
+    {
+      "harnessId": "openmausbot",
+      "displayName": "OpenMausBot",
+      "detected": false,
+      "zeroTokenNativeCapable": false,
+      "recommendedTier": "os-scheduler",
+      "activeTier": "none",
+      "detail": "Uses Tier 2 OS scheduler + Tier 3 MCP tick_if_due (built-in-croner-llm-routines)"
+    },
+    {
+      "harnessId": "dsh",
+      "displayName": "DeepSeek Harness (dsh)",
+      "detected": false,
+      "zeroTokenNativeCapable": false,
+      "recommendedTier": "os-scheduler",
+      "activeTier": "none",
+      "detail": "Uses Tier 2 OS scheduler + Tier 3 MCP tick_if_due (built-in-dsh-schedule-llm-prompts)"
+    }
+  ],
+  "nextSteps": [
+    "Set up a scheduled `routersync tick` run (`routersync schedule install`) for zero-token catalogue watches.",
+    "Break circular dependencies: point the agent harness at a direct provider API key or non-managed fallback endpoint."
+  ],
+  "circularWarnings": [
+    {
+      "harness": "dsh",
+      "harnessConfigPath": "C:\\Users\\<USER>\\.openmausbot\\tmp\\agy\\4c4db2442357\\rs_doctor_test_h6pqni\\dsh_config.yml",
+      "routerId": "nine",
+      "routerUrl": "http://localhost:20128",
+      "severity": "WARNING",
+      "message": "Circular dependency detected: Harness 'dsh' is configured to use router 'nine' (http://localhost:20128) as upstream provider. Modifying this router may self-interrupt agent execution."
+    }
+  ],
+  "validationWarnings": [],
+  "authKeys": [
+    {
+      "routerId": "omni",
+      "adapter": "omniroute",
+      "keyName": "OMNIROUTE_API_KEY",
+      "keyScope": "elevated"
+    },
+    {
+      "routerId": "nine",
+      "adapter": "9router",
+      "keyName": "NINE_ROUTER_API_KEY",
+      "keyScope": "elevated"
+    }
+  ],
+  "recommendations": [
+    "Router 'omni' (omniroute): Đã có bằng chứng sao lưu gần nhất (2026-11-10T17:17:32.821Z).",
+    "Router 'nine' (9router): Đã có bằng chứng sao lưu gần nhất (2026-11-10T17:17:32.821Z).",
+    "Use a direct provider API key or non-managed fallback endpoint for the agent harness itself.",
+    "Remember: `routersync rollback` can always be executed independently via CLI without AI assistance.",
+    "Combo 'OmniRoute-Dev' (omni): timeout=420000ms > 120000ms — gợi ý đặt per-attempt timeout <= 120000ms để tránh treo tiến trình (đây là gợi ý cấu hình, không phải lỗi).",
+    "Combo 'OmniRoute-Agent' (omni): timeout=420000ms > 120000ms — gợi ý đặt per-attempt timeout <= 120000ms để tránh treo tiến trình (đây là gợi ý cấu hình, không phải lỗi).",
+    "Combo 'OmniRoute-Coder-1' (omni): timeout=420000ms > 120000ms — gợi ý đặt per-attempt timeout <= 120000ms để tránh treo tiến trình (đây là gợi ý cấu hình, không phải lỗi).",
+    "Combo 'OmniRoute-Coder-2' (omni): timeout=420000ms > 120000ms — gợi ý đặt per-attempt timeout <= 120000ms để tránh treo tiến trình (đây là gợi ý cấu hình, không phải lỗi).",
+    "Combo 'OmniRoute-Coder-3' (omni): timeout=420000ms > 120000ms — gợi ý đặt per-attempt timeout <= 120000ms để tránh treo tiến trình (đây là gợi ý cấu hình, không phải lỗi).",
+    "Combo 'OmniRoute-Agent-1' (omni): timeout=420000ms > 120000ms — gợi ý đặt per-attempt timeout <= 120000ms để tránh treo tiến trình (đây là gợi ý cấu hình, không phải lỗi).",
+    "Combo 'OmniRoute-Agent-2' (omni): timeout=420000ms > 120000ms — gợi ý đặt per-attempt timeout <= 120000ms để tránh treo tiến trình (đây là gợi ý cấu hình, không phải lỗi).",
+    "Router 'omni' (omniroute) is using elevated key OMNIROUTE_API_KEY. Consider setting a client-scoped key (OMNIROUTE_CLIENT_KEY) for read-back per least privilege.",
+    "Router 'nine' (9router) is using elevated key NINE_ROUTER_API_KEY. Consider setting a client-scoped key (NINEROUTER_CLIENT_KEY) for read-back per least privilege."
+  ],
+  "timestamp": "2026-11-25T00:28:57.675Z",
+  "lowResource": true,
+  "lowResourceReason": "auto: availableMem 1.2 GiB < 2 GiB"
+}
+
+[90mstdout[2m | test/acceptance/at-95.test.ts[2m > [22m[2mAcceptance Test AT-95: Doctor Circular Dependency Check (Condition C4)[2m > [22m[2mreturns ok: true when harness configs point to direct external providers
+[22m[39m{
+  "ok": true,
+  "ready": true,
+  "configError": null,
+  "os": "win32",
+  "arch": "x64",
+  "node": "v24.18.0",
+  "pnpm": "10.20.0",
+  "build": true,
+  "stateDir": "C:\\Users\\<USER>\\AppData\\Local\\routersync",
+  "tickStateDir": "C:\\Users\\<USER>\\.openmausbot\\tmp\\agy\\4c4db2442357\\routersync-test-state-QenSeo",
+  "syncStateDir": "C:\\Users\\<USER>\\AppData\\Local\\routersync",
+  "configPath": "C:\\Users\\<USER>\\.openmausbot\\tmp\\agy\\4c4db2442357\\rs_doctor_test_1l9vON\\config.yaml",
+  "rankingPolicy": {
+    "present": true,
+    "path": "C:\\Users\\<USER>\\AppData\\Roaming\\routersync\\ranking.yaml"
+  },
+  "routers": [
+    {
+      "routerId": "omni",
+      "adapter": "omniroute",
+      "dbPath": "C:\\Users\\<USER>\\.omniroute\\storage.sqlite",
+      "found": true,
+      "readable": true,
+      "tiers": {
+        "A": 254,
+        "B": 0,
+        "C": 0,
+        "total": 254
+      },
+      "basis": "combo-members",
+      "available": "UNKNOWN (reader not implemented)"
+    },
+    {
+      "routerId": "nine",
+      "adapter": "9router",
+      "dbPath": "C:\\Users\\<USER>\\AppData\\Roaming\\9router\\db\\data.sqlite",
+      "found": true,
+      "readable": true,
+      "tiers": {
+        "A": 232,
+        "B": 32,
+        "C": 0,
+        "total": 264
+      },
+      "basis": "combo-members",
+      "available": 434
+    }
+  ],
+  "apps": [
+    {
+      "name": "Hermes Agent",
+      "configPath": null,
+      "detected": false
+    },
+    {
+      "name": "DSH Desktop",
+      "configPath": null,
+      "detected": false
+    },
+    {
+      "name": "Claude Code",
+      "configPath": "C:\\Users\\<USER>\\.claude.json",
+      "detected": true
+    },
+    {
+      "name": "OpenCode",
+      "configPath": "C:\\Users\\<USER>\\.config\\opencode\\opencode.json",
+      "detected": true
+    },
+    {
+      "name": "Codex",
+      "configPath": "C:\\Users\\<USER>\\.codex\\config.toml",
+      "detected": true
+    },
+    {
+      "name": "Antigravity",
+      "configPath": "C:\\Users\\<USER>\\.gemini\\antigravity",
+      "detected": true
+    }
+  ],
+  "schedule": {
+    "installed": false,
+    "detail": "No routersync tick schedule detected. Run `routersync schedule install --dry-run` or `routersync schedule install`.",
+    "activeTier": "none",
+    "configuredIntervalMinutes": 15,
+    "lastTickAt": null,
+    "lastTickAgeMinutes": null,
+    "staleTickWarning": false,
+    "staleThresholdMinutes": 30
+  },
+  "harnessSchedules": [
+    {
+      "harnessId": "hermes",
+      "displayName": "Hermes Agent (Nous Research)",
+      "detected": true,
+      "zeroTokenNativeCapable": true,
+      "recommendedTier": "harness-native",
+      "activeTier": "none",
+      "detail": "Supports Tier 1 zero-token native schedule (built-in-gateway-cron)"
+    },
+    {
+      "harnessId": "claude-code",
+      "displayName": "Anthropic Claude Code",
+      "detected": true,
+      "zeroTokenNativeCapable": false,
+      "recommendedTier": "os-scheduler",
+      "activeTier": "none",
+      "detail": "Uses Tier 2 OS scheduler + Tier 3 MCP tick_if_due (llm-prompt-schedulers)"
+    },
+    {
+      "harnessId": "codex",
+      "displayName": "OpenAI Codex CLI (and Desktop / IDE Extension)",
+      "detected": true,
+      "zeroTokenNativeCapable": false,
+      "recommendedTier": "os-scheduler",
+      "activeTier": "none",
+      "detail": "Uses Tier 2 OS scheduler + Tier 3 MCP tick_if_due (desktop-cloud-llm-automations)"
+    },
+    {
+      "harnessId": "antigravity",
+      "displayName": "Google Antigravity (App, IDE, CLI agy, SDK)",
+      "detected": true,
+      "zeroTokenNativeCapable": true,
+      "recommendedTier": "harness-native",
+      "activeTier": "none",
+      "detail": "Supports Tier 1 zero-token native schedule (sidecar-schedule-builtin)"
+    },
+    {
+      "harnessId": "opencode",
+      "displayName": "OpenCode",
+      "detected": true,
+      "zeroTokenNativeCapable": false,
+      "recommendedTier": "os-scheduler",
+      "activeTier": "none",
+      "detail": "Uses Tier 2 OS scheduler + Tier 3 MCP tick_if_due (none)"
+    },
+    {
+      "harnessId": "cursor",
+      "displayName": "Cursor IDE (and Cursor CLI agent)",
+      "detected": true,
+      "zeroTokenNativeCapable": false,
+      "recommendedTier": "os-scheduler",
+      "activeTier": "none",
+      "detail": "Uses Tier 2 OS scheduler + Tier 3 MCP tick_if_due (cloud-automations-and-agent-sdk)"
+    },
+    {
+      "harnessId": "grok-bot",
+      "displayName": "xAI Grok Bot (Cloud) [companion local CLI: Grok Build]",
+      "detected": false,
+      "zeroTokenNativeCapable": false,
+      "recommendedTier": "os-scheduler",
+      "activeTier": "none",
+      "detail": "Uses Tier 2 OS scheduler + Tier 3 MCP tick_if_due (cloud-llm-routines)"
+    },
+    {
+      "harnessId": "openmausbot",
+      "displayName": "OpenMausBot",
+      "detected": false,
+      "zeroTokenNativeCapable": false,
+      "recommendedTier": "os-scheduler",
+      "activeTier": "none",
+      "detail": "Uses Tier 2 OS scheduler + Tier 3 MCP tick_if_due (built-in-croner-llm-routines)"
+    },
+    {
+      "harnessId": "dsh",
+      "displayName": "DeepSeek Harness (dsh)",
+      "detected": false,
+      "zeroTokenNativeCapable": false,
+      "recommendedTier": "os-scheduler",
+      "activeTier": "none",
+      "detail": "Uses Tier 2 OS scheduler + Tier 3 MCP tick_if_due (built-in-dsh-schedule-llm-prompts)"
+    }
+  ],
+  "nextSteps": [
+    "Set up a scheduled `routersync tick` run (`routersync schedule install`) for zero-token catalogue watches."
+  ],
+  "circularWarnings": [],
+  "validationWarnings": [],
+  "authKeys": [
+    {
+      "routerId": "omni",
+      "adapter": "omniroute",
+      "keyName": "OMNIROUTE_API_KEY",
+      "keyScope": "elevated"
+    },
+    {
+      "routerId": "nine",
+      "adapter": "9router",
+      "keyName": "NINE_ROUTER_API_KEY",
+      "keyScope": "elevated"
+    }
+  ],
+  "recommendations": [
+    "Router 'omni' (omniroute): Đã có bằng chứng sao lưu gần nhất (2026-11-10T17:17:32.821Z).",
+    "Router 'nine' (9router): Đã có bằng chứng sao lưu gần nhất (2026-11-10T17:17:32.821Z).",
+    "Combo 'OmniRoute-Dev' (omni): timeout=420000ms > 120000ms — gợi ý đặt per-attempt timeout <= 120000ms để tránh treo tiến trình (đây là gợi ý cấu hình, không phải lỗi).",
+    "Combo 'OmniRoute-Agent' (omni): timeout=420000ms > 120000ms — gợi ý đặt per-attempt timeout <= 120000ms để tránh treo tiến trình (đây là gợi ý cấu hình, không phải lỗi).",
+    "Combo 'OmniRoute-Coder-1' (omni): timeout=420000ms > 120000ms — gợi ý đặt per-attempt timeout <= 120000ms để tránh treo tiến trình (đây là gợi ý cấu hình, không phải lỗi).",
+    "Combo 'OmniRoute-Coder-2' (omni): timeout=420000ms > 120000ms — gợi ý đặt per-attempt timeout <= 120000ms để tránh treo tiến trình (đây là gợi ý cấu hình, không phải lỗi).",
+    "Combo 'OmniRoute-Coder-3' (omni): timeout=420000ms > 120000ms — gợi ý đặt per-attempt timeout <= 120000ms để tránh treo tiến trình (đây là gợi ý cấu hình, không phải lỗi).",
+    "Combo 'OmniRoute-Agent-1' (omni): timeout=420000ms > 120000ms — gợi ý đặt per-attempt timeout <= 120000ms để tránh treo tiến trình (đây là gợi ý cấu hình, không phải lỗi).",
+    "Combo 'OmniRoute-Agent-2' (omni): timeout=420000ms > 120000ms — gợi ý đặt per-attempt timeout <= 120000ms để tránh treo tiến trình (đây là gợi ý cấu hình, không phải lỗi).",
+    "Router 'omni' (omniroute) is using elevated key OMNIROUTE_API_KEY. Consider setting a client-scoped key (OMNIROUTE_CLIENT_KEY) for read-back per least privilege.",
+    "Router 'nine' (9router) is using elevated key NINE_ROUTER_API_KEY. Consider setting a client-scoped key (NINEROUTER_CLIENT_KEY) for read-back per least privilege."
+  ],
+  "timestamp": "2026-11-25T00:28:58.152Z",
+  "lowResource": true,
+  "lowResourceReason": "auto: availableMem 1.2 GiB < 2 GiB"
+}
+
+ [32m✓[39m [30m[45m root-tools [49m[39m test/acceptance/at-95.test.ts [2m([22m[2m3 tests[22m[2m)[22m[33m 1508[2mms[22m[39m
+     [33m[2m✓[22m[39m detects circular dependency when Hermes config points to managed OmniRoute port (30128) [33m 603[2mms[22m[39m
+     [33m[2m✓[22m[39m detects circular dependency when DSH config points to managed 9Router port (20128) [33m 477[2mms[22m[39m
+     [33m[2m✓[22m[39m returns ok: true when harness configs point to direct external providers [33m 426[2mms[22m[39m
+ [32m✓[39m [30m[45m root-tools [49m[39m test/docs/c45-wp1-harness-docs.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 14[2mms[22m[39m
+ [32m✓[39m [30m[45m root-tools [49m[39m test/acceptance/at-105-atomic-write.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 53[2mms[22m[39m
+ [32m✓[39m [30m[45m root-tools [49m[39m test/acceptance/at-3.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 5[2mms[22m[39m
+ [32m✓[39m [30m[45m root-tools [49m[39m test/acceptance/at-5.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 5[2mms[22m[39m
+ [32m✓[39m [30m[45m root-tools [49m[39m test/acceptance/at-110.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 4[2mms[22m[39m
+ [32m✓[39m [30m[45m root-tools [49m[39m test/acceptance/at-160-credential-broker.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 5[2mms[22m[39m
+ [32m✓[39m [30m[45m root-tools [49m[39m test/acceptance/at-104-safe-filenames.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 4[2mms[22m[39m
+ [32m✓[39m [30m[45m root-tools [49m[39m test/acceptance/at-134-doctor-overview-i18n.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 15[2mms[22m[39m
+ [32m✓[39m [30m[45m root-tools [49m[39m test/agent/heavy.test.mjs [2m([22m[2m20 tests[22m[2m)[22m[32m 8[2mms[22m[39m
+ [32m✓[39m [30m[45m root-tools [49m[39m test/acceptance/at-122-daemon-db-safety.test.ts [2m([22m[2m2 tests[22m[2m)[22m[33m 7669[2mms[22m[39m
+     [33m[2m✓[22m[39m handles database lock contention as soft degradation (db_busy) without crashing (B-2) [33m 7463[2mms[22m[39m
+ [32m✓[39m [30m[45m root-tools [49m[39m test/ci/check-perf.test.ts [2m([22m[2m4 tests[22m[2m)[22m[33m 362[2mms[22m[39m
+ [32m✓[39m [30m[45m root-tools [49m[39m test/readme-clone-cd.test.mjs [2m([22m[2m1 test[22m[2m)[22m[32m 7[2mms[22m[39m
+ [32m✓[39m [30m[45m root-tools [49m[39m test/docs/agent-ci-rules.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 5[2mms[22m[39m
+ [32m✓[39m [30m[45m root-tools [49m[39m test/ci/cold-start.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 6[2mms[22m[39m
+ [32m✓[39m [30m[45m root-tools [49m[39m test/ci/preflight.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 66[2mms[22m[39m
+ [32m✓[39m [30m[45m root-tools [49m[39m test/agent/vitest-effective-timeouts.test.mjs [2m([22m[2m4 tests[22m[2m)[22m[32m 4[2mms[22m[39m
+ [32m✓[39m [30m[45m root-tools [49m[39m test/acceptance/at-169-cli-e2e-matrix.test.ts [2m([22m[2m11 tests[22m[2m)[22m[33m 7090[2mms[22m[39m
+     [33m[2m✓[22m[39m executes root CLI --help successfully with zero exit code [33m 801[2mms[22m[39m
+     [33m[2m✓[22m[39m executes root CLI --version successfully [33m 856[2mms[22m[39m
+     [33m[2m✓[22m[39m executes "routersync init --help" cleanly [33m 779[2mms[22m[39m
+     [33m[2m✓[22m[39m executes "routersync scan --help" cleanly [33m 668[2mms[22m[39m
+     [33m[2m✓[22m[39m executes "routersync plan --help" cleanly [33m 641[2mms[22m[39m
+     [33m[2m✓[22m[39m executes "routersync apply --help" cleanly [33m 612[2mms[22m[39m
+     [33m[2m✓[22m[39m executes "routersync rollback --help" cleanly [33m 652[2mms[22m[39m
+     [33m[2m✓[22m[39m executes "routersync status --help" cleanly [33m 527[2mms[22m[39m
+     [33m[2m✓[22m[39m executes "routersync doctor --help" cleanly [33m 493[2mms[22m[39m
+     [33m[2m✓[22m[39m executes "routersync mcp --help" cleanly [33m 521[2mms[22m[39m
+     [33m[2m✓[22m[39m executes "routersync daemon --help" cleanly [33m 535[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m198 passed[39m[22m[90m (198)[39m
+[2m      Tests [22m [1m[32m1532 passed[39m[22m[2m | [22m[33m1 skipped[39m[90m (1533)[39m
+[2m   Start at [22m 07:26:11
+[2m   Duration [22m 180.32s[2m (transform 10.47s, setup 63.49s, import 33.62s, tests 198.41s, environment 23ms)[22m
+
+
+> routersync@0.1.0 e2e <private-provider-2>
+> node tools/agent/heavy.mjs -- pnpm e2e
+
+
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.12 [39m[90m<HOME>/.openmausbot/tmp/agy/4c4db2442357/rs-ev-d3[39m
+
+ [32m✓[39m [30m[45m e2e [49m[39m test/e2e/e2e.test.ts [2m([22m[2m13 tests[22m[2m)[22m[33m 40695[2mms[22m[39m
+     [33m[2m✓[22m[39m prints version and help from the installed CLI [33m 1548[2mms[22m[39m
+     [33m[2m✓[22m[39m runs a read-only scan against the fake router databases [33m 855[2mms[22m[39m
+     [33m[2m✓[22m[39m ticks twice: the second run makes 0 requests (15 minute gate) [33m 3056[2mms[22m[39m
+     [33m[2m✓[22m[39m detects a new model and a lost model [33m 2301[2mms[22m[39m
+     [33m[2m✓[22m[39m records provider errors as zero-token failures [33m 952[2mms[22m[39m
+     [33m[2m✓[22m[39m runs verify and the inbox commands [33m 1606[2mms[22m[39m
+     [33m[2m✓[22m[39m accepts a research submission [33m 754[2mms[22m[39m
+     [33m[2m✓[22m[39m runs a rank preview without touching the router database [33m 806[2mms[22m[39m
+     [33m[2m✓[22m[39m runs undo in plan-only mode and refuses sync without a TTY [33m 1427[2mms[22m[39m
+     [33m[2m✓[22m[39m refuses sync --apply, undo --apply and rank --apply when stdin is a pipe [33m 1961[2mms[22m[39m
+     [33m[2m✓[22m[39m serves the MCP server over stdio with 26 read-only + 2 ledger-append + 1 controlled-write tools [33m 1694[2mms[22m[39m
+     [33m[2m✓[22m[39m starts the daemon on a random port and answers a health request [33m 1117[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m1 passed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[32m13 passed[39m[22m[90m (13)[39m
+[2m   Start at [22m 07:29:13
+[2m   Duration [22m 41.05s[2m (transform 61ms, setup 0ms, import 98ms, tests 40.70s, environment 0ms)[22m
+
