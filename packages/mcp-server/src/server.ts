@@ -29,6 +29,7 @@ import {
   PlanSchema,
   ResearchValidationError,
   appendResearchEvidence,
+  containsSecretLikeContent,
   assertWeeklyResearchSessionAllowed,
   computeWeeklyResearchBudget,
   recordResearchSessionActivity,
@@ -1652,6 +1653,13 @@ export function createRouterSyncMcpServer(options: ServerOptions = {}): McpServe
       const nowMs = resolveNowMs();
       const maxWeeklyResearchSessions = readConfiguredMaxWeeklySessionsReadOnly(options.configPath);
       try {
+        if (typeof args.sessionId === 'string' && containsSecretLikeContent(args.sessionId)) {
+          throw new ResearchValidationError(
+            'SECRET_DETECTED_IN_EVIDENCE',
+            'Research sessionId contains secret or API-key-like material and was rejected.'
+          );
+        }
+
         // Gate 1 (WP8): Enforce weekly research session cap BEFORE appending evidence
         const allowedSession = assertWeeklyResearchSessionAllowed(paths.stateDir, {
           sessionId: args.sessionId,

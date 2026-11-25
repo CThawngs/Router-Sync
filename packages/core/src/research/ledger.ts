@@ -15,7 +15,11 @@ import * as crypto from 'node:crypto';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { z } from 'zod';
-import { sanitizeUntrustedString } from '../domain/sanitize.js';
+import {
+  containsSecretLikeContent,
+  containsSecretLikeUrlContent,
+  sanitizeUntrustedString,
+} from '../domain/sanitize.js';
 import { atomicWriteFileSync } from '../paths/atomic.js';
 import {
   ResearchValidationError,
@@ -310,12 +314,46 @@ export function appendResearchEvidence(
   stateDir: string,
   input: AppendResearchEvidenceInput
 ): ResearchEvidenceRecord {
-  const { canonicalProvider, cleanModelId, compositeId } = resolveProviderAndModel(input);
+  if (
+    containsSecretLikeContent(input.id) ||
+    containsSecretLikeContent(input.provider) ||
+    containsSecretLikeContent(input.modelId) ||
+    containsSecretLikeUrlContent(input.url) ||
+    containsSecretLikeContent(input.quote) ||
+    containsSecretLikeContent(input.snippet) ||
+    containsSecretLikeContent(input.conclusion) ||
+    containsSecretLikeContent(input.replacementModelId)
+  ) {
+    throw new ResearchValidationError(
+      'SECRET_DETECTED_IN_EVIDENCE',
+      'Research evidence contains secret or API-key-like material and was rejected.'
+    );
+  }
+
+  const { rawProvider, canonicalProvider, cleanModelId, compositeId } = resolveProviderAndModel(input);
+  if (
+    containsSecretLikeContent(rawProvider) ||
+    containsSecretLikeContent(canonicalProvider) ||
+    containsSecretLikeContent(cleanModelId) ||
+    containsSecretLikeContent(compositeId)
+  ) {
+    throw new ResearchValidationError(
+      'SECRET_DETECTED_IN_EVIDENCE',
+      'Research evidence contains secret or API-key-like material and was rejected.'
+    );
+  }
+
   const domainCheck = verifyProviderSourceDomain(
     canonicalProvider,
     input.url,
     input.claimedSourceTier
   );
+  if (containsSecretLikeUrlContent(domainCheck.normalizedUrl)) {
+    throw new ResearchValidationError(
+      'SECRET_DETECTED_IN_EVIDENCE',
+      'Research evidence contains secret or API-key-like material and was rejected.'
+    );
+  }
 
   const submittedAt =
     validateOptionalTimestamp('submittedAt', input.submittedAt) ?? new Date().toISOString();
@@ -330,6 +368,18 @@ export function appendResearchEvidence(
   const parsedVerdict = ResearchVerdictSchema.safeParse(verdict);
   if (!parsedVerdict.success) {
     throw new ResearchValidationError('SCHEMA_VALIDATION_ERROR', `Invalid verdict "${String(verdict)}".`);
+  }
+
+  if (
+    containsSecretLikeContent(input.quote) ||
+    containsSecretLikeContent(input.snippet) ||
+    containsSecretLikeContent(input.conclusion) ||
+    containsSecretLikeContent(input.replacementModelId)
+  ) {
+    throw new ResearchValidationError(
+      'SECRET_DETECTED_IN_EVIDENCE',
+      'Research evidence contains secret or API-key-like material and was rejected.'
+    );
   }
 
   const rawQuote = input.quote ?? input.snippet ?? '';
