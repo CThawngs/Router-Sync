@@ -193,3 +193,80 @@ describe('local provider registryNames are forbidden but public codes are not', 
     expect(scanLine('mb/config', patterns).ok).toBe(false);
   });
 });
+
+describe('C46-F4B: Personal POSIX Path (/home/...) root-boundary & username validation', () => {
+  it('allows sandbox mid-path /home/ segments and relative/URL /home/ paths (true negatives)', () => {
+    const cleanCases = [
+      'const p = "/tmp/rs-c46-f3-e2e-0CXhOp/home/.hermes/config.yaml";',
+      'const p = "/tmp/rs-c46-f3-e2e-0CXhOp/home/pilotuser/config.yaml";',
+      'const p = "/private/var/folders/xx/yy/T/rs-123/home/custom/file.json";',
+      'RUNNER_HOME_DIR/AppData/Local/Temp/rs-123/home/custom/file.json',
+      'RUNNER_HOME_DIR/home/custom/file.json',
+      'PLACEHOLDER_DIR/home/custom/file.json',
+      './home/custom/file.json',
+      '../home/custom/file.json',
+      '~/home/custom/file.json',
+      'https://github.com/home/settings',
+    ];
+    for (const line of cleanCases) {
+      const res = scanLine(line);
+      expect(res, `Expected true negative for: ${line}`).toEqual({ ok: true, allowed: false });
+    }
+  });
+
+  it('allows invalid POSIX usernames starting with dot or hyphen under /home/', () => {
+    const invalidUsernameCases = [
+      '/home/.hermes/config.yaml',
+      '"/home/.hermes/config.yaml"',
+      '/home/-flag',
+      'cmd /home/-v',
+    ];
+    for (const line of invalidUsernameCases) {
+      const res = scanLine(line);
+      expect(res, `Expected true negative for invalid username: ${line}`).toEqual({ ok: true, allowed: false });
+    }
+  });
+
+  it('allows synthetic exempted POSIX users (alice, bob, user, example, test, mock)', () => {
+    for (const u of ['alice', 'bob', 'user', 'example', 'test', 'mock']) {
+      expect(scanLine(`/home/${u}`)).toEqual({ ok: true, allowed: false });
+      expect(scanLine(`"/home/${u}/.config/app.yaml"`)).toEqual({ ok: true, allowed: false });
+    }
+  });
+
+  it('catches root-anchored /home/<username> across start-of-line, quotes, whitespace, and all delimiters (true positives)', () => {
+    const forbiddenCases = [
+      '/home/realperson/.config/app.yaml', // no-secrets:allow: synthetic POSIX home test fixture
+      'cd /home/realperson', // no-secrets:allow: synthetic POSIX home test fixture
+      '"/home/realperson/.hermes/config.yaml"', // no-secrets:allow: synthetic POSIX home test fixture
+      "'/home/realperson/file'", // no-secrets:allow: synthetic POSIX home test fixture
+      '`/home/realperson/file`', // no-secrets:allow: synthetic POSIX home test fixture
+      'HOME=/home/realperson', // no-secrets:allow: synthetic POSIX home test fixture
+      'PATH=/usr/bin:/home/realperson/bin', // no-secrets:allow: synthetic POSIX home test fixture
+      '(/home/realperson)', // no-secrets:allow: synthetic POSIX home test fixture
+      '[/home/realperson]', // no-secrets:allow: synthetic POSIX home test fixture
+      '{/home/realperson}', // no-secrets:allow: synthetic POSIX home test fixture
+      'a,/home/realperson', // no-secrets:allow: synthetic POSIX home test fixture
+      'a;/home/realperson', // no-secrets:allow: synthetic POSIX home test fixture
+      '<dir>/home/realperson</dir>', // no-secrets:allow: synthetic POSIX home test fixture
+      '/home/_svc/key', // no-secrets:allow: synthetic POSIX home test fixture
+      '/home/x/key', // no-secrets:allow: synthetic POSIX home test fixture
+    ];
+    for (const line of forbiddenCases) {
+      const res = scanLine(line);
+      expect(res.ok, `Expected violation for: ${line}`).toBe(false);
+      expect(res.violation).toBe('Personal POSIX Path (/home/...)'); // no-secrets:allow: rule name assertion
+    }
+  });
+
+  it('flags file:///home/realperson/doc.md and matches Personal POSIX Path rule', () => { // no-secrets:allow: test description references file URI shape
+    const uri = 'file:///home/realperson/doc.md'; // no-secrets:allow: synthetic file URI test fixture
+    const res = scanLine(uri);
+    expect(res.ok).toBe(false);
+    expect(res.violation).toMatch(/Personal POSIX Path|Absolute file URL/);
+    const posixRule = FORBIDDEN_PATTERNS.find((r) => r.name === 'Personal POSIX Path (/home/...)'); // no-secrets:allow: rule name lookup
+    expect(posixRule).toBeDefined();
+    posixRule.regex.lastIndex = 0;
+    expect(posixRule.regex.test(uri)).toBe(true);
+  });
+});
