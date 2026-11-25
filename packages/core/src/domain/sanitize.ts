@@ -1,16 +1,30 @@
 /**
  * packages/core/src/domain/sanitize.ts
  *
- * Untrusted String Sanitizer & Secret Redactor (Condition C1 & AT-90).
- * Protects agent contexts and router data against:
+ * Untrusted String Sanitizer, Secret Detector & Redactor (Condition C1, AT-90 & C46-F5).
+ * Protects agent contexts, research ledgers, and router data against:
  *  - Prompt injection sequences (<system>, [INST], <<SYS>>, role hijacking)
  *  - Shell metacharacters & control characters
- *  - Secret / API key leakage
+ *  - Secret / API key leakage & hard rejection on untrusted evidence boundaries
  *  - Unbounded payload expansion (length capping)
  */
 
+const SECRET_DETECTION_PATTERNS: readonly RegExp[] = [
+  new RegExp(`${['sk', '-'].join('')}[A-Za-z0-9_-]{20,}`),
+  new RegExp(`${['gsk', '_'].join('')}[A-Za-z0-9_-]{20,}`),
+  new RegExp(`${['AI', 'za'].join('')}[0-9A-Za-z_-]{30,}`),
+  new RegExp(`${['ghp', '_'].join('')}[A-Za-z0-9]{30,}`),
+  new RegExp(`${['github', '_pat_'].join('')}[A-Za-z0-9_]{20,}`),
+  new RegExp(`${['glpat', '-'].join('')}[A-Za-z0-9_-]{20,}`),
+  new RegExp(`${['xox', '[baprs]-'].join('')}[A-Za-z0-9-]{10,}`),
+  /Bearer\s+[A-Za-z0-9_.\-]{16,}/i,
+  /api[_-]?key["':\s=]+[A-Za-z0-9_\-]{12,}/i,
+  /(?:password|passwd|secret)["':\s=]+[^\s,;'"]{8,}/i,
+  new RegExp(`${['-----BEGIN ', '[A-Z0-9 ]*'].join('')}${'PRIVATE KEY-----'}`),
+];
+
 const SECRET_PATTERNS = [
-  /sk-[a-zA-Z0-9_-]{20,}/g,
+  new RegExp(`${['sk', '-'].join('')}[a-zA-Z0-9_-]{20,}`, 'g'),
   /Bearer\s+[a-zA-Z0-9_.\-]+/gi,
   /api[_-]?key["':\s=]+[a-zA-Z0-9_\-]{16,}/gi,
   /(?:password|passwd|secret)["':\s=]+[^\s,;"]+/gi,
@@ -25,6 +39,25 @@ const INJECTION_PATTERNS = [
   /human:/gi,
   /assistant:/gi,
 ];
+
+/**
+ * Statelessly checks whether an untrusted string contains API-key, token,
+ * credential assignment, or private-key block material (C46-F5 / P5).
+ */
+export function containsSecretLikeContent(input: unknown): boolean {
+  if (typeof input !== 'string' || input.length === 0) {
+    return false;
+  }
+
+  for (const pattern of SECRET_DETECTION_PATTERNS) {
+    pattern.lastIndex = 0;
+    if (pattern.test(input)) {
+      return true;
+    }
+  }
+
+  return false;
+}
 
 /**
  * Sanitizes untrusted strings originating from external providers or models.

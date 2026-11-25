@@ -15,7 +15,7 @@ import * as crypto from 'node:crypto';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { z } from 'zod';
-import { sanitizeUntrustedString } from '../domain/sanitize.js';
+import { containsSecretLikeContent, sanitizeUntrustedString } from '../domain/sanitize.js';
 import { atomicWriteFileSync } from '../paths/atomic.js';
 import {
   ResearchValidationError,
@@ -330,6 +330,18 @@ export function appendResearchEvidence(
   const parsedVerdict = ResearchVerdictSchema.safeParse(verdict);
   if (!parsedVerdict.success) {
     throw new ResearchValidationError('SCHEMA_VALIDATION_ERROR', `Invalid verdict "${String(verdict)}".`);
+  }
+
+  if (
+    containsSecretLikeContent(input.quote) ||
+    containsSecretLikeContent(input.snippet) ||
+    containsSecretLikeContent(input.conclusion) ||
+    containsSecretLikeContent(input.replacementModelId)
+  ) {
+    throw new ResearchValidationError(
+      'SECRET_DETECTED_IN_EVIDENCE',
+      'Research evidence contains secret or API-key-like material and was rejected.'
+    );
   }
 
   const rawQuote = input.quote ?? input.snippet ?? '';

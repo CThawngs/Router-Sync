@@ -20,6 +20,7 @@ export type ResearchValidationErrorCode =
   | 'INSECURE_URL_SCHEME'
   | 'DISALLOWED_URL_AUTHORITY'
   | 'SPOOFED_OFFICIAL_DOMAIN'
+  | 'SECRET_DETECTED_IN_EVIDENCE'
   | 'SCHEMA_VALIDATION_ERROR';
 
 export class ResearchValidationError extends Error {
