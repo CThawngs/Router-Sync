@@ -100,7 +100,9 @@ describe('C45-WP4 Controlled Automation CLI Lifecycle', () => {
   function seedNineDbAt(dbPath: string): void {
     const db = openBetterSqlite3(dbPath, { allowLiveDbWrite: true });
     const now = '2026-11-24T00:00:00.000Z';
-    db.exec(`
+    try {
+      db.exec('BEGIN IMMEDIATE;');
+      db.exec(`
       CREATE TABLE IF NOT EXISTS combos (
         id TEXT PRIMARY KEY,
         name TEXT UNIQUE NOT NULL,
@@ -200,7 +202,10 @@ describe('C45-WP4 Controlled Automation CLI Lifecycle', () => {
     db.prepare(
       'INSERT INTO combos (id, name, kind, models, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?)'
     ).run('coding-primary', 'coding-primary', null, JSON.stringify(initialModels), now, now);
-    db.close();
+      db.exec('COMMIT;');
+    } finally {
+      db.close();
+    }
   }
 
   function readComboModelsAt(dbPath: string, name: string): string[] {
@@ -309,7 +314,7 @@ describe('C45-WP4 Controlled Automation CLI Lifecycle', () => {
     process.env['APPDATA'] = path.join(localTmpRoot, 'appdata');
     process.env['LOCALAPPDATA'] = path.join(localTmpRoot, 'local');
     resetTokenRegistry();
-  });
+  }, 60_000);
 
   afterEach(async () => {
     resetTokenRegistry();
@@ -327,7 +332,7 @@ describe('C45-WP4 Controlled Automation CLI Lifecycle', () => {
     for (const ctx of toClean) {
       fs.rmSync(ctx.tmpRoot, { recursive: true, force: true });
     }
-  });
+  }, 60_000);
 
   it('keeps status strictly read-only on an empty stateDir (AT-157 / M7) and rejects unconsented combos including test-1 with only-pattern', async () => {
     const { tmpRoot, configPath } = currentCtx;

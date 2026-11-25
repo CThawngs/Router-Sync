@@ -399,7 +399,7 @@ export async function runApplyCommand(options: ApplyCommandOptions): Promise<Mul
     const dbPath = resolveRouterDbPath(routerConfig, configDir);
     assertControlledWriteSandbox(dbPath, 'router-db');
     return {
-      adapter: createAdapterForRouter(routerConfig),
+      adapter: createAdapterForRouter(routerConfig, sDir),
       plan: item.plan,
       routerId: item.routerId,
       touchedCombos: item.touchedCombos,
@@ -410,7 +410,15 @@ export async function runApplyCommand(options: ApplyCommandOptions): Promise<Mul
   for (const t of writeTargets) {
     try {
       const snap = await t.adapter.createSnapshot();
-      const file = saveSnapshot(snap);
+      snap.metadata = {
+        ...(snap.metadata ?? {}),
+        touchedComboIds: [
+          ...t.plan.additions.map((a) => a.id),
+          ...t.plan.modifications.map((m) => m.id),
+          ...t.plan.deletions,
+        ],
+      };
+      const file = saveSnapshot(snap, sDir);
       savedSnapshots.push({ routerId: t.plan.target, snapshotId: snap.id, file });
     } catch (err) {
       console.error(

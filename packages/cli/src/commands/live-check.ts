@@ -1,10 +1,11 @@
 /**
  * packages/cli/src/commands/live-check.ts
  *
- * C45-WP9 (`Phục vụ: S9`): Strictly Read-Only Live Pilot Readiness CLI (`routersync live-check`).
+ * C45-WP9 & C46-F2 (`Phục vụ: S9, I4, I5`): Strictly Read-Only Live Pilot Readiness CLI (`routersync live-check`).
  *
  * Hard Zero-Mutation Guarantee (`100%` Read-Only):
  *  - NEVER creates, modifies, renames, or updates `mtime` on any router DB, harness config, or `<stateDir>` file.
+ *  - NEVER mutates `process.env`.
  *  - Performs backup/parse/write/restore rehearsal exclusively inside an ephemeral `os.tmpdir()/rs-livecheck-*`
  *    directory and deletes that temporary directory unconditionally in `finally`.
  *  - Bot team hard-stops at status `'READY_FOR_OWNER_LIVE_PILOT'` (`'sẵn sàng chạy thật'`);
@@ -18,12 +19,12 @@ import * as path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { parse as parseYaml } from 'yaml';
 import {
-  ConsentValidationError,
-   canonicalJsonStringify,
+  canonicalJsonStringify,
   computeWeeklyResearchBudget,
   expandHarnessPathPattern,
   findVerifiedProposeReceipt,
   getHarnessCapability,
+  isPathInsideDir,
   loadHarnessMatrix,
   openBetterSqlite3,
   parseTargetScope,
@@ -32,6 +33,7 @@ import {
   readFreezeState,
   readStandingConsent,
   resolveControlStateDir,
+  resolveDeepCanonicalPath,
   verifyHmacSha256Hex,
   type HarnessCapability,
   type StandingConsentEntryView,
@@ -1155,6 +1157,73 @@ export async function runLiveCheckCommand(
   }
 
   // -------------------------------------------------------------------------
+  // Check 7: live_gate_hint (C46-F2 — read-only live write flag readiness hint)
+  // -------------------------------------------------------------------------
+  const deepTmpDir = resolveDeepCanonicalPath(os.tmpdir());
+  const routerLiveFlagSet = process.env['ROUTERSYNC_ALLOW_LIVE_ROUTER_WRITE'] === '1';
+  const homeLiveFlagSet = process.env['ROUTERSYNC_ALLOW_LIVE_HOME_WRITE'] === '1';
+
+  const missingLiveFlagCommands: string[] = [];
+  const gateSegments: string[] = [];
+
+  if (resolvedRouterDbPath) {
+    const deepRouter = resolveDeepCanonicalPath(resolvedRouterDbPath);
+    const routerInsideTmp = isPathInsideDir(deepRouter, deepTmpDir);
+    if (routerInsideTmp) {
+      gateSegments.push(
+        `routerDb (${path.basename(resolvedRouterDbPath)}): trong os.tmpdir() — không cần cờ`
+      );
+    } else {
+      const flagLabel = routerLiveFlagSet ? 'đã đặt' : 'chưa đặt';
+      gateSegments.push(
+        `routerDb (${path.basename(resolvedRouterDbPath)}): ngoài os.tmpdir() — cần ROUTERSYNC_ALLOW_LIVE_ROUTER_WRITE=1 (${flagLabel})`
+      );
+      if (!routerLiveFlagSet) {
+        missingLiveFlagCommands.push('export ROUTERSYNC_ALLOW_LIVE_ROUTER_WRITE=1');
+      }
+    }
+  } else {
+    gateSegments.push(
+      `routerDb: chưa xác định tệp mục tiêu (ROUTERSYNC_ALLOW_LIVE_ROUTER_WRITE=1: ${routerLiveFlagSet ? 'đã đặt' : 'chưa đặt'})`
+    );
+  }
+
+  if (resolvedHarnessConfigFile) {
+    const deepHarness = resolveDeepCanonicalPath(resolvedHarnessConfigFile);
+    const harnessInsideTmp = isPathInsideDir(deepHarness, deepTmpDir);
+    if (harnessInsideTmp) {
+      gateSegments.push(
+        `harnessConfig (${path.basename(resolvedHarnessConfigFile)}): trong os.tmpdir() — không cần cờ`
+      );
+    } else {
+      const flagLabel = homeLiveFlagSet ? 'đã đặt' : 'chưa đặt';
+      gateSegments.push(
+        `harnessConfig (${path.basename(resolvedHarnessConfigFile)}): ngoài os.tmpdir() — cần ROUTERSYNC_ALLOW_LIVE_HOME_WRITE=1 (${flagLabel})`
+      );
+      if (!homeLiveFlagSet) {
+        missingLiveFlagCommands.push('export ROUTERSYNC_ALLOW_LIVE_HOME_WRITE=1');
+      }
+    }
+  } else {
+    gateSegments.push(
+      `harnessConfig: chưa xác định tệp mục tiêu (ROUTERSYNC_ALLOW_LIVE_HOME_WRITE=1: ${homeLiveFlagSet ? 'đã đặt' : 'chưa đặt'})`
+    );
+  }
+
+  const gateHintTail =
+    missingLiveFlagCommands.length > 0
+      ? ` Trước Mục 3 (bước ghi thật), chủ dự án đặt trong phiên shell hiện tại: ${missingLiveFlagCommands.join(' && ')} (PowerShell: ${missingLiveFlagCommands
+          .map((c) => c.replace(/^export\s+([A-Z0-9_]+)=1$/, '$$env:$1="1"'))
+          .join('; ')}).`
+      : '';
+
+  checks.push({
+    id: 'live_gate_hint',
+    passed: true,
+    detail: `${gateSegments.join('; ')}.${gateHintTail}`,
+  });
+
+  // -------------------------------------------------------------------------
   // Assemble deterministic LiveCheckReport
   // -------------------------------------------------------------------------
   const allPassed = checks.every((c) => c.passed) && blockingReasons.length === 0;
@@ -1180,25 +1249,29 @@ export async function runLiveCheckCommand(
     }
   } else if (pilotPhase === 'NEEDS_INITIAL_PROPOSE_CONSENT') {
     ownerNextCommands = [
+      ...missingLiveFlagCommands,
       `routersync consent grant --target ${rTarget} --level propose`,
       `routersync consent grant --target ${hTarget} --level propose`,
       'routersync plan',
     ];
   } else if (pilotPhase === 'READY_FOR_PROPOSE_STEP') {
     ownerNextCommands = [
+      ...missingLiveFlagCommands,
       'routersync plan',
       'routersync apply --write',
-      'routersync status',
+      `routersync apps apply --app ${matchedHarnessCap?.id ?? 'hermes'} -c "${resolvedHarnessConfigFile ?? '<path>'}" --write`,
     ];
   } else if (pilotPhase === 'READY_FOR_AUTO_SAFE_PROMOTION') {
     ownerNextCommands = [
+      ...missingLiveFlagCommands,
       `routersync consent grant --target ${rTarget} --level auto-safe`,
       `routersync consent grant --target ${hTarget} --level auto-safe`,
-      'routersync tick --mode propose',
+      'routersync tick --mode auto-safe',
     ];
   } else {
     ownerNextCommands = [
-      'routersync tick --mode propose',
+      ...missingLiveFlagCommands,
+      'routersync tick --mode auto-safe',
       'routersync freeze --reason "live-pilot-drill"',
       'routersync rollback',
     ];

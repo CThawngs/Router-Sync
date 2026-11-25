@@ -25,6 +25,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { isMap, isScalar, isSeq, parseDocument, type YAMLMap, type YAMLSeq } from 'yaml';
 import {
+  assertControlledWriteSandbox,
   expandHarnessPathPattern,
   getHarnessCapability,
   listHarnessCapabilities,
@@ -152,14 +153,7 @@ export function isInsideRealHomeOutsideSandbox(targetPath: string): boolean {
  * unless an explicit live owner gate (`ROUTERSYNC_ALLOW_LIVE_HOME_WRITE=1`) is set.
  */
 export function assertHarnessWriteSandboxAllowed(configPath: string): void {
-  if (process.env['ROUTERSYNC_ALLOW_LIVE_HOME_WRITE'] === '1') {
-    return;
-  }
-  if (isInsideRealHomeOutsideSandbox(configPath)) {
-    throw new Error(
-      `Sandbox guard blocked write inside real user homedir (${os.homedir()}). Use a sandbox copy inside os.tmpdir().`
-    );
-  }
+  assertControlledWriteSandbox(configPath, 'harness-config');
 }
 
 /**
@@ -273,6 +267,13 @@ export function detectRunningHarnessProcesses(
 }
 
 function resolveDefaultModelsConfigPath(cap: HarnessCapability, homeDir?: string): string {
+  if (cap.id === 'hermes') {
+    const hermesHome = process.env['HERMES_HOME']?.trim();
+    if (hermesHome && (!homeDir || isSubPathOrEqual(homeDir, hermesHome))) {
+      const envCandidate = path.join(hermesHome, 'config.yaml');
+      if (fs.existsSync(envCandidate)) return envCandidate;
+    }
+  }
   const platformKey: 'win32' | 'darwin' | 'linux' =
     process.platform === 'win32'
       ? 'win32'
@@ -284,8 +285,23 @@ function resolveDefaultModelsConfigPath(cap: HarnessCapability, homeDir?: string
       ? cap.modelsConfig.paths[platformKey]
       : cap.mcp.paths[platformKey] ?? [];
   if (patterns.length === 0) return '';
+
+  const customHomeProvided =
+    typeof homeDir === 'string' &&
+    homeDir.trim().length > 0 &&
+    normalizeForPlatformComparison(homeDir) !== normalizeForPlatformComparison(os.homedir());
+  const expandEnv = customHomeProvided
+    ? {
+        ...process.env,
+        HOME: homeDir,
+        USERPROFILE: homeDir,
+        LOCALAPPDATA: path.join(homeDir, 'AppData', 'Local'),
+        APPDATA: path.join(homeDir, 'AppData', 'Roaming'),
+      }
+    : process.env;
+
   const expanded = patterns.map((p) =>
-    expandHarnessPathPattern(p, { homeDir, platform: process.platform })
+    expandHarnessPathPattern(p, { homeDir, platform: process.platform, env: expandEnv })
   );
   for (const candidate of expanded) {
     if (fs.existsSync(candidate)) return candidate;
@@ -1590,4 +1606,63 @@ export function listHarnessWriteAdapters(): HarnessWriteAdapter[] {
 export function getHarnessWriteAdapter(app: string): HarnessWriteAdapter | undefined {
   const normalized = app.trim().toLowerCase();
   return HARNESS_WRITE_ADAPTERS.find((adapter) => adapter.app === normalized);
+}
+
+export interface DiscoveredTierAHarnessState {
+  harnessId: string;
+  configPath: string;
+  defaultModels: string[];
+  providers: Array<{
+    providerId: string;
+    models: string[];
+    keyPresent: boolean;
+    proxyDelegated: boolean;
+  }>;
+}
+
+export function inspectTierAHarnessForTick(
+  harnessId: string,
+  homeDir: string
+): DiscoveredTierAHarnessState | null {
+  const cap = getHarnessCapability(harnessId);
+  const parser = STATE_PARSERS[harnessId];
+  if (!cap || cap.directionAMode !== 'write-adapter' || !parser) {
+    return null;
+  }
+  const configPath = resolveDefaultModelsConfigPath(cap, homeDir);
+  if (!configPath || !fs.existsSync(configPath)) {
+    return null;
+  }
+  if (cap.id === 'openmausbot') {
+    assertOpenMausBotSafeFile(configPath);
+  }
+  const rawText = fs.readFileSync(configPath, 'utf8');
+  const state = parser(rawText, configPath, homeDir);
+  const defaultModels = [...state.defaultSlots.values()]
+    .map((s) => s.rawValue)
+    .filter((v) => v.length > 0);
+
+  const providers: DiscoveredTierAHarnessState['providers'] = [];
+  for (const [provId, models] of state.allProviderModels.entries()) {
+    const keyPresent = state.keyedProviders.has(provId);
+    if (models.length === 0 && !keyPresent) continue;
+    const lowerId = provId.toLowerCase();
+    const proxyDelegated =
+      lowerId.includes('9router') ||
+      lowerId.includes('9-router') ||
+      lowerId.includes('omniroute');
+    providers.push({
+      providerId: provId,
+      models: [...models],
+      keyPresent,
+      proxyDelegated,
+    });
+  }
+
+  return {
+    harnessId: cap.id,
+    configPath,
+    defaultModels,
+    providers,
+  };
 }

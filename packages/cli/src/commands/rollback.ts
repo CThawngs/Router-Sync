@@ -15,13 +15,21 @@
  *  - A missing snapshot is a hard error — never a silent success.
  */
 
+import * as path from 'node:path';
 import * as readline from 'node:readline';
-import { loadConfigFile } from '../config/loader.js';
+import { loadConfigFile, resolveRouterDbPath } from '../config/loader.js';
 import { createAdapterForRouter } from '../adapters.js';
-import { listSnapshots, loadSnapshot } from '@routersync/core';
+import {
+  assertControlledWriteSandbox,
+  listSnapshots,
+  loadSnapshot,
+  markApplyReceiptRolledBack,
+  resolveControlStateDir,
+} from '@routersync/core';
 
 export interface RollbackCommandOptions {
   configPath?: string | undefined;
+  stateDir?: string | undefined;
   /** Snapshot id to restore. When omitted, stored snapshots are listed. */
   snapshotId?: string | undefined;
   /**
@@ -30,9 +38,21 @@ export interface RollbackCommandOptions {
    */
   write?: boolean | undefined;
   json?: boolean | undefined;
+  /** Programmatic test seams (mirrors apply.ts / consent.ts / freeze.ts) */
+  isTTY?: boolean | undefined;
+  promptFn?: ((question: string) => Promise<string>) | undefined;
 }
 
-function askConfirmation(promptText: string, expectedWord = 'chay'): Promise<boolean> {
+function askConfirmation(
+  promptText: string,
+  expectedWord = 'chay',
+  customPrompt?: (question: string) => Promise<string>
+): Promise<boolean> {
+  if (customPrompt) {
+    return customPrompt(promptText).then(
+      (answer) => answer.trim().toLowerCase() === expectedWord
+    );
+  }
   const rl = readline.createInterface({
     input: process.stdin,
     output: process.stdout,
@@ -48,11 +68,12 @@ function askConfirmation(promptText: string, expectedWord = 'chay'): Promise<boo
 }
 
 export async function runRollbackCommand(options: RollbackCommandOptions): Promise<void> {
-  const { config } = loadConfigFile(options.configPath);
+  const { config, filePath: resolvedConfigFile } = loadConfigFile(options.configPath);
+  const configDir = path.dirname(path.resolve(resolvedConfigFile));
 
   // ---- No id: list persisted snapshots -----------------------------------
   if (!options.snapshotId) {
-    const snaps = listSnapshots();
+    const snaps = listSnapshots(options.stateDir);
     if (options.json) {
       console.log(JSON.stringify({ ok: true, snapshots: snaps }, null, 2));
       return;
@@ -74,7 +95,7 @@ export async function runRollbackCommand(options: RollbackCommandOptions): Promi
   // ---- With id: load snapshot, restore via adapter logical rollback -------
   let snapshot;
   try {
-    snapshot = loadSnapshot(options.snapshotId);
+    snapshot = loadSnapshot(options.snapshotId, options.stateDir);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     if (options.json) {
@@ -147,7 +168,8 @@ export async function runRollbackCommand(options: RollbackCommandOptions): Promi
   }
 
   // ---- WRITE: TTY gate + interactive confirmation (mirrors apply --write) -
-  if (!process.stdin.isTTY) {
+  const isTTY = options.isTTY ?? Boolean(process.stdin.isTTY);
+  if (!isTTY) {
     const msg =
       'Write Execution Blocked: Running `rollback --write` requires an interactive TTY terminal.\n' +
       'A rollback writes to the live router database. Non-interactive scripts or automated\n' +
@@ -164,15 +186,35 @@ export async function runRollbackCommand(options: RollbackCommandOptions): Promi
 
   const confirmed = await askConfirmation(
     `Rollback router ${router.id} to snapshot ${snapshot.id} (${snapshot.combos.length} combos)? This writes to the live DB. Type 'chay' to confirm: `,
-    'chay'
+    'chay',
+    options.promptFn
   );
   if (!confirmed) {
     console.log('[routersync] Rollback cancelled by user. No writes performed.');
     return;
   }
 
-  const adapter = createAdapterForRouter(router);
+  const dbPath = resolveRouterDbPath(router, configDir);
+  assertControlledWriteSandbox(dbPath, 'router-db');
+
+  const adapter = createAdapterForRouter(router, options.stateDir);
   const ok = await adapter.rollback(snapshot);
+
+  if (ok) {
+    const sDir = resolveControlStateDir(options.stateDir);
+    markApplyReceiptRolledBack(sDir, {
+      targetPrefix: `router:${router.id}/`,
+      snapshotOrBackupRef: snapshot.id,
+      appliedAtOrAfter: snapshot.timestamp,
+    });
+    if (router.adapter && router.adapter !== router.id) {
+      markApplyReceiptRolledBack(sDir, {
+        targetPrefix: `router:${router.adapter}/`,
+        snapshotOrBackupRef: snapshot.id,
+        appliedAtOrAfter: snapshot.timestamp,
+      });
+    }
+  }
 
   if (options.json) {
     console.log(

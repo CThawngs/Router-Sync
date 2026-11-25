@@ -45,7 +45,7 @@ export interface StoredSnapshotInfo {
 }
 
 /** Persist a snapshot durably. Returns the absolute file path. */
-export function saveSnapshot(snapshot: Snapshot): string {
+export function saveSnapshot(snapshot: Snapshot, stateDir?: string): string {
   const json = JSON.stringify(snapshot, null, 2);
   for (const re of SECRET_SCAN) {
     if (re.test(json)) {
@@ -54,19 +54,20 @@ export function saveSnapshot(snapshot: Snapshot): string {
       );
     }
   }
-  const dir = getSnapshotsDir();
+  const dir = getSnapshotsDir(stateDir);
   const file = path.join(dir, `${sanitizeId(snapshot.id)}.json`);
   atomicWriteFileSync(file, json, { maxRetries: 5 });
   return file;
 }
 
 /** Load a persisted snapshot. Throws a structured error when missing. */
-export function loadSnapshot(id: string): Snapshot {
-  const file = path.join(getSnapshotsDir(), `${sanitizeId(id)}.json`);
+export function loadSnapshot(id: string, stateDir?: string): Snapshot {
+  const snapshotsDir = getSnapshotsDir(stateDir);
+  const file = path.join(snapshotsDir, `${sanitizeId(id)}.json`);
   if (!fs.existsSync(file)) {
     throw new Error(
       `Snapshot not found: "${id}" (expected at ${file}). ` +
-      `Snapshots are created by 'routersync apply --write' and stored in ${getSnapshotsDir()}.`
+      `Snapshots are created by 'routersync apply --write' and stored in ${snapshotsDir}.`
     );
   }
   const parsed = JSON.parse(fs.readFileSync(file, 'utf8')) as Snapshot;

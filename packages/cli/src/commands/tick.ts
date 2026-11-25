@@ -63,7 +63,11 @@ import {
 import type { ComboDefinition, Plan } from '@routersync/adapter-sdk';
 import { loadConfigFile, resolveConfigFilePath, resolveRouterDbPath } from '../config/loader.js';
 import { createAdapterForRouter } from '../adapters.js';
-import { HARNESS_WRITE_ADAPTERS } from '../apps/write-adapter.js';
+import {
+  HARNESS_WRITE_ADAPTERS,
+  inspectTierAHarnessForTick,
+  resolveEffectiveHarnessHomeDir,
+} from '../apps/write-adapter.js';
 import { buildViews } from './sync/sync-plan.js';
 import { fetchModelList, type ProviderTarget } from '../sync/providers.js';
 import {
@@ -429,8 +433,40 @@ async function discoverLocalHarnessTargets(
   }
 
   const discovered: HarnessTickTarget[] = [];
+  const seenHarnessIds = new Set<string>();
+  for (const harnessId of tierOneIds) {
+    try {
+      const tierA = inspectTierAHarnessForTick(harnessId, effectiveHomeDir);
+      if (tierA) {
+        const directProviders: HarnessProviderTickTarget[] = [];
+        for (const prov of tierA.providers) {
+          if (prov.proxyDelegated) continue;
+          if (prov.models.length === 0 && !prov.keyPresent) continue;
+          directProviders.push({
+            providerId: prov.providerId,
+            models: prov.models,
+            keyPresent: prov.keyPresent,
+            unverifiable: !prov.keyPresent,
+            unverifiableReason: !prov.keyPresent ? 'UNVERIFIABLE' : undefined,
+          });
+        }
+        seenHarnessIds.add(harnessId);
+        if (directProviders.length > 0) {
+          discovered.push({
+            harnessId: tierA.harnessId,
+            configPath: tierA.configPath,
+            defaultModels: tierA.defaultModels,
+            providers: directProviders,
+          });
+        }
+        continue;
+      }
+    } catch {
+      // Fall back to read-only AGENT_APP_ADAPTERS below if needed
+    }
+  }
   for (const adapter of AGENT_APP_ADAPTERS) {
-    if (!tierOneIds.has(adapter.app)) continue;
+    if (!tierOneIds.has(adapter.app) || seenHarnessIds.has(adapter.app)) continue;
     try {
       const inspection = await adapter.inspect({ homeDir: effectiveHomeDir });
       const directProviders: HarnessProviderTickTarget[] = [];
@@ -2420,7 +2456,15 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
           }
 
           const snapshot = await adapter.createSnapshot();
-          saveSnapshot(snapshot);
+          snapshot.metadata = {
+            ...(snapshot.metadata ?? {}),
+            touchedComboIds: [
+              ...singlePlan.additions.map((a) => a.id),
+              ...singlePlan.modifications.map((m) => m.id),
+              ...singlePlan.deletions,
+            ],
+          };
+          saveSnapshot(snapshot, sDir);
           const applyRes = await applyPlanSafe(adapter, singlePlan, { dryRun: false });
 
           // I4 post-apply idempotency check
@@ -2541,8 +2585,11 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
           }
 
           try {
+            const explicitTickHome =
+              options.homeDir ?? (options.env ?? process.env)['ROUTERSYNC_HOME'];
             const hRes = await writeAdapter.apply({
               configPath: cfgFile,
+              homeDir: resolveEffectiveHarnessHomeDir(cfgFile, explicitTickHome),
               catalog: harnessCatalog,
             });
             appendApplyReceipt(sDir, {
