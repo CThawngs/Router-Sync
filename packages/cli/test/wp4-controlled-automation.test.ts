@@ -83,15 +83,22 @@ async function captureCli(fn: () => Promise<unknown>): Promise<{
 }
 
 describe('C45-WP4 Controlled Automation CLI Lifecycle', () => {
-  let tmpRoot: string;
-  let stateDir: string;
-  let nineDbPath: string;
-  let configPath: string;
-  let webhookServer: http.Server | null = null;
-  let webhookBodies: Array<Record<string, unknown>> = [];
+  interface Wp4TestContext {
+    readonly tmpRoot: string;
+    readonly stateDir: string;
+    readonly nineDbPath: string;
+    readonly configPath: string;
+    readonly webhookServer: http.Server;
+    readonly webhookBodies: Array<Record<string, unknown>>;
+    readonly seedNineDb: () => void;
+    readonly readComboModels: (name: string) => string[];
+  }
 
-  function seedNineDb(): void {
-    const db = openBetterSqlite3(nineDbPath, { allowLiveDbWrite: true });
+  const activeContexts: Wp4TestContext[] = [];
+  let currentCtx: Wp4TestContext;
+
+  function seedNineDbAt(dbPath: string): void {
+    const db = openBetterSqlite3(dbPath, { allowLiveDbWrite: true });
     const now = '2026-11-24T00:00:00.000Z';
     db.exec(`
       CREATE TABLE IF NOT EXISTS combos (
@@ -196,8 +203,8 @@ describe('C45-WP4 Controlled Automation CLI Lifecycle', () => {
     db.close();
   }
 
-  function readComboModels(name: string): string[] {
-    const db = openBetterSqlite3(nineDbPath, { readOnly: true });
+  function readComboModelsAt(dbPath: string, name: string): string[] {
+    const db = openBetterSqlite3(dbPath, { readOnly: true });
     try {
       const row = db
         .prepare('SELECT models FROM combos WHERE name = ? OR id = ?')
@@ -209,21 +216,21 @@ describe('C45-WP4 Controlled Automation CLI Lifecycle', () => {
   }
 
   beforeEach(async () => {
-    tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'rs-wp4-cli-'));
-    stateDir = path.join(tmpRoot, 'state');
-    fs.mkdirSync(stateDir, { recursive: true });
-    nineDbPath = path.join(tmpRoot, 'nine.sqlite');
-    seedNineDb();
+    const localTmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'rs-wp4-cli-'));
+    const localStateDir = path.join(localTmpRoot, 'state');
+    fs.mkdirSync(localStateDir, { recursive: true });
+    const localNineDbPath = path.join(localTmpRoot, 'nine.sqlite');
+    seedNineDbAt(localNineDbPath);
 
-    webhookBodies = [];
-    webhookServer = http.createServer((req, res) => {
+    const localWebhookBodies: Array<Record<string, unknown>> = [];
+    const localWebhookServer = http.createServer((req, res) => {
       let raw = '';
       req.on('data', (c) => {
         raw += String(c);
       });
       req.on('end', () => {
         try {
-          webhookBodies.push(JSON.parse(raw) as Record<string, unknown>);
+          localWebhookBodies.push(JSON.parse(raw) as Record<string, unknown>);
         } catch {
           // ignore
         }
@@ -231,12 +238,12 @@ describe('C45-WP4 Controlled Automation CLI Lifecycle', () => {
         res.end('ok');
       });
     });
-    await new Promise<void>((resolve) => webhookServer!.listen(0, '127.0.0.1', () => resolve()));
-    const whPort = (webhookServer.address() as AddressInfo).port;
+    await new Promise<void>((resolve) => localWebhookServer.listen(0, '127.0.0.1', () => resolve()));
+    const whPort = (localWebhookServer.address() as AddressInfo).port;
 
-    configPath = path.join(tmpRoot, 'routersync.yaml');
+    const localConfigPath = path.join(localTmpRoot, 'routersync.yaml');
     fs.writeFileSync(
-      configPath,
+      localConfigPath,
       [
         'version: 1',
         'routers:',
@@ -245,7 +252,7 @@ describe('C45-WP4 Controlled Automation CLI Lifecycle', () => {
         '    isolated: true',
         '    baseUrl: http://127.0.0.1:9',
         '    db:',
-        `      path: ${nineDbPath}`,
+        `      path: ${localNineDbPath}`,
         '    reload:',
         '      type: none',
         'policy:',
@@ -281,31 +288,49 @@ describe('C45-WP4 Controlled Automation CLI Lifecycle', () => {
       'utf8'
     );
 
-    process.env['ROUTERSYNC_STATE_DIR'] = stateDir;
-    process.env['ROUTERSYNC_CONFIG'] = configPath;
-    process.env['ROUTERSYNC_9ROUTER_DB'] = nineDbPath;
-    process.env['ROUTERSYNC_OMNIROUTE_DB'] = path.join(tmpRoot, 'nonexistent-omniroute.sqlite');
-    process.env['ROUTERSYNC_HOME'] = path.join(tmpRoot, 'home');
-    process.env['APPDATA'] = path.join(tmpRoot, 'appdata');
-    process.env['LOCALAPPDATA'] = path.join(tmpRoot, 'local');
+    const ctx: Wp4TestContext = {
+      tmpRoot: localTmpRoot,
+      stateDir: localStateDir,
+      nineDbPath: localNineDbPath,
+      configPath: localConfigPath,
+      webhookServer: localWebhookServer,
+      webhookBodies: localWebhookBodies,
+      seedNineDb: () => seedNineDbAt(localNineDbPath),
+      readComboModels: (name: string) => readComboModelsAt(localNineDbPath, name),
+    };
+    activeContexts.push(ctx);
+    currentCtx = ctx;
+
+    process.env['ROUTERSYNC_STATE_DIR'] = localStateDir;
+    process.env['ROUTERSYNC_CONFIG'] = localConfigPath;
+    process.env['ROUTERSYNC_9ROUTER_DB'] = localNineDbPath;
+    process.env['ROUTERSYNC_OMNIROUTE_DB'] = path.join(localTmpRoot, 'nonexistent-omniroute.sqlite');
+    process.env['ROUTERSYNC_HOME'] = path.join(localTmpRoot, 'home');
+    process.env['APPDATA'] = path.join(localTmpRoot, 'appdata');
+    process.env['LOCALAPPDATA'] = path.join(localTmpRoot, 'local');
     resetTokenRegistry();
   });
 
   afterEach(async () => {
     resetTokenRegistry();
-    if (webhookServer) {
-      await new Promise<void>((resolve) => webhookServer!.close(() => resolve()));
-      webhookServer = null;
+    const toClean = activeContexts.splice(0);
+    for (const ctx of toClean) {
+      if (ctx.webhookServer.listening) {
+        await new Promise<void>((resolve) => ctx.webhookServer.close(() => resolve()));
+      }
     }
     for (const k of Object.keys(process.env)) {
       if (!(k in ORIGINAL_ENV)) delete process.env[k];
     }
     Object.assign(process.env, ORIGINAL_ENV);
     vi.restoreAllMocks();
-    fs.rmSync(tmpRoot, { recursive: true, force: true });
+    for (const ctx of toClean) {
+      fs.rmSync(ctx.tmpRoot, { recursive: true, force: true });
+    }
   });
 
   it('keeps status strictly read-only on an empty stateDir (AT-157 / M7) and rejects unconsented combos including test-1 with only-pattern', async () => {
+    const { tmpRoot, configPath } = currentCtx;
     const emptyState = path.join(tmpRoot, 'pristine-empty-state');
     fs.mkdirSync(emptyState, { recursive: true });
     process.env['ROUTERSYNC_STATE_DIR'] = emptyState;
@@ -336,9 +361,11 @@ describe('C45-WP4 Controlled Automation CLI Lifecycle', () => {
       expect(ref.exitCode).toBe(1);
       expect(ref.stderr).toContain('MAINTAIN-REFUSED reason=only-pattern');
     }
-  });
+  }, 60_000);
 
   it('executes full progression: deny auto-safe (M1) -> grant propose -> propose apply on real combo coding-primary -> promote auto-safe -> tick auto-safe -> freeze/unfreeze', async () => {
+    const { tmpRoot, stateDir, nineDbPath, configPath, webhookBodies, seedNineDb, readComboModels } =
+      currentCtx;
     // 1. Reject --yes and non-TTY on consent grant
     const yesConsent = await captureCli(() =>
       runConsentGrantCommand({
@@ -422,14 +449,32 @@ describe('C45-WP4 Controlled Automation CLI Lifecycle', () => {
     );
     expect(mApply.exitCode).toBe(0);
 
-    // Also verify non-TTY `apply --write` succeeds under active standing consent
-    const nonTtyApply = await captureCli(() =>
+    // C46-F1: Non-TTY `apply --write` MUST be rejected while consent is only `propose`,
+    // while interactive TTY typing `'chay'` succeeds and records `appliedAtLevel: 'propose'`!
+    const nonTtyAtPropose = await captureCli(() =>
       runApplyCommand({ configPath, write: true, stateDir, isTTY: false, json: true })
     );
-    expect(nonTtyApply.exitCode).toBe(0);
+    expect(nonTtyAtPropose.exitCode).toBe(1);
+
+    seedNineDb();
+    const ttyProposeApply = await captureCli(() =>
+      runApplyCommand({
+        configPath,
+        write: true,
+        stateDir,
+        isTTY: true,
+        promptFn: async () => 'chay',
+        json: true,
+      })
+    );
+    expect(ttyProposeApply.exitCode).toBe(0);
 
     // Verify propose receipt recorded -> now promote coding-primary to auto-safe!
-    expect(readApplyHistory(stateDir).receipts.length).toBeGreaterThanOrEqual(1);
+    const histBeforePromote = readApplyHistory(stateDir);
+    expect(histBeforePromote.receipts.length).toBeGreaterThanOrEqual(1);
+    expect(
+      histBeforePromote.receipts[histBeforePromote.receipts.length - 1]?.appliedAtLevel
+    ).toBe('propose');
     const promoteAutoSafe = await captureCli(() =>
       runConsentGrantCommand({
         target: 'router:nine/coding-primary',
@@ -441,6 +486,20 @@ describe('C45-WP4 Controlled Automation CLI Lifecycle', () => {
       })
     );
     expect(promoteAutoSafe.exitCode).toBe(0);
+
+    // AFTER promotion to auto-safe, non-TTY `apply --write` succeeds without prompt and records `auto-safe`!
+    seedNineDb();
+    const nonTtyAutoSafeApply = await captureCli(() =>
+      runApplyCommand({ configPath, write: true, stateDir, isTTY: false, json: true })
+    );
+    expect(nonTtyAutoSafeApply.exitCode).toBe(0);
+    const histAfterAutoSafe = readApplyHistory(stateDir);
+    expect(
+      histAfterAutoSafe.receipts[histAfterAutoSafe.receipts.length - 1]?.appliedAtLevel
+    ).toBe('auto-safe');
+    expect(
+      histAfterAutoSafe.receipts[histAfterAutoSafe.receipts.length - 1]?.authorizedVia
+    ).toBe('standing-consent');
 
     // 5. Run scheduled `tick` in `auto-safe` mode with official deprecation of gpt-4o-legacy + new gpt-5.5-codex
     const baseMs = Date.parse('2026-11-24T12:00:00.000Z');
@@ -612,10 +671,12 @@ describe('C45-WP4 Controlled Automation CLI Lifecycle', () => {
       }
     } finally {
       daemonFx.restore();
-      process.env['ROUTERSYNC_STATE_DIR'] = stateDir;
-      process.env['ROUTERSYNC_CONFIG'] = configPath;
-      process.env['ROUTERSYNC_9ROUTER_DB'] = nineDbPath;
-      process.env['ROUTERSYNC_OMNIROUTE_DB'] = path.join(tmpRoot, 'nonexistent-omniroute.sqlite');
+      if (fs.existsSync(tmpRoot)) {
+        process.env['ROUTERSYNC_STATE_DIR'] = stateDir;
+        process.env['ROUTERSYNC_CONFIG'] = configPath;
+        process.env['ROUTERSYNC_9ROUTER_DB'] = nineDbPath;
+        process.env['ROUTERSYNC_OMNIROUTE_DB'] = path.join(tmpRoot, 'nonexistent-omniroute.sqlite');
+      }
     }
 
     // Unfreeze rejects --yes and non-TTY, then succeeds with interactive 'unfreeze'
@@ -654,9 +715,10 @@ describe('C45-WP4 Controlled Automation CLI Lifecycle', () => {
       runConsentRevokeCommand({ target: 'router:nine/coding-primary', stateDir, json: true })
     );
     expect(revokeRes.exitCode).toBe(0);
-  });
+  }, 60_000);
 
   it('enforces unconditional adapter.rollback(snapshot) in applyPlanSafe even when staleDetected is false (M5) and blocks I6 invariant violations in auto-safe tick (M6)', async () => {
+    const { stateDir, nineDbPath, configPath, readComboModels } = currentCtx;
     let rollbackCalled = false;
     const mockFailingAdapter = {
       name: 'mock-router',
@@ -834,9 +896,10 @@ describe('C45-WP4 Controlled Automation CLI Lifecycle', () => {
 
     // Metered model MUST NOT be added to freeOnly combo (kills M6)
     expect(readComboModels('coding-primary')).not.toContain('openai/gpt-5-paid-ultra');
-  });
+  }, 60_000);
 
   it('F5: emits sanitized [AUTO-ROLLBACK] to inbox.json + outbound webhook (auto_rollback) and trips emergency freeze.json circuit breaker on auto-safe rollback', async () => {
+    const { stateDir, nineDbPath, configPath, webhookBodies, readComboModels } = currentCtx;
     const preComboModels = readComboModels('coding-primary');
 
     // Promote router:nine/coding-primary to auto-safe via verified propose receipt
@@ -922,7 +985,7 @@ describe('C45-WP4 Controlled Automation CLI Lifecycle', () => {
     `);
     db.close();
 
-    webhookBodies = [];
+    webhookBodies.length = 0;
 
     await runTickCommand({
       configPath,
@@ -983,5 +1046,5 @@ describe('C45-WP4 Controlled Automation CLI Lifecycle', () => {
     // 5. Emergency freeze circuit breaker tripped automatically
     const freeze = readFreezeState(stateDir);
     expect(freeze.frozen).toBe(true);
-  });
+  }, 60_000);
 });

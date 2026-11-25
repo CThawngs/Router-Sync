@@ -39,6 +39,7 @@ import {
   atomicWriteFileSync,
   authorizeTargetWrite,
   computeCanonicalTickPlanHash as coreComputeCanonicalTickPlanHash,
+  findVerifiedProposeReceipt,
   getConfiguredRouterDbPath,
   isPathInsideDir,
   locateRouterDb,
@@ -430,7 +431,11 @@ export function registerApplyPlanTool(
         }
         authorizedVia = 'approval-token';
         for (const pt of parsedTargets) {
-          targetAppliedLevels.set(pt.target, 'propose');
+          const auth = authorizeTargetWrite(paths.stateDir, pt.target);
+          targetAppliedLevels.set(
+            pt.target,
+            auth.authorized && auth.level === 'auto-safe' ? 'auto-safe' : 'propose'
+          );
         }
       } else {
         for (const pt of parsedTargets) {
@@ -446,7 +451,33 @@ export function registerApplyPlanTool(
               true
             );
           }
-          targetAppliedLevels.set(pt.target, auth.level);
+          if (auth.level !== 'auto-safe') {
+            return mcpJsonResponse(
+              {
+                applied: false,
+                errorCode: 'APPROVAL_TOKEN_REQUIRED',
+                target: pt.target,
+                message:
+                  "Target '" +
+                  pt.target +
+                  "' is at consent level 'propose' and requires a single-use approvalToken.",
+              },
+              true
+            );
+          }
+          if (!findVerifiedProposeReceipt(paths.stateDir, pt.target)) {
+            return mcpJsonResponse(
+              {
+                applied: false,
+                errorCode: 'AUTO_SAFE_RECEIPT_MISSING',
+                target: pt.target,
+                message: `Runtime auto-safe check failed for '${pt.target}': apply-history.json is missing, tampered, or lacks a verified propose receipt.`,
+              },
+              true
+            );
+          }
+          authorizedVia = 'standing-consent';
+          targetAppliedLevels.set(pt.target, 'auto-safe');
         }
       }
 
