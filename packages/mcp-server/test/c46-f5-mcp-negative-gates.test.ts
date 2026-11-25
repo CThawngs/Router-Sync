@@ -626,6 +626,7 @@ describe('C46-F5 MCP Security & Gate Negative Proofs', () => {
         });
         expect(unconsentedRes.isError).toBe(true);
         expect(unconsentedRes.body['applied']).toBe(false);
+        expect(unconsentedRes.body['errorCode']).toBe('UNAUTHORIZED_TARGET');
         expect(ctx.readRouterModels()).toEqual(INITIAL_ROUTER_MODELS);
         expect(readApplyHistory(ctx.stateDir).receipts).toHaveLength(0);
 
@@ -873,4 +874,156 @@ describe('C46-F5 MCP Security & Gate Negative Proofs', () => {
     },
     60_000
   );
+
+  it(
+    'F5-Q8a..Q8d (MCP): submit_research rejects secrets in url (query/fragment/path/encoded), modelId/provider, sessionId, and AKIA/token=/JWT/Base64-Bearer shapes with SECRET_DETECTED_IN_EVIDENCE, 0 disk writes, and 0 secret echo',
+    async () => {
+      const ctx = createMcpSandbox();
+      const mcp = await ctx.connectMcp();
+      try {
+        fs.rmSync(ctx.plansDir, { recursive: true, force: true });
+        const secrets = buildSyntheticSecrets();
+        const awsAkia = ['AK', 'IA'].join('') + 'IOSFODNN7MCP0001';
+        const tokenAssign = ['access', '_token='].join('') + 'mcp_oauth_secret_0123456789';
+        const rawJwt = [
+          ['ey', 'J'].join('') + 'hbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9',
+          ['ey', 'J'].join('') + 'zdWIiOiJtY3AtdGVzdC0xMjM0NSJ9',
+          'SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c',
+        ].join('.');
+        const bearerB64 = ['Bear', 'er '].join('') + 'ab+cd/ef=gh~ij0123456789MCPXYZ';
+
+        const mcpProbes: Array<{
+          label: string;
+          args: Record<string, unknown>;
+          secretCheck: string;
+        }> = [
+          {
+            label: 'Q8-a url query secret',
+            args: {
+              provider: 'openai',
+              modelId: 'gpt-4.5-preview',
+              verdict: 'deprecated',
+              url: `https://platform.openai.com/docs/deprecations?api_key=${secrets.openaiSk}`,
+              quote: 'Clean official deprecation quote.',
+            },
+            secretCheck: secrets.openaiSk,
+          },
+          {
+            label: 'Q8-a url fragment secret',
+            args: {
+              provider: 'openai',
+              modelId: 'gpt-4.5-preview',
+              verdict: 'deprecated',
+              url: `https://platform.openai.com/docs/deprecations#token=${secrets.githubGhp}`,
+              quote: 'Clean official deprecation quote.',
+            },
+            secretCheck: secrets.githubGhp,
+          },
+          {
+            label: 'Q8-a url percent-encoded secret',
+            args: {
+              provider: 'openai',
+              modelId: 'gpt-4.5-preview',
+              verdict: 'deprecated',
+              url: `https://platform.openai.com/docs/deprecations?k=api_key%3D${encodeURIComponent('mcp_encoded_secret_987654')}`,
+              quote: 'Clean official deprecation quote.',
+            },
+            secretCheck: 'mcp_encoded_secret_987654',
+          },
+          {
+            label: 'Q8-b modelId secret',
+            args: {
+              provider: 'openai',
+              modelId: `gpt-${secrets.openaiSk}`,
+              verdict: 'deprecated',
+              url: 'https://platform.openai.com/docs/deprecations',
+              quote: 'Clean official deprecation quote.',
+            },
+            secretCheck: secrets.openaiSk,
+          },
+          {
+            label: 'Q8-b provider secret',
+            args: {
+              provider: `openai-${secrets.githubGhp}`,
+              modelId: 'gpt-4.5-preview',
+              verdict: 'deprecated',
+              url: 'https://platform.openai.com/docs/deprecations',
+              quote: 'Clean official deprecation quote.',
+            },
+            secretCheck: secrets.githubGhp,
+          },
+          {
+            label: 'Q8-c sessionId secret',
+            args: {
+              provider: 'openai',
+              modelId: 'gpt-4.5-preview',
+              verdict: 'deprecated',
+              url: 'https://platform.openai.com/docs/deprecations',
+              quote: 'Clean official deprecation quote.',
+              sessionId: secrets.openaiSk,
+            },
+            secretCheck: secrets.openaiSk,
+          },
+          {
+            label: 'Q8-d AWS AKIA in quote',
+            args: {
+              provider: 'openai',
+              modelId: 'gpt-4.5-preview',
+              verdict: 'deprecated',
+              url: 'https://platform.openai.com/docs/deprecations',
+              quote: `Credential ${awsAkia} in quote`,
+            },
+            secretCheck: awsAkia,
+          },
+          {
+            label: 'Q8-d token= assignment in quote',
+            args: {
+              provider: 'openai',
+              modelId: 'gpt-4.5-preview',
+              verdict: 'deprecated',
+              url: 'https://platform.openai.com/docs/deprecations',
+              quote: `Leak ${tokenAssign} in quote`,
+            },
+            secretCheck: 'mcp_oauth_secret_0123456789',
+          },
+          {
+            label: 'Q8-d bare JWT in quote',
+            args: {
+              provider: 'openai',
+              modelId: 'gpt-4.5-preview',
+              verdict: 'deprecated',
+              url: 'https://platform.openai.com/docs/deprecations',
+              quote: `JWT ${rawJwt} in quote`,
+            },
+            secretCheck: 'SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c',
+          },
+          {
+            label: 'Q8-d Base64 Bearer (+/=/~) in quote',
+            args: {
+              provider: 'openai',
+              modelId: 'gpt-4.5-preview',
+              verdict: 'deprecated',
+              url: 'https://platform.openai.com/docs/deprecations',
+              quote: `Header ${bearerB64} in quote`,
+            },
+            secretCheck: 'cd/ef=gh~ij0123456789MCPXYZ',
+          },
+        ];
+
+        for (const probe of mcpProbes) {
+          const res = await mcp.call('submit_research', probe.args);
+          expect(res.isError, probe.label).toBe(true);
+          expect(res.body['accepted'], probe.label).toBe(false);
+          expect(res.body['errorCode'], probe.label).toBe('SECRET_DETECTED_IN_EVIDENCE');
+          expect(res.rawText, probe.label).not.toContain(probe.secretCheck);
+          expect(fs.readdirSync(ctx.stateDir), probe.label).toEqual([]);
+        }
+      } finally {
+        await mcp.close();
+        ctx.cleanup();
+      }
+    },
+    60_000
+  );
+
 });

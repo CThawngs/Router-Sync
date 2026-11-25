@@ -16,6 +16,8 @@ import { randomUUID } from 'node:crypto';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { atomicWriteFileSync } from '../paths/atomic.js';
+import { containsSecretLikeContent, safeDecodeUriText } from '../domain/sanitize.js';
+import { ResearchValidationError } from '../research/domain-registry.js';
 
 export const COST_LEDGER_FILENAME = 'cost-ledger.json';
 export const DEFAULT_MAX_WEEKLY_RESEARCH_SESSIONS = 5;
@@ -243,10 +245,26 @@ export function assertWeeklyResearchSessionAllowed(
 ): { sessionId: string; isoWeek: string; isExistingSession: boolean; budget: WeeklyResearchBudget } {
   const nowMs = options.nowMs ?? Date.now();
   const isoWeek = getUtcIsoWeek(nowMs);
+  if (
+    typeof options.sessionId === 'string' &&
+    (containsSecretLikeContent(options.sessionId) ||
+      containsSecretLikeContent(safeDecodeUriText(options.sessionId)))
+  ) {
+    throw new ResearchValidationError(
+      'SECRET_DETECTED_IN_EVIDENCE',
+      'Research sessionId contains secret or API-key-like material and was rejected.'
+    );
+  }
   const cleanSessionId =
     typeof options.sessionId === 'string' && options.sessionId.trim().length > 0
       ? options.sessionId.trim().slice(0, 128)
       : `auto-${isoWeek}-${randomUUID().slice(0, 12)}`;
+  if (containsSecretLikeContent(cleanSessionId)) {
+    throw new ResearchValidationError(
+      'SECRET_DETECTED_IN_EVIDENCE',
+      'Research sessionId contains secret or API-key-like material and was rejected.'
+    );
+  }
 
   const ledger = readCostLedgerReadOnly(stateDir);
   const isExistingSession = ledger.researchSessions.some(

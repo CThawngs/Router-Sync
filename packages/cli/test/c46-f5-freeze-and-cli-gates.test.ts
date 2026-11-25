@@ -738,4 +738,170 @@ describe('C46-F5 CLI Research Secret Gate & Unified Freeze Circuit Breaker', () 
     },
     60_000
   );
+
+  it(
+    'F5-Q8a..Q8d (CLI): research submit <file> rejects secrets in url (query/fragment/encoded), id/provider/modelId, sessionId (JSON & CLI option), and AKIA/token=/JWT/Base64-Bearer shapes with SECRET_DETECTED_IN_EVIDENCE, 0 disk writes, and 0 stdout/stderr secret echo',
+    async () => {
+      const ctx = createCliFreezeSandbox();
+      try {
+        const submitStateDir = path.join(ctx.tmpRoot, 'cli-q8-state');
+        fs.mkdirSync(submitStateDir, { recursive: true });
+        const secrets = buildSyntheticSecrets();
+        const awsAkia = ['AK', 'IA'].join('') + 'IOSFODNN7CLI0001';
+        const tokenAssign = ['tok', 'en='].join('') + 'cli_tok_assign_0123456789';
+        const rawJwt = [
+          ['ey', 'J'].join('') + 'hbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9',
+          ['ey', 'J'].join('') + 'zdWIiOiJjbGktdGVzdC0xMjM0NSJ9',
+          'SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c',
+        ].join('.');
+        const bearerB64 = ['Bear', 'er '].join('') + 'ab+cd/ef=gh~ij0123456789CLIXYZ';
+
+        const cliProbes: Array<{
+          label: string;
+          payload: Record<string, unknown>;
+          cliSessionId?: string | undefined;
+          secretCheck: string;
+        }> = [
+          {
+            label: 'Q8-a url query secret',
+            payload: {
+              id: 'openai/gpt-4.5-preview',
+              verdict: 'deprecated',
+              conclusion: 'Clean summary',
+              url: `https://platform.openai.com/docs/deprecations?api_key=${secrets.openaiSk}`,
+              quote: 'Clean official deprecation quote.',
+              accessedAt: '2026-11-25',
+            },
+            secretCheck: secrets.openaiSk,
+          },
+          {
+            label: 'Q8-a url percent-encoded secret',
+            payload: {
+              id: 'openai/gpt-4.5-preview',
+              verdict: 'deprecated',
+              conclusion: 'Clean summary',
+              url: `https://platform.openai.com/docs/deprecations?p=api_key%3D${encodeURIComponent('cli_encoded_secret_987654')}`,
+              quote: 'Clean official deprecation quote.',
+              accessedAt: '2026-11-25',
+            },
+            secretCheck: 'cli_encoded_secret_987654',
+          },
+          {
+            label: 'Q8-b composite id secret',
+            payload: {
+              id: `openai/gpt-${secrets.openaiSk}`,
+              verdict: 'deprecated',
+              conclusion: 'Clean summary',
+              url: 'https://platform.openai.com/docs/deprecations',
+              quote: 'Clean official deprecation quote.',
+              accessedAt: '2026-11-25',
+            },
+            secretCheck: secrets.openaiSk,
+          },
+          {
+            label: 'Q8-c JSON sessionId secret',
+            payload: {
+              id: 'openai/gpt-4.5-preview',
+              verdict: 'deprecated',
+              conclusion: 'Clean summary',
+              url: 'https://platform.openai.com/docs/deprecations',
+              quote: 'Clean official deprecation quote.',
+              sessionId: secrets.openaiSk,
+              accessedAt: '2026-11-25',
+            },
+            secretCheck: secrets.openaiSk,
+          },
+          {
+            label: 'Q8-c CLI --session-id secret',
+            payload: {
+              id: 'openai/gpt-4.5-preview',
+              verdict: 'deprecated',
+              conclusion: 'Clean summary',
+              url: 'https://platform.openai.com/docs/deprecations',
+              quote: 'Clean official deprecation quote.',
+              accessedAt: '2026-11-25',
+            },
+            cliSessionId: secrets.githubGhp,
+            secretCheck: secrets.githubGhp,
+          },
+          {
+            label: 'Q8-d AWS AKIA in quote',
+            payload: {
+              id: 'openai/gpt-4.5-preview',
+              verdict: 'deprecated',
+              conclusion: 'Clean summary',
+              url: 'https://platform.openai.com/docs/deprecations',
+              quote: `AWS key ${awsAkia} in snippet`,
+              accessedAt: '2026-11-25',
+            },
+            secretCheck: awsAkia,
+          },
+          {
+            label: 'Q8-d token= assignment in quote',
+            payload: {
+              id: 'openai/gpt-4.5-preview',
+              verdict: 'deprecated',
+              conclusion: 'Clean summary',
+              url: 'https://platform.openai.com/docs/deprecations',
+              quote: `Credential ${tokenAssign} in snippet`,
+              accessedAt: '2026-11-25',
+            },
+            secretCheck: 'cli_tok_assign_0123456789',
+          },
+          {
+            label: 'Q8-d bare JWT in quote',
+            payload: {
+              id: 'openai/gpt-4.5-preview',
+              verdict: 'deprecated',
+              conclusion: 'Clean summary',
+              url: 'https://platform.openai.com/docs/deprecations',
+              quote: `JWT ${rawJwt} in snippet`,
+              accessedAt: '2026-11-25',
+            },
+            secretCheck: 'SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c',
+          },
+          {
+            label: 'Q8-d Base64 Bearer (+/=/~) in quote',
+            payload: {
+              id: 'openai/gpt-4.5-preview',
+              verdict: 'deprecated',
+              conclusion: 'Clean summary',
+              url: 'https://platform.openai.com/docs/deprecations',
+              quote: `Auth ${bearerB64} in snippet`,
+              accessedAt: '2026-11-25',
+            },
+            secretCheck: 'cd/ef=gh~ij0123456789CLIXYZ',
+          },
+        ];
+
+        let idx = 0;
+        for (const probe of cliProbes) {
+          idx++;
+          const jsonFile = path.join(ctx.tmpRoot, `q8-submit-${idx}.json`);
+          fs.writeFileSync(jsonFile, JSON.stringify(probe.payload, null, 2), 'utf8');
+
+          const res = await captureCli(() =>
+            runResearchCommand({
+              subcommand: 'submit',
+              file: jsonFile,
+              stateDir: submitStateDir,
+              configPath: ctx.configPath,
+              sessionId: probe.cliSessionId,
+              nowMs: Date.parse('2026-11-25T12:00:00.000Z'),
+            })
+          );
+
+          expect(res.exitCode, probe.label).toBe(1);
+          const combinedOut = `${res.stdout}\n${res.stderr}`;
+          expect(combinedOut, probe.label).toContain('SECRET_DETECTED_IN_EVIDENCE');
+          expect(combinedOut, probe.label).not.toContain(probe.secretCheck);
+          expect(fs.readdirSync(submitStateDir), probe.label).toEqual([]);
+        }
+      } finally {
+        ctx.cleanup();
+      }
+    },
+    60_000
+  );
+
 });

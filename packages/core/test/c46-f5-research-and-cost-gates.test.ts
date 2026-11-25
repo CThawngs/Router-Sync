@@ -25,6 +25,7 @@ import {
   assertWeeklyResearchSessionAllowed,
   computeWeeklyResearchBudget,
   containsSecretLikeContent,
+  sanitizeUntrustedString,
   loadResearchEvidence,
   readCostLedgerReadOnly,
   recordResearchSessionActivity,
@@ -565,4 +566,350 @@ describe('C46-F5 Core Security & Cost Gate Negative Proofs', () => {
     },
     60_000
   );
+
+  it(
+    'F5-Q8a: appendResearchEvidence rejects secrets in URL query, fragment, path, and percent-encoded URL components with SECRET_DETECTED_IN_EVIDENCE, 0 disk writes, and 0 raw URL/secret echo',
+    () => {
+      const ctx = createCoreSandbox();
+      try {
+        const secrets = buildSyntheticSecrets();
+        const urlProbes: Array<{ label: string; url: string; probeSecret: string }> = [
+          {
+            label: 'query sk-token',
+            url: `https://platform.openai.com/docs/deprecations?key=${secrets.openaiSk}`,
+            probeSecret: secrets.openaiSk,
+          },
+          {
+            label: 'fragment ghp-token',
+            url: `https://platform.openai.com/docs/deprecations#frag=${secrets.githubGhp}`,
+            probeSecret: secrets.githubGhp,
+          },
+          {
+            label: 'path sk-token',
+            url: `https://platform.openai.com/docs/${secrets.openaiSk}/deprecations`,
+            probeSecret: secrets.openaiSk,
+          },
+          {
+            label: 'percent-encoded query assignment (%3D & %20)',
+            url: `https://platform.openai.com/docs/deprecations?q=api_key%3D${encodeURIComponent('synth_url_encoded_secret_987654')}`,
+            probeSecret: 'synth_url_encoded_secret_987654',
+          },
+          {
+            label: 'malformed percent-encoding alongside encoded secret',
+            url: `https://platform.openai.com/docs/%E0%A4%A?auth=${encodeURIComponent(secrets.bearerAuth)}`,
+            probeSecret: 'synth_bearer_secret_token_9876543210',
+          },
+        ];
+
+        for (const probe of urlProbes) {
+          let caught: unknown;
+          try {
+            appendResearchEvidence(ctx.stateDir, {
+              provider: 'openai',
+              modelId: 'gpt-4.5-preview',
+              verdict: 'deprecated',
+              url: probe.url,
+              quote: 'Official deprecation notice without inline secret.',
+              conclusion: 'Clean summary',
+              submittedVia: 'mcp',
+            });
+          } catch (err) {
+            caught = err;
+          }
+          expect(caught, probe.label).toBeInstanceOf(ResearchValidationError);
+          const vErr = caught as ResearchValidationError;
+          expect(vErr.code, probe.label).toBe('SECRET_DETECTED_IN_EVIDENCE');
+          expect(vErr.message, probe.label).not.toContain(probe.probeSecret);
+          expect(vErr.message, probe.label).not.toContain(probe.url);
+          expect(fs.readdirSync(ctx.stateDir), probe.label).toEqual([]);
+        }
+      } finally {
+        ctx.cleanup();
+      }
+    },
+    60_000
+  );
+
+  it(
+    'F5-Q8b: appendResearchEvidence rejects secrets in modelId, provider, and composite id with SECRET_DETECTED_IN_EVIDENCE, 0 disk writes, and 0 secret echo',
+    () => {
+      const ctx = createCoreSandbox();
+      try {
+        const secrets = buildSyntheticSecrets();
+        const cases: Array<{ label: string; input: Parameters<typeof appendResearchEvidence>[1]; secret: string }> = [
+          {
+            label: 'secret in modelId',
+            secret: secrets.openaiSk,
+            input: {
+              provider: 'openai',
+              modelId: `gpt-${secrets.openaiSk}`,
+              verdict: 'deprecated',
+              url: 'https://platform.openai.com/docs/deprecations',
+              quote: 'Clean official deprecation quote.',
+              submittedVia: 'mcp',
+            },
+          },
+          {
+            label: 'secret in provider',
+            secret: secrets.githubGhp,
+            input: {
+              provider: `openai-${secrets.githubGhp}`,
+              modelId: 'gpt-4.5-preview',
+              verdict: 'deprecated',
+              url: 'https://platform.openai.com/docs/deprecations',
+              quote: 'Clean official deprecation quote.',
+              submittedVia: 'mcp',
+            },
+          },
+          {
+            label: 'secret in composite id model half',
+            secret: secrets.openaiSk,
+            input: {
+              id: `openai/${secrets.openaiSk}`,
+              verdict: 'deprecated',
+              url: 'https://platform.openai.com/docs/deprecations',
+              quote: 'Clean official deprecation quote.',
+              submittedVia: 'cli',
+            },
+          },
+          {
+            label: 'secret in composite id provider half',
+            secret: secrets.openaiSk,
+            input: {
+              id: `${secrets.openaiSk}/gpt-4.5-preview`,
+              verdict: 'deprecated',
+              url: 'https://platform.openai.com/docs/deprecations',
+              quote: 'Clean official deprecation quote.',
+              submittedVia: 'cli',
+            },
+          },
+        ];
+
+        for (const tc of cases) {
+          let caught: unknown;
+          try {
+            appendResearchEvidence(ctx.stateDir, tc.input);
+          } catch (err) {
+            caught = err;
+          }
+          expect(caught, tc.label).toBeInstanceOf(ResearchValidationError);
+          const vErr = caught as ResearchValidationError;
+          expect(vErr.code, tc.label).toBe('SECRET_DETECTED_IN_EVIDENCE');
+          expect(vErr.message, tc.label).not.toContain(tc.secret);
+          expect(fs.readdirSync(ctx.stateDir), tc.label).toEqual([]);
+        }
+      } finally {
+        ctx.cleanup();
+      }
+    },
+    60_000
+  );
+
+  it(
+    'F5-Q8c: assertWeeklyResearchSessionAllowed and recordResearchSessionActivity reject secret-like sessionId with SECRET_DETECTED_IN_EVIDENCE, 0 cost-ledger writes, and 0 secret echo',
+    () => {
+      const ctx = createCoreSandbox();
+      try {
+        const secrets = buildSyntheticSecrets();
+        const w48Ms = Date.parse('2026-11-25T12:00:00.000Z');
+        for (const [label, secretSid] of [
+          ['sk sessionId', secrets.openaiSk],
+          ['ghp sessionId', secrets.githubGhp],
+        ] as const) {
+          let gateErr: unknown;
+          try {
+            assertWeeklyResearchSessionAllowed(ctx.stateDir, {
+              sessionId: secretSid,
+              nowMs: w48Ms,
+              maxWeeklyResearchSessions: 5,
+            });
+          } catch (err) {
+            gateErr = err;
+          }
+          expect(gateErr, `gate ${label}`).toBeInstanceOf(ResearchValidationError);
+          expect((gateErr as ResearchValidationError).code, `gate ${label}`).toBe(
+            'SECRET_DETECTED_IN_EVIDENCE'
+          );
+          expect((gateErr as ResearchValidationError).message, `gate ${label}`).not.toContain(
+            secretSid
+          );
+
+          let recordErr: unknown;
+          try {
+            recordResearchSessionActivity(ctx.stateDir, {
+              sessionId: secretSid,
+              source: 'mcp',
+              nowMs: w48Ms,
+              maxWeeklyResearchSessions: 5,
+              submittedPayload: '{}',
+              returnedPayload: '{}',
+            });
+          } catch (err) {
+            recordErr = err;
+          }
+          expect(recordErr, `record ${label}`).toBeInstanceOf(ResearchValidationError);
+          expect((recordErr as ResearchValidationError).code, `record ${label}`).toBe(
+            'SECRET_DETECTED_IN_EVIDENCE'
+          );
+          expect((recordErr as ResearchValidationError).message, `record ${label}`).not.toContain(
+            secretSid
+          );
+          expect(fs.readdirSync(ctx.stateDir), label).toEqual([]);
+        }
+      } finally {
+        ctx.cleanup();
+      }
+    },
+    60_000
+  );
+
+  it(
+    'F5-Q8d-1: detects, redacts, and rejects AWS Access Key IDs (AKIA* and ASIA*) statelessly with 0 disk writes',
+    () => {
+      const ctx = createCoreSandbox();
+      try {
+        const awsAkia = ['AK', 'IA'].join('') + 'IOSFODNN7SYNTH01';
+        const awsAsia = ['AS', 'IA'].join('') + 'IOSFODNN7SYNTH02';
+        for (const key of [awsAkia, awsAsia]) {
+          expect(containsSecretLikeContent(key)).toBe(true);
+          expect(containsSecretLikeContent(key)).toBe(true);
+          const redacted = sanitizeUntrustedString(`Key is ${key} here`);
+          expect(redacted).not.toContain(key);
+          expect(redacted).toContain('[REDACTED_SECRET]');
+
+          expect(() =>
+            appendResearchEvidence(ctx.stateDir, {
+              provider: 'openai',
+              modelId: 'gpt-4.5-preview',
+              verdict: 'deprecated',
+              url: 'https://platform.openai.com/docs/deprecations',
+              quote: `AWS credential ${key} leaked in excerpt`,
+              submittedVia: 'mcp',
+            })
+          ).toThrowError(expect.objectContaining({ code: 'SECRET_DETECTED_IN_EVIDENCE' }));
+          expect(fs.readdirSync(ctx.stateDir)).toEqual([]);
+        }
+      } finally {
+        ctx.cleanup();
+      }
+    },
+    60_000
+  );
+
+  it(
+    'F5-Q8d-2: detects, redacts, and rejects token/access_token/auth_token/refresh_token/client_secret/api_secret assignments while keeping benign token prose clean',
+    () => {
+      const ctx = createCoreSandbox();
+      try {
+        const assignSamples = [
+          ['access', '_token='].join('') + 'synth_access_tok_0123456789',
+          ['auth', '_token: '].join('') + 'synth_auth_tok_0123456789',
+          ['refresh', '_token='].join('') + 'synth_refresh_tok_0123456789',
+          ['client', '_secret='].join('') + 'synth_client_sec_0123456789',
+          ['api', '_secret: '].join('') + 'synth_api_sec_0123456789',
+          ['tok', 'en='].join('') + 'synth_generic_tok_0123456789',
+        ];
+        for (const sample of assignSamples) {
+          expect(containsSecretLikeContent(sample), sample).toBe(true);
+          expect(containsSecretLikeContent(sample), sample).toBe(true);
+          const redacted = sanitizeUntrustedString(`Header ${sample} end`);
+          expect(redacted).not.toContain('0123456789');
+          expect(redacted).toContain('[REDACTED_SECRET]');
+
+          expect(() =>
+            appendResearchEvidence(ctx.stateDir, {
+              provider: 'openai',
+              modelId: 'gpt-4.5-preview',
+              verdict: 'deprecated',
+              url: 'https://platform.openai.com/docs/deprecations',
+              quote: `Config snippet ${sample}`,
+              submittedVia: 'mcp',
+            })
+          ).toThrowError(expect.objectContaining({ code: 'SECRET_DETECTED_IN_EVIDENCE' }));
+          expect(fs.readdirSync(ctx.stateDir)).toEqual([]);
+        }
+
+        for (const benign of [
+          'token: count',
+          'max output token: 128000',
+          'input_cost_per_token: 0.00000250',
+          'harness-native-zero-token mode',
+        ]) {
+          expect(containsSecretLikeContent(benign), benign).toBe(false);
+        }
+      } finally {
+        ctx.cleanup();
+      }
+    },
+    60_000
+  );
+
+  it(
+    'F5-Q8d-3: detects, redacts, and rejects bare JWTs (eyJ<header>.eyJ<payload>.<sig>) statelessly with 0 disk writes',
+    () => {
+      const ctx = createCoreSandbox();
+      try {
+        const rawJwt = [
+          ['ey', 'J'].join('') + 'hbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9',
+          ['ey', 'J'].join('') + 'zdWIiOiJzeW50aC11c2VyLTEyMzQ1In0',
+          'SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c',
+        ].join('.');
+
+        expect(containsSecretLikeContent(rawJwt)).toBe(true);
+        expect(containsSecretLikeContent(rawJwt)).toBe(true);
+        const redacted = sanitizeUntrustedString(`Session JWT ${rawJwt} active`);
+        expect(redacted).not.toContain('SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c');
+        expect(redacted).toContain('[REDACTED_SECRET]');
+
+        expect(() =>
+          appendResearchEvidence(ctx.stateDir, {
+            provider: 'openai',
+            modelId: 'gpt-4.5-preview',
+            verdict: 'deprecated',
+            url: 'https://platform.openai.com/docs/deprecations',
+            quote: `Captured token ${rawJwt}`,
+            submittedVia: 'mcp',
+          })
+        ).toThrowError(expect.objectContaining({ code: 'SECRET_DETECTED_IN_EVIDENCE' }));
+        expect(fs.readdirSync(ctx.stateDir)).toEqual([]);
+      } finally {
+        ctx.cleanup();
+      }
+    },
+    60_000
+  );
+
+  it(
+    'F5-Q8d-4: detects, fully redacts (without leaking Base64 suffix after +/=), and rejects Base64 Bearer tokens containing +, /, =, ~ before index 16',
+    () => {
+      const ctx = createCoreSandbox();
+      try {
+        const b64Tail = 'cd/ef=gh~ij0123456789ABCDEF';
+        const bearerB64 = ['Bear', 'er '].join('') + 'ab+' + b64Tail;
+
+        expect(containsSecretLikeContent(bearerB64)).toBe(true);
+        expect(containsSecretLikeContent(bearerB64)).toBe(true);
+        const redacted = sanitizeUntrustedString(`Auth: ${bearerB64} ok`);
+        expect(redacted).not.toContain(b64Tail);
+        expect(redacted).not.toContain('+cd/ef');
+        expect(redacted).toContain('[REDACTED_SECRET]');
+
+        expect(() =>
+          appendResearchEvidence(ctx.stateDir, {
+            provider: 'openai',
+            modelId: 'gpt-4.5-preview',
+            verdict: 'deprecated',
+            url: 'https://platform.openai.com/docs/deprecations',
+            quote: `Authorization ${bearerB64}`,
+            submittedVia: 'mcp',
+          })
+        ).toThrowError(expect.objectContaining({ code: 'SECRET_DETECTED_IN_EVIDENCE' }));
+        expect(fs.readdirSync(ctx.stateDir)).toEqual([]);
+      } finally {
+        ctx.cleanup();
+      }
+    },
+    60_000
+  );
+
 });
