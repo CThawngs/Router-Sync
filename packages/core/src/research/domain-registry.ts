@@ -13,6 +13,8 @@
  *    hard rejection when caller claims 'official' on a non-official host
  */
 
+import { containsSecretLikeContent, containsSecretLikeUrlContent } from '../domain/sanitize.js';
+
 export type ResearchSourceTier = 'official' | 'secondary';
 
 export type ResearchValidationErrorCode =
@@ -20,6 +22,7 @@ export type ResearchValidationErrorCode =
   | 'INSECURE_URL_SCHEME'
   | 'DISALLOWED_URL_AUTHORITY'
   | 'SPOOFED_OFFICIAL_DOMAIN'
+  | 'SECRET_DETECTED_IN_EVIDENCE'
   | 'SCHEMA_VALIDATION_ERROR';
 
 export class ResearchValidationError extends Error {
@@ -134,7 +137,10 @@ export function verifyProviderSourceDomain(
   try {
     parsed = new URL(trimmedUrl);
   } catch {
-    throw new ResearchValidationError('INVALID_URL', `Malformed URL: "${trimmedUrl}".`);
+    throw new ResearchValidationError(
+      'INVALID_URL',
+      containsSecretLikeUrlContent(trimmedUrl) ? 'Malformed URL.' : `Malformed URL: "${trimmedUrl}".`
+    );
   }
 
   if (parsed.protocol !== 'https:') {
@@ -175,7 +181,9 @@ export function verifyProviderSourceDomain(
   if (claimedSourceTier === 'official' && !isOfficial) {
     throw new ResearchValidationError(
       'SPOOFED_OFFICIAL_DOMAIN',
-      `Host "${host}" is not a registered official domain for provider "${canonicalProvider}".`
+      containsSecretLikeContent(host) || containsSecretLikeContent(canonicalProvider)
+        ? 'Host is not a registered official domain for the specified provider.'
+        : `Host "${host}" is not a registered official domain for provider "${canonicalProvider}".`
     );
   }
 

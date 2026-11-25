@@ -10,6 +10,7 @@ import {
   OutboundGuardError,
   ResearchValidationError,
   appendResearchEvidence,
+  containsSecretLikeContent,
   assertAllowedOutboundUrl,
   assertWeeklyResearchSessionAllowed,
   atomicWriteFileSync,
@@ -384,15 +385,22 @@ export async function runResearchCommand(options: ResearchOptions): Promise<void
     const sDir = options.stateDir ?? (process.env['ROUTERSYNC_STATE_DIR'] || path.join(process.cwd(), '.routersync'));
     const maxCap = resolveMaxWeeklySessionsFromConfig(options.configPath);
 
-    // C45-WP8: Gate weekly research session budget BEFORE writing any evidence (kills M6)
-    const sessionGate = assertWeeklyResearchSessionAllowed(sDir, {
-      sessionId,
-      nowMs: options.nowMs,
-      maxWeeklyResearchSessions: maxCap,
-    });
-
+    let sessionGate;
     let record;
     try {
+      if (typeof sessionId === 'string' && containsSecretLikeContent(sessionId)) {
+        throw new ResearchValidationError(
+          'SECRET_DETECTED_IN_EVIDENCE',
+          'Research sessionId contains secret or API-key-like material and was rejected.'
+        );
+      }
+
+      // C45-WP8: Gate weekly research session budget BEFORE writing any evidence (kills M6)
+      sessionGate = assertWeeklyResearchSessionAllowed(sDir, {
+        sessionId,
+        nowMs: options.nowMs,
+        maxWeeklyResearchSessions: maxCap,
+      });
       record = appendResearchEvidence(sDir, {
         id: id || undefined,
         provider,
