@@ -212,9 +212,10 @@ export function createCliProgram(): Command {
     .command('rollback [snapshotId]')
     .description('Rollback router state to a persisted snapshot (logical row-level restore). DRY-RUN by default; --write requires interactive TTY + confirmation')
     .option('-c, --config-path <path>', 'Path to routersync.yaml configuration')
+    .option('--state-dir <dir>', 'Custom control-plane state directory')
     .option('--write', 'Perform the REAL restore (requires interactive TTY and confirmation; default is dry-run)')
     .option('--json', 'Output result in JSON format')
-    .action(async (snapshotId: string | undefined, opts: { configPath?: string; write?: boolean; json?: boolean }) => {
+    .action(async (snapshotId: string | undefined, opts: { configPath?: string; stateDir?: string; write?: boolean; json?: boolean }) => {
       await runRollbackCommand({ ...opts, snapshotId });
     });
 
@@ -577,7 +578,7 @@ export function createCliProgram(): Command {
     .command('tick')
     .description('Run a single zero-token catalog & inbox tick (idempotent, file-locked)')
     .option('-c, --config <path>', 'Custom path to configuration file (routersync.yaml)')
-    .option('--mode <mode>', 'Autonomy mode: observe | propose (default: propose)', 'propose')
+    .option('--mode <mode>', 'Autonomy mode: observe | propose | auto-safe (default: propose)', 'propose')
     .option('--grace-cycles <n>', 'Grace cycles before marking missing model DEAD (default: 2)', '2')
     .option('--max-shrink-ratio <ratio>', 'Maximum allowed catalog shrink ratio before shrink-guard blocks (default: 0.3)', '0.3')
     .option('--state-dir <dir>', 'Custom state directory')
@@ -1467,22 +1468,35 @@ export function createCliProgram(): Command {
     .command('plan')
     .description('Compute Direction A model list plan for a target harness (read-only)')
     .requiredOption('--app <app>', 'Target harness ID from harness-matrix.json')
-    .requiredOption('--catalog <path>', 'Path to verified provider catalog JSON')
+    .option('--catalog <path>', 'Path to verified provider catalog JSON (defaults to <stateDir>/tick-catalog.json)')
+    .option('--state-dir <dir>', 'Custom control-plane state directory')
     .option('-c, --config <path>', 'Explicit harness config file path')
     .option('--home <dir>', 'Custom user home directory')
     .option('--json', 'Output plan in JSON format')
-    .action(async (opts: { app: string; catalog: string; config?: string; home?: string; json?: boolean }) => {
-      await runAppsPlanCommand(opts);
-    });
+    .action(
+      async (opts: {
+        app: string;
+        catalog?: string;
+        stateDir?: string;
+        config?: string;
+        home?: string;
+        json?: boolean;
+      }) => {
+        await runAppsPlanCommand(opts);
+      }
+    );
 
   appsCmd
     .command('apply')
-    .description('Apply lossless model list plan to an isolated sandbox copy (--sandbox-copy required)')
+    .description('Apply lossless model list plan to a target harness (--write with standing consent or --sandbox-copy)')
     .requiredOption('--app <app>', 'Target harness ID from harness-matrix.json')
-    .requiredOption('-c, --config <path>', 'Path to isolated sandbox harness config copy in os.tmpdir()')
-    .requiredOption('--catalog <path>', 'Path to verified provider catalog JSON')
+    .requiredOption('-c, --config <path>', 'Path to harness config file')
+    .option('--catalog <path>', 'Path to verified provider catalog JSON (defaults to <stateDir>/tick-catalog.json)')
+    .option('--state-dir <dir>', 'Custom control-plane state directory')
     .option('--home <dir>', 'Custom user home directory')
-    .option('--sandbox-copy', 'Confirm target config is an isolated sandbox copy')
+    .option('--write', 'Execute controlled write (requires standing consent; propose requires interactive TTY confirmation)')
+    .option('--sandbox-copy', 'Confirm target config is an isolated sandbox copy in os.tmpdir()')
+    .option('--yes', 'Prohibited by security policy ? will be rejected')
     .option('--plan-hash <hash>', 'Expected planHash from apps plan')
     .option('--backup <path>', 'Custom backup file path')
     .option('--json', 'Output apply result in JSON format')
@@ -1490,9 +1504,12 @@ export function createCliProgram(): Command {
       async (opts: {
         app: string;
         config: string;
-        catalog: string;
+        catalog?: string;
+        stateDir?: string;
         home?: string;
+        write?: boolean;
         sandboxCopy?: boolean;
+        yes?: boolean;
         planHash?: string;
         backup?: string;
         json?: boolean;
@@ -1503,11 +1520,13 @@ export function createCliProgram(): Command {
 
   appsCmd
     .command('rollback')
-    .description('Restore sandbox harness config byte-for-byte from backup')
+    .description('Restore harness config byte-for-byte from backup')
     .requiredOption('--app <app>', 'Target harness ID from harness-matrix.json')
-    .requiredOption('-c, --config <path>', 'Path to sandbox harness config file')
+    .requiredOption('-c, --config <path>', 'Path to harness config file')
     .option('--backup <path>', 'Explicit backup file path')
     .option('--expected-sha256 <hash>', 'Expected pre-apply SHA-256 hex')
+    .option('--state-dir <dir>', 'Custom control-plane state directory')
+    .option('--write', 'Execute restore from backup')
     .option('--json', 'Output rollback result in JSON format')
     .action(
       async (opts: {
@@ -1515,6 +1534,8 @@ export function createCliProgram(): Command {
         config: string;
         backup?: string;
         expectedSha256?: string;
+        stateDir?: string;
+        write?: boolean;
         json?: boolean;
       }) => {
         await runAppsRollbackCommand({
@@ -1522,6 +1543,8 @@ export function createCliProgram(): Command {
           config: opts.config,
           backup: opts.backup,
           expectedPreSha256: opts.expectedSha256,
+          stateDir: opts.stateDir,
+          write: opts.write,
           json: opts.json,
         });
       }

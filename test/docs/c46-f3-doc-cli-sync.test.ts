@@ -1,0 +1,362 @@
+/**
+ * test/docs/c46-f3-doc-cli-sync.test.ts
+ *
+ * Ticket C46-F3 (`Phục vụ: S9, I4, I5`) — Reusable Doc-CLI Sync Validator &
+ * `docs/runbook/LIVE-E2E-v2.md` Contract Suite.
+ *
+ * Exports `extractDocCliInvocations` and `verifyDocCliSync` so Ticket C46-F6
+ * can reuse the exact same parser/validator across all repository docs.
+ */
+
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { describe, expect, it } from 'vitest';
+import { createCliProgram } from '../../packages/cli/src/index.js';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const REPO_ROOT = path.resolve(__dirname, '..', '..');
+
+export interface CliOptionLike {
+  readonly short?: string;
+  readonly long?: string;
+  readonly required?: boolean;
+  readonly optional?: boolean;
+  readonly negate?: boolean;
+}
+
+export interface CliCommandLike {
+  readonly parent: CliCommandLike | null;
+  readonly options: readonly CliOptionLike[];
+  readonly commands: readonly CliCommandLike[];
+  readonly registeredArguments: readonly unknown[];
+  name(): string;
+  aliases(): readonly string[];
+}
+
+export interface ExtractedCliInvocation {
+  kind: 'routersync' | 'node-tool';
+  rawCommand: string;
+  tokens: string[];
+  blockIndex: number;
+}
+
+export interface DocCliSyncIssue {
+  rawCommand: string;
+  reason: string;
+}
+
+export interface DocCliSyncResult {
+  invocations: ExtractedCliInvocation[];
+  issues: DocCliSyncIssue[];
+}
+
+function tokenizeShellCommand(line: string): string[] {
+  const tokens: string[] = [];
+  let current = '';
+  let quote: '"' | "'" | null = null;
+
+  for (let i = 0; i < line.length; i += 1) {
+    const ch = line[i]!;
+    if (quote) {
+      if (ch === '\\' && quote === '"' && i + 1 < line.length) {
+        current += line[i + 1]!;
+        i += 1;
+        continue;
+      }
+      if (ch === quote) {
+        quote = null;
+        continue;
+      }
+      current += ch;
+      continue;
+    }
+
+    if (ch === '"' || ch === "'") {
+      quote = ch;
+      continue;
+    }
+    if (ch === '#') {
+      // Unquoted comment trails to end of logical command
+      break;
+    }
+    if (/\s/.test(ch)) {
+      if (current.length > 0) {
+        tokens.push(current);
+        current = '';
+      }
+      continue;
+    }
+    current += ch;
+  }
+
+  if (current.length > 0) {
+    tokens.push(current);
+  }
+  return tokens;
+}
+
+function extractFencedShellBlocks(markdown: string): string[] {
+  const blocks: string[] = [];
+  const fenceRegex = /```(?:sh|bash|zsh|shell|powershell|ps1)?\r?\n([\s\S]*?)```/g;
+  let match: RegExpExecArray | null;
+  while ((match = fenceRegex.exec(markdown)) !== null) {
+    blocks.push(match[1] ?? '');
+  }
+  return blocks;
+}
+
+function joinContinuedLines(block: string): string[] {
+  const rawLines = block.split(/\r?\n/);
+  const logicalLines: string[] = [];
+  let buffer = '';
+
+  for (const rawLine of rawLines) {
+    const trimmed = rawLine.trim();
+    if (!trimmed) {
+      if (buffer) {
+        logicalLines.push(buffer.trim());
+        buffer = '';
+      }
+      continue;
+    }
+    if (!buffer && trimmed.startsWith('#')) {
+      continue;
+    }
+    if (trimmed.endsWith('\\')) {
+      buffer += `${trimmed.slice(0, -1)} `;
+    } else {
+      buffer += trimmed;
+      logicalLines.push(buffer.trim());
+      buffer = '';
+    }
+  }
+  if (buffer.trim()) {
+    logicalLines.push(buffer.trim());
+  }
+  return logicalLines;
+}
+
+/**
+ * Extracts all executable `routersync ...` and `node tools/...` invocations
+ * from fenced shell/PowerShell code blocks in a markdown document.
+ */
+export function extractDocCliInvocations(markdown: string): ExtractedCliInvocation[] {
+  const blocks = extractFencedShellBlocks(markdown);
+  const invocations: ExtractedCliInvocation[] = [];
+
+  blocks.forEach((block, blockIndex) => {
+    for (const logicalLine of joinContinuedLines(block)) {
+      const segments = logicalLine
+        .split(/&&|;/)
+        .map((s) => s.trim())
+        .filter(Boolean);
+
+      for (const segment of segments) {
+        const tokens = tokenizeShellCommand(segment);
+        if (tokens.length === 0) continue;
+
+        // Strip leading POSIX VAR=val assignments if present
+        let startIdx = 0;
+        while (
+          startIdx < tokens.length &&
+          /^[A-Za-z_][A-Za-z0-9_]*=/.test(tokens[startIdx]!)
+        ) {
+          startIdx += 1;
+        }
+        const cmdTokens = tokens.slice(startIdx);
+        if (cmdTokens.length === 0) continue;
+
+        if (cmdTokens[0] === 'routersync') {
+          invocations.push({
+            kind: 'routersync',
+            rawCommand: segment,
+            tokens: cmdTokens,
+            blockIndex,
+          });
+        } else if (
+          cmdTokens[0] === 'node' &&
+          cmdTokens[1] &&
+          cmdTokens[1].replace(/\\/g, '/').startsWith('tools/')
+        ) {
+          invocations.push({
+            kind: 'node-tool',
+            rawCommand: segment,
+            tokens: cmdTokens,
+            blockIndex,
+          });
+        }
+      }
+    }
+  });
+
+  return invocations;
+}
+
+function collectAllowedFlags(cmd: CliCommandLike): Map<string, boolean> {
+  const map = new Map<string, boolean>();
+  map.set('--help', false);
+  map.set('-h', false);
+  if (cmd.parent === null) {
+    map.set('--version', false);
+    map.set('-V', false);
+  }
+  for (const opt of cmd.options) {
+    const takesArg = Boolean(opt.required || opt.optional);
+    if (opt.short) map.set(opt.short, takesArg);
+    if (opt.long) {
+      map.set(opt.long, takesArg);
+      if (opt.negate) {
+        map.set(opt.long, false);
+      }
+    }
+  }
+  return map;
+}
+
+/**
+ * Validates every extracted `routersync ...` subcommand/flag against `createCliProgram()`
+ * and every `node tools/...` script path against `repoRoot`.
+ */
+export function verifyDocCliSync(
+  markdown: string,
+  options: { repoRoot?: string; program?: CliCommandLike } = {}
+): DocCliSyncResult {
+  const repoRoot = options.repoRoot ?? REPO_ROOT;
+  const program: CliCommandLike =
+    options.program ?? (createCliProgram() as unknown as CliCommandLike);
+  const invocations = extractDocCliInvocations(markdown);
+  const issues: DocCliSyncIssue[] = [];
+
+  for (const inv of invocations) {
+    if (inv.kind === 'node-tool') {
+      const relScript = inv.tokens[1]!.replace(/\\/g, '/');
+      const absScript = path.join(repoRoot, relScript);
+      if (!fs.existsSync(absScript) || !fs.statSync(absScript).isFile()) {
+        issues.push({
+          rawCommand: inv.rawCommand,
+          reason: `Referenced tool script does not exist on disk: ${relScript}`,
+        });
+      }
+      continue;
+    }
+
+    // Resolve deepest matching Commander subcommand chain
+    let curCmd: CliCommandLike = program;
+    let idx = 1;
+    while (idx < inv.tokens.length) {
+      const tok = inv.tokens[idx]!;
+      if (tok.startsWith('-')) break;
+      const sub = curCmd.commands.find(
+        (c: CliCommandLike) => c.name() === tok || c.aliases().includes(tok)
+      );
+      if (!sub) break;
+      curCmd = sub;
+      idx += 1;
+    }
+
+    // If first token after `routersync` was non-option and matched no top-level command, fail!
+    if (curCmd === program && idx < inv.tokens.length && !inv.tokens[idx]!.startsWith('-')) {
+      issues.push({
+        rawCommand: inv.rawCommand,
+        reason: `Unknown routersync command '${inv.tokens[idx]}'`,
+      });
+      continue;
+    }
+
+    // If `curCmd` is a pure command group (has subcommands and no custom action handler) and next non-option token exists, fail!
+    if (
+      curCmd !== program &&
+      curCmd.commands.length > 0 &&
+      idx < inv.tokens.length &&
+      !inv.tokens[idx]!.startsWith('-') &&
+      curCmd.registeredArguments.length === 0
+    ) {
+      issues.push({
+        rawCommand: inv.rawCommand,
+        reason: `Unknown subcommand '${inv.tokens[idx]}' under 'routersync ${curCmd.name()}'`,
+      });
+      continue;
+    }
+
+    const allowedFlags = collectAllowedFlags(curCmd);
+    for (let i = idx; i < inv.tokens.length; i += 1) {
+      const tok = inv.tokens[i]!;
+      if (!tok.startsWith('-') || tok === '--') continue;
+      const eqIdx = tok.indexOf('=');
+      const flagName = eqIdx > 0 ? tok.slice(0, eqIdx) : tok;
+
+      if (!allowedFlags.has(flagName)) {
+        issues.push({
+          rawCommand: inv.rawCommand,
+          reason: `Unknown CLI flag '${flagName}' on 'routersync ${curCmd === program ? '' : curCmd.name()}'`,
+        });
+        continue;
+      }
+
+      const takesValue = allowedFlags.get(flagName) ?? false;
+      if (takesValue && eqIdx < 0) {
+        const nextTok = inv.tokens[i + 1];
+        if (nextTok && !nextTok.startsWith('-')) {
+          i += 1;
+        }
+      }
+    }
+  }
+
+  return { invocations, issues };
+}
+
+describe('C46-F3: docs/runbook/LIVE-E2E-v2.md Doc-CLI Sync & Complete Workflow Contract', () => {
+  it('validates every routersync CLI command/flag and node tools/* script in LIVE-E2E-v2.md', () => {
+    const runbookPath = path.join(REPO_ROOT, 'docs', 'runbook', 'LIVE-E2E-v2.md');
+    const markdown = fs.readFileSync(runbookPath, 'utf8');
+    const result = verifyDocCliSync(markdown);
+
+    expect(result.invocations.length).toBeGreaterThanOrEqual(15);
+    expect(result.issues).toEqual([]);
+  });
+
+  it('documents C46-F2 live_gate_hint + live env flags and C46-F3 harness plan/apply/auto-safe/rollback commands', () => {
+    const runbookPath = path.join(REPO_ROOT, 'docs', 'runbook', 'LIVE-E2E-v2.md');
+    const markdown = fs.readFileSync(runbookPath, 'utf8');
+    const invocations = extractDocCliInvocations(markdown).map((i) => i.rawCommand);
+
+    // C46-F2: 7th check `live_gate_hint` + explicit owner live write flags (POSIX + PowerShell)
+    expect(markdown).toContain('live_gate_hint');
+    expect(markdown).toContain('ROUTERSYNC_ALLOW_LIVE_ROUTER_WRITE=1');
+    expect(markdown).toContain('ROUTERSYNC_ALLOW_LIVE_HOME_WRITE=1');
+    expect(markdown).toContain('$env:ROUTERSYNC_ALLOW_LIVE_ROUTER_WRITE="1"');
+    expect(markdown).toContain('$env:ROUTERSYNC_ALLOW_LIVE_HOME_WRITE="1"');
+
+    // C46-F3: Executable (uncommented!) harness plan, apply --write, tick --mode auto-safe, and rollback commands
+    expect(invocations.some((cmd) => cmd.startsWith('routersync apps plan'))).toBe(true);
+    expect(
+      invocations.some(
+        (cmd) => cmd.startsWith('routersync apps apply') && cmd.includes('--write')
+      )
+    ).toBe(true);
+    expect(
+      invocations.some(
+        (cmd) => cmd.startsWith('routersync tick') && cmd.includes('--mode auto-safe')
+      )
+    ).toBe(true);
+    expect(invocations.some((cmd) => cmd.startsWith('routersync apps rollback'))).toBe(true);
+  });
+
+  it('catches unknown subcommands, unknown flags, and missing tools scripts in verifyDocCliSync (helper self-test for F6)', () => {
+    const sampleBadDoc = [
+      '```sh',
+      'routersync live-check --nonexistent-flag',
+      'routersync apps imaginary-subcommand --app hermes',
+      'node tools/agent/does-not-exist.mjs',
+      '```',
+    ].join('\n');
+
+    const check = verifyDocCliSync(sampleBadDoc);
+    expect(check.issues).toHaveLength(3);
+    expect(check.issues[0]!.reason).toContain('--nonexistent-flag');
+    expect(check.issues[1]!.reason).toContain('imaginary-subcommand');
+    expect(check.issues[2]!.reason).toContain('tools/agent/does-not-exist.mjs');
+  });
+});

@@ -48,7 +48,7 @@ export function resolveDeepCanonicalPath(targetPath: string, depth = 0): string 
   if (depth > 40) {
     throw new ConsentValidationError(
       'SANDBOX_OUTSIDE_TMPDIR',
-      `Too many symbolic link levels while resolving path: ${targetPath}`
+      `SANDBOX_OUTSIDE_TMPDIR: Too many symbolic link levels while resolving path: ${targetPath}`
     );
   }
   const abs = path.resolve(stripWindowsExtendedPrefix(targetPath));
@@ -146,7 +146,10 @@ export function assertControlledWriteSandbox(
   env: NodeJS.ProcessEnv = process.env
 ): void {
   if (typeof targetPath !== 'string' || targetPath.trim().length === 0) {
-    throw new ConsentValidationError('SANDBOX_OUTSIDE_TMPDIR', 'Target write path is empty.');
+    throw new ConsentValidationError(
+      'SANDBOX_OUTSIDE_TMPDIR',
+      'SANDBOX_OUTSIDE_TMPDIR: Target write path is empty.'
+    );
   }
 
   const deepTarget = resolveDeepCanonicalPath(targetPath);
@@ -156,7 +159,7 @@ export function assertControlledWriteSandbox(
     if (FORBIDDEN_RUNTIME_FILENAMES.has(baseName)) {
       throw new ConsentValidationError(
         'FORBIDDEN_RUNTIME_FILE',
-        `Refusing to touch OpenMausBot runtime-owned file '${baseName}'.`
+        `FORBIDDEN_RUNTIME_FILE: Refusing to touch OpenMausBot runtime-owned file '${baseName}'.`
       );
     }
   }
@@ -174,7 +177,7 @@ export function assertControlledWriteSandbox(
         if (normDeepTarget === normDeepLiveDb || isSameDbFile(targetPath, realLiveDb)) {
           throw new ConsentValidationError(
             'SANDBOX_OUTSIDE_TMPDIR',
-            `Refusing to write real host live router database '${targetPath}' without ROUTERSYNC_ALLOW_LIVE_ROUTER_WRITE=1.`
+            `SANDBOX_OUTSIDE_TMPDIR: Refusing to write real host live router database '${targetPath}' without ROUTERSYNC_ALLOW_LIVE_ROUTER_WRITE=1.`
           );
         }
       }
@@ -184,12 +187,12 @@ export function assertControlledWriteSandbox(
         } catch (err) {
           throw new ConsentValidationError(
             'SANDBOX_OUTSIDE_TMPDIR',
-            err instanceof Error ? err.message : String(err)
+            `SANDBOX_OUTSIDE_TMPDIR: ${err instanceof Error ? err.message : String(err)}`
           );
         }
         throw new ConsentValidationError(
           'SANDBOX_OUTSIDE_TMPDIR',
-          `Controlled router DB write path must reside inside os.tmpdir() unless ROUTERSYNC_ALLOW_LIVE_ROUTER_WRITE=1.`
+          `SANDBOX_OUTSIDE_TMPDIR: Controlled router DB write path must reside inside os.tmpdir() unless ROUTERSYNC_ALLOW_LIVE_ROUTER_WRITE=1.`
         );
       }
     }
@@ -200,7 +203,7 @@ export function assertControlledWriteSandbox(
   if (!allowLiveHome && !isPathInsideDir(deepTarget, deepTmp)) {
     throw new ConsentValidationError(
       'SANDBOX_OUTSIDE_TMPDIR',
-      `Controlled harness config write path must reside inside os.tmpdir() unless ROUTERSYNC_ALLOW_LIVE_HOME_WRITE=1.`
+      `SANDBOX_OUTSIDE_TMPDIR: Controlled harness config write path must reside inside os.tmpdir() unless ROUTERSYNC_ALLOW_LIVE_HOME_WRITE=1.`
     );
   }
 }

@@ -6,8 +6,8 @@
  *  - Dynamic lazy-loading in `packages/cli/src/index.ts` & `'live-check': 'short'` in `command-classification.ts`
  *  - 100% zero-mutation guarantee (`sha256` + `mtimeMs` preserved across router DB, harness config, and `stateDir`)
  *  - Unconditional `os.tmpdir()/rs-livecheck-*` cleanup in `finally`
- *  - All 6 pre-flight checks (`freeze_clear`, `config_and_doctor_health`, `pilot_targets_readable`,
- *    `tmpdir_backup_rollback_rehearsal`, `consent_and_promotion_state`, `cost_and_release_hygiene`)
+ *  - All 7 pre-flight checks (`freeze_clear`, `config_and_doctor_health`, `pilot_targets_readable`,
+ *    `tmpdir_backup_rollback_rehearsal`, `consent_and_promotion_state`, `cost_and_release_hygiene`, `live_gate_hint`)
  */
 
 import * as crypto from 'node:crypto';
@@ -299,6 +299,7 @@ describe('C45-WP9: routersync live-check zero-mutation pre-flight & failure mode
       'tmpdir_backup_rollback_rehearsal',
       'consent_and_promotion_state',
       'cost_and_release_hygiene',
+      'live_gate_hint',
     ]);
     expect(report.checks.every((c) => c.passed)).toBe(true);
     const rehearsalCheck = report.checks.find((c) => c.id === 'tmpdir_backup_rollback_rehearsal')!;
