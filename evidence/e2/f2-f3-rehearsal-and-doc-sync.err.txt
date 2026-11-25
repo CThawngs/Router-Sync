@@ -1,0 +1,55 @@
+[routersync] 9Router: WARNING — read-back is db-only (degraded). Cache TTL: immediate-assumed (unverified empirically — use CHECKPOINT-LIVE to confirm).
+[routersync] 9Router: applyState = written-pending-reload (Gate L / spec §33.3): serving-path reflection unconfirmed — combo visible on router only after reload/refresh. Gate L finding (COPY, Windows): combos with kind=null reflect on GET /v1/models at 19.7-31.2 s (n=3, AT-111); rows written with kind='custom' NEVER reflect.
+
+======================================================
+[routersync] REVIEWING HARNESS CHANGES BEFORE WRITING
+  Target   : harness:hermes
+  Additions: 1, Removals: 1
+======================================================
+
+======================================================
+[routersync] REVIEWING HARNESS CHANGES BEFORE WRITING
+  Target   : harness:hermes
+  Additions: 1, Removals: 1
+======================================================
+[routersync] 9Router: WARNING — read-back is db-only (degraded). Cache TTL: immediate-assumed (unverified empirically — use CHECKPOINT-LIVE to confirm).
+[routersync] 9Router: applyState = written-pending-reload (Gate L / spec §33.3): serving-path reflection unconfirmed — combo visible on router only after reload/refresh. Gate L finding (COPY, Windows): combos with kind=null reflect on GET /v1/models at 19.7-31.2 s (n=3, AT-111); rows written with kind='custom' NEVER reflect.
+
+======================================================
+[routersync] REVIEWING HARNESS CHANGES BEFORE WRITING
+  Target   : harness:hermes
+  Additions: 1, Removals: 1
+======================================================
+
+======================================================
+[routersync] REVIEWING HARNESS CHANGES BEFORE WRITING
+  Target   : harness:hermes
+  Additions: 1, Removals: 1
+======================================================
+[routersync] 9Router: WARNING — read-back is db-only (degraded). Cache TTL: immediate-assumed (unverified empirically — use CHECKPOINT-LIVE to confirm).
+[routersync] 9Router: applyState = written-pending-reload (Gate L / spec §33.3): serving-path reflection unconfirmed — combo visible on router only after reload/refresh. Gate L finding (COPY, Windows): combos with kind=null reflect on GET /v1/models at 19.7-31.2 s (n=3, AT-111); rows written with kind='custom' NEVER reflect.
+[routersync] 9Router: WARNING — read-back is db-only (degraded). Cache TTL: immediate-assumed (unverified empirically — use CHECKPOINT-LIVE to confirm).
+[routersync] 9Router: applyState = written-pending-reload (Gate L / spec §33.3): serving-path reflection unconfirmed — combo visible on router only after reload/refresh. Gate L finding (COPY, Windows): combos with kind=null reflect on GET /v1/models at 19.7-31.2 s (n=3, AT-111); rows written with kind='custom' NEVER reflect.
+[routersync] 9Router: WARNING — read-back is db-only (degraded). Cache TTL: immediate-assumed (unverified empirically — use CHECKPOINT-LIVE to confirm).
+[routersync] 9Router: applyState = written-pending-reload (Gate L / spec §33.3): serving-path reflection unconfirmed — combo visible on router only after reload/refresh. Gate L finding (COPY, Windows): combos with kind=null reflect on GET /v1/models at 19.7-31.2 s (n=3, AT-111); rows written with kind='custom' NEVER reflect.
+[routersync] 9Router: WARNING — read-back is db-only (degraded). Cache TTL: immediate-assumed (unverified empirically — use CHECKPOINT-LIVE to confirm).
+[routersync] 9Router: applyState = written-pending-reload (Gate L / spec §33.3): serving-path reflection unconfirmed — combo visible on router only after reload/refresh. Gate L finding (COPY, Windows): combos with kind=null reflect on GET /v1/models at 19.7-31.2 s (n=3, AT-111); rows written with kind='custom' NEVER reflect.
+[routersync] 9Router: WARNING — read-back is db-only (degraded). Cache TTL: immediate-assumed (unverified empirically — use CHECKPOINT-LIVE to confirm).
+[routersync] 9Router: applyState = written-pending-reload (Gate L / spec §33.3): serving-path reflection unconfirmed — combo visible on router only after reload/refresh. Gate L finding (COPY, Windows): combos with kind=null reflect on GET /v1/models at 19.7-31.2 s (n=3, AT-111); rows written with kind='custom' NEVER reflect.
+[routersync] 9Router: WARNING — read-back is db-only (degraded). Cache TTL: immediate-assumed (unverified empirically — use CHECKPOINT-LIVE to confirm).
+[routersync] 9Router: applyState = written-pending-reload (Gate L / spec §33.3): serving-path reflection unconfirmed — combo visible on router only after reload/refresh. Gate L finding (COPY, Windows): combos with kind=null reflect on GET /v1/models at 19.7-31.2 s (n=3, AT-111); rows written with kind='custom' NEVER reflect.
+
+======================================================
+[routersync] REVIEWING HARNESS CHANGES BEFORE WRITING
+  Target   : harness:hermes
+  Additions: 8, Removals: 0
+======================================================
+
+======================================================
+[routersync] REVIEWING HARNESS CHANGES BEFORE WRITING
+  Target   : harness:opencode
+  Additions: 8, Removals: 0
+======================================================
+[routersync] low-resource mode: auto: availableMem 1.0 GiB < 2 GiB
+[routersync] 9Router: WARNING — read-back is db-only (degraded). Cache TTL: immediate-assumed (unverified empirically — use CHECKPOINT-LIVE to confirm).
+[routersync] 9Router: applyState = written-pending-reload (Gate L / spec §33.3): serving-path reflection unconfirmed — combo visible on router only after reload/refresh. Gate L finding (COPY, Windows): combos with kind=null reflect on GET /v1/models at 19.7-31.2 s (n=3, AT-111); rows written with kind='custom' NEVER reflect.

@@ -1,0 +1,799 @@
+
+> routersync@0.1.0 test:file <private-provider-2>
+> vitest run "packages/cli/test/c46-f2-live-gate-hint.test.ts" "packages/cli/test/c46-f3-pilot-workflow-rehearsal.test.ts" "test/docs/c46-f3-doc-cli-sync.test.ts"
+
+
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.12 [39m[90m<HOME>/.openmausbot/tmp/agy/4c4db2442357/rs-e2-a6340632[39m
+
+[90mstdout[2m | packages/cli/test/c46-f2-live-gate-hint.test.ts[2m > [22m[2mC46-F2: live_gate_hint & Unified Sandbox Write Guard (3-Case Suite)[2m > [22m[2mCase 1 (Outside os.tmpdir(), flags unset): live_gate_hint reports "chưa đặt" for both vars & blocks writes with SANDBOX_OUTSIDE_TMPDIR
+[22m[39m
+======================================================
+[routersync] REVIEWING PENDING CHANGES BEFORE WRITING
+======================================================
+Router [nine] (9router):
+  Additions: 0, Modifications: 1, Deletions: 0
+======================================================
+
+
+{
+  "ok": false,
+  "errorCode": "SANDBOX_OUTSIDE_TMPDIR",
+  "error": "SANDBOX_OUTSIDE_TMPDIR: Controlled harness config write path must reside inside os.tmpdir() unless ROUTERSYNC_ALLOW_LIVE_HOME_WRITE=1.",
+  "status": "FAILED"
+}
+[90mstdout[2m | packages/cli/test/c46-f2-live-gate-hint.test.ts[2m > [22m[2mC46-F2: live_gate_hint & Unified Sandbox Write Guard (3-Case Suite)[2m > [22m[2mCase 2 (Outside os.tmpdir(), flags =1 in try/finally): live_gate_hint reports "đã đặt" & controlled write + rollback succeed
+[22m[39m
+======================================================
+[routersync] REVIEWING PENDING CHANGES BEFORE WRITING
+======================================================
+Router [nine] (9router):
+  Additions: 0, Modifications: 1, Deletions: 0
+======================================================
+
+
+[90mstdout[2m | packages/cli/test/c46-f2-live-gate-hint.test.ts[2m > [22m[2mC46-F2: live_gate_hint & Unified Sandbox Write Guard (3-Case Suite)[2m > [22m[2mCase 2 (Outside os.tmpdir(), flags =1 in try/finally): live_gate_hint reports "đã đặt" & controlled write + rollback succeed
+[22m[39m{
+  "mode": "live-write",
+  "status": "SUCCESS",
+  "results": [
+    {
+      "success": true,
+      "target": "9router",
+      "appliedAt": "2026-11-25T17:22:55.754Z",
+      "planId": "plan_1795627375741_184ceq1",
+      "readBackVerified": true,
+      "staleDetected": false,
+      "readBackLevel": "db-only (degraded)",
+      "canonicalReadBackLevel": "db-only",
+      "degradedReason": "no-api-path"
+    }
+  ],
+  "timestamp": "2026-11-25T17:22:55.754Z",
+  "snapshots": [
+    {
+      "routerId": "nine",
+      "snapshotId": "snap_1795627375749_25c76q5",
+      "file": "C:\\Users\\<USER>\\.openmausbot\\tmp\\agy\\4c4db2442357\\rs-e2-a6340632\\.tmp-f2-outside-9d202061-0f45-4abc-8598-aef13802187e\\state\\snapshots\\snap_1795627375749_25c76q5.json"
+    }
+  ]
+}
+
+[90mstdout[2m | packages/cli/test/c46-f2-live-gate-hint.test.ts[2m > [22m[2mC46-F2: live_gate_hint & Unified Sandbox Write Guard (3-Case Suite)[2m > [22m[2mCase 2 (Outside os.tmpdir(), flags =1 in try/finally): live_gate_hint reports "đã đặt" & controlled write + rollback succeed
+[22m[39m{
+  "ok": true,
+  "snapshotId": "snap_1795627375749_25c76q5",
+  "target": "9router",
+  "combos": 1
+}
+
+{
+  "app": "hermes",
+  "configPath": "C:\\Users\\<USER>\\.openmausbot\\tmp\\agy\\4c4db2442357\\rs-e2-a6340632\\.tmp-f2-outside-9d202061-0f45-4abc-8598-aef13802187e\\harness\\config.yaml",
+  "backupPath": "C:\\Users\\<USER>\\.openmausbot\\tmp\\agy\\4c4db2442357\\rs-e2-a6340632\\.tmp-f2-outside-9d202061-0f45-4abc-8598-aef13802187e\\harness\\config.yaml.routersync.bak",
+  "applied": true,
+  "rolledBack": false,
+  "readBackVerified": true,
+  "reloadRequired": true,
+  "runningProcesses": [],
+  "planHash": "ed15cc6dc697a605fcdf9d075e028622428e5ce448a39cbd6d35bb5c690f674d",
+  "preSha256": "370b1947c1217b0f1a03111066b34b642599c06441e8d31e5fa69cad2f0623c4",
+  "postSha256": "f560fee857045d829388f516f330b0d46d222800b7dce260d6f0246ac8762123",
+  "message": "Đã cập nhật danh sách model của Hermes Agent (Nous Research) an toàn (đã sao lưu & kiểm chứng đọc lại)."
+}
+{
+  "app": "hermes",
+  "configPath": "C:\\Users\\<USER>\\.openmausbot\\tmp\\agy\\4c4db2442357\\rs-e2-a6340632\\.tmp-f2-outside-9d202061-0f45-4abc-8598-aef13802187e\\harness\\config.yaml",
+  "backupPath": "C:\\Users\\<USER>\\.openmausbot\\tmp\\agy\\4c4db2442357\\rs-e2-a6340632\\.tmp-f2-outside-9d202061-0f45-4abc-8598-aef13802187e\\harness\\config.yaml.routersync.bak",
+  "restored": true,
+  "byteIdenticalToPreApply": true,
+  "postSha256": "370b1947c1217b0f1a03111066b34b642599c06441e8d31e5fa69cad2f0623c4"
+}
+{
+  "ok": true,
+  "applied": false,
+  "cancelled": true,
+  "target": "harness:hermes"
+}
+[90mstdout[2m | packages/cli/test/c46-f2-live-gate-hint.test.ts[2m > [22m[2mC46-F2: live_gate_hint & Unified Sandbox Write Guard (3-Case Suite)[2m > [22m[2mCase 3 (Inside os.tmpdir(), flags unset): live_gate_hint reports inside os.tmpdir() & controlled write + rollback succeed without flags
+[22m[39m
+======================================================
+[routersync] REVIEWING PENDING CHANGES BEFORE WRITING
+======================================================
+Router [nine] (9router):
+  Additions: 0, Modifications: 1, Deletions: 0
+======================================================
+
+
+[90mstdout[2m | packages/cli/test/c46-f2-live-gate-hint.test.ts[2m > [22m[2mC46-F2: live_gate_hint & Unified Sandbox Write Guard (3-Case Suite)[2m > [22m[2mCase 3 (Inside os.tmpdir(), flags unset): live_gate_hint reports inside os.tmpdir() & controlled write + rollback succeed without flags
+[22m[39m{
+  "mode": "live-write",
+  "status": "SUCCESS",
+  "results": [
+    {
+      "success": true,
+      "target": "9router",
+      "appliedAt": "2026-11-25T17:22:57.478Z",
+      "planId": "plan_1795627377461_i8t2q44",
+      "readBackVerified": true,
+      "staleDetected": false,
+      "readBackLevel": "db-only (degraded)",
+      "canonicalReadBackLevel": "db-only",
+      "degradedReason": "no-api-path"
+    }
+  ],
+  "timestamp": "2026-11-25T17:22:57.478Z",
+  "snapshots": [
+    {
+      "routerId": "nine",
+      "snapshotId": "snap_1795627377473_85okgpm",
+      "file": "C:\\Users\\<USER>\\.openmausbot\\tmp\\agy\\4c4db2442357\\rs-f2-inside-3ZnFOq\\state\\snapshots\\snap_1795627377473_85okgpm.json"
+    }
+  ]
+}
+
+[90mstdout[2m | packages/cli/test/c46-f2-live-gate-hint.test.ts[2m > [22m[2mC46-F2: live_gate_hint & Unified Sandbox Write Guard (3-Case Suite)[2m > [22m[2mCase 3 (Inside os.tmpdir(), flags unset): live_gate_hint reports inside os.tmpdir() & controlled write + rollback succeed without flags
+[22m[39m{
+  "ok": true,
+  "snapshotId": "snap_1795627377473_85okgpm",
+  "target": "9router",
+  "combos": 1
+}
+
+{
+  "app": "hermes",
+  "configPath": "C:\\Users\\<USER>\\.openmausbot\\tmp\\agy\\4c4db2442357\\rs-f2-inside-3ZnFOq\\harness\\config.yaml",
+  "backupPath": "C:\\Users\\<USER>\\.openmausbot\\tmp\\agy\\4c4db2442357\\rs-f2-inside-3ZnFOq\\harness\\config.yaml.routersync.bak",
+  "applied": true,
+  "rolledBack": false,
+  "readBackVerified": true,
+  "reloadRequired": true,
+  "runningProcesses": [],
+  "planHash": "ed15cc6dc697a605fcdf9d075e028622428e5ce448a39cbd6d35bb5c690f674d",
+  "preSha256": "370b1947c1217b0f1a03111066b34b642599c06441e8d31e5fa69cad2f0623c4",
+  "postSha256": "f560fee857045d829388f516f330b0d46d222800b7dce260d6f0246ac8762123",
+  "message": "Đã cập nhật danh sách model của Hermes Agent (Nous Research) an toàn (đã sao lưu & kiểm chứng đọc lại)."
+}
+{
+  "app": "hermes",
+  "configPath": "C:\\Users\\<USER>\\.openmausbot\\tmp\\agy\\4c4db2442357\\rs-f2-inside-3ZnFOq\\harness\\config.yaml",
+  "backupPath": "C:\\Users\\<USER>\\.openmausbot\\tmp\\agy\\4c4db2442357\\rs-f2-inside-3ZnFOq\\harness\\config.yaml.routersync.bak",
+  "restored": true,
+  "byteIdenticalToPreApply": true,
+  "postSha256": "370b1947c1217b0f1a03111066b34b642599c06441e8d31e5fa69cad2f0623c4"
+}
+ [32m✓[39m [30m[45m packages [49m[39m packages/cli/test/c46-f2-live-gate-hint.test.ts [2m([22m[2m3 tests[22m[2m)[22m[33m 2694[2mms[22m[39m
+     [33m[2m✓[22m[39m Case 1 (Outside os.tmpdir(), flags unset): live_gate_hint reports "chưa đặt" for both vars & blocks writes with SANDBOX_OUTSIDE_TMPDIR [33m 479[2mms[22m[39m
+     [33m[2m✓[22m[39m Case 2 (Outside os.tmpdir(), flags =1 in try/finally): live_gate_hint reports "đã đặt" & controlled write + rollback succeed [33m 1720[2mms[22m[39m
+     [33m[2m✓[22m[39m Case 3 (Inside os.tmpdir(), flags unset): live_gate_hint reports inside os.tmpdir() & controlled write + rollback succeed without flags [33m 493[2mms[22m[39m
+{
+  "ok": false,
+  "errorCode": "SANDBOX_OUTSIDE_TMPDIR",
+  "error": "SANDBOX_OUTSIDE_TMPDIR: Controlled harness config write path must reside inside os.tmpdir() unless ROUTERSYNC_ALLOW_LIVE_HOME_WRITE=1.",
+  "status": "FAILED"
+}
+{
+  "ok": false,
+  "errorCode": "SANDBOX_OUTSIDE_TMPDIR",
+  "error": "SANDBOX_OUTSIDE_TMPDIR: Controlled harness config write path must reside inside os.tmpdir() unless ROUTERSYNC_ALLOW_LIVE_HOME_WRITE=1.",
+  "status": "FAILED"
+}
+{
+  "ok": false,
+  "errorCode": "SANDBOX_OUTSIDE_TMPDIR",
+  "error": "SANDBOX_OUTSIDE_TMPDIR: Controlled harness config write path must reside inside os.tmpdir() unless ROUTERSYNC_ALLOW_LIVE_HOME_WRITE=1.",
+  "status": "FAILED"
+}
+[90mstdout[2m | packages/cli/test/c46-f3-pilot-workflow-rehearsal.test.ts[2m > [22m[2mC46-F3: apps apply --write Security Gates, Catalog Formats & Receipt Lifecycle[2m > [22m[2minvalidates subsequent propose receipts on full & pre-pilot router rollback while preserving earlier receipts on partial rollback (Defect B / Q9 / Q12)
+[22m[39m
+======================================================
+[routersync] REVIEWING PENDING CHANGES BEFORE WRITING
+======================================================
+Router [nine] (9router):
+  Additions: 0, Modifications: 1, Deletions: 0
+======================================================
+
+
+[90mstdout[2m | packages/cli/test/c46-f3-pilot-workflow-rehearsal.test.ts[2m > [22m[2mC46-F3: apps apply --write Security Gates, Catalog Formats & Receipt Lifecycle[2m > [22m[2minvalidates subsequent propose receipts on full & pre-pilot router rollback while preserving earlier receipts on partial rollback (Defect B / Q9 / Q12)
+[22m[39m{
+  "mode": "live-write",
+  "status": "SUCCESS",
+  "results": [
+    {
+      "success": true,
+      "target": "9router",
+      "appliedAt": "2026-11-25T17:22:57.950Z",
+      "planId": "plan_1795627377932_qs2p9xy",
+      "readBackVerified": true,
+      "staleDetected": false,
+      "readBackLevel": "db-only (degraded)",
+      "canonicalReadBackLevel": "db-only",
+      "degradedReason": "no-api-path"
+    }
+  ],
+  "timestamp": "2026-11-25T17:22:57.950Z",
+  "snapshots": [
+    {
+      "routerId": "nine",
+      "snapshotId": "snap_1795627377944_rcf48y6",
+      "file": "C:\\Users\\<USER>\\.openmausbot\\tmp\\agy\\4c4db2442357\\rs-c46-f3-rb-full-EKhT3E\\state\\snapshots\\snap_1795627377944_rcf48y6.json"
+    }
+  ]
+}
+
+[90mstdout[2m | packages/cli/test/c46-f3-pilot-workflow-rehearsal.test.ts[2m > [22m[2mC46-F3: apps apply --write Security Gates, Catalog Formats & Receipt Lifecycle[2m > [22m[2minvalidates subsequent propose receipts on full & pre-pilot router rollback while preserving earlier receipts on partial rollback (Defect B / Q9 / Q12)
+[22m[39m
+======================================================
+[routersync] REVIEWING PENDING CHANGES BEFORE WRITING
+======================================================
+Router [nine] (9router):
+  Additions: 0, Modifications: 1, Deletions: 0
+======================================================
+
+
+[90mstdout[2m | packages/cli/test/c46-f3-pilot-workflow-rehearsal.test.ts[2m > [22m[2mC46-F3: apps apply --write Security Gates, Catalog Formats & Receipt Lifecycle[2m > [22m[2minvalidates subsequent propose receipts on full & pre-pilot router rollback while preserving earlier receipts on partial rollback (Defect B / Q9 / Q12)
+[22m[39m{
+  "mode": "live-write",
+  "status": "SUCCESS",
+  "results": [
+    {
+      "success": true,
+      "target": "9router",
+      "appliedAt": "2026-11-25T17:22:58.018Z",
+      "planId": "plan_1795627378002_vjiyyj5",
+      "readBackVerified": true,
+      "staleDetected": false,
+      "readBackLevel": "db-only (degraded)",
+      "canonicalReadBackLevel": "db-only",
+      "degradedReason": "no-api-path"
+    }
+  ],
+  "timestamp": "2026-11-25T17:22:58.018Z",
+  "snapshots": [
+    {
+      "routerId": "nine",
+      "snapshotId": "snap_1795627378013_2kglv6q",
+      "file": "C:\\Users\\<USER>\\.openmausbot\\tmp\\agy\\4c4db2442357\\rs-c46-f3-rb-full-EKhT3E\\state\\snapshots\\snap_1795627378013_2kglv6q.json"
+    }
+  ]
+}
+
+[90mstdout[2m | packages/cli/test/c46-f3-pilot-workflow-rehearsal.test.ts[2m > [22m[2mC46-F3: apps apply --write Security Gates, Catalog Formats & Receipt Lifecycle[2m > [22m[2minvalidates subsequent propose receipts on full & pre-pilot router rollback while preserving earlier receipts on partial rollback (Defect B / Q9 / Q12)
+[22m[39m{
+  "ok": true,
+  "snapshotId": "snap_1795627377944_rcf48y6",
+  "target": "9router",
+  "combos": 1
+}
+
+[90mstdout[2m | packages/cli/test/c46-f3-pilot-workflow-rehearsal.test.ts[2m > [22m[2mC46-F3: apps apply --write Security Gates, Catalog Formats & Receipt Lifecycle[2m > [22m[2minvalidates subsequent propose receipts on full & pre-pilot router rollback while preserving earlier receipts on partial rollback (Defect B / Q9 / Q12)
+[22m[39m
+======================================================
+[routersync] REVIEWING PENDING CHANGES BEFORE WRITING
+======================================================
+Router [nine] (9router):
+  Additions: 0, Modifications: 1, Deletions: 0
+======================================================
+
+
+[90mstdout[2m | packages/cli/test/c46-f3-pilot-workflow-rehearsal.test.ts[2m > [22m[2mC46-F3: apps apply --write Security Gates, Catalog Formats & Receipt Lifecycle[2m > [22m[2minvalidates subsequent propose receipts on full & pre-pilot router rollback while preserving earlier receipts on partial rollback (Defect B / Q9 / Q12)
+[22m[39m{
+  "mode": "live-write",
+  "status": "SUCCESS",
+  "results": [
+    {
+      "success": true,
+      "target": "9router",
+      "appliedAt": "2026-11-25T17:22:58.334Z",
+      "planId": "plan_1795627378318_g1kueqn",
+      "readBackVerified": true,
+      "staleDetected": false,
+      "readBackLevel": "db-only (degraded)",
+      "canonicalReadBackLevel": "db-only",
+      "degradedReason": "no-api-path"
+    }
+  ],
+  "timestamp": "2026-11-25T17:22:58.334Z",
+  "snapshots": [
+    {
+      "routerId": "nine",
+      "snapshotId": "snap_1795627378329_ztujfbg",
+      "file": "C:\\Users\\<USER>\\.openmausbot\\tmp\\agy\\4c4db2442357\\rs-c46-f3-rb-partial-OiDhY0\\state\\snapshots\\snap_1795627378329_ztujfbg.json"
+    }
+  ]
+}
+
+[90mstdout[2m | packages/cli/test/c46-f3-pilot-workflow-rehearsal.test.ts[2m > [22m[2mC46-F3: apps apply --write Security Gates, Catalog Formats & Receipt Lifecycle[2m > [22m[2minvalidates subsequent propose receipts on full & pre-pilot router rollback while preserving earlier receipts on partial rollback (Defect B / Q9 / Q12)
+[22m[39m
+======================================================
+[routersync] REVIEWING PENDING CHANGES BEFORE WRITING
+======================================================
+Router [nine] (9router):
+  Additions: 0, Modifications: 1, Deletions: 0
+======================================================
+
+
+[90mstdout[2m | packages/cli/test/c46-f3-pilot-workflow-rehearsal.test.ts[2m > [22m[2mC46-F3: apps apply --write Security Gates, Catalog Formats & Receipt Lifecycle[2m > [22m[2minvalidates subsequent propose receipts on full & pre-pilot router rollback while preserving earlier receipts on partial rollback (Defect B / Q9 / Q12)
+[22m[39m{
+  "mode": "live-write",
+  "status": "SUCCESS",
+  "results": [
+    {
+      "success": true,
+      "target": "9router",
+      "appliedAt": "2026-11-25T17:22:58.406Z",
+      "planId": "plan_1795627378387_yxnip2b",
+      "readBackVerified": true,
+      "staleDetected": false,
+      "readBackLevel": "db-only (degraded)",
+      "canonicalReadBackLevel": "db-only",
+      "degradedReason": "no-api-path"
+    }
+  ],
+  "timestamp": "2026-11-25T17:22:58.406Z",
+  "snapshots": [
+    {
+      "routerId": "nine",
+      "snapshotId": "snap_1795627378402_fplapyn",
+      "file": "C:\\Users\\<USER>\\.openmausbot\\tmp\\agy\\4c4db2442357\\rs-c46-f3-rb-partial-OiDhY0\\state\\snapshots\\snap_1795627378402_fplapyn.json"
+    }
+  ]
+}
+
+[90mstdout[2m | packages/cli/test/c46-f3-pilot-workflow-rehearsal.test.ts[2m > [22m[2mC46-F3: apps apply --write Security Gates, Catalog Formats & Receipt Lifecycle[2m > [22m[2minvalidates subsequent propose receipts on full & pre-pilot router rollback while preserving earlier receipts on partial rollback (Defect B / Q9 / Q12)
+[22m[39m{
+  "ok": true,
+  "snapshotId": "snap_1795627378402_fplapyn",
+  "target": "9router",
+  "combos": 1
+}
+
+[90mstdout[2m | packages/cli/test/c46-f3-pilot-workflow-rehearsal.test.ts[2m > [22m[2mC46-F3: apps apply --write Security Gates, Catalog Formats & Receipt Lifecycle[2m > [22m[2minvalidates subsequent propose receipts on full & pre-pilot router rollback while preserving earlier receipts on partial rollback (Defect B / Q9 / Q12)
+[22m[39m
+======================================================
+[routersync] REVIEWING PENDING CHANGES BEFORE WRITING
+======================================================
+Router [nine] (9router):
+  Additions: 0, Modifications: 1, Deletions: 0
+======================================================
+
+
+[90mstdout[2m | packages/cli/test/c46-f3-pilot-workflow-rehearsal.test.ts[2m > [22m[2mC46-F3: apps apply --write Security Gates, Catalog Formats & Receipt Lifecycle[2m > [22m[2minvalidates subsequent propose receipts on full & pre-pilot router rollback while preserving earlier receipts on partial rollback (Defect B / Q9 / Q12)
+[22m[39m{
+  "mode": "live-write",
+  "status": "SUCCESS",
+  "results": [
+    {
+      "success": true,
+      "target": "9router",
+      "appliedAt": "2026-11-25T17:22:58.735Z",
+      "planId": "plan_1795627378720_ka3fy9h",
+      "readBackVerified": true,
+      "staleDetected": false,
+      "readBackLevel": "db-only (degraded)",
+      "canonicalReadBackLevel": "db-only",
+      "degradedReason": "no-api-path"
+    }
+  ],
+  "timestamp": "2026-11-25T17:22:58.735Z",
+  "snapshots": [
+    {
+      "routerId": "nine",
+      "snapshotId": "snap_1795627378730_bsxk05f",
+      "file": "C:\\Users\\<USER>\\.openmausbot\\tmp\\agy\\4c4db2442357\\rs-c46-f3-rb-manual-pre-R9fJcD\\state\\snapshots\\snap_1795627378730_bsxk05f.json"
+    }
+  ]
+}
+
+[90mstdout[2m | packages/cli/test/c46-f3-pilot-workflow-rehearsal.test.ts[2m > [22m[2mC46-F3: apps apply --write Security Gates, Catalog Formats & Receipt Lifecycle[2m > [22m[2minvalidates subsequent propose receipts on full & pre-pilot router rollback while preserving earlier receipts on partial rollback (Defect B / Q9 / Q12)
+[22m[39m{
+  "ok": true,
+  "snapshotId": "snap_1795627378705_g7i8rpp",
+  "target": "9router",
+  "combos": 1
+}
+
+[90mstdout[2m | packages/cli/test/c46-f3-pilot-workflow-rehearsal.test.ts[2m > [22m[2mC46-F3: Full End-to-End os.tmpdir() Live Pilot Rehearsal (Router SQLite + Hermes YAML + OpenCode JSONC)[2m > [22m[2mexecutes the complete LIVE-E2E-v2.md workflow end-to-end with byte-exact rollback, preserved comments, 0 Tier-0 tokens & latency <= 60000ms
+[22m[39m{
+  "ok": true,
+  "policyId": "e3888d407b9b448bdf0aaf53818ea9d0",
+  "updatedAt": "2026-11-25T17:22:59.240Z",
+  "entry": {
+    "target": "router:nine/coding-main",
+    "targetKind": "router",
+    "routerId": "nine",
+    "comboName": "coding-main",
+    "level": "propose",
+    "grantedAt": "2026-11-25T17:22:59.240Z",
+    "expiresAt": "2026-12-25T17:22:59.240Z"
+  }
+}
+
+[90mstdout[2m | packages/cli/test/c46-f3-pilot-workflow-rehearsal.test.ts[2m > [22m[2mC46-F3: Full End-to-End os.tmpdir() Live Pilot Rehearsal (Router SQLite + Hermes YAML + OpenCode JSONC)[2m > [22m[2mexecutes the complete LIVE-E2E-v2.md workflow end-to-end with byte-exact rollback, preserved comments, 0 Tier-0 tokens & latency <= 60000ms
+[22m[39m{
+  "ok": true,
+  "policyId": "e3888d407b9b448bdf0aaf53818ea9d0",
+  "updatedAt": "2026-11-25T17:22:59.261Z",
+  "entry": {
+    "target": "harness:hermes",
+    "targetKind": "harness",
+    "harnessId": "hermes",
+    "level": "propose",
+    "grantedAt": "2026-11-25T17:22:59.261Z",
+    "expiresAt": "2026-12-25T17:22:59.261Z"
+  }
+}
+
+[90mstdout[2m | packages/cli/test/c46-f3-pilot-workflow-rehearsal.test.ts[2m > [22m[2mC46-F3: Full End-to-End os.tmpdir() Live Pilot Rehearsal (Router SQLite + Hermes YAML + OpenCode JSONC)[2m > [22m[2mexecutes the complete LIVE-E2E-v2.md workflow end-to-end with byte-exact rollback, preserved comments, 0 Tier-0 tokens & latency <= 60000ms
+[22m[39m{
+  "ok": true,
+  "policyId": "e3888d407b9b448bdf0aaf53818ea9d0",
+  "updatedAt": "2026-11-25T17:22:59.274Z",
+  "entry": {
+    "target": "harness:opencode",
+    "targetKind": "harness",
+    "harnessId": "opencode",
+    "level": "propose",
+    "grantedAt": "2026-11-25T17:22:59.274Z",
+    "expiresAt": "2026-12-25T17:22:59.274Z"
+  }
+}
+
+[90mstdout[2m | packages/cli/test/c46-f3-pilot-workflow-rehearsal.test.ts[2m > [22m[2mC46-F3: Full End-to-End os.tmpdir() Live Pilot Rehearsal (Router SQLite + Hermes YAML + OpenCode JSONC)[2m > [22m[2mexecutes the complete LIVE-E2E-v2.md workflow end-to-end with byte-exact rollback, preserved comments, 0 Tier-0 tokens & latency <= 60000ms
+[22m[39m{
+  "ok": true,
+  "configFile": "C:\\Users\\<USER>\\.openmausbot\\tmp\\agy\\4c4db2442357\\rs-c46-f3-e2e-6VLMHA\\router\\routersync.yaml",
+  "plans": [
+    {
+      "routerId": "nine",
+      "adapter": "9router",
+      "plan": {
+        "id": "plan_1795627379292_zrr59jt",
+        "target": "nine",
+        "timestamp": "2026-11-25T17:22:59.292Z",
+        "additions": [],
+        "modifications": [
+          {
+            "id": "coding-main",
+            "name": "coding-main",
+            "strategy": "priority",
+            "models": [
+              "openai/gpt-4.1",
+              "openai/gpt-4.1-mini",
+              "openai/gpt-4.1-nano",
+              "openai/o3-mini",
+              "openai/o4-mini",
+              "openai/gpt-4o",
+              "openai/gpt-4o-mini",
+              "openai/gpt-4.5",
+              "openai/gpt-5-nano",
+              "openai/gpt-4o-legacy"
+            ],
+            "managed": true,
+            "minSteps": 1,
+            "freeOnly": false,
+            "autoMaintain": false,
+            "updatedAt": "2026-11-25T17:22:59.292Z"
+          }
+        ],
+        "deletions": [],
+        "reasons": {
+          "coding-main": "UPDATED: models or strategy adjusted"
+        }
+      },
+      "totalSteps": 10,
+      "keepSteps": 10
+    }
+  ]
+}
+
+{
+  "app": "hermes",
+  "directionAMode": "write-adapter",
+  "editable": true,
+  "targetProviders": [
+    "openai"
+  ],
+  "additions": [
+    {
+      "provider": "openai",
+      "model": "gpt-4o-legacy"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4.1-nano"
+    },
+    {
+      "provider": "openai",
+      "model": "o3-mini"
+    },
+    {
+      "provider": "openai",
+      "model": "o4-mini"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4o"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4o-mini"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4.5"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-5-nano"
+    }
+  ],
+  "removals": [],
+  "defaultSlotWarnings": [],
+  "configPath": "<HOME>\\.hermes\\config.yaml",
+  "guidance": [
+    "Use /reload-mcp in active chat for MCP changes; restart gateway or start a new CLI turn for config.yaml model/provider changes."
+  ],
+  "planHash": "d67c8e5721999ef54293ec44993f0166eaba695dd8ba84e4d3b32dbf0ddfd8d9",
+  "reloadRequired": true,
+  "runningProcesses": []
+}
+{
+  "app": "opencode",
+  "directionAMode": "write-adapter",
+  "editable": true,
+  "targetProviders": [
+    "openai"
+  ],
+  "additions": [
+    {
+      "provider": "openai",
+      "model": "gpt-4o-legacy"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4.1-nano"
+    },
+    {
+      "provider": "openai",
+      "model": "o3-mini"
+    },
+    {
+      "provider": "openai",
+      "model": "o4-mini"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4o"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4o-mini"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4.5"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-5-nano"
+    }
+  ],
+  "removals": [],
+  "defaultSlotWarnings": [],
+  "configPath": "<HOME>\\.config\\opencode\\opencode.jsonc",
+  "guidance": [
+    "Restart OpenCode TUI / start a new session to reload opencode.json changes."
+  ],
+  "planHash": "5d567eb310c206dfed3bf1276b576ff5a75eacc36c79fa82f8a56cfbea076928",
+  "reloadRequired": true,
+  "runningProcesses": []
+}
+[90mstdout[2m | packages/cli/test/c46-f3-pilot-workflow-rehearsal.test.ts[2m > [22m[2mC46-F3: Full End-to-End os.tmpdir() Live Pilot Rehearsal (Router SQLite + Hermes YAML + OpenCode JSONC)[2m > [22m[2mexecutes the complete LIVE-E2E-v2.md workflow end-to-end with byte-exact rollback, preserved comments, 0 Tier-0 tokens & latency <= 60000ms
+[22m[39m
+======================================================
+[routersync] REVIEWING PENDING CHANGES BEFORE WRITING
+======================================================
+Router [nine] (9router):
+  Additions: 0, Modifications: 1, Deletions: 0
+======================================================
+
+
+ [32m✓[39m [30m[45m root-tools [49m[39m test/docs/c46-f3-doc-cli-sync.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 35[2mms[22m[39m
+[90mstdout[2m | packages/cli/test/c46-f3-pilot-workflow-rehearsal.test.ts[2m > [22m[2mC46-F3: Full End-to-End os.tmpdir() Live Pilot Rehearsal (Router SQLite + Hermes YAML + OpenCode JSONC)[2m > [22m[2mexecutes the complete LIVE-E2E-v2.md workflow end-to-end with byte-exact rollback, preserved comments, 0 Tier-0 tokens & latency <= 60000ms
+[22m[39m{
+  "mode": "live-write",
+  "status": "SUCCESS",
+  "results": [
+    {
+      "success": true,
+      "target": "9router",
+      "appliedAt": "2026-11-25T17:23:00.474Z",
+      "planId": "plan_1795627380458_1ytdkql",
+      "readBackVerified": true,
+      "staleDetected": false,
+      "readBackLevel": "db-only (degraded)",
+      "canonicalReadBackLevel": "db-only",
+      "degradedReason": "no-api-path"
+    }
+  ],
+  "timestamp": "2026-11-25T17:23:00.474Z",
+  "snapshots": [
+    {
+      "routerId": "nine",
+      "snapshotId": "snap_1795627380470_7ddfsmo",
+      "file": "C:\\Users\\<USER>\\.openmausbot\\tmp\\agy\\4c4db2442357\\rs-c46-f3-e2e-6VLMHA\\state\\snapshots\\snap_1795627380470_7ddfsmo.json"
+    }
+  ]
+}
+
+{
+  "app": "hermes",
+  "configPath": "C:\\Users\\<USER>\\.openmausbot\\tmp\\agy\\4c4db2442357\\rs-c46-f3-e2e-6VLMHA\\home\\.hermes\\config.yaml",
+  "backupPath": "C:\\Users\\<USER>\\.openmausbot\\tmp\\agy\\4c4db2442357\\rs-c46-f3-e2e-6VLMHA\\home\\.hermes\\config.yaml.pre-pilot.bak",
+  "applied": true,
+  "rolledBack": false,
+  "readBackVerified": true,
+  "reloadRequired": true,
+  "runningProcesses": [],
+  "planHash": "d67c8e5721999ef54293ec44993f0166eaba695dd8ba84e4d3b32dbf0ddfd8d9",
+  "preSha256": "fb227b53313c73072010ef634f00d00a3d19996744691844214583e3236354bf",
+  "postSha256": "52ac427216345ca0a6df62033fa6637f7008ff160e0de21dfc224b5df036c614",
+  "message": "Đã cập nhật danh sách model của Hermes Agent (Nous Research) an toàn (đã sao lưu & kiểm chứng đọc lại)."
+}
+{
+  "app": "opencode",
+  "configPath": "C:\\Users\\<USER>\\.openmausbot\\tmp\\agy\\4c4db2442357\\rs-c46-f3-e2e-6VLMHA\\home\\.config\\opencode\\opencode.jsonc",
+  "backupPath": "C:\\Users\\<USER>\\.openmausbot\\tmp\\agy\\4c4db2442357\\rs-c46-f3-e2e-6VLMHA\\home\\.config\\opencode\\opencode.jsonc.pre-pilot.bak",
+  "applied": true,
+  "rolledBack": false,
+  "readBackVerified": true,
+  "reloadRequired": true,
+  "runningProcesses": [],
+  "planHash": "5d567eb310c206dfed3bf1276b576ff5a75eacc36c79fa82f8a56cfbea076928",
+  "preSha256": "0b3d6a843d165e79e5447e787e4e87236a75f104786b324fd7733f1ee8cc633b",
+  "postSha256": "2c778b2836129a7bb05663c960bcabfd0fa2a153cc7537f166418c44561957b2",
+  "message": "Đã cập nhật danh sách model của OpenCode an toàn (đã sao lưu & kiểm chứng đọc lại)."
+}
+[90mstdout[2m | packages/cli/test/c46-f3-pilot-workflow-rehearsal.test.ts[2m > [22m[2mC46-F3: Full End-to-End os.tmpdir() Live Pilot Rehearsal (Router SQLite + Hermes YAML + OpenCode JSONC)[2m > [22m[2mexecutes the complete LIVE-E2E-v2.md workflow end-to-end with byte-exact rollback, preserved comments, 0 Tier-0 tokens & latency <= 60000ms
+[22m[39m{
+  "ok": true,
+  "policyId": "e3888d407b9b448bdf0aaf53818ea9d0",
+  "updatedAt": "2026-11-25T17:23:00.569Z",
+  "entry": {
+    "target": "router:nine/coding-main",
+    "targetKind": "router",
+    "routerId": "nine",
+    "comboName": "coding-main",
+    "level": "auto-safe",
+    "grantedAt": "2026-11-25T17:23:00.569Z",
+    "expiresAt": "2026-12-25T17:23:00.569Z",
+    "verifiedProposeReceiptId": "f34e918b61e75a0d700f252db9ba4483"
+  }
+}
+
+[90mstdout[2m | packages/cli/test/c46-f3-pilot-workflow-rehearsal.test.ts[2m > [22m[2mC46-F3: Full End-to-End os.tmpdir() Live Pilot Rehearsal (Router SQLite + Hermes YAML + OpenCode JSONC)[2m > [22m[2mexecutes the complete LIVE-E2E-v2.md workflow end-to-end with byte-exact rollback, preserved comments, 0 Tier-0 tokens & latency <= 60000ms
+[22m[39m{
+  "ok": true,
+  "policyId": "e3888d407b9b448bdf0aaf53818ea9d0",
+  "updatedAt": "2026-11-25T17:23:00.578Z",
+  "entry": {
+    "target": "harness:hermes",
+    "targetKind": "harness",
+    "harnessId": "hermes",
+    "level": "auto-safe",
+    "grantedAt": "2026-11-25T17:23:00.578Z",
+    "expiresAt": "2026-12-25T17:23:00.578Z",
+    "verifiedProposeReceiptId": "bffb016014b5f4a04e6b38ba838b4100"
+  }
+}
+
+[90mstdout[2m | packages/cli/test/c46-f3-pilot-workflow-rehearsal.test.ts[2m > [22m[2mC46-F3: Full End-to-End os.tmpdir() Live Pilot Rehearsal (Router SQLite + Hermes YAML + OpenCode JSONC)[2m > [22m[2mexecutes the complete LIVE-E2E-v2.md workflow end-to-end with byte-exact rollback, preserved comments, 0 Tier-0 tokens & latency <= 60000ms
+[22m[39m{
+  "ok": true,
+  "policyId": "e3888d407b9b448bdf0aaf53818ea9d0",
+  "updatedAt": "2026-11-25T17:23:00.588Z",
+  "entry": {
+    "target": "harness:opencode",
+    "targetKind": "harness",
+    "harnessId": "opencode",
+    "level": "auto-safe",
+    "grantedAt": "2026-11-25T17:23:00.588Z",
+    "expiresAt": "2026-12-25T17:23:00.588Z",
+    "verifiedProposeReceiptId": "c2e7e753f9bf5113ce190887ebbc2bfe"
+  }
+}
+
+[90mstdout[2m | packages/cli/test/c46-f3-pilot-workflow-rehearsal.test.ts[2m > [22m[2mC46-F3: Full End-to-End os.tmpdir() Live Pilot Rehearsal (Router SQLite + Hermes YAML + OpenCode JSONC)[2m > [22m[2mexecutes the complete LIVE-E2E-v2.md workflow end-to-end with byte-exact rollback, preserved comments, 0 Tier-0 tokens & latency <= 60000ms
+[22m[39m{
+  "timestamp": "2026-11-25T09:20:00.000Z",
+  "mode": "auto-safe",
+  "effectiveMode": "auto-safe",
+  "requests": 8,
+  "paidRequests": 0,
+  "tokens": 0,
+  "llmCalls": 0,
+  "changedProviders": 1,
+  "unchangedProviders": 0,
+  "backoffSkipped": 0,
+  "inboxAdded": 5,
+  "researchQueueCount": 1,
+  "detectionLatency": {
+    "measuredCount": 3,
+    "minMs": 0,
+    "maxMs": 0,
+    "p50Ms": 0
+  },
+  "providers": [
+    {
+      "prefix": "openai",
+      "label": "OK",
+      "status": 200,
+      "models": 11,
+      "changed": true,
+      "added": [
+        "gpt-5.2-codex"
+      ],
+      "graceAbsent": [],
+      "deadConfirmed": [],
+      "backoffSec": 0
+    }
+  ],
+  "shrinkBlockReasons": {},
+  "absentNotInCombo": {},
+  "webhookDelivery": {
+    "status": "skipped",
+    "ok": true,
+    "reason": "unconfigured",
+    "durationMs": 0
+  }
+}
+
+[90mstdout[2m | packages/cli/test/c46-f3-pilot-workflow-rehearsal.test.ts[2m > [22m[2mC46-F3: Full End-to-End os.tmpdir() Live Pilot Rehearsal (Router SQLite + Hermes YAML + OpenCode JSONC)[2m > [22m[2mexecutes the complete LIVE-E2E-v2.md workflow end-to-end with byte-exact rollback, preserved comments, 0 Tier-0 tokens & latency <= 60000ms
+[22m[39m{
+  "ok": true,
+  "frozen": true,
+  "frozenAt": "2026-11-25T17:23:00.909Z",
+  "reason": "live-pilot-drill"
+}
+
+[90mstdout[2m | packages/cli/test/c46-f3-pilot-workflow-rehearsal.test.ts[2m > [22m[2mC46-F3: Full End-to-End os.tmpdir() Live Pilot Rehearsal (Router SQLite + Hermes YAML + OpenCode JSONC)[2m > [22m[2mexecutes the complete LIVE-E2E-v2.md workflow end-to-end with byte-exact rollback, preserved comments, 0 Tier-0 tokens & latency <= 60000ms
+[22m[39m{
+  "ok": true,
+  "frozen": false,
+  "unfrozenAt": "2026-11-25T17:23:01.005Z"
+}
+
+[90mstdout[2m | packages/cli/test/c46-f3-pilot-workflow-rehearsal.test.ts[2m > [22m[2mC46-F3: Full End-to-End os.tmpdir() Live Pilot Rehearsal (Router SQLite + Hermes YAML + OpenCode JSONC)[2m > [22m[2mexecutes the complete LIVE-E2E-v2.md workflow end-to-end with byte-exact rollback, preserved comments, 0 Tier-0 tokens & latency <= 60000ms
+[22m[39m{
+  "ok": true,
+  "snapshotId": "snap_1795627380470_7ddfsmo",
+  "target": "9router",
+  "combos": 1
+}
+
+{
+  "app": "hermes",
+  "configPath": "C:\\Users\\<USER>\\.openmausbot\\tmp\\agy\\4c4db2442357\\rs-c46-f3-e2e-6VLMHA\\home\\.hermes\\config.yaml",
+  "backupPath": "C:\\Users\\<USER>\\.openmausbot\\tmp\\agy\\4c4db2442357\\rs-c46-f3-e2e-6VLMHA\\home\\.hermes\\config.yaml.pre-pilot.bak",
+  "restored": true,
+  "byteIdenticalToPreApply": true,
+  "postSha256": "fb227b53313c73072010ef634f00d00a3d19996744691844214583e3236354bf"
+}
+{
+  "app": "opencode",
+  "configPath": "C:\\Users\\<USER>\\.openmausbot\\tmp\\agy\\4c4db2442357\\rs-c46-f3-e2e-6VLMHA\\home\\.config\\opencode\\opencode.jsonc",
+  "backupPath": "C:\\Users\\<USER>\\.openmausbot\\tmp\\agy\\4c4db2442357\\rs-c46-f3-e2e-6VLMHA\\home\\.config\\opencode\\opencode.jsonc.pre-pilot.bak",
+  "restored": true,
+  "byteIdenticalToPreApply": true,
+  "postSha256": "0b3d6a843d165e79e5447e787e4e87236a75f104786b324fd7733f1ee8cc633b"
+}
+ [32m✓[39m [30m[45m packages [49m[39m packages/cli/test/c46-f3-pilot-workflow-rehearsal.test.ts [2m([22m[2m6 tests[22m[2m)[22m[33m 4908[2mms[22m[39m
+     [33m[2m✓[22m[39m enforces --yes prohibition, freeze gate, consent integrity, propose TTY confirmation, and auto-safe receipt requirement [33m 1301[2mms[22m[39m
+     [33m[2m✓[22m[39m invalidates subsequent propose receipts on full & pre-pilot router rollback while preserving earlier receipts on partial rollback (Defect B / Q9 / Q12) [33m 1237[2mms[22m[39m
+     [33m[2m✓[22m[39m executes the complete LIVE-E2E-v2.md workflow end-to-end with byte-exact rollback, preserved comments, 0 Tier-0 tokens & latency <= 60000ms [33m 2205[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m3 passed[39m[22m[90m (3)[39m
+[2m      Tests [22m [1m[32m14 passed[39m[22m[90m (14)[39m
+[2m   Start at [22m 00:22:52
+[2m   Duration [22m 8.55s[2m (transform 4.53s, setup 3.15s, import 4.09s, tests 7.64s, environment 0ms)[22m
+

@@ -1,0 +1,682 @@
+
+> routersync@0.1.0 test:file <private-provider-2>
+> vitest run "packages/cli/test/c46-f6-pilot-report.test.ts" "test/docs/c45-wp9-live-readiness.test.ts" "test/docs/agent-docs.test.ts"
+
+
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.12 [39m[90m<HOME>/.openmausbot/tmp/agy/4c4db2442357/rs-e2-a6340632[39m
+
+[90mstdout[2m | packages/cli/test/c46-f6-pilot-report.test.ts[2m > [22m[2mC46-F6: routersync pilot-report Read-Only Sign-Off Aggregator[2m > [22m[2mproves PASS (exitCode = 0) and zero <stateDir> mutation across exact OWNER-CHECKLIST.md progression (both pre-rollback & post-rollback)
+[22m[39m{
+  "timestamp": "2026-11-25T10:00:00.000Z",
+  "mode": "observe",
+  "effectiveMode": "observe",
+  "requests": 8,
+  "paidRequests": 0,
+  "tokens": 0,
+  "llmCalls": 0,
+  "changedProviders": 1,
+  "unchangedProviders": 0,
+  "backoffSkipped": 0,
+  "inboxAdded": 0,
+  "researchQueueCount": 0,
+  "detectionLatency": {
+    "measuredCount": 0,
+    "minMs": null,
+    "maxMs": null,
+    "p50Ms": null
+  },
+  "providers": [
+    {
+      "prefix": "openai",
+      "label": "OK",
+      "status": 200,
+      "models": 10,
+      "changed": true,
+      "added": [],
+      "graceAbsent": [],
+      "deadConfirmed": [],
+      "backoffSec": 0
+    }
+  ],
+  "shrinkBlockReasons": {},
+  "absentNotInCombo": {},
+  "webhookDelivery": {
+    "status": "skipped",
+    "ok": true,
+    "reason": "no_actionable_alerts",
+    "durationMs": 0
+  }
+}
+
+{
+  "schemaVersion": 1,
+  "checkedAt": "2026-11-25T10:00:01.000Z",
+  "status": "READY_FOR_OWNER_LIVE_PILOT",
+  "vietnameseGateStatus": "sẵn sàng chạy thật",
+  "pilotTargets": {
+    "routerTarget": "router:nine/rs-pilot",
+    "harnessTarget": "harness:hermes"
+  },
+  "pilotPhase": "NEEDS_INITIAL_PROPOSE_CONSENT",
+  "checks": [
+    {
+      "id": "freeze_clear",
+      "passed": true,
+      "detail": "Emergency freeze circuit breaker is clear (frozen=false)."
+    },
+    {
+      "id": "config_and_doctor_health",
+      "passed": true,
+      "detail": "Config schema valid, 0 circular dependencies, status.json fresh (0m <= 30m threshold)."
+    },
+    {
+      "id": "pilot_targets_readable",
+      "passed": true,
+      "detail": "Pilot targets readable: router:nine/rs-pilot (nine-rehearsal.sqlite) + harness:hermes (config.yaml)."
+    },
+    {
+      "id": "tmpdir_backup_rollback_rehearsal",
+      "passed": true,
+      "detail": "Isolated backup + parser + byte-exact SHA-256 rollback rehearsal passed in os.tmpdir()/rs-livecheck-bpBFsD (0 live mutations)."
+    },
+    {
+      "id": "consent_and_promotion_state",
+      "passed": true,
+      "detail": "Consent & apply-history HMAC integrity verified (pilotPhase=NEEDS_INITIAL_PROPOSE_CONSENT)."
+    },
+    {
+      "id": "cost_and_release_hygiene",
+      "passed": true,
+      "detail": "tier0Tokens=0, tier0LlmCalls=0, tier0PaidRequests=0, weeklySessions=0/5 (budgetExceeded=false). 8 publishable + 2 private manifests consistent at version 0.1.0 (prepareV1Release dry-run verified)."
+    },
+    {
+      "id": "live_gate_hint",
+      "passed": true,
+      "detail": "routerDb (nine-rehearsal.sqlite): trong os.tmpdir() — không cần cờ; harnessConfig (config.yaml): trong os.tmpdir() — không cần cờ."
+    }
+  ],
+  "blockingReasons": [],
+  "ownerNextCommands": [
+    "routersync consent grant --target router:nine/rs-pilot --level propose",
+    "routersync consent grant --target harness:hermes --level propose",
+    "routersync plan"
+  ]
+}
+[90mstdout[2m | packages/cli/test/c46-f6-pilot-report.test.ts[2m > [22m[2mC46-F6: routersync pilot-report Read-Only Sign-Off Aggregator[2m > [22m[2mproves PASS (exitCode = 0) and zero <stateDir> mutation across exact OWNER-CHECKLIST.md progression (both pre-rollback & post-rollback)
+[22m[39m{
+  "ok": true,
+  "policyId": "b4e178380e90aa514061f91c4536b976",
+  "updatedAt": "2026-11-25T17:23:12.988Z",
+  "entry": {
+    "target": "router:nine/rs-pilot",
+    "targetKind": "router",
+    "routerId": "nine",
+    "comboName": "rs-pilot",
+    "level": "propose",
+    "grantedAt": "2026-11-25T17:23:12.988Z",
+    "expiresAt": "2026-12-25T17:23:12.988Z"
+  }
+}
+
+[90mstdout[2m | packages/cli/test/c46-f6-pilot-report.test.ts[2m > [22m[2mC46-F6: routersync pilot-report Read-Only Sign-Off Aggregator[2m > [22m[2mproves PASS (exitCode = 0) and zero <stateDir> mutation across exact OWNER-CHECKLIST.md progression (both pre-rollback & post-rollback)
+[22m[39m{
+  "ok": true,
+  "policyId": "b4e178380e90aa514061f91c4536b976",
+  "updatedAt": "2026-11-25T17:23:13.015Z",
+  "entry": {
+    "target": "harness:hermes",
+    "targetKind": "harness",
+    "harnessId": "hermes",
+    "level": "propose",
+    "grantedAt": "2026-11-25T17:23:13.015Z",
+    "expiresAt": "2026-12-25T17:23:13.015Z"
+  }
+}
+
+[90mstdout[2m | packages/cli/test/c46-f6-pilot-report.test.ts[2m > [22m[2mC46-F6: routersync pilot-report Read-Only Sign-Off Aggregator[2m > [22m[2mproves PASS (exitCode = 0) and zero <stateDir> mutation across exact OWNER-CHECKLIST.md progression (both pre-rollback & post-rollback)
+[22m[39m{
+  "ok": true,
+  "configFile": "C:\\Users\\<USER>\\.openmausbot\\tmp\\agy\\4c4db2442357\\rs-c46-f6-e2e-njqXPF\\router\\routersync.yaml",
+  "plans": [
+    {
+      "routerId": "nine",
+      "adapter": "9router",
+      "plan": {
+        "id": "plan_1795627393042_i4f3rz7",
+        "target": "nine",
+        "timestamp": "2026-11-25T17:23:13.042Z",
+        "additions": [],
+        "modifications": [
+          {
+            "id": "rs-pilot",
+            "name": "rs-pilot",
+            "strategy": "priority",
+            "models": [
+              "openai/gpt-4.1",
+              "openai/gpt-4.1-mini",
+              "openai/gpt-4.1-nano",
+              "openai/o3-mini",
+              "openai/o4-mini",
+              "openai/gpt-4o",
+              "openai/gpt-4o-mini",
+              "openai/gpt-4.5",
+              "openai/gpt-5-nano",
+              "openai/gpt-4o-legacy"
+            ],
+            "managed": true,
+            "minSteps": 1,
+            "freeOnly": false,
+            "autoMaintain": false,
+            "updatedAt": "2026-11-25T17:23:13.042Z"
+          }
+        ],
+        "deletions": [],
+        "reasons": {
+          "rs-pilot": "UPDATED: models or strategy adjusted"
+        }
+      },
+      "totalSteps": 10,
+      "keepSteps": 10
+    }
+  ]
+}
+
+{
+  "app": "hermes",
+  "directionAMode": "write-adapter",
+  "editable": true,
+  "targetProviders": [
+    "openai"
+  ],
+  "additions": [
+    {
+      "provider": "openai",
+      "model": "gpt-4.1-nano"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4.5"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4o"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4o-legacy"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4o-mini"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-5-nano"
+    },
+    {
+      "provider": "openai",
+      "model": "o3-mini"
+    },
+    {
+      "provider": "openai",
+      "model": "o4-mini"
+    }
+  ],
+  "removals": [],
+  "defaultSlotWarnings": [],
+  "configPath": "<HOME>\\.hermes\\config.yaml",
+  "guidance": [
+    "Use /reload-mcp in active chat for MCP changes; restart gateway or start a new CLI turn for config.yaml model/provider changes."
+  ],
+  "planHash": "1aeb98212c17f108445f111499687298f31796def6578c24ca928ac1514c39ae",
+  "reloadRequired": true,
+  "runningProcesses": []
+}
+[90mstdout[2m | packages/cli/test/c46-f6-pilot-report.test.ts[2m > [22m[2mC46-F6: routersync pilot-report Read-Only Sign-Off Aggregator[2m > [22m[2mproves PASS (exitCode = 0) and zero <stateDir> mutation across exact OWNER-CHECKLIST.md progression (both pre-rollback & post-rollback)
+[22m[39m
+======================================================
+[routersync] REVIEWING PENDING CHANGES BEFORE WRITING
+======================================================
+Router [nine] (9router):
+  Additions: 0, Modifications: 1, Deletions: 0
+======================================================
+
+
+[90mstdout[2m | packages/cli/test/c46-f6-pilot-report.test.ts[2m > [22m[2mC46-F6: routersync pilot-report Read-Only Sign-Off Aggregator[2m > [22m[2mproves PASS (exitCode = 0) and zero <stateDir> mutation across exact OWNER-CHECKLIST.md progression (both pre-rollback & post-rollback)
+[22m[39m{
+  "mode": "live-write",
+  "status": "SUCCESS",
+  "results": [
+    {
+      "success": true,
+      "target": "9router",
+      "appliedAt": "2026-11-25T17:23:14.497Z",
+      "planId": "plan_1795627394465_kvqpr0v",
+      "readBackVerified": true,
+      "staleDetected": false,
+      "readBackLevel": "db-only (degraded)",
+      "canonicalReadBackLevel": "db-only",
+      "degradedReason": "no-api-path"
+    }
+  ],
+  "timestamp": "2026-11-25T17:23:14.496Z",
+  "snapshots": [
+    {
+      "routerId": "nine",
+      "snapshotId": "snap_1795627394487_thozt7h",
+      "file": "C:\\Users\\<USER>\\.openmausbot\\tmp\\agy\\4c4db2442357\\rs-c46-f6-e2e-njqXPF\\state\\snapshots\\snap_1795627394487_thozt7h.json"
+    }
+  ]
+}
+
+{
+  "app": "hermes",
+  "configPath": "C:\\Users\\<USER>\\.openmausbot\\tmp\\agy\\4c4db2442357\\rs-c46-f6-e2e-njqXPF\\home\\.hermes\\config.yaml",
+  "backupPath": "C:\\Users\\<USER>\\.openmausbot\\tmp\\agy\\4c4db2442357\\rs-c46-f6-e2e-njqXPF\\home\\.hermes\\config.yaml.pre-pilot.bak",
+  "applied": true,
+  "rolledBack": false,
+  "readBackVerified": true,
+  "reloadRequired": true,
+  "runningProcesses": [],
+  "planHash": "1aeb98212c17f108445f111499687298f31796def6578c24ca928ac1514c39ae",
+  "preSha256": "58dad241e4ef1e1402cfd59e378e6fecf84a5104f9cb15c1914deb6c83f27d6a",
+  "postSha256": "e4dbd714e923f06d38d7cb93956c1863c04bdf0c8aeba94737cd1805a1c5c8e6",
+  "message": "Đã cập nhật danh sách model của Hermes Agent (Nous Research) an toàn (đã sao lưu & kiểm chứng đọc lại)."
+}
+[90mstdout[2m | packages/cli/test/c46-f6-pilot-report.test.ts[2m > [22m[2mC46-F6: routersync pilot-report Read-Only Sign-Off Aggregator[2m > [22m[2mproves PASS (exitCode = 0) and zero <stateDir> mutation across exact OWNER-CHECKLIST.md progression (both pre-rollback & post-rollback)
+[22m[39m{
+  "ok": true,
+  "policyId": "b4e178380e90aa514061f91c4536b976",
+  "updatedAt": "2026-11-25T17:23:14.590Z",
+  "entry": {
+    "target": "router:nine/rs-pilot",
+    "targetKind": "router",
+    "routerId": "nine",
+    "comboName": "rs-pilot",
+    "level": "auto-safe",
+    "grantedAt": "2026-11-25T17:23:14.590Z",
+    "expiresAt": "2026-12-25T17:23:14.590Z",
+    "verifiedProposeReceiptId": "54b2f543be62361378ddd34bd79f97b1"
+  }
+}
+
+[90mstdout[2m | packages/cli/test/c46-f6-pilot-report.test.ts[2m > [22m[2mC46-F6: routersync pilot-report Read-Only Sign-Off Aggregator[2m > [22m[2mproves PASS (exitCode = 0) and zero <stateDir> mutation across exact OWNER-CHECKLIST.md progression (both pre-rollback & post-rollback)
+[22m[39m{
+  "ok": true,
+  "policyId": "b4e178380e90aa514061f91c4536b976",
+  "updatedAt": "2026-11-25T17:23:14.606Z",
+  "entry": {
+    "target": "harness:hermes",
+    "targetKind": "harness",
+    "harnessId": "hermes",
+    "level": "auto-safe",
+    "grantedAt": "2026-11-25T17:23:14.606Z",
+    "expiresAt": "2026-12-25T17:23:14.606Z",
+    "verifiedProposeReceiptId": "369af3b65405af302dc39b9d85b9084e"
+  }
+}
+
+[90mstdout[2m | packages/cli/test/c46-f6-pilot-report.test.ts[2m > [22m[2mC46-F6: routersync pilot-report Read-Only Sign-Off Aggregator[2m > [22m[2mproves PASS (exitCode = 0) and zero <stateDir> mutation across exact OWNER-CHECKLIST.md progression (both pre-rollback & post-rollback)
+[22m[39m{
+  "timestamp": "2026-11-25T10:10:00.000Z",
+  "mode": "auto-safe",
+  "effectiveMode": "auto-safe",
+  "requests": 1,
+  "paidRequests": 0,
+  "tokens": 0,
+  "llmCalls": 0,
+  "changedProviders": 1,
+  "unchangedProviders": 0,
+  "backoffSkipped": 0,
+  "inboxAdded": 4,
+  "researchQueueCount": 1,
+  "detectionLatency": {
+    "measuredCount": 2,
+    "minMs": 0,
+    "maxMs": 0,
+    "p50Ms": 0
+  },
+  "providers": [
+    {
+      "prefix": "openai",
+      "label": "OK",
+      "status": 200,
+      "models": 11,
+      "changed": true,
+      "added": [
+        "gpt-5.2-codex"
+      ],
+      "graceAbsent": [],
+      "deadConfirmed": [],
+      "backoffSec": 0
+    }
+  ],
+  "shrinkBlockReasons": {},
+  "absentNotInCombo": {},
+  "webhookDelivery": {
+    "status": "skipped",
+    "ok": true,
+    "reason": "unconfigured",
+    "durationMs": 0
+  }
+}
+
+[90mstdout[2m | packages/cli/test/c46-f6-pilot-report.test.ts[2m > [22m[2mC46-F6: routersync pilot-report Read-Only Sign-Off Aggregator[2m > [22m[2mproves PASS (exitCode = 0) and zero <stateDir> mutation across exact OWNER-CHECKLIST.md progression (both pre-rollback & post-rollback)
+[22m[39m{
+  "ok": true,
+  "frozen": true,
+  "frozenAt": "2026-11-25T17:23:14.852Z",
+  "reason": "live-pilot-drill"
+}
+
+[90mstdout[2m | packages/cli/test/c46-f6-pilot-report.test.ts[2m > [22m[2mC46-F6: routersync pilot-report Read-Only Sign-Off Aggregator[2m > [22m[2mproves PASS (exitCode = 0) and zero <stateDir> mutation across exact OWNER-CHECKLIST.md progression (both pre-rollback & post-rollback)
+[22m[39m{
+  "ok": true,
+  "frozen": false,
+  "unfrozenAt": "2026-11-25T17:23:14.864Z"
+}
+
+[90mstdout[2m | packages/cli/test/c46-f6-pilot-report.test.ts[2m > [22m[2mC46-F6: routersync pilot-report Read-Only Sign-Off Aggregator[2m > [22m[2mproves PASS (exitCode = 0) and zero <stateDir> mutation across exact OWNER-CHECKLIST.md progression (both pre-rollback & post-rollback)
+[22m[39m{
+  "ok": true,
+  "snapshotId": "snap_1795627394487_thozt7h",
+  "target": "9router",
+  "combos": 1
+}
+
+{
+  "app": "hermes",
+  "configPath": "C:\\Users\\<USER>\\.openmausbot\\tmp\\agy\\4c4db2442357\\rs-c46-f6-e2e-njqXPF\\home\\.hermes\\config.yaml",
+  "backupPath": "C:\\Users\\<USER>\\.openmausbot\\tmp\\agy\\4c4db2442357\\rs-c46-f6-e2e-njqXPF\\home\\.hermes\\config.yaml.pre-pilot.bak",
+  "restored": true,
+  "byteIdenticalToPreApply": true,
+  "postSha256": "58dad241e4ef1e1402cfd59e378e6fecf84a5104f9cb15c1914deb6c83f27d6a"
+}
+[90mstdout[2m | packages/cli/test/c46-f6-pilot-report.test.ts[2m > [22m[2mC46-F6: routersync pilot-report Read-Only Sign-Off Aggregator[2m > [22m[2mproves PASS (exitCode = 0, detectionLatencyMs === 0) across steady-state OWNER-CHECKLIST.md progression when Step 5 and Step 16 observe identical /v1/models catalogs (D1)
+[22m[39m{
+  "timestamp": "2026-11-25T11:00:00.000Z",
+  "mode": "observe",
+  "effectiveMode": "observe",
+  "requests": 8,
+  "paidRequests": 0,
+  "tokens": 0,
+  "llmCalls": 0,
+  "changedProviders": 1,
+  "unchangedProviders": 0,
+  "backoffSkipped": 0,
+  "inboxAdded": 0,
+  "researchQueueCount": 0,
+  "detectionLatency": {
+    "measuredCount": 0,
+    "minMs": null,
+    "maxMs": null,
+    "p50Ms": null
+  },
+  "providers": [
+    {
+      "prefix": "openai",
+      "label": "OK",
+      "status": 200,
+      "models": 10,
+      "changed": true,
+      "added": [],
+      "graceAbsent": [],
+      "deadConfirmed": [],
+      "backoffSec": 0
+    }
+  ],
+  "shrinkBlockReasons": {},
+  "absentNotInCombo": {},
+  "webhookDelivery": {
+    "status": "skipped",
+    "ok": true,
+    "reason": "no_actionable_alerts",
+    "durationMs": 0
+  }
+}
+
+{
+  "schemaVersion": 1,
+  "checkedAt": "2026-11-25T11:00:01.000Z",
+  "status": "READY_FOR_OWNER_LIVE_PILOT",
+  "vietnameseGateStatus": "sẵn sàng chạy thật",
+  "pilotTargets": {
+    "routerTarget": "router:nine/rs-pilot",
+    "harnessTarget": "harness:hermes"
+  },
+  "pilotPhase": "NEEDS_INITIAL_PROPOSE_CONSENT",
+  "checks": [
+    {
+      "id": "freeze_clear",
+      "passed": true,
+      "detail": "Emergency freeze circuit breaker is clear (frozen=false)."
+    },
+    {
+      "id": "config_and_doctor_health",
+      "passed": true,
+      "detail": "Config schema valid, 0 circular dependencies, status.json fresh (0m <= 30m threshold)."
+    },
+    {
+      "id": "pilot_targets_readable",
+      "passed": true,
+      "detail": "Pilot targets readable: router:nine/rs-pilot (nine-steady.sqlite) + harness:hermes (config.yaml)."
+    },
+    {
+      "id": "tmpdir_backup_rollback_rehearsal",
+      "passed": true,
+      "detail": "Isolated backup + parser + byte-exact SHA-256 rollback rehearsal passed in os.tmpdir()/rs-livecheck-P59SXg (0 live mutations)."
+    },
+    {
+      "id": "consent_and_promotion_state",
+      "passed": true,
+      "detail": "Consent & apply-history HMAC integrity verified (pilotPhase=NEEDS_INITIAL_PROPOSE_CONSENT)."
+    },
+    {
+      "id": "cost_and_release_hygiene",
+      "passed": true,
+      "detail": "tier0Tokens=0, tier0LlmCalls=0, tier0PaidRequests=0, weeklySessions=0/5 (budgetExceeded=false). 8 publishable + 2 private manifests consistent at version 0.1.0 (prepareV1Release dry-run verified)."
+    },
+    {
+      "id": "live_gate_hint",
+      "passed": true,
+      "detail": "routerDb (nine-steady.sqlite): trong os.tmpdir() — không cần cờ; harnessConfig (config.yaml): trong os.tmpdir() — không cần cờ."
+    }
+  ],
+  "blockingReasons": [],
+  "ownerNextCommands": [
+    "routersync consent grant --target router:nine/rs-pilot --level propose",
+    "routersync consent grant --target harness:hermes --level propose",
+    "routersync plan"
+  ]
+}
+[90mstdout[2m | packages/cli/test/c46-f6-pilot-report.test.ts[2m > [22m[2mC46-F6: routersync pilot-report Read-Only Sign-Off Aggregator[2m > [22m[2mproves PASS (exitCode = 0, detectionLatencyMs === 0) across steady-state OWNER-CHECKLIST.md progression when Step 5 and Step 16 observe identical /v1/models catalogs (D1)
+[22m[39m{
+  "ok": true,
+  "policyId": "5238aeb47672ffd9259c975a0cebe00f",
+  "updatedAt": "2026-11-25T17:23:15.556Z",
+  "entry": {
+    "target": "router:nine/rs-pilot",
+    "targetKind": "router",
+    "routerId": "nine",
+    "comboName": "rs-pilot",
+    "level": "propose",
+    "grantedAt": "2026-11-25T17:23:15.556Z",
+    "expiresAt": "2026-12-25T17:23:15.556Z"
+  }
+}
+
+[90mstdout[2m | packages/cli/test/c46-f6-pilot-report.test.ts[2m > [22m[2mC46-F6: routersync pilot-report Read-Only Sign-Off Aggregator[2m > [22m[2mproves PASS (exitCode = 0, detectionLatencyMs === 0) across steady-state OWNER-CHECKLIST.md progression when Step 5 and Step 16 observe identical /v1/models catalogs (D1)
+[22m[39m{
+  "ok": true,
+  "policyId": "5238aeb47672ffd9259c975a0cebe00f",
+  "updatedAt": "2026-11-25T17:23:15.578Z",
+  "entry": {
+    "target": "harness:hermes",
+    "targetKind": "harness",
+    "harnessId": "hermes",
+    "level": "propose",
+    "grantedAt": "2026-11-25T17:23:15.578Z",
+    "expiresAt": "2026-12-25T17:23:15.578Z"
+  }
+}
+
+[90mstdout[2m | packages/cli/test/c46-f6-pilot-report.test.ts[2m > [22m[2mC46-F6: routersync pilot-report Read-Only Sign-Off Aggregator[2m > [22m[2mproves PASS (exitCode = 0, detectionLatencyMs === 0) across steady-state OWNER-CHECKLIST.md progression when Step 5 and Step 16 observe identical /v1/models catalogs (D1)
+[22m[39m
+======================================================
+[routersync] REVIEWING PENDING CHANGES BEFORE WRITING
+======================================================
+Router [nine] (9router):
+  Additions: 0, Modifications: 1, Deletions: 0
+======================================================
+
+
+[90mstdout[2m | packages/cli/test/c46-f6-pilot-report.test.ts[2m > [22m[2mC46-F6: routersync pilot-report Read-Only Sign-Off Aggregator[2m > [22m[2mproves PASS (exitCode = 0, detectionLatencyMs === 0) across steady-state OWNER-CHECKLIST.md progression when Step 5 and Step 16 observe identical /v1/models catalogs (D1)
+[22m[39m{
+  "mode": "live-write",
+  "status": "SUCCESS",
+  "results": [
+    {
+      "success": true,
+      "target": "9router",
+      "appliedAt": "2026-11-25T17:23:15.614Z",
+      "planId": "plan_1795627395597_axx3dlh",
+      "readBackVerified": true,
+      "staleDetected": false,
+      "readBackLevel": "db-only (degraded)",
+      "canonicalReadBackLevel": "db-only",
+      "degradedReason": "no-api-path"
+    }
+  ],
+  "timestamp": "2026-11-25T17:23:15.614Z",
+  "snapshots": [
+    {
+      "routerId": "nine",
+      "snapshotId": "snap_1795627395607_lycwd0d",
+      "file": "C:\\Users\\<USER>\\.openmausbot\\tmp\\agy\\4c4db2442357\\rs-c46-f6-steady-e2e-64nqHS\\state\\snapshots\\snap_1795627395607_lycwd0d.json"
+    }
+  ]
+}
+
+{
+  "app": "hermes",
+  "configPath": "C:\\Users\\<USER>\\.openmausbot\\tmp\\agy\\4c4db2442357\\rs-c46-f6-steady-e2e-64nqHS\\home\\.hermes\\config.yaml",
+  "backupPath": "C:\\Users\\<USER>\\.openmausbot\\tmp\\agy\\4c4db2442357\\rs-c46-f6-steady-e2e-64nqHS\\home\\.hermes\\config.yaml.pre-pilot.bak",
+  "applied": true,
+  "rolledBack": false,
+  "readBackVerified": true,
+  "reloadRequired": true,
+  "runningProcesses": [],
+  "planHash": "1aeb98212c17f108445f111499687298f31796def6578c24ca928ac1514c39ae",
+  "preSha256": "1381934b9d32721f97c577c3d6eba3a292712901f038b141f9499a1fbbb4caba",
+  "postSha256": "7f6fb38623ae83694d41c1cf7c7246e38cdfdc38ad08bb6fc27cd5ebc33efe13",
+  "message": "Đã cập nhật danh sách model của Hermes Agent (Nous Research) an toàn (đã sao lưu & kiểm chứng đọc lại)."
+}
+[90mstdout[2m | packages/cli/test/c46-f6-pilot-report.test.ts[2m > [22m[2mC46-F6: routersync pilot-report Read-Only Sign-Off Aggregator[2m > [22m[2mproves PASS (exitCode = 0, detectionLatencyMs === 0) across steady-state OWNER-CHECKLIST.md progression when Step 5 and Step 16 observe identical /v1/models catalogs (D1)
+[22m[39m{
+  "ok": true,
+  "policyId": "5238aeb47672ffd9259c975a0cebe00f",
+  "updatedAt": "2026-11-25T17:23:16.785Z",
+  "entry": {
+    "target": "router:nine/rs-pilot",
+    "targetKind": "router",
+    "routerId": "nine",
+    "comboName": "rs-pilot",
+    "level": "auto-safe",
+    "grantedAt": "2026-11-25T17:23:16.785Z",
+    "expiresAt": "2026-12-25T17:23:16.785Z",
+    "verifiedProposeReceiptId": "4594009b3a8002b61b2f47e04c70ded0"
+  }
+}
+
+[90mstdout[2m | packages/cli/test/c46-f6-pilot-report.test.ts[2m > [22m[2mC46-F6: routersync pilot-report Read-Only Sign-Off Aggregator[2m > [22m[2mproves PASS (exitCode = 0, detectionLatencyMs === 0) across steady-state OWNER-CHECKLIST.md progression when Step 5 and Step 16 observe identical /v1/models catalogs (D1)
+[22m[39m{
+  "ok": true,
+  "policyId": "5238aeb47672ffd9259c975a0cebe00f",
+  "updatedAt": "2026-11-25T17:23:16.799Z",
+  "entry": {
+    "target": "harness:hermes",
+    "targetKind": "harness",
+    "harnessId": "hermes",
+    "level": "auto-safe",
+    "grantedAt": "2026-11-25T17:23:16.799Z",
+    "expiresAt": "2026-12-25T17:23:16.799Z",
+    "verifiedProposeReceiptId": "3b7e347d6d3a0bdf35ff4cf1333720d0"
+  }
+}
+
+[90mstdout[2m | packages/cli/test/c46-f6-pilot-report.test.ts[2m > [22m[2mC46-F6: routersync pilot-report Read-Only Sign-Off Aggregator[2m > [22m[2mproves PASS (exitCode = 0, detectionLatencyMs === 0) across steady-state OWNER-CHECKLIST.md progression when Step 5 and Step 16 observe identical /v1/models catalogs (D1)
+[22m[39m{
+  "timestamp": "2026-11-25T11:10:00.000Z",
+  "mode": "auto-safe",
+  "effectiveMode": "auto-safe",
+  "requests": 1,
+  "paidRequests": 0,
+  "tokens": 0,
+  "llmCalls": 0,
+  "changedProviders": 0,
+  "unchangedProviders": 1,
+  "backoffSkipped": 0,
+  "inboxAdded": 0,
+  "researchQueueCount": 0,
+  "detectionLatency": {
+    "measuredCount": 0,
+    "minMs": null,
+    "maxMs": null,
+    "p50Ms": null
+  },
+  "providers": [
+    {
+      "prefix": "openai",
+      "label": "UNCHANGED",
+      "status": 200,
+      "models": 10,
+      "changed": false,
+      "added": [],
+      "graceAbsent": [],
+      "deadConfirmed": [],
+      "backoffSec": 0
+    }
+  ],
+  "shrinkBlockReasons": {},
+  "absentNotInCombo": {},
+  "webhookDelivery": {
+    "status": "skipped",
+    "ok": true,
+    "reason": "no_actionable_alerts",
+    "durationMs": 0
+  }
+}
+
+[90mstdout[2m | packages/cli/test/c46-f6-pilot-report.test.ts[2m > [22m[2mC46-F6: routersync pilot-report Read-Only Sign-Off Aggregator[2m > [22m[2mproves PASS (exitCode = 0, detectionLatencyMs === 0) across steady-state OWNER-CHECKLIST.md progression when Step 5 and Step 16 observe identical /v1/models catalogs (D1)
+[22m[39m{
+  "ok": true,
+  "snapshotId": "snap_1795627395607_lycwd0d",
+  "target": "9router",
+  "combos": 1
+}
+
+{
+  "app": "hermes",
+  "configPath": "C:\\Users\\<USER>\\.openmausbot\\tmp\\agy\\4c4db2442357\\rs-c46-f6-steady-e2e-64nqHS\\home\\.hermes\\config.yaml",
+  "backupPath": "C:\\Users\\<USER>\\.openmausbot\\tmp\\agy\\4c4db2442357\\rs-c46-f6-steady-e2e-64nqHS\\home\\.hermes\\config.yaml.pre-pilot.bak",
+  "restored": true,
+  "byteIdenticalToPreApply": true,
+  "postSha256": "1381934b9d32721f97c577c3d6eba3a292712901f038b141f9499a1fbbb4caba"
+}
+ [32m✓[39m [30m[45m packages [49m[39m packages/cli/test/c46-f6-pilot-report.test.ts [2m([22m[2m9 tests[22m[2m)[22m[33m 9333[2mms[22m[39m
+     [33m[2m✓[22m[39m fails closed (exitCode = 1) on invalid --serving-reflection-ms, empty/whitespace D3 flags (--router-target "", --harness-target "   ", -c ""), and unknown CLI flags [33m 352[2mms[22m[39m
+     [33m[2m✓[22m[39m enforces the isolated fail-closed state corruption matrix (each condition mutated independently) [33m 869[2mms[22m[39m
+     [33m[2m✓[22m[39m fails closed on each of the 5 S9 quantitative criteria and kills Q1, Q2, Q3, Q4, Q5, D1, D2 mutants individually [33m 2614[2mms[22m[39m
+     [33m[2m✓[22m[39m proves PASS (exitCode = 0) and zero <stateDir> mutation across exact OWNER-CHECKLIST.md progression (both pre-rollback & post-rollback) [33m 2955[2mms[22m[39m
+     [33m[2m✓[22m[39m proves PASS (exitCode = 0, detectionLatencyMs === 0) across steady-state OWNER-CHECKLIST.md progression when Step 5 and Step 16 observe identical /v1/models catalogs (D1) [33m 1984[2mms[22m[39m
+ [32m✓[39m [30m[45m root-tools [49m[39m test/docs/c45-wp9-live-readiness.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 14[2mms[22m[39m
+ [32m✓[39m [30m[45m root-tools [49m[39m test/docs/agent-docs.test.ts [2m([22m[2m19 tests[22m[2m)[22m[33m 25734[2mms[22m[39m
+     [33m[2m✓[22m[39m runs --help, doctor, combos stale (9router & omniroute), and verify against os.tmpdir() fixture with 0 router writes [33m 9618[2mms[22m[39m
+     [33m[2m✓[22m[39m passes node --test test/agent/security-audit.node.test.mjs [33m 15512[2mms[22m[39m
+     [33m[2m✓[22m[39m no publishable tracked or doc files contain dangerous git publish strings [33m 497[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m3 passed[39m[22m[90m (3)[39m
+[2m      Tests [22m [1m[32m32 passed[39m[22m[90m (32)[39m
+[2m   Start at [22m 00:23:03
+[2m   Duration [22m 29.74s[2m (transform 5.26s, setup 2.75s, import 4.97s, tests 35.08s, environment 1ms)[22m
+
