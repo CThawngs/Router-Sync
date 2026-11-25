@@ -1,7 +1,7 @@
 # Danh sách Kiểm tra Thí điểm Chạy thật 1 Trang Cho Chủ dự án (`OWNER-CHECKLIST.md`)
 - **Phục vụ: S9** — Ranh giới cứng: đội bot dừng tuyệt đối ở `READY_FOR_OWNER_LIVE_PILOT`; **chỉ chủ dự án** trực tiếp chạy các bước dưới đây sau khi nhánh chính xanh CI (sổ tay đầy đủ: `docs/runbook/LIVE-E2E-v2.md`).
 > **Quy tắc Tiền kiểm Bắt buộc (Đọc trước Bước 1):**
-> - **Chọn Combo Router:** Chọn combo ít phụ thuộc hoặc tạo riêng `rs-pilot` ngoài vòng xoay tải chính (**không** chọn `rs-fast` hay combo chính đang phục vụ lưu lượng thật).
+> - **Chọn Combo & `<ID_ROUTER>`:** Chọn combo ít phụ thuộc hoặc tạo riêng `rs-pilot` ngoài vòng xoay tải chính (**không** chọn `rs-fast` hay combo chính đang chạy tải thật); `<ID_ROUTER>` phải khớp đúng `routers[].id` trong `routersync.yaml` (ví dụ `omni` hoặc `nine`, không điền tên adapter `omniroute`/`9router`).
 > - **Chọn Harness:** Chọn `Hermes` hoặc `OpenCode`; **không chọn `OpenMausBot` khi dàn bot đang chạy** (sửa `config.json` lúc chạy dễ làm gián đoạn phiên bot; `routines.json` và `bots.json` luôn bị chặn cứng).
 > - **Lưu ý D26 (`9Router`):** Hàng combo `kind=null` cần `20–31 giây` (`<= 60 giây`) để phản ánh trên `GET /v1/models`; ghi riêng qua `--serving-reflection-ms`, **không** cộng vào `detectionLatencyMs`.
 > - **Cờ mở khóa ghi thật:** Chỉ chủ dự án tự đặt `ROUTERSYNC_ALLOW_LIVE_ROUTER_WRITE=1` và `ROUTERSYNC_ALLOW_LIVE_HOME_WRITE=1` tạm thời trong phiên shell tương tác; tuyệt đối không lưu vào tệp cấu hình, kho mã hay lệnh của bot.
@@ -33,7 +33,7 @@
    **Kết quả đúng:** Mã thoát `0`, làm mới `<STATE_DIR>/status.json` và `<STATE_DIR>/tick-catalog.json`.
 6. Chạy cổng tiền kiểm tự động chỉ đọc 7 mục trước khi mở khóa ghi thật:
    ```sh
-   routersync live-check --router-target router:omniroute/rs-pilot --harness-target harness:hermes --harness-config-path "<DUONG_DAN_CONFIG_HARNESS_THAT>" --json
+   routersync live-check --router-target "router:<ID_ROUTER>/rs-pilot" --harness-target harness:hermes --harness-config-path "<DUONG_DAN_CONFIG_HARNESS_THAT>" --json
    ```
    **Kết quả đúng:** Mã thoát `0`, `status: "READY_FOR_OWNER_LIVE_PILOT"`, cả 7 mục đều `passed: true`.
 7. Mở khóa ghi thật tạm thời trong phiên shell hiện tại (PowerShell đặt `$env:ROUTERSYNC_ALLOW_LIVE_ROUTER_WRITE="1"` và `$env:ROUTERSYNC_ALLOW_LIVE_HOME_WRITE="1"`):
@@ -43,7 +43,7 @@
    **Kết quả đúng:** Hai biến chỉ có hiệu lực trong phiên shell tương tác hiện tại của chủ dự án.
 8. Cấp sự đồng ý đứng bậc `propose` cho combo router thí điểm:
    ```sh
-   routersync consent grant --target router:omniroute/rs-pilot --level propose
+   routersync consent grant --target "router:<ID_ROUTER>/rs-pilot" --level propose
    ```
    **Kết quả đúng:** Gõ `consent` trên TTY; tạo chính sách đồng ý đứng có ký HMAC cho combo router.
 9. Cấp sự đồng ý đứng bậc `propose` cho harness thí điểm:
@@ -73,7 +73,7 @@
     **Kết quả đúng:** Gõ `chay` trên TTY; bảo toàn chú thích tệp cấu hình và `readBackVerified: true`.
 14. Nâng combo router thí điểm lên bậc `auto-safe`:
     ```sh
-    routersync consent grant --target router:omniroute/rs-pilot --level auto-safe
+    routersync consent grant --target "router:<ID_ROUTER>/rs-pilot" --level auto-safe
     ```
     **Kết quả đúng:** Gõ `consent` trên TTY; nâng lên `auto-safe` nhờ biên nhận `propose` hợp lệ.
 15. Nâng harness thí điểm lên bậc `auto-safe`:
@@ -85,7 +85,7 @@
     ```sh
     routersync tick --mode auto-safe --json
     ```
-    **Kết quả đúng:** Mã thoát `0`, `effectiveMode: "auto-safe"`, `tokens: 0`, độ trễ `<= 60000` ms.
+    **Kết quả đúng:** Mã thoát `0`, `effectiveMode: "auto-safe"`, `tokens: 0`, `detectionLatency.maxMs <= 60000` ms (hoặc `null` khi `measuredCount = 0` / không phát sinh thay đổi upstream).
 17. Diễn tập kích hoạt cầu dao khẩn cấp `freeze`:
     ```sh
     routersync freeze --reason "live-pilot-drill"
@@ -113,6 +113,6 @@
     **Kết quả đúng:** Hai biến môi trường ghi thật bị xóa hoàn toàn khỏi phiên shell.
 22. Tổng hợp báo cáo nghiệm thu chỉ đọc 5 tiêu chí `S9`:
     ```sh
-    routersync pilot-report --state-dir "<STATE_DIR>" --router-target router:omniroute/rs-pilot --harness-target harness:hermes --json
+    routersync pilot-report -c "<DUONG_DAN_ROUTERSYNC_YAML>" --state-dir "<STATE_DIR>" --router-target "router:<ID_ROUTER>/rs-pilot" --harness-target harness:hermes --json
     ```
     **Kết quả đúng:** Mã thoát `0`, `status: "PASS"`, cả 5 tiêu chí `S9` đều đạt và `<STATE_DIR>` nguyên vẹn `100%`.

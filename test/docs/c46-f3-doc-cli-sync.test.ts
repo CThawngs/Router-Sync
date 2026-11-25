@@ -377,6 +377,8 @@ describe('C46-F6: docs/runbook/OWNER-CHECKLIST.md 1-Page Checklist & Doc-CLI Syn
     const preflightSection = markdown.slice(0, step1Idx);
     expect(preflightSection).toContain('rs-pilot');
     expect(preflightSection).toContain('rs-fast');
+    expect(preflightSection).toContain('<ID_ROUTER>');
+    expect(preflightSection).toContain('routers[].id');
     expect(preflightSection).toContain('Hermes');
     expect(preflightSection).toContain('OpenCode');
     expect(preflightSection).toContain('OpenMausBot');
@@ -386,6 +388,11 @@ describe('C46-F6: docs/runbook/OWNER-CHECKLIST.md 1-Page Checklist & Doc-CLI Syn
     expect(preflightSection).toContain('detectionLatencyMs');
     expect(preflightSection).toContain('ROUTERSYNC_ALLOW_LIVE_ROUTER_WRITE=1');
     expect(preflightSection).toContain('ROUTERSYNC_ALLOW_LIVE_HOME_WRITE=1');
+
+    // D1 & D2 runbook invariants: router:<ID_ROUTER>/rs-pilot (never hardcoded router:omniroute/rs-pilot) & steady-state measuredCount = 0 note
+    expect(markdown).not.toContain('router:omniroute/rs-pilot');
+    expect(markdown).toContain('router:<ID_ROUTER>/rs-pilot');
+    expect(markdown).toContain('measuredCount');
   });
 
   it('enforces strictly 1 copy-pasteable command + 1 "Kết quả đúng:" line per numbered step and 0 CLI sync issues', () => {
@@ -439,6 +446,13 @@ describe('C46-F6: docs/runbook/OWNER-CHECKLIST.md 1-Page Checklist & Doc-CLI Syn
     expect(rawCmds.some((c) => c.startsWith('routersync unfreeze'))).toBe(true);
     expect(rawCmds.some((c) => c.startsWith('routersync rollback'))).toBe(true);
     expect(rawCmds.some((c) => c.startsWith('routersync apps rollback'))).toBe(true);
-    expect(rawCmds.some((c) => c.startsWith('routersync pilot-report'))).toBe(true);
+    expect(
+      rawCmds.some(
+        (c) =>
+          c.startsWith('routersync pilot-report') &&
+          c.includes('-c ') &&
+          c.includes('router:<ID_ROUTER>/rs-pilot')
+      )
+    ).toBe(true);
   });
 });

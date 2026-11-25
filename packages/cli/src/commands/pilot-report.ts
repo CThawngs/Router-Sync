@@ -21,7 +21,6 @@ import { parse as parseYaml } from 'yaml';
 import {
   canonicalJsonStringify,
   computeWeeklyResearchBudget,
-  DEFAULT_MAX_WEEKLY_RESEARCH_SESSIONS,
   isPathInsideDir,
   parseTargetScope,
   readApplyHistory,
@@ -162,7 +161,11 @@ function isSameOrInsideDir(candidatePath: string, dirPath: string): boolean {
   return same || isPathInsideDir(candidatePath, dirPath);
 }
 
-function assertOutPathOutsideStateDir(rawOutPath: string, stateDir: string): string {
+export function assertOutPathOutsideStateDir(
+  rawOutPath: string,
+  stateDir: string,
+  resolveCanonicalFn: (p: string) => string = resolveDeepCanonicalPath
+): string {
   const trimmedOut = rawOutPath.trim();
   if (trimmedOut.length === 0) {
     failPilotReportOption('INVALID_ARGUMENT: --out must be a non-empty file path.');
@@ -179,8 +182,8 @@ function assertOutPathOutsideStateDir(rawOutPath: string, stateDir: string): str
   let canonicalOut: string;
   let canonicalState: string;
   try {
-    canonicalOut = resolveDeepCanonicalPath(expandedOut);
-    canonicalState = resolveDeepCanonicalPath(absStateDir);
+    canonicalOut = resolveCanonicalFn(expandedOut);
+    canonicalState = resolveCanonicalFn(absStateDir);
   } catch (err) {
     failPilotReportOption(err instanceof Error ? err.message : String(err));
   }
@@ -274,38 +277,121 @@ function readOptionalNonNegativeAccountingNumber(
   return val;
 }
 
+function isValidIsoTimestamp(val: unknown): boolean {
+  return typeof val === 'string' && val.trim().length > 0 && Number.isFinite(Date.parse(val));
+}
+
+function assertCompletedSteadyStateTickRecord(
+  rec: Record<string, unknown>,
+  fileLabel: string
+): void {
+  if (fileLabel === 'status.json') {
+    if (!isValidIsoTimestamp(rec['timestamp']) || !Array.isArray(rec['providers'])) {
+      throw new Error(
+        'status.json with detectionLatency.measuredCount=0 requires a valid ISO timestamp and providers array.'
+      );
+    }
+    return;
+  }
+  if (fileLabel === 'plans/tick-plan.json') {
+    const routerActions = rec['routerActions'];
+    const harnessActions = rec['harnessActions'];
+    if (
+      !isValidIsoTimestamp(rec['planCreatedAt']) ||
+      !Array.isArray(routerActions) ||
+      routerActions.length !== 0 ||
+      !Array.isArray(harnessActions) ||
+      harnessActions.length !== 0
+    ) {
+      throw new Error(
+        'plans/tick-plan.json with detectionLatency.measuredCount=0 requires a valid ISO planCreatedAt and empty routerActions/harnessActions.'
+      );
+    }
+    return;
+  }
+  throw new Error(`${fileLabel} cannot satisfy measuredCount=0 steady-state tick contract.`);
+}
+
 function extractFiniteLatencyFromRecord(
   rec: Record<string, unknown>,
   fileLabel: string
 ): number | null {
+  const candidates: number[] = [];
+
   const det = rec['detectionLatency'];
   if (det !== undefined) {
     if (!det || typeof det !== 'object' || Array.isArray(det)) {
       throw new Error(`${fileLabel}.detectionLatency must be an object.`);
     }
-    const maxMs = (det as Record<string, unknown>)['maxMs'];
-    if (maxMs !== undefined && maxMs !== null) {
+    const detObj = det as Record<string, unknown>;
+    const measuredCount = detObj['measuredCount'];
+    const minMs = detObj['minMs'];
+    const maxMs = detObj['maxMs'];
+    const p50Ms = detObj['p50Ms'];
+
+    if (measuredCount !== undefined) {
+      if (
+        typeof measuredCount !== 'number' ||
+        !Number.isSafeInteger(measuredCount) ||
+        measuredCount < 0
+      ) {
+        throw new Error(
+          `${fileLabel}.detectionLatency.measuredCount must be a non-negative integer.`
+        );
+      }
+    }
+
+    if (measuredCount === 0) {
+      if (
+        minMs !== null ||
+        maxMs !== null ||
+        (p50Ms !== undefined && p50Ms !== null)
+      ) {
+        throw new Error(
+          `${fileLabel}.detectionLatency with measuredCount=0 must have null minMs/maxMs/p50Ms.`
+        );
+      }
+      assertCompletedSteadyStateTickRecord(rec, fileLabel);
+      candidates.push(0);
+    } else if (maxMs !== undefined && maxMs !== null) {
       if (typeof maxMs !== 'number' || !Number.isFinite(maxMs)) {
         throw new Error(`${fileLabel}.detectionLatency.maxMs must be a finite number.`);
       }
-      return maxMs;
+      candidates.push(maxMs);
+    } else if (measuredCount !== undefined && measuredCount > 0) {
+      throw new Error(
+        `${fileLabel}.detectionLatency.maxMs must be a finite number when measuredCount > 0.`
+      );
+    } else {
+      throw new Error(
+        `${fileLabel}.detectionLatency must specify non-negative integer measuredCount or finite maxMs.`
+      );
     }
   }
+
   const direct = rec['detectionLatencyMs'];
   if (direct !== undefined && direct !== null) {
     if (typeof direct !== 'number' || !Number.isFinite(direct)) {
       throw new Error(`${fileLabel}.detectionLatencyMs must be a finite number.`);
     }
-    return direct;
+    candidates.push(direct);
   }
+
   const dur = rec['durationMs'];
   if (dur !== undefined && dur !== null) {
     if (typeof dur !== 'number' || !Number.isFinite(dur)) {
       throw new Error(`${fileLabel}.durationMs must be a finite number.`);
     }
-    return dur;
+    candidates.push(dur);
   }
-  return null;
+
+  if (candidates.length === 0) {
+    return null;
+  }
+  if (candidates.some((v) => v < 0)) {
+    return Math.min(...candidates);
+  }
+  return Math.max(...candidates);
 }
 
 function formatMarkdownSignOffReport(report: PilotReportResult): string {
@@ -360,7 +446,11 @@ export async function runPilotReportCommand(
 ): Promise<PilotReportResult> {
   const nowMs = options.nowMs ?? Date.now();
   const generatedAt = new Date(nowMs).toISOString();
-  const stateDir = resolveControlStateDir(options.stateDir);
+  const hasEmptyStateDirFlag =
+    options.stateDir !== undefined && options.stateDir.trim().length === 0;
+  const stateDir = hasEmptyStateDirFlag
+    ? path.resolve('')
+    : resolveControlStateDir(options.stateDir);
 
   const servingReflectionMs = parseOptionalNonNegativeSafeInt(
     options.servingReflectionMs,
@@ -378,33 +468,44 @@ export async function runPilotReportCommand(
   const blockingReasons: string[] = [];
   let stateCorruptionCount = 0;
 
+  if (hasEmptyStateDirFlag) {
+    blockingReasons.push('INVALID_ARGUMENT: --state-dir must be a non-empty directory path.');
+  }
+
   // -------------------------------------------------------------------------
   // Optional read-only routersync.yaml load (for maxWeeklyResearchSessions & router aliases)
   // -------------------------------------------------------------------------
   let validConfig: RouterSyncConfig | null = null;
-  const explicitConfigArg = options.configPath ?? options.config;
-  if (explicitConfigArg && explicitConfigArg.trim().length > 0) {
-    const cfgPath = path.resolve(expandTilde(explicitConfigArg.trim()));
-    if (!fs.existsSync(cfgPath) || !fs.statSync(cfgPath).isFile()) {
+  const explicitConfigArg =
+    options.configPath !== undefined ? options.configPath : options.config;
+  if (explicitConfigArg !== undefined) {
+    const trimmedCfg = explicitConfigArg.trim();
+    if (trimmedCfg.length === 0) {
       stateCorruptionCount += 1;
-      blockingReasons.push(`CONFIG_NOT_FOUND: Explicit config file does not exist: ${cfgPath}`);
+      blockingReasons.push('INVALID_ARGUMENT: --config (-c) must be a non-empty file path.');
     } else {
-      try {
-        const parsedYaml = parseYaml(fs.readFileSync(cfgPath, 'utf8'));
-        const schemaRes = RouterSyncConfigSchema.safeParse(parsedYaml);
-        if (!schemaRes.success) {
+      const cfgPath = path.resolve(expandTilde(trimmedCfg));
+      if (!fs.existsSync(cfgPath) || !fs.statSync(cfgPath).isFile()) {
+        stateCorruptionCount += 1;
+        blockingReasons.push(`CONFIG_NOT_FOUND: Explicit config file does not exist: ${cfgPath}`);
+      } else {
+        try {
+          const parsedYaml = parseYaml(fs.readFileSync(cfgPath, 'utf8'));
+          const schemaRes = RouterSyncConfigSchema.safeParse(parsedYaml);
+          if (!schemaRes.success) {
+            stateCorruptionCount += 1;
+            blockingReasons.push(
+              `CONFIG_SCHEMA_INVALID: ${schemaRes.error.issues.map((i) => i.message).join('; ')}`
+            );
+          } else {
+            validConfig = schemaRes.data;
+          }
+        } catch (err) {
           stateCorruptionCount += 1;
           blockingReasons.push(
-            `CONFIG_SCHEMA_INVALID: ${schemaRes.error.issues.map((i) => i.message).join('; ')}`
+            `CONFIG_PARSE_ERROR: ${err instanceof Error ? err.message : String(err)}`
           );
-        } else {
-          validConfig = schemaRes.data;
         }
-      } catch (err) {
-        stateCorruptionCount += 1;
-        blockingReasons.push(
-          `CONFIG_PARSE_ERROR: ${err instanceof Error ? err.message : String(err)}`
-        );
       }
     }
   }
@@ -412,54 +513,71 @@ export async function runPilotReportCommand(
   // -------------------------------------------------------------------------
   // Parse optional --router-target & --harness-target filters
   // -------------------------------------------------------------------------
+  const routerTargetProvided = options.routerTarget !== undefined;
   let normalizedRouterTarget: string | null = null;
   const routerAliases = new Set<string>();
-  if (options.routerTarget && options.routerTarget.trim().length > 0) {
-    try {
-      const parsed = parseTargetScope(options.routerTarget.trim());
-      if (parsed.targetKind !== 'router' || !parsed.routerId || !parsed.comboName) {
-        blockingReasons.push(
-          `TARGET_SCOPE_INVALID: Expected --router-target in 'router:<routerId>/<comboName>' format (got '${options.routerTarget}').`
-        );
-      } else {
-        normalizedRouterTarget = parsed.target;
-        routerAliases.add(parsed.target);
-        if (validConfig) {
-          const matchedRouter = validConfig.routers.find(
-            (r) => r.id === parsed.routerId || r.adapter === parsed.routerId
+  if (routerTargetProvided) {
+    const trimmedRouterTarget = options.routerTarget!.trim();
+    if (trimmedRouterTarget.length === 0) {
+      blockingReasons.push(
+        "INVALID_ARGUMENT: --router-target must be a non-empty 'router:<routerId>/<comboName>' scope."
+      );
+    } else {
+      try {
+        const parsed = parseTargetScope(trimmedRouterTarget);
+        if (parsed.targetKind !== 'router' || !parsed.routerId || !parsed.comboName) {
+          blockingReasons.push(
+            `TARGET_SCOPE_INVALID: Expected --router-target in 'router:<routerId>/<comboName>' format (got '${options.routerTarget}').`
           );
-          if (matchedRouter) {
-            routerAliases.add(`router:${matchedRouter.id}/${parsed.comboName}`);
-            routerAliases.add(`router:${matchedRouter.adapter}/${parsed.comboName}`);
+        } else {
+          normalizedRouterTarget = parsed.target;
+          routerAliases.add(parsed.target);
+          if (validConfig) {
+            const matchedRouter = validConfig.routers.find(
+              (r) => r.id === parsed.routerId || r.adapter === parsed.routerId
+            );
+            if (matchedRouter) {
+              routerAliases.add(`router:${matchedRouter.id}/${parsed.comboName}`);
+              routerAliases.add(`router:${matchedRouter.adapter}/${parsed.comboName}`);
+            }
           }
         }
+      } catch (err) {
+        blockingReasons.push(err instanceof Error ? err.message : String(err));
       }
-    } catch (err) {
-      blockingReasons.push(err instanceof Error ? err.message : String(err));
     }
   }
 
+  const harnessTargetProvided = options.harnessTarget !== undefined;
   let normalizedHarnessTarget: string | null = null;
-  if (options.harnessTarget && options.harnessTarget.trim().length > 0) {
-    try {
-      const parsed = parseTargetScope(options.harnessTarget.trim());
-      if (parsed.targetKind !== 'harness' || !parsed.harnessId) {
-        blockingReasons.push(
-          `TARGET_SCOPE_INVALID: Expected --harness-target in 'harness:<id>' format (got '${options.harnessTarget}').`
-        );
-      } else {
-        normalizedHarnessTarget = parsed.target;
+  if (harnessTargetProvided) {
+    const trimmedHarnessTarget = options.harnessTarget!.trim();
+    if (trimmedHarnessTarget.length === 0) {
+      blockingReasons.push(
+        "INVALID_ARGUMENT: --harness-target must be a non-empty 'harness:<id>' scope."
+      );
+    } else {
+      try {
+        const parsed = parseTargetScope(trimmedHarnessTarget);
+        if (parsed.targetKind !== 'harness' || !parsed.harnessId) {
+          blockingReasons.push(
+            `TARGET_SCOPE_INVALID: Expected --harness-target in 'harness:<id>' format (got '${options.harnessTarget}').`
+          );
+        } else {
+          normalizedHarnessTarget = parsed.target;
+        }
+      } catch (err) {
+        blockingReasons.push(err instanceof Error ? err.message : String(err));
       }
-    } catch (err) {
-      blockingReasons.push(err instanceof Error ? err.message : String(err));
     }
   }
 
   // -------------------------------------------------------------------------
   // Verify <stateDir> exists (NEVER create <stateDir>!)
   // -------------------------------------------------------------------------
-  const stateDirExists = fs.existsSync(stateDir) && fs.statSync(stateDir).isDirectory();
-  if (!stateDirExists) {
+  const stateDirExists =
+    !hasEmptyStateDirFlag && fs.existsSync(stateDir) && fs.statSync(stateDir).isDirectory();
+  if (!hasEmptyStateDirFlag && !stateDirExists) {
     blockingReasons.push(`STATE_DIR_MISSING: Control-plane <stateDir> does not exist: ${stateDir}`);
   }
 
@@ -673,7 +791,7 @@ export async function runPilotReportCommand(
   let maxSessionsInAnyLedgerWeek = 0;
 
   const maxWeeklyResearchSessions = resolveMaxWeeklyResearchSessions(
-    validConfig?.research?.maxWeeklyResearchSessions ?? DEFAULT_MAX_WEEKLY_RESEARCH_SESSIONS
+    validConfig?.research?.maxWeeklyResearchSessions
   );
 
   if (stateDirExists) {
@@ -798,7 +916,7 @@ export async function runPilotReportCommand(
   // -------------------------------------------------------------------------
   const receipts = applyHistory.valid ? applyHistory.receipts : [];
   const relevantReceipts = receipts.filter((r) => {
-    if (!normalizedRouterTarget && !normalizedHarnessTarget) return true;
+    if (!routerTargetProvided && !harnessTargetProvided) return true;
     const matchesRouter = normalizedRouterTarget ? routerAliases.has(r.target) : false;
     const matchesHarness = normalizedHarnessTarget ? r.target === normalizedHarnessTarget : false;
     return matchesRouter || matchesHarness;
@@ -822,11 +940,12 @@ export async function runPilotReportCommand(
   const verifiedReceipts = relevantReceipts.filter((r) => r.success && r.readBackVerified);
   const rolledBackReceiptsCount = relevantReceipts.filter((r) => r.rolledBack).length;
 
-  const hasRouterVerified = normalizedRouterTarget
-    ? verifiedReceipts.some((r) => routerAliases.has(r.target))
+  const hasRouterVerified = routerTargetProvided
+    ? normalizedRouterTarget !== null && verifiedReceipts.some((r) => routerAliases.has(r.target))
     : true;
-  const hasHarnessVerified = normalizedHarnessTarget
-    ? verifiedReceipts.some((r) => r.target === normalizedHarnessTarget)
+  const hasHarnessVerified = harnessTargetProvided
+    ? normalizedHarnessTarget !== null &&
+      verifiedReceipts.some((r) => r.target === normalizedHarnessTarget)
     : true;
   const hasAtLeastOneVerified = verifiedReceipts.length >= 1;
 
