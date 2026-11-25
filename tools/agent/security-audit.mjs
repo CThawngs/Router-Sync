@@ -128,6 +128,10 @@ function remediationForRule(ruleSlug) {
       return 'Restrict package.json files array to dist/, README.md, and LICENSE; rebuild and re-verify.';
     case 'write-gate-bypass':
       return 'Restore fail-closed validation on human-gated router write path before merging or releasing.';
+    case 'ci-log-fetch-failed':
+      return 'Ensure network connectivity and gh authentication before running --with-ci-logs; never treat unreachable CI logs as clean.';
+    case 'ci-log-empty-runs':
+      return 'Verify GitHub Actions has completed workflow runs for the target branch before running --with-ci-logs.';
     case 'personal-windows-path':
     case 'personal-posix-path':
     case CLOUD_DRIVE_RULE_SLUG:
@@ -414,6 +418,12 @@ export function scanRepoFiles(root = DEFAULT_REPO_ROOT, makeFinding = createFind
   };
 }
 
+function normalizeEvidenceRefName(ref) {
+  return String(ref ?? '')
+    .replace(/^refs\/(?:remotes\/)?/, '')
+    .replace(/^heads\//, '');
+}
+
 function discoverEvidenceRefs(root) {
   const res = spawnSync(
     'git',
@@ -431,19 +441,32 @@ function discoverEvidenceRefs(root) {
   );
   if (res.status !== 0 || !res.stdout) return [];
 
-  const seenCommitByLogicalName = new Map();
-  const selectedRefs = [];
+  const entries = [];
   for (const line of res.stdout.split(/\r?\n/)) {
     const trimmed = line.trim();
     if (!trimmed) continue;
     const [refName, sha] = trimmed.split(/\s+/);
     if (!refName || !sha) continue;
+    entries.push({ refName: normalizeEvidenceRefName(refName), sha });
+  }
+
+  // Prefer remote tracking origin/evidence/* over local evidence/* when both point to the same commit.
+  entries.sort((a, b) => {
+    const aRemote = a.refName.startsWith('origin/') ? 0 : 1;
+    const bRemote = b.refName.startsWith('origin/') ? 0 : 1;
+    if (aRemote !== bRemote) return aRemote - bRemote;
+    return a.refName < b.refName ? -1 : a.refName > b.refName ? 1 : 0;
+  });
+
+  const seenCommitByLogicalName = new Map();
+  const selectedRefs = [];
+  for (const { refName, sha } of entries) {
     const logical = refName.replace(/^origin\//, '');
     if (seenCommitByLogicalName.get(logical) === sha) continue;
     seenCommitByLogicalName.set(logical, sha);
     selectedRefs.push(refName);
   }
-  return selectedRefs;
+  return selectedRefs.sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
 }
 
 /**
@@ -465,12 +488,14 @@ export function scanEvidenceRefs(
       surface: 'evidence-refs',
       refsScanned: 0,
       blobsScanned: 0,
+      refNames: [],
       findings,
     };
   }
 
   // Map blobSha -> Array<{ ref, filePath }>
   const blobOccurrences = new Map();
+  const refNames = [];
   let refsScanned = 0;
 
   for (const ref of targetRefs) {
@@ -482,6 +507,7 @@ export function scanEvidenceRefs(
     });
     if (treeRes.status !== 0) continue;
     refsScanned += 1;
+    refNames.push(normalizeEvidenceRefName(ref));
 
     for (const line of treeRes.stdout.split(/\r?\n/)) {
       if (!line) continue;
@@ -585,6 +611,7 @@ export function scanEvidenceRefs(
     surface: 'evidence-refs',
     refsScanned,
     blobsScanned,
+    refNames,
     findings,
   };
 }
@@ -756,70 +783,261 @@ export function scanPackedTarballs(
   }
 }
 
-function defaultCiLogFetcher(limit = 5, cwd = DEFAULT_REPO_ROOT) {
-  const ghBin = ghExecutable();
-  const listRaw = execFileSync(
-    ghBin,
-    [
-      'run',
-      'list',
-      '--limit',
-      String(limit),
-      '--json',
-      'databaseId,headSha,workflowName,status',
-    ],
-    { ...ghSpawnOptions(32 * 1024 * 1024), cwd }
-  );
-  const runs = JSON.parse(listRaw);
-  const fetched = [];
-  for (const r of runs) {
-    if (r.status !== 'completed' || !r.databaseId) continue;
-    let logText = '';
-    try {
-      logText = execFileSync(
+function sanitizeRunId(rawId) {
+  if (typeof rawId === 'number' && Number.isFinite(rawId)) return rawId;
+  const s = String(rawId ?? '');
+  return /^[0-9]{1,20}$/.test(s) ? s : 'unknown';
+}
+
+function jobNeverExecutedSteps(job) {
+  const steps = job?.steps;
+  if (!Array.isArray(steps) || steps.length === 0) return true;
+  return steps.every((s) => s?.conclusion === 'skipped' || s?.conclusion === 'never_executed');
+}
+
+function fetchSingleRunLogs(ghBin, runId, cwd, execFn) {
+  try {
+    return String(
+      execFn(
         ghBin,
-        ['run', 'view', String(r.databaseId), '--log'],
+        ['run', 'view', String(runId), '--log'],
+        { ...ghSpawnOptions(64 * 1024 * 1024), cwd }
+      ) ?? ''
+    );
+  } catch (wholeRunErr) {
+    // When a matrix run contains a skipped or capacity-cancelled job with 0 steps,
+    // `gh run view <id> --log` exits 1 ("log not found: <jobId>"). Fall back to
+    // per-job `--job <jobId> --log` for every job that actually executed steps;
+    // fail closed if job metadata or any executed job's log cannot be fetched.
+    const jobsRaw = execFn(
+      ghBin,
+      ['run', 'view', String(runId), '--json', 'jobs'],
+      { ...ghSpawnOptions(16 * 1024 * 1024), cwd }
+    );
+    const parsedJobs = JSON.parse(jobsRaw)?.jobs;
+    if (!Array.isArray(parsedJobs) || parsedJobs.length === 0) {
+      throw wholeRunErr;
+    }
+    const executedJobs = parsedJobs.filter(
+      (j) =>
+        j?.conclusion !== 'skipped' &&
+        !(j?.conclusion === 'cancelled' && jobNeverExecutedSteps(j))
+    );
+    if (executedJobs.length === 0) {
+      throw wholeRunErr;
+    }
+    const chunks = [];
+    for (const job of executedJobs) {
+      if (!job?.databaseId) {
+        throw wholeRunErr;
+      }
+      const jobLog = execFn(
+        ghBin,
+        ['run', 'view', String(runId), '--job', String(job.databaseId), '--log'],
         { ...ghSpawnOptions(64 * 1024 * 1024), cwd }
       );
-    } catch {
+      chunks.push(String(jobLog ?? ''));
+    }
+    return chunks.join('\n');
+  }
+}
+
+export function defaultCiLogFetcher(optsOrLimit = 10, legacyCwd = DEFAULT_REPO_ROOT) {
+  const opts =
+    typeof optsOrLimit === 'object' && optsOrLimit !== null
+      ? optsOrLimit
+      : { limit: optsOrLimit, branch: 'main', cwd: legacyCwd };
+  const {
+    limit = 10,
+    branch = 'main',
+    cwd = DEFAULT_REPO_ROOT,
+    execFn = execFileSync,
+  } = opts;
+
+  const ghBin = ghExecutable();
+  const listArgs = [
+    'run',
+    'list',
+    ...(branch && branch !== 'all' ? ['--branch', String(branch)] : []),
+    '--status',
+    'completed',
+    '--limit',
+    String(limit),
+    '--json',
+    'databaseId,headSha,workflowName,status,headBranch',
+  ];
+  const listRaw = execFn(ghBin, listArgs, { ...ghSpawnOptions(32 * 1024 * 1024), cwd });
+  const runs = JSON.parse(listRaw);
+  if (!Array.isArray(runs)) {
+    throw new Error('CI_LOG_INVALID_RUN_LIST');
+  }
+
+  const fetched = [];
+  for (const r of runs) {
+    const runId = r?.databaseId;
+    if (!runId || r.status !== 'completed') {
+      fetched.push({
+        id: sanitizeRunId(runId),
+        headSha: String(r?.headSha ?? '').slice(0, 7),
+        workflowName: String(r?.workflowName ?? 'CI'),
+        headBranch: String(r?.headBranch ?? branch ?? ''),
+        logError: true,
+      });
       continue;
     }
-    fetched.push({
-      id: r.databaseId,
-      headSha: String(r.headSha ?? '').slice(0, 7),
-      workflowName: String(r.workflowName ?? 'CI'),
-      log: logText,
-    });
+    try {
+      const logText = fetchSingleRunLogs(ghBin, runId, cwd, execFn);
+      fetched.push({
+        id: sanitizeRunId(runId),
+        headSha: String(r.headSha ?? '').slice(0, 7),
+        workflowName: String(r.workflowName ?? 'CI'),
+        headBranch: String(r.headBranch ?? branch ?? ''),
+        log: logText,
+      });
+    } catch {
+      fetched.push({
+        id: sanitizeRunId(runId),
+        headSha: String(r.headSha ?? '').slice(0, 7),
+        workflowName: String(r.workflowName ?? 'CI'),
+        headBranch: String(r.headBranch ?? branch ?? ''),
+        logError: true,
+      });
+    }
   }
   return fetched;
 }
 
 /**
  * Surface 4: Scan recent public GitHub Actions workflow logs when `--with-ci-logs` is enabled.
+ * Fails closed on fetch errors, partial per-run log failures, and empty run responses.
  */
 export function scanRecentCiLogs(opts = {}, makeFinding = createFindingCounter()) {
-  const { enabled = false, limit = 5, root = DEFAULT_REPO_ROOT, logFetcher } = opts;
+  const {
+    enabled = false,
+    limit = 10,
+    branch = 'main',
+    root = DEFAULT_REPO_ROOT,
+    logFetcher,
+    allowEmptyRuns = false,
+    execFn,
+  } = opts;
+  const normalizedBranch = branch === '' ? 'all' : String(branch ?? 'main');
+
   if (!enabled) {
     return {
       ok: true,
       surface: 'ci-logs',
       status: 'skipped_offline_flag',
+      branch: normalizedBranch,
       runsScanned: 0,
+      runIds: [],
       findings: [],
     };
   }
 
   const ctx = buildScannerContext(root);
-  const runs = typeof logFetcher === 'function' ? logFetcher(limit) : defaultCiLogFetcher(limit, root);
   const findings = [];
+  let runs;
+  try {
+    runs =
+      typeof logFetcher === 'function'
+        ? logFetcher(limit, { limit, branch, cwd: root })
+        : defaultCiLogFetcher({ limit, branch, cwd: root, execFn });
+  } catch (err) {
+    const errRunId =
+      err && typeof err === 'object' && /^[0-9]{1,20}$/.test(String(err.runId ?? ''))
+        ? String(err.runId)
+        : null;
+    findings.push(
+      makeFinding({
+        surface: 'ci-logs',
+        location: errRunId ? `gh-run:${errRunId}` : 'gh-run:list',
+        rule: 'ci-log-fetch-failed',
+        severity: SEVERITY.HIGH,
+        count: 1,
+      })
+    );
+    return {
+      ok: false,
+      surface: 'ci-logs',
+      status: 'fetch_failed',
+      branch: normalizedBranch,
+      runsScanned: 0,
+      runIds: [],
+      findings,
+    };
+  }
+
+  if (!Array.isArray(runs)) {
+    findings.push(
+      makeFinding({
+        surface: 'ci-logs',
+        location: 'gh-run:list',
+        rule: 'ci-log-fetch-failed',
+        severity: SEVERITY.HIGH,
+        count: 1,
+      })
+    );
+    return {
+      ok: false,
+      surface: 'ci-logs',
+      status: 'fetch_failed',
+      branch: normalizedBranch,
+      runsScanned: 0,
+      runIds: [],
+      findings,
+    };
+  }
+
+  if (runs.length === 0) {
+    if (!allowEmptyRuns) {
+      findings.push(
+        makeFinding({
+          surface: 'ci-logs',
+          location: 'gh-run:list',
+          rule: 'ci-log-empty-runs',
+          severity: SEVERITY.HIGH,
+          count: 1,
+        })
+      );
+    }
+    return {
+      ok: Boolean(allowEmptyRuns),
+      surface: 'ci-logs',
+      status: allowEmptyRuns ? 'scanned' : 'empty_runs',
+      branch: normalizedBranch,
+      runsScanned: 0,
+      runIds: [],
+      findings,
+    };
+  }
+
+  const runIds = [];
+  let hadFetchFailure = false;
 
   for (const run of runs) {
-    const hits = scanTextContent(String(run.log ?? ''), ctx, { surface: 'ci-logs' });
+    const safeId = sanitizeRunId(run?.id);
+    if (!run || run.logError || Boolean(run.error) || typeof run.log !== 'string') {
+      hadFetchFailure = true;
+      findings.push(
+        makeFinding({
+          surface: 'ci-logs',
+          location: `gh-run:${safeId}`,
+          rule: 'ci-log-fetch-failed',
+          severity: SEVERITY.HIGH,
+          count: 1,
+        })
+      );
+      continue;
+    }
+
+    runIds.push(safeId);
+    const hits = scanTextContent(run.log, ctx, { surface: 'ci-logs' });
     for (const hit of hits) {
       findings.push(
         makeFinding({
           surface: 'ci-logs',
-          location: `gh-run:${run.id}:line:${hit.lineNo}`,
+          location: `gh-run:${safeId}:line:${hit.lineNo}`,
           rule: hit.rule,
           severity: SEVERITY.HIGH,
           count: 1,
@@ -828,11 +1046,14 @@ export function scanRecentCiLogs(opts = {}, makeFinding = createFindingCounter()
     }
   }
 
+  const hasHighFinding = findings.some((f) => f.severity === SEVERITY.HIGH);
   return {
-    ok: findings.filter((f) => f.severity === SEVERITY.HIGH).length === 0,
+    ok: !hadFetchFailure && !hasHighFinding,
     surface: 'ci-logs',
-    status: 'scanned',
-    runsScanned: runs.length,
+    status: hadFetchFailure ? 'fetch_failed' : 'scanned',
+    branch: normalizedBranch,
+    runsScanned: runIds.length,
+    runIds,
     findings,
   };
 }
@@ -1226,7 +1447,10 @@ export async function runSecurityAudit(opts = {}) {
     repoRoot = DEFAULT_REPO_ROOT,
     tarballsDir = undefined,
     withCiLogs = false,
-    ciRunsLimit = 5,
+    ciRunsLimit = 10,
+    ciBranch = 'main',
+    ciLogFetcher = undefined,
+    allowEmptyCiRuns = false,
     skipTarballs = false,
     skipWriteGates = false,
     skipEvidence = false,
@@ -1236,13 +1460,28 @@ export async function runSecurityAudit(opts = {}) {
 
   const repoFiles = scanRepoFiles(repoRoot, makeFinding);
   const evidenceRefs = skipEvidence
-    ? { ok: true, surface: 'evidence-refs', status: 'skipped_flag', refsScanned: 0, blobsScanned: 0, findings: [] }
+    ? {
+        ok: true,
+        surface: 'evidence-refs',
+        status: 'skipped_flag',
+        refsScanned: 0,
+        blobsScanned: 0,
+        refNames: [],
+        findings: [],
+      }
     : scanEvidenceRefs(repoRoot, undefined, makeFinding);
   const tarballs = skipTarballs
     ? { ok: true, surface: 'tarballs', status: 'skipped_flag', packagesScanned: 0, findings: [] }
     : scanPackedTarballs(repoRoot, { tarballsDir }, makeFinding);
   const ciLogs = scanRecentCiLogs(
-    { enabled: withCiLogs, limit: ciRunsLimit, root: repoRoot },
+    {
+      enabled: withCiLogs,
+      limit: ciRunsLimit,
+      branch: ciBranch,
+      root: repoRoot,
+      logFetcher: ciLogFetcher,
+      allowEmptyRuns: allowEmptyCiRuns,
+    },
     makeFinding
   );
   const writeGates = skipWriteGates
@@ -1289,6 +1528,7 @@ export async function runSecurityAudit(opts = {}) {
         ok: evidenceRefs.ok,
         refsScanned: evidenceRefs.refsScanned,
         blobsScanned: evidenceRefs.blobsScanned,
+        refs: evidenceRefs.refNames ?? [],
         findingsCount: evidenceRefs.findings.length,
       },
       tarballs: {
@@ -1300,7 +1540,9 @@ export async function runSecurityAudit(opts = {}) {
       ciLogs: {
         ok: ciLogs.ok,
         status: ciLogs.status,
+        branch: ciLogs.branch,
         runsScanned: ciLogs.runsScanned,
+        runIds: ciLogs.runIds ?? [],
         findingsCount: ciLogs.findings.length,
       },
       writeGates: {
@@ -1318,7 +1560,8 @@ export function parseSecurityAuditArgs(argv = process.argv.slice(2)) {
     repoRoot: DEFAULT_REPO_ROOT,
     tarballsDir: undefined,
     withCiLogs: false,
-    ciRunsLimit: 5,
+    ciRunsLimit: 10,
+    ciBranch: 'main',
     skipTarballs: false,
     skipWriteGates: false,
     skipEvidence: false,
@@ -1334,7 +1577,16 @@ export function parseSecurityAuditArgs(argv = process.argv.slice(2)) {
     } else if (arg === '--with-ci-logs') {
       parsed.withCiLogs = true;
     } else if (arg === '--ci-runs-limit') {
-      parsed.ciRunsLimit = Math.max(1, Number(argv[++i] ?? 5));
+      const rawLimit = Number(argv[++i] ?? 10);
+      if (!Number.isFinite(rawLimit) || rawLimit < 1) {
+        throw new Error('Invalid --ci-runs-limit value: expected positive integer');
+      }
+      parsed.ciRunsLimit = Math.floor(rawLimit);
+    } else if (arg === '--ci-branch') {
+      if (i + 1 >= argv.length) {
+        throw new Error('Missing value for --ci-branch');
+      }
+      parsed.ciBranch = String(argv[++i] ?? '');
     } else if (arg === '--skip-tarballs') {
       parsed.skipTarballs = true;
     } else if (arg === '--skip-write-gates') {
