@@ -22,6 +22,7 @@ export const COMMAND_CLASSES: Record<string, CommandClass> = {
   'consent revoke': 'short',
   freeze: 'short',
   unfreeze: 'interactive',
+  'live-check': 'short',
   doctor: 'short',
   mcp: 'long-running',
   'mcp install': 'short',

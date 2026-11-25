@@ -76,8 +76,8 @@ const ROUTERSYNC_CMD_RE = /routersync\s+([A-Za-z0-9_-]+)(?:\s+([A-Za-z0-9._\-]+)
 
 // Real project file paths cited in docs: must start with a known repo dir or
 // be a top-level file with an extension. This excludes URLs, placeholders like
-// /absolute/path/..., env vars (APPDATA/..., /.config), and platform prefixes.
-const DOC_PATH_RE = /(?:docs|examples|packages|tools|registry|scripts|test)\/[A-Za-z0-9._\-/\\]+\.[A-Za-z0-9]+|(?:ranking\.example\.yaml|package\.json|pnpm-workspace\.yaml|LICENSE|README\.md|CONTRIBUTING\.md|CHANGELOG\.md|CODE_OF_CONDUCT\.md|SECURITY\.md|THIRD-PARTY-NOTICES\.md|\.nvmrc|\.gitignore|\.editorconfig|\.gitattributes)/g;
+// /absolute/path/..., home-dir paths like ~/.hermes/scripts/..., env vars, and platform prefixes.
+const DOC_PATH_RE = /(?<![A-Za-z0-9._~\/\\-])(?:docs|examples|packages|tools|registry|scripts|test)\/[A-Za-z0-9._\-/\\]+\.[A-Za-z0-9]+|(?<![A-Za-z0-9._~\/\\-])(?:ranking\.example\.yaml|package\.json|pnpm-workspace\.yaml|LICENSE|README\.md|CONTRIBUTING\.md|CHANGELOG\.md|CODE_OF_CONDUCT\.md|SECURITY\.md|THIRD-PARTY-NOTICES\.md|\.nvmrc|\.gitignore|\.editorconfig|\.gitattributes)/g;
 
 const ROOT_PACKAGE = JSON.parse(readRel('package.json'));
 const ROOT_SCRIPTS = new Set(Object.keys(ROOT_PACKAGE.scripts ?? {}));
@@ -110,6 +110,8 @@ const ENROLLED_DOC_PATHS = [
   'docs/CI.md',
   'docs/known-issues.md',
   'docs/combos-probe.md',
+  'docs/schedule-ladder.md',
+  'docs/runbook/LIVE-E2E-v2.md',
   'docs/adr/ADR-MAINTAIN-02-apply-grant-lifecycle.md',
   'docs/adr/ADR-SQLITE-01-better-sqlite3-vs-node-sqlite.md',
   'docs/9router-combo-findings.md',

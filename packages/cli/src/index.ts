@@ -302,6 +302,43 @@ export function createCliProgram(): Command {
       await runUnfreezeCommand(opts);
     });
 
+  // live-check command (C45-WP9: 100% read-only owner live pilot pre-flight - lazy loaded)
+  program
+    .command('live-check')
+    .description('Run 100% read-only pre-flight checks and isolated os.tmpdir() rehearsal for owner live pilot')
+    .option('--router-target <scope>', 'Pilot router combo target (e.g. router:omniroute/coding-main)')
+    .option('--harness-target <scope>', 'Pilot Tier-A harness target (e.g. harness:hermes)')
+    .option('--harness-config-path <path>', 'Optional explicit path override to pilot harness config file')
+    .option('-c, --config <path>', 'Path to routersync.yaml configuration')
+    .option('--state-dir <dir>', 'Path to RouterSync state directory')
+    .option('--require-consent', 'Require active standing consent on both pilot targets to pass')
+    .option('--json', 'Emit deterministic machine-readable LiveCheckReport JSON')
+    .action(
+      async (opts: {
+        routerTarget?: string;
+        harnessTarget?: string;
+        harnessConfigPath?: string;
+        config?: string;
+        stateDir?: string;
+        requireConsent?: boolean;
+        json?: boolean;
+      }) => {
+        const { runLiveCheckCommand } = await import('./commands/live-check.js');
+        const report = await runLiveCheckCommand({
+          routerTarget: opts.routerTarget,
+          harnessTarget: opts.harnessTarget,
+          harnessConfigPath: opts.harnessConfigPath,
+          config: opts.config,
+          stateDir: opts.stateDir,
+          requireConsent: opts.requireConsent,
+          json: opts.json,
+        });
+        if (report.status !== 'READY_FOR_OWNER_LIVE_PILOT') {
+          process.exitCode = 1;
+        }
+      }
+    );
+
   // doctor command (Condition C4 & AT-95)
   program
     .command('doctor')

@@ -1,7 +1,8 @@
 # RouterSync — Kế hoạch Phát hành & Cổng Cắt Bản (`RELEASE-CANDIDATE.md`)
 
-- **Phục vụ:** `S10` (chuẩn hóa chính sách phát hành `1.0.0` và định danh lại `0.1.0` theo C45 §4 WP0)
+- **Phục vụ:** `S10` (chuẩn hóa chính sách phát hành `1.0.0` và định danh lại `0.1.0` theo C45 §4 WP0) & `S9` (liên kết cổng thí điểm chạy thật `WP9`)
 - **Nguồn đặc tả:** `docs/SPEC.md` (`S1`–`S10`)
+- **Sổ tay thí điểm chạy thật & cắt bản chi tiết:** `docs/runbook/LIVE-E2E-v2.md` (chạy cổng tiền kiểm chỉ đọc `routersync live-check` trước khi thí điểm)
 - **Công cụ chuẩn bị nâng phiên bản:** `tools/release/prepare-v1-release.mjs` (mặc định `--dry-run`; đội bot **không** tự nâng số phiên bản lên `main`, **không** tạo tag, **không** chạy `npm publish`)
 
 ---
@@ -21,7 +22,7 @@
 ## 2. Danh sách 8 gói công bố (`@routersync/*`) và 2 gói nội bộ
 
 | STT | Tên gói npm | Thư mục workspace | `private` | Phiên bản nền | Đích phát hành |
-|---:|---|---|---|---:|---:|
+|---:|---|---|---|---|---:|
 | 1 | `@routersync/adapter-sdk` | `packages/adapter-sdk` | `false` | `0.1.0` | `1.0.0` *(hoặc `1.0.0-rc.1`)* |
 | 2 | `@routersync/core` | `packages/core` | `false` | `0.1.0` | `1.0.0` *(hoặc `1.0.0-rc.1`)* |
 | 3 | `@routersync/sources` | `packages/sources` | `false` | `0.1.0` | `1.0.0` *(hoặc `1.0.0-rc.1`)* |
@@ -40,7 +41,7 @@
 Chủ dự án chỉ nên thực hiện phát hành khi toàn bộ các cổng sau đều **XANH**:
 
 1. **Hoàn tất đủ 10 gói việc `WP0`–`WP9`** trong `docs/BACKLOG.md` với đủ 4 bằng chứng RACI (PR squash-merged bởi Ops, commit trên `main`, CI `main` 5 OS xanh ở `attempt=1`, gói bằng chứng `evidence/d1`, `evidence/d2`, `evidence/d3` đạt verifier chuẩn SẠCH).
-2. **Thí điểm chạy thật `WP9` đạt 100% tiêu chí** do chính chủ dự án xác nhận trên mục tiêu thí điểm (1 combo + 1 tệp cấu hình harness qua `propose` → `auto-safe`, 0 model loại sai, hoàn tác khớp từng byte, độ trễ phát hiện và chi phí token nằm trong ngưỡng chấp nhận).
+2. **Thí điểm chạy thật `WP9` đạt 100% cả 5 tiêu chí định lượng** theo đúng `docs/runbook/LIVE-E2E-v2.md` do chính chủ dự án xác nhận sau khi chạy `routersync live-check` (1 combo + 1 tệp cấu hình harness qua `propose` → `auto-safe` → diễn tập `freeze` & hoàn tác khớp từng byte, 0 model loại sai, 0 token ở các chu kỳ tick tất định, 0 can thiệp thủ công ngoài kịch bản).
 3. **Kiểm đóng gói & bảo mật sạch:**
    ```sh
    pnpm verify:release
@@ -115,5 +116,5 @@ done
 ## 5. Hàng đợi `chờ chủ dự án`
 
 1. Xác nhận/tạo tổ chức hoặc scope `@routersync` trên npm trước khi phát hành `1.0.0-rc.1` hoặc `1.0.0`.
-2. Chọn mục tiêu thí điểm thật cho `WP9` (1 combo router + 1 tệp cấu hình harness) và tự chạy đợt thí điểm khi đội báo trạng thái "sẵn sàng chạy thật".
+2. Chọn mục tiêu thí điểm thật cho `WP9` (1 combo router + 1 tệp cấu hình harness), chạy `routersync live-check`, và tự thực hiện sổ tay `docs/runbook/LIVE-E2E-v2.md` khi đội báo trạng thái "sẵn sàng chạy thật".
 3. Quyết định đi thẳng `1.0.0` hay xuất bản `1.0.0-rc.1` lên dist-tag `next` trước, rồi trực tiếp chạy các lệnh gắn tag và `publish` ở Mục 4.
