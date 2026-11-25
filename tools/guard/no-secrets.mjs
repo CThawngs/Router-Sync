@@ -29,7 +29,7 @@ export const FORBIDDEN_PATTERNS = [
   { name: 'Bearer Token', regex: /Bearer\s+[a-zA-Z0-9_.\-~+/=]{25,}/gi },
   { name: 'JWT Token (eyJ...)', regex: /eyJ[a-zA-Z0-9_-]{12,}\.[a-zA-Z0-9_-]{12,}\.[a-zA-Z0-9_-]{12,}/g },
   { name: 'Personal Windows Path ([A-Za-z]:[/\\\\]+Users[/\\\\]+...)', regex: /[a-zA-Z]:[\\/]+Users[\\/]+(?!(?:alice|bob|user|example|test|mock)\b)[a-zA-Z0-9._-]+/gi }, // no-secrets:allow: guard's own pattern definition
-  { name: 'Personal POSIX Path (/home/...)', regex: /\/home\/(?!(?:alice|bob|user|example|test|mock)\b)[a-zA-Z0-9._-]+/gi }, // no-secrets:allow: guard's own pattern definition
+  { name: 'Personal POSIX Path (/home/...)', regex: /(?<![A-Za-z0-9._~-])\/home\/(?!(?:alice|bob|user|example|test|mock)\b)[a-zA-Z0-9_][a-zA-Z0-9._-]*/gi }, // no-secrets:allow: guard's own pattern definition
   { name: 'Absolute file URL (file:///)', regex: /file:\/\/\//gi }, // no-secrets:allow: guard's own pattern definition
   // Email address. Domains reserved for documentation (RFC 2606 / RFC 6761:
   // example.com/.net/.org and the .test/.example/.invalid/.localhost TLDs)

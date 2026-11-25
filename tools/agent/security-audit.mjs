@@ -176,12 +176,15 @@ function maskSafeRunnerAndPlaceholders(line, surface = '') {
     .replace(/file:\/\/\/<(?:HOME|USER|USER_DIR|REPO_ROOT)>/gi, 'https://placeholder.invalid')
     .replace(
       /[A-Za-z]:[\\/]+Users[\\/]+(?:runneradmin|runner|dependabot|circleci|appveyor|tester|someone|public|default)\b/gi,
-      '<RUNNER_HOME>'
+      'RUNNER_HOME_DIR'
     )
     .replace(
       /(?:\/Users|\/home)\/(?:runner|runneradmin|dependabot|linuxbrew|circleci|appveyor|tester|someone|admin)\b/gi,
-      '<RUNNER_HOME>'
-    );
+      'RUNNER_HOME_DIR'
+    )
+    .replace(/[A-Za-z]:[\\/]+Users[\\/]+<(?:HOME|USER|USER_DIR|REPO_ROOT)>/gi, 'PLACEHOLDER_DIR')
+    .replace(/(?:\/Users|\/home)\/<(?:HOME|USER|USER_DIR|REPO_ROOT)>/gi, 'PLACEHOLDER_DIR')
+    .replace(/<(?:HOME|USER|USER_DIR|REPO_ROOT)>/gi, 'PLACEHOLDER_DIR');
 
   if (surface === 'ci-logs') {
     out = out.replace(
@@ -201,7 +204,17 @@ function buildScannerContext(patternRoot = DEFAULT_REPO_ROOT) {
   const personalRules = [
     ...buildPersonalPatterns({ root: effectiveRoot }),
     ...loadPersonalPrivatePatterns(effectiveRoot),
-  ];
+  ].map((rule) =>
+    /^POSIX User Path\b/i.test(rule.name)
+      ? {
+          ...rule,
+          regex: new RegExp(
+            rule.regex.source.replace('[a-zA-Z0-9._-]+', '[a-zA-Z0-9_][a-zA-Z0-9._-]*'),
+            rule.regex.flags
+          ),
+        }
+      : rule
+  );
   const privateNameMatchers = buildMatchers(effectivePrivateNames(), false);
 
   return {

@@ -707,4 +707,94 @@ describe('C46-F4 (P4): Hardened networked CI log & evidence ref security audit',
     assertStrictZeroLeakSchema(res.findings);
     assert.equal(JSON.stringify(res).includes(skToken), false);
   });
+
+  test('C46-F4B: scanRecentCiLogs and scanRepoFiles allow mid-path /home/, runner/placeholder prefixes, and invalid dot/hyphen usernames (0 false positives)', () => {
+    const posixHome = (suffix) => ['/ho', 'me/', suffix].join('');
+    const filePlaceholderUri = ['file:', '///<USER_DIR>/home/custom/file.json'].join(''); // no-secrets:allow: synthetic placeholder URI fixture
+    const cleanLogLines = [
+      '2026-11-25T10:00:01Z sandbox config="/tmp/rs-c46-f3-e2e-0CXhOp/home/.hermes/config.yaml"',
+      '2026-11-25T10:00:02Z sandbox user="/tmp/rs-c46-f3-e2e-0CXhOp/home/pilotuser/config.yaml"',
+      '2026-11-25T10:00:03Z macos temp="/private/var/folders/xx/yy/T/rs-123/home/custom/file.json"',
+      '2026-11-25T10:00:04Z win temp="C:/Users/runneradmin/AppData/Local/Temp/rs-123/home/custom/file.json"', // no-secrets:allow: synthetic runneradmin CI path fixture
+      '2026-11-25T10:00:05Z linux runner="/home/runner/home/custom/file.json"', // no-secrets:allow: synthetic runner CI path fixture
+      '2026-11-25T10:00:06Z masked user="<USER_DIR>/home/custom/file.json" repo="<REPO_ROOT>/home/custom/file.json"', // no-secrets:allow: synthetic placeholder path fixture
+      `2026-11-25T10:00:07Z masked home="<HOME>/home/custom/file.json" u="<USER>/home/custom/file.json" uri="${filePlaceholderUri}"`, // no-secrets:allow: synthetic placeholder path fixture
+      '2026-11-25T10:00:08Z rel="./home/custom/file.json" parent="../home/custom/file.json" url="https://github.com/home/settings"',
+      `2026-11-25T10:00:09Z dot=${posixHome('.hermes/config.yaml')} flag=${posixHome('-flag')}`,
+      posixHome('.hermes/config.yaml'),
+      posixHome('-flag'),
+      '/home/alice/.config /home/bob/.config /home/user/.config /home/example/.config /home/test/.config /home/mock/.config',
+    ];
+
+    const ciRes = scanRecentCiLogs({
+      enabled: true,
+      logFetcher: () => [
+        {
+          id: 45644456985,
+          headSha: 'ad83fe8be8d9',
+          workflowName: 'CI',
+          log: cleanLogLines.join('\n'),
+        },
+      ],
+    });
+    assert.equal(ciRes.ok, true, `Expected 0 CI log findings, got: ${JSON.stringify(ciRes.findings)}`);
+    assert.equal(ciRes.findings.length, 0);
+
+    const repoDir = makeTempDir('rs-c46-f4b-clean-');
+    initTempGitRepo(repoDir);
+    fs.writeFileSync(path.join(repoDir, 'sandbox-notes.txt'), cleanLogLines.join('\n') + '\n', 'utf8');
+    execFileSync('git', ['add', 'sandbox-notes.txt'], { cwd: repoDir });
+    const repoRes = scanRepoFiles(repoDir);
+    assert.equal(repoRes.ok, true, `Expected 0 repo findings, got: ${JSON.stringify(repoRes.findings)}`);
+    assert.equal(repoRes.findings.length, 0);
+  });
+
+  test('C46-F4B: scanRecentCiLogs and scanRepoFiles fail closed on root-anchored /home/<username> across all delimiters and emit both personal-posix-path + file-url on file:///home/<username>', () => { // no-secrets:allow: test title describes file URI rule
+    const posixHome = (suffix) => ['/ho', 'me/', suffix].join('');
+    const fileUriLeak = ['file:', '///', 'ho', 'me/realperson/doc.md'].join('');
+    const leakCases = [
+      posixHome('realperson/.config/app.yaml'),
+      `cd ${posixHome('realperson')}`,
+      `"${posixHome('realperson/.hermes/config.yaml')}"`,
+      `'${posixHome('realperson/file')}'`,
+      `\`${posixHome('realperson/file')}\``,
+      `HOME=${posixHome('realperson')}`,
+      `PATH=/usr/bin:${posixHome('realperson/bin')}`,
+      `(${posixHome('realperson')})`,
+      `[${posixHome('realperson')}]`,
+      `{${posixHome('realperson')}}`,
+      `a,${posixHome('realperson')}`,
+      `a;${posixHome('realperson')}`,
+      `<dir>${posixHome('realperson')}</dir>`,
+      posixHome('_svc/key'),
+      posixHome('x/key'),
+    ];
+
+    for (const [idx, line] of leakCases.entries()) {
+      const ciRes = scanRecentCiLogs({
+        enabled: true,
+        logFetcher: () => [{ id: 880000 + idx, headSha: 'deadbeef', workflowName: 'CI', log: line }],
+      });
+      assert.equal(ciRes.ok, false, `Expected CI log violation for case #${idx}: ${line}`);
+      assert.ok(
+        ciRes.findings.some((f) => f.rule === 'personal-posix-path' && f.severity === SEVERITY.HIGH),
+        `Expected personal-posix-path finding for case #${idx}`
+      );
+      assertStrictZeroLeakSchema(ciRes.findings);
+      assert.equal(JSON.stringify(ciRes).includes('realperson'), false);
+      assert.equal(JSON.stringify(ciRes).includes('_svc'), false);
+    }
+
+    // Verify root-anchored file URI fires BOTH personal-posix-path AND file-url
+    const uriRes = scanRecentCiLogs({
+      enabled: true,
+      logFetcher: () => [{ id: 889999, headSha: 'deadbeef', workflowName: 'CI', log: fileUriLeak }],
+    });
+    assert.equal(uriRes.ok, false);
+    const rules = uriRes.findings.map((f) => f.rule).sort();
+    assert.ok(rules.includes('personal-posix-path'), `Expected personal-posix-path in ${JSON.stringify(rules)}`);
+    assert.ok(rules.includes('file-url'), `Expected file-url in ${JSON.stringify(rules)}`);
+    assertStrictZeroLeakSchema(uriRes.findings);
+    assert.equal(JSON.stringify(uriRes).includes('realperson'), false);
+  });
 });
