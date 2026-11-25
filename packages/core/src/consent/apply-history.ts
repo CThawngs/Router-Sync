@@ -197,6 +197,11 @@ export function appendApplyReceipt(
  * Marks matching non-rolled-back receipt(s) in `<stateDir>/apply-history.json` as
  * `rolledBack: true` and re-signs the file with HMAC-SHA256.
  *
+ * When rolling back to an earlier snapshot/backup ref, also invalidates all
+ * subsequent chronologically appended receipts in the same target scope (and
+ * receipts at or after `appliedAtOrAfter` when rolling back to a manual pre-pilot
+ * snapshot that has no direct apply receipt).
+ *
  * Read-safe when `apply-history.json` does not exist (returns `0` without creating files).
  * Fails closed with `ConsentValidationError` if `apply-history.json` is tampered/corrupt.
  */
@@ -206,6 +211,7 @@ export function markApplyReceiptRolledBack(
     target?: string | undefined;
     targetPrefix?: string | undefined;
     snapshotOrBackupRef?: string | undefined;
+    appliedAtOrAfter?: string | undefined;
   }
 ): number {
   const stateDir = resolveControlStateDir(explicitStateDir);
@@ -223,31 +229,71 @@ export function markApplyReceiptRolledBack(
   const normalizedTarget = criteria.target?.trim();
   const normalizedPrefix = criteria.targetPrefix?.trim();
   const normalizedRef = criteria.snapshotOrBackupRef?.trim();
+  const rawCutoff = criteria.appliedAtOrAfter?.trim();
+  const cutoffMs = rawCutoff ? Date.parse(rawCutoff) : Number.NaN;
+  const hasCutoff = Number.isFinite(cutoffMs);
   const foldCase = process.platform === 'win32' || process.platform === 'darwin';
   const normPathOrRef = (v: string): string => {
     const resolved = v.includes('/') || v.includes('\\') ? path.resolve(v) : v;
     return foldCase ? resolved.toLowerCase() : resolved;
   };
 
+  const matchesScope = (r: ApplyHistoryReceipt): boolean =>
+    (normalizedTarget ? r.target === normalizedTarget : true) &&
+    (normalizedPrefix ? r.target.startsWith(normalizedPrefix) : true);
+
+  const normRef = normalizedRef ? normPathOrRef(normalizedRef) : undefined;
+  const firstScopedExactIdx = normRef
+    ? existing.receipts.findIndex(
+        (r) => matchesScope(r) && normPathOrRef(r.snapshotOrBackupRef) === normRef
+      )
+    : -1;
+  const firstAnyExactIdx = normRef
+    ? existing.receipts.findIndex((r) => normPathOrRef(r.snapshotOrBackupRef) === normRef)
+    : -1;
+
   let updatedCount = 0;
-  const nextReceipts = existing.receipts.map((r) => {
-    if (r.rolledBack) return r;
-    const matchesTarget = normalizedTarget ? r.target === normalizedTarget : true;
-    const matchesPrefix = normalizedPrefix ? r.target.startsWith(normalizedPrefix) : true;
-    const matchesRef = normalizedRef
-      ? normPathOrRef(r.snapshotOrBackupRef) === normPathOrRef(normalizedRef)
-      : true;
-    if (matchesTarget && matchesPrefix && matchesRef) {
-      updatedCount += 1;
-      return { ...r, rolledBack: true };
+  let finalReceipts = existing.receipts;
+
+  if (normRef) {
+    const pivotIdx = firstScopedExactIdx >= 0 ? firstScopedExactIdx : firstAnyExactIdx;
+    if (pivotIdx >= 0) {
+      finalReceipts = existing.receipts.map((r, idx) => {
+        if (r.rolledBack || !matchesScope(r)) return r;
+        const appliedMs = Date.parse(r.appliedAt);
+        const afterCutoff = hasCutoff && Number.isFinite(appliedMs) && appliedMs > cutoffMs;
+        if (idx >= pivotIdx || afterCutoff) {
+          updatedCount += 1;
+          return { ...r, rolledBack: true };
+        }
+        return r;
+      });
+    } else if (hasCutoff) {
+      finalReceipts = existing.receipts.map((r) => {
+        if (r.rolledBack || !matchesScope(r)) return r;
+        const appliedMs = Date.parse(r.appliedAt);
+        if (Number.isFinite(appliedMs) && appliedMs >= cutoffMs) {
+          updatedCount += 1;
+          return { ...r, rolledBack: true };
+        }
+        return r;
+      });
     }
-    return r;
-  });
+  } else {
+    finalReceipts = existing.receipts.map((r) => {
+      if (r.rolledBack || !matchesScope(r)) return r;
+      const appliedMs = Date.parse(r.appliedAt);
+      if (!hasCutoff || (Number.isFinite(appliedMs) && appliedMs >= cutoffMs)) {
+        updatedCount += 1;
+        return { ...r, rolledBack: true };
+      }
+      return r;
+    });
+  }
 
   // Fallback for harness rollback when backup path was overridden (e.g. pre-pilot backup):
   // if target matched active receipts even though backup ref differed, mark target receipts rolled back.
-  let finalReceipts = nextReceipts;
-  if (updatedCount === 0 && normalizedTarget && normalizedRef) {
+  if (updatedCount === 0 && normalizedTarget && normRef && !hasCutoff) {
     finalReceipts = existing.receipts.map((r) => {
       if (!r.rolledBack && r.target === normalizedTarget) {
         updatedCount += 1;

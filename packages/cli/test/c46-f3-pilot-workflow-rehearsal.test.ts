@@ -29,10 +29,15 @@ import {
   appendTickCostEntry,
   assertEligibleForAutoSafe,
   findVerifiedProposeReceipt,
+  isPathInsideDir,
   openBetterSqlite3,
   readApplyHistory,
+  resolveDeepCanonicalPath,
+  saveSnapshot,
   upsertStandingConsentTarget,
 } from '@routersync/core';
+import { createAdapterForRouter } from '../src/adapters.js';
+import { loadConfigFile } from '../src/config/loader.js';
 import { createCliProgram } from '../src/index.js';
 import { runApplyCommand } from '../src/commands/apply.js';
 import {
@@ -52,6 +57,16 @@ const REPO_ROOT = path.resolve(__dirname, '..', '..', '..');
 
 function sha256File(filePath: string): string {
   return crypto.createHash('sha256').update(fs.readFileSync(filePath)).digest('hex');
+}
+
+function expectAutoSafePromotionDenied(stateDir: string, target: string): void {
+  try {
+    assertEligibleForAutoSafe(stateDir, target);
+    expect.unreachable(`Expected assertEligibleForAutoSafe(${target}) to throw`);
+  } catch (err) {
+    expect(err).toBeInstanceOf(ConsentValidationError);
+    expect((err as ConsentValidationError).code).toBe('AUTO_SAFE_PROMOTION_DENIED');
+  }
 }
 
 function sha256Text(text: string): string {
@@ -116,6 +131,9 @@ describe('C46-F3: apps apply --write Security Gates, Catalog Formats & Receipt L
 
   afterEach(() => {
     process.exitCode = 0;
+    delete process.env['ROUTERSYNC_ALLOW_LIVE_HOME_WRITE'];
+    delete process.env['ROUTERSYNC_ALLOW_LIVE_ROUTER_WRITE'];
+    vi.unstubAllEnvs();
     vi.restoreAllMocks();
     while (tmpDirs.length > 0) {
       const dir = tmpDirs.pop()!;
@@ -326,6 +344,58 @@ describe('C46-F3: apps apply --write Security Gates, Catalog Formats & Receipt L
       })
     ).rejects.toThrow(/CONSENT_HMAC_INVALID/);
     expect(sha256File(hermesPath)).toBe(preSha);
+
+    // 7. Valid standing-consent.json at propose + tampered/corrupt apply-history.json -> fail closed (kills Q4)
+    upsertStandingConsentTarget(stateDir, { target: 'harness:hermes', level: 'propose' });
+    appendApplyReceipt(stateDir, {
+      target: 'harness:hermes',
+      planHash: 'seed-propose-hash-q4',
+      appliedAt: '2026-11-25T08:05:00.000Z',
+      appliedAtLevel: 'propose',
+      authorizedVia: 'interactive-tty',
+      success: true,
+      readBackVerified: true,
+      readBackLevel: 'file-byte-verified',
+      rolledBack: false,
+      snapshotOrBackupRef: 'seed-q4.bak',
+    });
+    const historyFile = path.join(stateDir, 'apply-history.json');
+    const tamperedHistory = JSON.parse(fs.readFileSync(historyFile, 'utf8')) as {
+      hmacSha256: string;
+    };
+    tamperedHistory.hmacSha256 =
+      (tamperedHistory.hmacSha256.startsWith('0') ? 'f' : '0') +
+      tamperedHistory.hmacSha256.slice(1);
+    const tamperedHistoryText = `${JSON.stringify(tamperedHistory, null, 2)}\n`;
+    fs.writeFileSync(historyFile, tamperedHistoryText, 'utf8');
+
+    await expect(
+      runAppsApplyCommand({
+        app: 'hermes',
+        config: hermesPath,
+        catalog: catalogPath,
+        stateDir,
+        write: true,
+        isTTY: true,
+        promptFn: async () => 'chay',
+      })
+    ).rejects.toThrow(/CONSENT_HMAC_INVALID/);
+    expect(sha256File(hermesPath)).toBe(preSha);
+    expect(fs.readFileSync(historyFile, 'utf8')).toBe(tamperedHistoryText);
+
+    fs.writeFileSync(historyFile, '{corrupt-apply-history-json', 'utf8');
+    await expect(
+      runAppsApplyCommand({
+        app: 'hermes',
+        config: hermesPath,
+        catalog: catalogPath,
+        stateDir,
+        write: true,
+        isTTY: true,
+        promptFn: async () => 'chay',
+      })
+    ).rejects.toThrow(/CONSENT_SCHEMA_INVALID/);
+    expect(sha256File(hermesPath)).toBe(preSha);
   });
 
   it('supports provider-array & tick-catalog.json formats (without --catalog) and marks receipt rolledBack on apps rollback', async () => {
@@ -444,6 +514,405 @@ describe('C46-F3: apps apply --write Security Gates, Catalog Formats & Receipt L
     } catch (err) {
       expect(err).toBeInstanceOf(ConsentValidationError);
       expect((err as ConsentValidationError).code).toBe('AUTO_SAFE_PROMOTION_DENIED');
+    }
+  });
+
+  it('rejects --sandbox-copy outside os.tmpdir() with SANDBOX_OUTSIDE_TMPDIR even when ROUTERSYNC_ALLOW_LIVE_HOME_WRITE=1 (Defect A / Q11)', async () => {
+    const canonRepo = resolveDeepCanonicalPath(REPO_ROOT);
+    const canonTmp = resolveDeepCanonicalPath(os.tmpdir());
+    if (isPathInsideDir(canonRepo, canonTmp)) {
+      const isolatedTmp = fs.mkdtempSync(path.join(os.tmpdir(), 'rs-c46-f3-subtmp-'));
+      tmpDirs.push(isolatedTmp);
+      vi.stubEnv('TMPDIR', isolatedTmp);
+      vi.stubEnv('TEMP', isolatedTmp);
+      vi.stubEnv('TMP', isolatedTmp);
+    }
+
+    const outsideRoot = path.join(REPO_ROOT, `tmp-qa-non-tmpdir-${crypto.randomUUID()}`);
+    try {
+      fs.mkdirSync(outsideRoot, { recursive: true });
+      expect(
+        isPathInsideDir(
+          resolveDeepCanonicalPath(outsideRoot),
+          resolveDeepCanonicalPath(os.tmpdir())
+        )
+      ).toBe(false);
+
+      const outsideStateDir = path.join(outsideRoot, 'state');
+      const outsideHarnessDir = path.join(outsideRoot, 'hermes');
+      fs.mkdirSync(outsideStateDir, { recursive: true });
+      fs.mkdirSync(outsideHarnessDir, { recursive: true });
+      fs.writeFileSync(
+        path.join(outsideHarnessDir, '.env'),
+        'OPENAI_API_KEY=dummy-outside-key\n',
+        'utf8'
+      );
+
+      const outsideConfigPath = path.join(outsideHarnessDir, 'config.yaml');
+      fs.writeFileSync(
+        outsideConfigPath,
+        [
+          '# Outside tmpdir live harness config',
+          'model:',
+          '  provider: openai',
+          '  default: openai/gpt-4.1',
+          'providers:',
+          '  openai:',
+          '    base_url: https://api.openai.com/v1',
+          '    api_key_env: OPENAI_API_KEY',
+          '    models:',
+          '      - gpt-4.1',
+          '      - gpt-4o-legacy',
+          '',
+        ].join('\n'),
+        'utf8'
+      );
+      const preOutsideSha = sha256File(outsideConfigPath);
+
+      const { hermesPath: tmpHermesPath, catalogPath } = makeHarnessSandbox();
+      const preTmpSha = sha256File(tmpHermesPath);
+
+      activateFreeze(outsideStateDir, 'emergency-freeze');
+      process.env['ROUTERSYNC_ALLOW_LIVE_HOME_WRITE'] = '1';
+
+      await expect(
+        runAppsApplyCommand({
+          app: 'hermes',
+          config: outsideConfigPath,
+          catalog: catalogPath,
+          stateDir: outsideStateDir,
+          sandboxCopy: true,
+          isTTY: false,
+          json: true,
+        })
+      ).rejects.toThrow(/SANDBOX_OUTSIDE_TMPDIR/);
+
+      expect(sha256File(outsideConfigPath)).toBe(preOutsideSha);
+      expect(fs.existsSync(`${outsideConfigPath}.routersync.bak`)).toBe(false);
+      expect(fs.existsSync(path.join(outsideStateDir, 'apply-history.json'))).toBe(false);
+
+      // Also reject when --config is outside os.tmpdir() even if --backup is inside os.tmpdir() (kills Q11a)
+      const insideTmpBackupPath = path.join(path.dirname(tmpHermesPath), 'inside-tmp-explicit.bak');
+      await expect(
+        runAppsApplyCommand({
+          app: 'hermes',
+          config: outsideConfigPath,
+          backup: insideTmpBackupPath,
+          catalog: catalogPath,
+          stateDir: outsideStateDir,
+          sandboxCopy: true,
+          isTTY: false,
+          json: true,
+        })
+      ).rejects.toThrow(/SANDBOX_OUTSIDE_TMPDIR/);
+      expect(sha256File(outsideConfigPath)).toBe(preOutsideSha);
+      expect(fs.existsSync(insideTmpBackupPath)).toBe(false);
+
+      // Also reject when config is inside os.tmpdir() but --backup escapes outside os.tmpdir()
+      const escapedBackupPath = path.join(outsideRoot, 'escaped.bak');
+      await expect(
+        runAppsApplyCommand({
+          app: 'hermes',
+          config: tmpHermesPath,
+          backup: escapedBackupPath,
+          catalog: catalogPath,
+          stateDir: outsideStateDir,
+          sandboxCopy: true,
+          isTTY: false,
+          json: true,
+        })
+      ).rejects.toThrow(/SANDBOX_OUTSIDE_TMPDIR/);
+
+      expect(sha256File(tmpHermesPath)).toBe(preTmpSha);
+      expect(fs.existsSync(escapedBackupPath)).toBe(false);
+    } finally {
+      delete process.env['ROUTERSYNC_ALLOW_LIVE_HOME_WRITE'];
+      fs.rmSync(outsideRoot, { recursive: true, force: true });
+    }
+    expect(fs.existsSync(outsideRoot)).toBe(false);
+  });
+
+  it('invalidates subsequent propose receipts on full & pre-pilot router rollback while preserving earlier receipts on partial rollback (Defect B / Q9 / Q12)', async () => {
+    const SECOND_PROPOSE_PIN_MODELS = [
+      'openai/gpt-4.1-mini',
+      'openai/gpt-4.1',
+      ...PROPOSE_PIN_MODELS.slice(2),
+    ];
+
+    function seedIsolatedRouterScenario(label: string) {
+      const root = fs.mkdtempSync(path.join(os.tmpdir(), `rs-c46-f3-rb-${label}-`));
+      tmpDirs.push(root);
+      const stateDir = path.join(root, 'state');
+      const routerDir = path.join(root, 'router');
+      fs.mkdirSync(stateDir, { recursive: true });
+      fs.mkdirSync(routerDir, { recursive: true });
+
+      const routerDbPath = path.join(routerDir, 'nine-rb.sqlite');
+      const iso = '2026-11-25T08:00:00.000Z';
+      const db = openBetterSqlite3(routerDbPath, { restrictToDir: routerDir });
+      db.exec(`
+        CREATE TABLE combos (
+          id TEXT PRIMARY KEY,
+          name TEXT UNIQUE NOT NULL,
+          kind TEXT,
+          models TEXT NOT NULL,
+          createdAt TEXT NOT NULL,
+          updatedAt TEXT NOT NULL
+        );
+        CREATE TABLE providerConnections (
+          id TEXT PRIMARY KEY,
+          provider TEXT NOT NULL,
+          authType TEXT NOT NULL,
+          name TEXT,
+          email TEXT,
+          priority INTEGER DEFAULT 1,
+          isActive INTEGER DEFAULT 1,
+          data TEXT NOT NULL,
+          createdAt TEXT NOT NULL,
+          updatedAt TEXT NOT NULL
+        );
+        CREATE TABLE providerNodes (
+          id TEXT PRIMARY KEY,
+          type TEXT,
+          name TEXT,
+          data TEXT,
+          createdAt TEXT,
+          updatedAt TEXT
+        );
+        CREATE TABLE models (
+          id TEXT PRIMARY KEY,
+          provider TEXT NOT NULL,
+          modelId TEXT NOT NULL,
+          isActive INTEGER DEFAULT 1
+        );
+        CREATE TABLE kv (
+          scope TEXT NOT NULL,
+          key TEXT NOT NULL,
+          value TEXT NOT NULL,
+          PRIMARY KEY (scope, key)
+        );
+        CREATE TABLE settings (
+          id INTEGER PRIMARY KEY CHECK (id = 1),
+          data TEXT NOT NULL
+        );
+        CREATE TABLE _meta (key TEXT PRIMARY KEY, value TEXT);
+        INSERT INTO settings (id, data) VALUES (1, '{}');
+      `);
+      for (const fullId of INITIAL_TEN_MODELS) {
+        db.prepare('INSERT INTO models (id, provider, modelId, isActive) VALUES (?, ?, ?, 1)').run(
+          fullId,
+          'openai',
+          fullId.split('/')[1]!
+        );
+      }
+      db.prepare('INSERT INTO _meta (key, value) VALUES (?, ?)').run(
+        'appVersion',
+        NINE_ROUTER_EXPECTED_APP_VERSION
+      );
+      db.prepare(
+        'INSERT INTO providerConnections (id, provider, authType, name, email, priority, isActive, data, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+      ).run(
+        'conn-openai',
+        'openai',
+        'apikey',
+        'OpenAI RB',
+        null,
+        1,
+        1,
+        JSON.stringify({
+          apiKey: 'dummy-rb-openai-key',
+          baseUrl: 'https://api.openai.com/v1',
+          prefix: 'openai',
+        }),
+        iso,
+        iso
+      );
+      db.prepare(
+        'INSERT INTO combos (id, name, kind, models, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?)'
+      ).run('coding-main', 'coding-main', null, JSON.stringify(INITIAL_TEN_MODELS), iso, iso);
+      db.close();
+
+      const configPath = path.join(routerDir, 'routersync.yaml');
+      const writePins = (pins: string[]) => {
+        fs.writeFileSync(
+          configPath,
+          [
+            'version: 1',
+            'routers:',
+            '  - id: nine',
+            '    adapter: 9router',
+            '    isolated: false',
+            '    baseUrl: http://127.0.0.1:9',
+            '    db:',
+            `      path: ${JSON.stringify(routerDbPath)}`,
+            '    reload:',
+            '      type: none',
+            'combos:',
+            '  - name: coding-main',
+            '    routers:',
+            '      - nine',
+            '    size: 10',
+            '    constraints:',
+            '      freeOnly: false',
+            '    pin:',
+            ...pins.map((m) => `      - ${m}`),
+            '    autoMaintain: true',
+            'adopt:',
+            '  - router: nine',
+            '    name: coding-main',
+            '    mode: full',
+            '',
+          ].join('\n'),
+          'utf8'
+        );
+      };
+
+      writePins(PROPOSE_PIN_MODELS);
+      upsertStandingConsentTarget(stateDir, {
+        target: 'router:nine/coding-main',
+        level: 'propose',
+      });
+
+      return { stateDir, routerDbPath, configPath, writePins };
+    }
+
+    // 1. Two-apply full rollback (snap_1 -> snap_2 -> rollback snap_1): BOTH receipts marked rolledBack=true
+    {
+      const s1 = seedIsolatedRouterScenario('full');
+      const apply1 = await runApplyCommand({
+        configPath: s1.configPath,
+        stateDir: s1.stateDir,
+        write: true,
+        isTTY: true,
+        promptFn: async () => 'chay',
+        json: true,
+      });
+      const snap1 = apply1.snapshots?.[0]?.snapshotId;
+      expect(snap1).toBeTruthy();
+
+      s1.writePins(SECOND_PROPOSE_PIN_MODELS);
+      const apply2 = await runApplyCommand({
+        configPath: s1.configPath,
+        stateDir: s1.stateDir,
+        write: true,
+        isTTY: true,
+        promptFn: async () => 'chay',
+        json: true,
+      });
+      const snap2 = apply2.snapshots?.[0]?.snapshotId;
+      expect(snap2).toBeTruthy();
+      expect(snap2).not.toBe(snap1);
+
+      expect(readApplyHistory(s1.stateDir).receipts.map((r) => r.rolledBack)).toEqual([
+        false,
+        false,
+      ]);
+
+      await runRollbackCommand({
+        configPath: s1.configPath,
+        stateDir: s1.stateDir,
+        snapshotId: snap1,
+        write: true,
+        isTTY: true,
+        promptFn: async () => 'chay',
+        json: true,
+      });
+
+      const histAfterFull = readApplyHistory(s1.stateDir);
+      expect(histAfterFull.valid).toBe(true);
+      expect(histAfterFull.receipts).toHaveLength(2);
+      expect(histAfterFull.receipts[0]!.snapshotOrBackupRef).toBe(snap1);
+      expect(histAfterFull.receipts[1]!.snapshotOrBackupRef).toBe(snap2);
+      expect(histAfterFull.receipts.map((r) => r.rolledBack)).toEqual([true, true]);
+      expect(findVerifiedProposeReceipt(s1.stateDir, 'router:nine/coding-main')).toBeNull();
+      expectAutoSafePromotionDenied(s1.stateDir, 'router:nine/coding-main');
+    }
+
+    // 2. Two-apply partial rollback (snap_1 -> snap_2 -> rollback snap_2): snap_2 rolledBack=true, snap_1 stays rolledBack=false
+    {
+      const s2 = seedIsolatedRouterScenario('partial');
+      const apply1 = await runApplyCommand({
+        configPath: s2.configPath,
+        stateDir: s2.stateDir,
+        write: true,
+        isTTY: true,
+        promptFn: async () => 'chay',
+        json: true,
+      });
+      const snap1 = apply1.snapshots?.[0]?.snapshotId!;
+
+      s2.writePins(SECOND_PROPOSE_PIN_MODELS);
+      const apply2 = await runApplyCommand({
+        configPath: s2.configPath,
+        stateDir: s2.stateDir,
+        write: true,
+        isTTY: true,
+        promptFn: async () => 'chay',
+        json: true,
+      });
+      const snap2 = apply2.snapshots?.[0]?.snapshotId!;
+
+      await runRollbackCommand({
+        configPath: s2.configPath,
+        stateDir: s2.stateDir,
+        snapshotId: snap2,
+        write: true,
+        isTTY: true,
+        promptFn: async () => 'chay',
+        json: true,
+      });
+
+      const histAfterPartial = readApplyHistory(s2.stateDir);
+      expect(histAfterPartial.valid).toBe(true);
+      expect(histAfterPartial.receipts).toHaveLength(2);
+      expect(histAfterPartial.receipts[0]!.rolledBack).toBe(false);
+      expect(histAfterPartial.receipts[1]!.rolledBack).toBe(true);
+      expect(
+        findVerifiedProposeReceipt(s2.stateDir, 'router:nine/coding-main')?.snapshotOrBackupRef
+      ).toBe(snap1);
+      expect(() =>
+        assertEligibleForAutoSafe(s2.stateDir, 'router:nine/coding-main')
+      ).not.toThrow();
+    }
+
+    // 3. Manual pre-pilot snapshot rollback (snap_0 -> apply snap_1 -> rollback snap_0): snap_1 marked rolledBack=true
+    {
+      const s3 = seedIsolatedRouterScenario('manual-pre');
+      const { config } = loadConfigFile(s3.configPath);
+      const adapter = createAdapterForRouter(config.routers[0]!, s3.stateDir);
+      const snap0 = await adapter.createSnapshot();
+      snap0.metadata = { ...(snap0.metadata ?? {}), touchedComboIds: ['coding-main'] };
+      saveSnapshot(snap0, s3.stateDir);
+
+      const apply1 = await runApplyCommand({
+        configPath: s3.configPath,
+        stateDir: s3.stateDir,
+        write: true,
+        isTTY: true,
+        promptFn: async () => 'chay',
+        json: true,
+      });
+      const snap1 = apply1.snapshots?.[0]?.snapshotId!;
+      expect(snap1).not.toBe(snap0.id);
+      expect(findVerifiedProposeReceipt(s3.stateDir, 'router:nine/coding-main')).not.toBeNull();
+
+      await runRollbackCommand({
+        configPath: s3.configPath,
+        stateDir: s3.stateDir,
+        snapshotId: snap0.id,
+        write: true,
+        isTTY: true,
+        promptFn: async () => 'chay',
+        json: true,
+      });
+
+      const histAfterManual = readApplyHistory(s3.stateDir);
+      expect(histAfterManual.valid).toBe(true);
+      expect(histAfterManual.receipts).toHaveLength(1);
+      expect(histAfterManual.receipts[0]!.snapshotOrBackupRef).toBe(snap1);
+      expect(histAfterManual.receipts[0]!.rolledBack).toBe(true);
+      expect(findVerifiedProposeReceipt(s3.stateDir, 'router:nine/coding-main')).toBeNull();
+      expectAutoSafePromotionDenied(s3.stateDir, 'router:nine/coding-main');
     }
   });
 });
@@ -947,6 +1416,13 @@ describe('C46-F3: Full End-to-End os.tmpdir() Live Pilot Rehearsal (Router SQLit
     const postRollbackRow = readComboRowCanonicalSha(routerDbPath, 'coding-main');
     expect(postRollbackRow.models).toEqual(INITIAL_TEN_MODELS);
     expect(postRollbackRow.canonicalSha256).toBe(preRouterRowSha);
+    expect(findVerifiedProposeReceipt(stateDir, 'router:nine/coding-main')).toBeNull();
+    expectAutoSafePromotionDenied(stateDir, 'router:nine/coding-main');
+    expect(
+      readApplyHistory(stateDir)
+        .receipts.filter((r) => r.target === 'router:nine/coding-main')
+        .every((r) => r.rolledBack === true)
+    ).toBe(true);
 
     // Also verify raw pre-pilot SQLite file backup restores 100% byte-identical SHA-256
     fs.copyFileSync(preRouterFileBackup, routerDbPath);

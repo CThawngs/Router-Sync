@@ -205,7 +205,15 @@ export async function runRollbackCommand(options: RollbackCommandOptions): Promi
     markApplyReceiptRolledBack(sDir, {
       targetPrefix: `router:${router.id}/`,
       snapshotOrBackupRef: snapshot.id,
+      appliedAtOrAfter: snapshot.timestamp,
     });
+    if (router.adapter && router.adapter !== router.id) {
+      markApplyReceiptRolledBack(sDir, {
+        targetPrefix: `router:${router.adapter}/`,
+        snapshotOrBackupRef: snapshot.id,
+        appliedAtOrAfter: snapshot.timestamp,
+      });
+    }
   }
 
   if (options.json) {

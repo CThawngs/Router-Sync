@@ -40,7 +40,6 @@ import {
   getAgentAppAdapter,
 } from '../apps/inspect.js';
 import {
-  assertHarnessWriteSandboxAllowed,
   assertOpenMausBotSafeFile,
   getHarnessWriteAdapter,
   listHarnessWriteAdapters,
@@ -427,10 +426,19 @@ export async function runAppsApplyCommand(options: AppsApplyCommandOptions): Pro
     );
   }
 
-  // 2. Legacy C45-WP2 isolated sandbox-copy mode (100% backward-compatible)
+  // 2. Legacy C45-WP2 isolated sandbox-copy mode (100% backward-compatible, strictly os.tmpdir() only)
   if (options.sandboxCopy && !options.write) {
-    assertOpenMausBotSafeFile(options.config);
-    assertHarnessWriteSandboxAllowed(options.config);
+    try {
+      assertOpenMausBotSafeFile(options.config);
+      assertControlledWriteSandbox(options.config, 'harness-config', {});
+      assertControlledWriteSandbox(
+        options.backup ?? `${options.config}.routersync.bak`,
+        'harness-config',
+        {}
+      );
+    } catch (err) {
+      failAppsWrite(err instanceof Error ? err : new Error(String(err)), options.json);
+    }
     const adapter = requireWriteAdapter(options.app);
     const catalog = loadCatalogJson(options.catalog, options.stateDir);
     const effectiveHomeDir = resolveEffectiveHarnessHomeDir(options.config, options.home);
@@ -480,9 +488,10 @@ export async function runAppsApplyCommand(options: AppsApplyCommandOptions): Pro
   try {
     assertOpenMausBotSafeFile(options.config);
     assertControlledWriteSandbox(options.config, 'harness-config');
-    if (options.backup) {
-      assertControlledWriteSandbox(options.backup, 'harness-config');
-    }
+    assertControlledWriteSandbox(
+      options.backup ?? `${options.config}.routersync.bak`,
+      'harness-config'
+    );
   } catch (err) {
     failAppsWrite(err instanceof Error ? err : new Error(String(err)), options.json);
   }
