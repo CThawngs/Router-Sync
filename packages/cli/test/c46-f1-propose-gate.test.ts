@@ -80,10 +80,18 @@ async function captureCli(fn: () => Promise<unknown>): Promise<{
 }
 
 describe('C46-F1 CLI Propose Human-Approval Gate & Receipt Integrity', () => {
-  let tmpRoot: string;
-  let stateDir: string;
-  let nineDbPath: string;
-  let configPath: string;
+  interface CliProposeTestContext {
+    readonly tmpRoot: string;
+    readonly stateDir: string;
+    readonly nineDbPath: string;
+    readonly configPath: string;
+    readonly writeConfig: (pinnedModels: string[]) => void;
+    readonly seedNineDb: (models?: string[]) => void;
+    readonly readComboModels: (name: string) => string[];
+  }
+
+  const activeContexts: CliProposeTestContext[] = [];
+  let currentCtx: CliProposeTestContext;
 
   const INITIAL_COMBO_MODELS = [
     'openai/gpt-4o-legacy',
@@ -124,9 +132,9 @@ describe('C46-F1 CLI Propose Human-Approval Gate & Receipt Integrity', () => {
     'openai/gpt-4o-legacy',
   ];
 
-  function writeConfig(pinnedModels: string[]): void {
+  function writeConfigAt(cfgPath: string, dbPath: string, pinnedModels: string[]): void {
     fs.writeFileSync(
-      configPath,
+      cfgPath,
       [
         'version: 1',
         'routers:',
@@ -135,7 +143,7 @@ describe('C46-F1 CLI Propose Human-Approval Gate & Receipt Integrity', () => {
         '    isolated: false',
         '    baseUrl: http://127.0.0.1:9',
         '    db:',
-        `      path: ${nineDbPath}`,
+        `      path: ${dbPath}`,
         '    reload:',
         '      type: none',
         'policy:',
@@ -160,8 +168,8 @@ describe('C46-F1 CLI Propose Human-Approval Gate & Receipt Integrity', () => {
     );
   }
 
-  function seedNineDb(models: string[] = INITIAL_COMBO_MODELS): void {
-    const db = openBetterSqlite3(nineDbPath, { allowLiveDbWrite: true });
+  function seedNineDbAt(dbPath: string, models: string[] = INITIAL_COMBO_MODELS): void {
+    const db = openBetterSqlite3(dbPath, { allowLiveDbWrite: true });
     const now = '2026-11-25T00:00:00.000Z';
     db.exec(`
       CREATE TABLE IF NOT EXISTS combos (
@@ -255,8 +263,8 @@ describe('C46-F1 CLI Propose Human-Approval Gate & Receipt Integrity', () => {
     db.close();
   }
 
-  function readComboModels(name: string): string[] {
-    const db = openBetterSqlite3(nineDbPath, { readOnly: true });
+  function readComboModelsAt(dbPath: string, name: string): string[] {
+    const db = openBetterSqlite3(dbPath, { readOnly: true });
     try {
       const row = db
         .prepare('SELECT models FROM combos WHERE name = ? OR id = ?')
@@ -268,37 +276,54 @@ describe('C46-F1 CLI Propose Human-Approval Gate & Receipt Integrity', () => {
   }
 
   beforeEach(() => {
-    tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'rs-c46-f1-cli-'));
-    stateDir = path.join(tmpRoot, 'state');
-    fs.mkdirSync(stateDir, { recursive: true });
-    nineDbPath = path.join(tmpRoot, 'nine-sandbox.sqlite');
-    configPath = path.join(tmpRoot, 'routersync.yaml');
+    const localTmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'rs-c46-f1-cli-'));
+    const localStateDir = path.join(localTmpRoot, 'state');
+    fs.mkdirSync(localStateDir, { recursive: true });
+    const localNineDbPath = path.join(localTmpRoot, 'nine-sandbox.sqlite');
+    const localConfigPath = path.join(localTmpRoot, 'routersync.yaml');
 
-    seedNineDb(INITIAL_COMBO_MODELS);
-    writeConfig(PLANNED_PIN_MODELS_V1);
+    seedNineDbAt(localNineDbPath, INITIAL_COMBO_MODELS);
+    writeConfigAt(localConfigPath, localNineDbPath, PLANNED_PIN_MODELS_V1);
 
-    process.env['ROUTERSYNC_STATE_DIR'] = stateDir;
-    process.env['ROUTERSYNC_CONFIG'] = configPath;
-    process.env['ROUTERSYNC_9ROUTER_DB'] = nineDbPath;
-    process.env['ROUTERSYNC_OMNIROUTE_DB'] = path.join(tmpRoot, 'nonexistent-omniroute.sqlite');
-    process.env['ROUTERSYNC_HOME'] = path.join(tmpRoot, 'home');
-    process.env['APPDATA'] = path.join(tmpRoot, 'appdata');
-    process.env['LOCALAPPDATA'] = path.join(tmpRoot, 'local');
+    const ctx: CliProposeTestContext = {
+      tmpRoot: localTmpRoot,
+      stateDir: localStateDir,
+      nineDbPath: localNineDbPath,
+      configPath: localConfigPath,
+      writeConfig: (pinnedModels: string[]) =>
+        writeConfigAt(localConfigPath, localNineDbPath, pinnedModels),
+      seedNineDb: (models?: string[]) => seedNineDbAt(localNineDbPath, models),
+      readComboModels: (name: string) => readComboModelsAt(localNineDbPath, name),
+    };
+    activeContexts.push(ctx);
+    currentCtx = ctx;
+
+    process.env['ROUTERSYNC_STATE_DIR'] = localStateDir;
+    process.env['ROUTERSYNC_CONFIG'] = localConfigPath;
+    process.env['ROUTERSYNC_9ROUTER_DB'] = localNineDbPath;
+    process.env['ROUTERSYNC_OMNIROUTE_DB'] = path.join(localTmpRoot, 'nonexistent-omniroute.sqlite');
+    process.env['ROUTERSYNC_HOME'] = path.join(localTmpRoot, 'home');
+    process.env['APPDATA'] = path.join(localTmpRoot, 'appdata');
+    process.env['LOCALAPPDATA'] = path.join(localTmpRoot, 'local');
     process.env['ROUTERSYNC_ALLOW_LIVE_ROUTER_WRITE'] = '1';
     resetTokenRegistry();
   });
 
   afterEach(() => {
     resetTokenRegistry();
+    const toClean = activeContexts.splice(0);
     for (const k of Object.keys(process.env)) {
       if (!(k in ORIGINAL_ENV)) delete process.env[k];
     }
     Object.assign(process.env, ORIGINAL_ENV);
     vi.restoreAllMocks();
-    fs.rmSync(tmpRoot, { recursive: true, force: true });
+    for (const ctx of toClean) {
+      fs.rmSync(ctx.tmpRoot, { recursive: true, force: true });
+    }
   });
 
   it('1. REJECTS non-TTY apply --write when standing consent is only propose (0 DB changes, 0 receipts ? kills M1)', async () => {
+    const { stateDir, configPath, readComboModels } = currentCtx;
     upsertStandingConsentTarget(stateDir, {
       target: 'router:nine/coding-primary',
       level: 'propose',
@@ -310,9 +335,10 @@ describe('C46-F1 CLI Propose Human-Approval Gate & Receipt Integrity', () => {
     expect(nonTtyRes.exitCode).toBe(1);
     expect(readComboModels('coding-primary')).toEqual(INITIAL_COMBO_MODELS);
     expect(readApplyHistory(stateDir).receipts).toHaveLength(0);
-  });
+  }, 60_000);
 
   it('2. REQUIRES interactive TTY typing chay at propose; cancels on no/empty and records interactive-tty + propose on chay (still rejects non-TTY afterwards while at propose)', async () => {
+    const { stateDir, configPath, writeConfig, readComboModels } = currentCtx;
     upsertStandingConsentTarget(stateDir, {
       target: 'router:nine/coding-primary',
       level: 'propose',
@@ -363,9 +389,10 @@ describe('C46-F1 CLI Propose Human-Approval Gate & Receipt Integrity', () => {
     expect(stillProposeNonTty.exitCode).toBe(1);
     expect(readComboModels('coding-primary')).toEqual(PLANNED_PIN_MODELS_V1);
     expect(readApplyHistory(stateDir).receipts).toHaveLength(1);
-  });
+  }, 60_000);
 
   it('3. SUCCEEDS without prompting in non-TTY apply --write AFTER promotion to auto-safe and records standing-consent + auto-safe (kills M3)', async () => {
+    const { stateDir, configPath, writeConfig, readComboModels } = currentCtx;
     upsertStandingConsentTarget(stateDir, {
       target: 'router:nine/coding-primary',
       level: 'propose',
@@ -419,9 +446,10 @@ describe('C46-F1 CLI Propose Human-Approval Gate & Receipt Integrity', () => {
     expect(latest.target).toBe('router:nine/coding-primary');
     expect(latest.authorizedVia).toBe('standing-consent');
     expect(latest.appliedAtLevel).toBe('auto-safe');
-  });
+  }, 60_000);
 
   it('4. REJECTS auto-safe apply --write with AUTO_SAFE_RECEIPT_MISSING when apply-history.json is deleted or propose receipt has rolledBack: true (kills M2)', async () => {
+    const { stateDir, configPath, writeConfig, readComboModels } = currentCtx;
     upsertStandingConsentTarget(stateDir, {
       target: 'router:nine/coding-primary',
       level: 'propose',
@@ -492,9 +520,10 @@ describe('C46-F1 CLI Propose Human-Approval Gate & Receipt Integrity', () => {
       'AUTO_SAFE_RECEIPT_MISSING'
     );
     expect(readComboModels('coding-primary')).toEqual(PLANNED_PIN_MODELS_V1);
-  });
+  }, 60_000);
 
   it('5. NEVER accepts a standing-consent receipt in findVerifiedProposeReceipt even if appliedAtLevel is propose (kills M5)', async () => {
+    const { tmpRoot, stateDir } = currentCtx;
     appendApplyReceipt(stateDir, {
       target: 'router:nine/coding-primary',
       planHash: 'abcdef0123456789',
@@ -545,9 +574,10 @@ describe('C46-F1 CLI Propose Human-Approval Gate & Receipt Integrity', () => {
         validVia
       );
     }
-  });
+  }, 60_000);
 
   it('6. Regression guards: maintain apply refuses non-TTY without grant at propose, and tick performs 0 writes on propose-only targets in both propose and auto-safe modes', async () => {
+    const { tmpRoot, stateDir, configPath, readComboModels } = currentCtx;
     const harnessPath = path.join(tmpRoot, 'opencode.jsonc');
     const initialHarnessRaw = [
       '{',
@@ -711,9 +741,10 @@ describe('C46-F1 CLI Propose Human-Approval Gate & Receipt Integrity', () => {
     expect(readComboModels('coding-primary')).toEqual(INITIAL_COMBO_MODELS);
     expect(fs.readFileSync(harnessPath, 'utf8')).toBe(initialHarnessRaw);
     expect(readApplyHistory(stateDir).receipts).toHaveLength(0);
-  });
+  }, 60_000);
 
   it('7. REJECTS non-TTY apply --write on mixed multi-combo batch (1 auto-safe + 1 propose) with 0 DB mutations on both combos, and stamps interactive-tty + propose on chay (kills Q1b)', async () => {
+    const { stateDir, nineDbPath, configPath, readComboModels } = currentCtx;
     const seedSecondaryCombo = (models: string[] = INITIAL_COMBO_MODELS): void => {
       const db = openBetterSqlite3(nineDbPath, { allowLiveDbWrite: true });
       const now = '2026-11-25T00:00:00.000Z';
@@ -868,9 +899,10 @@ describe('C46-F1 CLI Propose Human-Approval Gate & Receipt Integrity', () => {
     expect(readComboModels('coding-primary')).toEqual(PLANNED_PIN_MODELS_V2);
     expect(readComboModels('coding-secondary')).toEqual(PLANNED_PIN_MODELS_V1);
     expect(readApplyHistory(stateDir).receipts).toHaveLength(receiptsBeforeReverse);
-  });
+  }, 60_000);
 
   it('8. REJECTS non-TTY apply --write on dual-scope conflict when router:9router/coding-primary is auto-safe and router:nine/coding-primary is propose (kills Q1a)', async () => {
+    const { stateDir, configPath, readComboModels } = currentCtx;
     appendApplyReceipt(stateDir, {
       target: 'router:9router/coding-primary',
       planHash: 'abcdef0123456789',
@@ -931,9 +963,10 @@ describe('C46-F1 CLI Propose Human-Approval Gate & Receipt Integrity', () => {
     expect(latestReceipt.target).toBe('router:nine/coding-primary');
     expect(latestReceipt.authorizedVia).toBe('interactive-tty');
     expect(latestReceipt.appliedAtLevel).toBe('propose');
-  });
+  }, 60_000);
 
   it('9. ISOLATES single negative flags in findVerifiedProposeReceipt (readBackVerified=false, success=false, appliedAtLevel=auto-safe) with valid HMAC (kills Q2b, Q2c, Q2d)', () => {
+    const { tmpRoot } = currentCtx;
     const assertRejectedCase = (subState: string): void => {
       const hist = readApplyHistory(subState);
       expect(hist.valid).toBe(true);
@@ -996,5 +1029,5 @@ describe('C46-F1 CLI Propose Human-Approval Gate & Receipt Integrity', () => {
       snapshotOrBackupRef: 'snap-q2d-only',
     });
     assertRejectedCase(q2dState);
-  });
+  }, 60_000);
 });

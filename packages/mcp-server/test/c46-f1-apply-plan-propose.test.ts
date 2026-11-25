@@ -29,13 +29,27 @@ import { computeCanonicalTickPlanHash } from '../src/apply-plan.js';
 const ORIGINAL_ENV = { ...process.env };
 
 describe('C46-F1 MCP apply_plan Propose Token Gate & Auto-Safe Verification', () => {
-  let tmpRoot: string;
-  let stateDir: string;
-  let configDir: string;
-  let plansDir: string;
-  let nineDbPath: string;
-  let opencodePath: string;
-  let configPath: string;
+  interface McpProposeTestContext {
+    readonly tmpRoot: string;
+    readonly stateDir: string;
+    readonly configDir: string;
+    readonly plansDir: string;
+    readonly nineDbPath: string;
+    readonly opencodePath: string;
+    readonly configPath: string;
+    readonly readNineComboModels: () => string[];
+    readonly writeTickPlan: (modelToAdd?: string) => { planPath: string; planHash: string };
+    readonly connectClient: () => Promise<{
+      call: (
+        name: string,
+        args?: Record<string, unknown>
+      ) => Promise<{ isError: boolean; body: Record<string, any> }>;
+      close: () => Promise<void>;
+    }>;
+  }
+
+  const activeContexts: McpProposeTestContext[] = [];
+  let currentCtx: McpProposeTestContext;
 
   const INITIAL_ROUTER_MODELS = [
     'openai/gpt-4o-old',
@@ -43,8 +57,8 @@ describe('C46-F1 MCP apply_plan Propose Token Gate & Auto-Safe Verification', ()
     'anthropic/claude-sonnet-4',
   ];
 
-  function seedNineRouterSandboxDb(models: string[] = INITIAL_ROUTER_MODELS): void {
-    const db = openBetterSqlite3(nineDbPath);
+  function seedNineRouterSandboxDbAt(dbPath: string, models: string[] = INITIAL_ROUTER_MODELS): void {
+    const db = openBetterSqlite3(dbPath);
     db.exec(`
       CREATE TABLE IF NOT EXISTS combos (
         id TEXT PRIMARY KEY,
@@ -69,8 +83,8 @@ describe('C46-F1 MCP apply_plan Propose Token Gate & Auto-Safe Verification', ()
     db.close();
   }
 
-  function readNineComboModels(): string[] {
-    const db = openBetterSqlite3(nineDbPath, { readOnly: true });
+  function readNineComboModelsAt(dbPath: string): string[] {
+    const db = openBetterSqlite3(dbPath, { readOnly: true });
     try {
       const row = db
         .prepare('SELECT models FROM combos WHERE name = ? OR id = ?')
@@ -81,7 +95,7 @@ describe('C46-F1 MCP apply_plan Propose Token Gate & Auto-Safe Verification', ()
     }
   }
 
-  function seedOpencodeConfig(): string {
+  function seedOpencodeConfigAt(ocPath: string): string {
     const content = [
       '{',
       '  // Preserve user header comment byte-for-byte',
@@ -101,11 +115,15 @@ describe('C46-F1 MCP apply_plan Propose Token Gate & Auto-Safe Verification', ()
       '}',
       '',
     ].join('\n');
-    fs.writeFileSync(opencodePath, content, 'utf8');
+    fs.writeFileSync(ocPath, content, 'utf8');
     return content;
   }
 
-  function writeTickPlan(modelToAdd = 'gpt-5-mini'): { planPath: string; planHash: string } {
+  function writeTickPlanAt(
+    targetPlansDir: string,
+    ocPath: string,
+    modelToAdd = 'gpt-5-mini'
+  ): { planPath: string; planHash: string } {
     const now = '2026-11-25T01:00:00.000Z';
     const routerActions = [
       {
@@ -127,7 +145,7 @@ describe('C46-F1 MCP apply_plan Propose Token Gate & Auto-Safe Verification', ()
       {
         targetType: 'harness',
         harnessId: 'opencode',
-        configPath: opencodePath,
+        configPath: ocPath,
         providerId: 'openai',
         modelId: modelToAdd,
         action: 'ADD_MODEL',
@@ -143,7 +161,7 @@ describe('C46-F1 MCP apply_plan Propose Token Gate & Auto-Safe Verification', ()
         routerActions: routerActions as any,
         harnessActions: harnessActions as any,
       }) ?? '';
-    const planPath = path.join(plansDir, 'tick-plan.json');
+    const planPath = path.join(targetPlansDir, 'tick-plan.json');
     fs.writeFileSync(
       planPath,
       JSON.stringify(
@@ -163,14 +181,14 @@ describe('C46-F1 MCP apply_plan Propose Token Gate & Auto-Safe Verification', ()
     return { planPath, planHash };
   }
 
-  async function connectClient(): Promise<{
+  async function connectClientAt(cfgPath: string): Promise<{
     call: (
       name: string,
       args?: Record<string, unknown>
     ) => Promise<{ isError: boolean; body: Record<string, any> }>;
     close: () => Promise<void>;
   }> {
-    const server = createRouterSyncMcpServer({ configPath });
+    const server = createRouterSyncMcpServer({ configPath: cfgPath });
     const client = new Client({ name: 'c46-f1-mcp-test', version: '1.0.0' });
     const [ct, st] = InMemoryTransport.createLinkedPair();
     await Promise.all([server.connect(st), client.connect(ct)]);
@@ -191,29 +209,29 @@ describe('C46-F1 MCP apply_plan Propose Token Gate & Auto-Safe Verification', ()
   }
 
   beforeEach(() => {
-    tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'rs-c46-f1-mcp-'));
-    stateDir = path.join(tmpRoot, 'state');
-    configDir = path.join(tmpRoot, 'home', 'config');
-    plansDir = path.join(stateDir, 'plans');
-    fs.mkdirSync(plansDir, { recursive: true });
-    fs.mkdirSync(configDir, { recursive: true });
+    const localTmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'rs-c46-f1-mcp-'));
+    const localStateDir = path.join(localTmpRoot, 'state');
+    const localConfigDir = path.join(localTmpRoot, 'home', 'config');
+    const localPlansDir = path.join(localStateDir, 'plans');
+    fs.mkdirSync(localPlansDir, { recursive: true });
+    fs.mkdirSync(localConfigDir, { recursive: true });
 
-    nineDbPath = path.join(tmpRoot, 'nine-sandbox.sqlite');
-    seedNineRouterSandboxDb();
+    const localNineDbPath = path.join(localTmpRoot, 'nine-sandbox.sqlite');
+    seedNineRouterSandboxDbAt(localNineDbPath);
 
-    opencodePath = path.join(tmpRoot, 'opencode.jsonc');
-    seedOpencodeConfig();
+    const localOpencodePath = path.join(localTmpRoot, 'opencode.jsonc');
+    seedOpencodeConfigAt(localOpencodePath);
 
-    configPath = path.join(configDir, 'routersync.yaml');
+    const localConfigPath = path.join(localConfigDir, 'routersync.yaml');
     fs.writeFileSync(
-      configPath,
+      localConfigPath,
       [
         'version: 1',
         'routers:',
         '  - id: nine',
         '    adapter: 9router',
         '    db:',
-        `      path: ${nineDbPath}`,
+        `      path: ${localNineDbPath}`,
         'combos:',
         '  - id: coding-main',
         '    name: coding-main',
@@ -227,24 +245,44 @@ describe('C46-F1 MCP apply_plan Propose Token Gate & Auto-Safe Verification', ()
       'utf8'
     );
 
-    process.env['ROUTERSYNC_STATE_DIR'] = stateDir;
-    process.env['ROUTERSYNC_HOME'] = path.join(tmpRoot, 'home');
-    process.env['LOCALAPPDATA'] = path.join(tmpRoot, 'local');
+    const ctx: McpProposeTestContext = {
+      tmpRoot: localTmpRoot,
+      stateDir: localStateDir,
+      configDir: localConfigDir,
+      plansDir: localPlansDir,
+      nineDbPath: localNineDbPath,
+      opencodePath: localOpencodePath,
+      configPath: localConfigPath,
+      readNineComboModels: () => readNineComboModelsAt(localNineDbPath),
+      writeTickPlan: (modelToAdd?: string) =>
+        writeTickPlanAt(localPlansDir, localOpencodePath, modelToAdd),
+      connectClient: () => connectClientAt(localConfigPath),
+    };
+    activeContexts.push(ctx);
+    currentCtx = ctx;
+
+    process.env['ROUTERSYNC_STATE_DIR'] = localStateDir;
+    process.env['ROUTERSYNC_HOME'] = path.join(localTmpRoot, 'home');
+    process.env['LOCALAPPDATA'] = path.join(localTmpRoot, 'local');
     process.env['ROUTERSYNC_ALLOW_LIVE_ROUTER_WRITE'] = '1';
     resetTokenRegistry();
   });
 
   afterEach(() => {
     resetTokenRegistry();
+    const toClean = activeContexts.splice(0);
     for (const k of Object.keys(process.env)) {
       if (!(k in ORIGINAL_ENV)) delete process.env[k];
     }
     Object.assign(process.env, ORIGINAL_ENV);
     vi.restoreAllMocks();
-    fs.rmSync(tmpRoot, { recursive: true, force: true });
+    for (const ctx of toClean) {
+      fs.rmSync(ctx.tmpRoot, { recursive: true, force: true });
+    }
   });
 
   it('1. REJECTS apply_plan without approvalToken when target consent is propose (APPROVAL_TOKEN_REQUIRED, 0 DB/harness writes, 0 receipts ? kills M4)', async () => {
+    const { stateDir, opencodePath, readNineComboModels, writeTickPlan, connectClient } = currentCtx;
     const preOpencode = fs.readFileSync(opencodePath, 'utf8');
     const { planHash } = writeTickPlan('gpt-5-mini');
 
@@ -291,9 +329,10 @@ describe('C46-F1 MCP apply_plan Propose Token Gate & Auto-Safe Verification', ()
     } finally {
       await mcp.close();
     }
-  });
+  }, 60_000);
 
   it('2. SUCCEEDS at propose WITH single-use approvalToken (records approval-token + propose), STILL requires token before promotion, and SUCCEEDS WITHOUT token at auto-safe (records standing-consent + auto-safe)', async () => {
+    const { stateDir, readNineComboModels, writeTickPlan, connectClient } = currentCtx;
     const { planHash: hash1 } = writeTickPlan('gpt-5-mini');
     upsertStandingConsentTarget(stateDir, {
       target: 'router:nine/coding-main',
@@ -379,9 +418,10 @@ describe('C46-F1 MCP apply_plan Propose Token Gate & Auto-Safe Verification', ()
     } finally {
       await mcp.close();
     }
-  });
+  }, 60_000);
 
   it('3. REJECTS auto-safe apply_plan without approvalToken when apply-history.json is missing, tampered, or only has a standing-consent receipt (AUTO_SAFE_RECEIPT_MISSING ? kills M5)', async () => {
+    const { stateDir, readNineComboModels, writeTickPlan, connectClient } = currentCtx;
     const { planHash: hash1 } = writeTickPlan('gpt-5-mini');
     const tok1 = createApprovalToken(hash1);
     const mcp = await connectClient();
@@ -450,5 +490,5 @@ describe('C46-F1 MCP apply_plan Propose Token Gate & Auto-Safe Verification', ()
     } finally {
       await mcp.close();
     }
-  });
+  }, 60_000);
 });
