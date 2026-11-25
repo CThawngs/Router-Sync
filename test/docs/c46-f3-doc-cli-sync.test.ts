@@ -1,11 +1,9 @@
 /**
  * test/docs/c46-f3-doc-cli-sync.test.ts
  *
- * Ticket C46-F3 (`Phục vụ: S9, I4, I5`) — Reusable Doc-CLI Sync Validator &
- * `docs/runbook/LIVE-E2E-v2.md` Contract Suite.
- *
- * Exports `extractDocCliInvocations` and `verifyDocCliSync` so Ticket C46-F6
- * can reuse the exact same parser/validator across all repository docs.
+ * Ticket C46-F3 & C46-F6 (`Phục vụ: S9, I4, I5`) — Reusable Doc-CLI Sync Validator,
+ * `docs/runbook/LIVE-E2E-v2.md` Contract Suite, and `docs/runbook/OWNER-CHECKLIST.md`
+ * 1-Page Owner Checklist Contract Suite.
  */
 
 import * as fs from 'node:fs';
@@ -358,5 +356,89 @@ describe('C46-F3: docs/runbook/LIVE-E2E-v2.md Doc-CLI Sync & Complete Workflow C
     expect(check.issues[0]!.reason).toContain('--nonexistent-flag');
     expect(check.issues[1]!.reason).toContain('imaginary-subcommand');
     expect(check.issues[2]!.reason).toContain('tools/agent/does-not-exist.mjs');
+  });
+});
+
+describe('C46-F6: docs/runbook/OWNER-CHECKLIST.md 1-Page Checklist & Doc-CLI Sync Contract', () => {
+  const checklistPath = path.join(REPO_ROOT, 'docs', 'runbook', 'OWNER-CHECKLIST.md');
+
+  it('exists, stays <= 120 lines, includes S9 header, boundary note, and pre-flight rules box', () => {
+    expect(fs.existsSync(checklistPath), 'docs/runbook/OWNER-CHECKLIST.md must exist').toBe(true);
+    const markdown = fs.readFileSync(checklistPath, 'utf8');
+    const lines = markdown.split(/\r?\n/);
+
+    expect(lines.length).toBeLessThanOrEqual(120);
+    expect(markdown).toContain('- **Phục vụ: S9**');
+    expect(markdown).toContain('READY_FOR_OWNER_LIVE_PILOT');
+
+    // Pre-flight Rules Box requirements
+    const step1Idx = markdown.search(/^1\.\s+/m);
+    expect(step1Idx).toBeGreaterThan(0);
+    const preflightSection = markdown.slice(0, step1Idx);
+    expect(preflightSection).toContain('rs-pilot');
+    expect(preflightSection).toContain('rs-fast');
+    expect(preflightSection).toContain('Hermes');
+    expect(preflightSection).toContain('OpenCode');
+    expect(preflightSection).toContain('OpenMausBot');
+    expect(preflightSection).toContain('routines.json');
+    expect(preflightSection).toContain('bots.json');
+    expect(preflightSection).toMatch(/20[–-]31/);
+    expect(preflightSection).toContain('detectionLatencyMs');
+    expect(preflightSection).toContain('ROUTERSYNC_ALLOW_LIVE_ROUTER_WRITE=1');
+    expect(preflightSection).toContain('ROUTERSYNC_ALLOW_LIVE_HOME_WRITE=1');
+  });
+
+  it('enforces strictly 1 copy-pasteable command + 1 "Kết quả đúng:" line per numbered step and 0 CLI sync issues', () => {
+    const markdown = fs.readFileSync(checklistPath, 'utf8');
+    const syncRes = verifyDocCliSync(markdown);
+    expect(syncRes.issues).toEqual([]);
+
+    const stepHeadingMatches = [...markdown.matchAll(/^(\d+)\.\s+.+$/gm)];
+    expect(stepHeadingMatches.length).toBeGreaterThanOrEqual(12);
+
+    for (let i = 0; i < stepHeadingMatches.length; i += 1) {
+      const current = stepHeadingMatches[i]!;
+      const next = stepHeadingMatches[i + 1];
+      const start = current.index!;
+      const end = next ? next.index! : markdown.length;
+      const stepChunk = markdown.slice(start, end);
+      const stepNum = Number(current[1]);
+      expect(stepNum).toBe(i + 1);
+
+      const blocks = extractFencedShellBlocks(stepChunk);
+      expect(
+        blocks.length,
+        `Step ${stepNum} must contain exactly 1 fenced shell/powershell block`
+      ).toBe(1);
+
+      const logicalCommands = joinContinuedLines(blocks[0]!);
+      expect(
+        logicalCommands.length,
+        `Step ${stepNum} must contain strictly 1 copy-pasteable command line (got ${logicalCommands.length})`
+      ).toBe(1);
+
+      const expectedLines = stepChunk
+        .split(/\r?\n/)
+        .filter((l) => l.includes('Kết quả đúng:'));
+      expect(
+        expectedLines.length,
+        `Step ${stepNum} must have exactly 1 "Kết quả đúng:" line`
+      ).toBe(1);
+    }
+
+    const rawCmds = syncRes.invocations.map((inv) => inv.rawCommand);
+    expect(rawCmds.some((c) => c.startsWith('routersync doctor --json'))).toBe(true);
+    expect(rawCmds.some((c) => c.startsWith('routersync live-check'))).toBe(true);
+    expect(rawCmds.some((c) => c.startsWith('routersync consent grant'))).toBe(true);
+    expect(rawCmds.some((c) => c.startsWith('routersync plan --json'))).toBe(true);
+    expect(rawCmds.some((c) => c.startsWith('routersync apps plan'))).toBe(true);
+    expect(rawCmds.some((c) => c.startsWith('routersync apply --write'))).toBe(true);
+    expect(rawCmds.some((c) => c.startsWith('routersync apps apply'))).toBe(true);
+    expect(rawCmds.some((c) => c.startsWith('routersync tick --mode auto-safe'))).toBe(true);
+    expect(rawCmds.some((c) => c.startsWith('routersync freeze'))).toBe(true);
+    expect(rawCmds.some((c) => c.startsWith('routersync unfreeze'))).toBe(true);
+    expect(rawCmds.some((c) => c.startsWith('routersync rollback'))).toBe(true);
+    expect(rawCmds.some((c) => c.startsWith('routersync apps rollback'))).toBe(true);
+    expect(rawCmds.some((c) => c.startsWith('routersync pilot-report'))).toBe(true);
   });
 });
