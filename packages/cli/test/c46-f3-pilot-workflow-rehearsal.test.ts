@@ -30,6 +30,7 @@ import {
   assertEligibleForAutoSafe,
   findVerifiedProposeReceipt,
   isPathInsideDir,
+  markApplyReceiptRolledBack,
   openBetterSqlite3,
   readApplyHistory,
   resolveDeepCanonicalPath,
@@ -896,6 +897,50 @@ describe('C46-F3: apps apply --write Security Gates, Catalog Formats & Receipt L
       expect(snap1).not.toBe(snap0.id);
       expect(findVerifiedProposeReceipt(s3.stateDir, 'router:nine/coding-main')).not.toBeNull();
 
+      // Seed sibling harness:* and other-router receipts at/after snap0.timestamp to guard cross-target isolation (Q16b/c/d/e)
+      const siblingIso = new Date(
+        Math.max(Date.parse(snap0.timestamp), Date.now()) + 5_000
+      ).toISOString();
+      const dummyPlanHash = sha256Text('sibling-isolation-plan');
+      const hermesBakRef = path.join(s3.stateDir, 'hermes.routersync.bak');
+      const opencodeBakRef = path.join(s3.stateDir, 'opencode.routersync.bak');
+      appendApplyReceipt(s3.stateDir, {
+        target: 'harness:hermes',
+        planHash: dummyPlanHash,
+        appliedAt: siblingIso,
+        appliedAtLevel: 'propose',
+        authorizedVia: 'interactive-tty',
+        success: true,
+        readBackVerified: true,
+        readBackLevel: 'file-byte-verified',
+        rolledBack: false,
+        snapshotOrBackupRef: hermesBakRef,
+      });
+      appendApplyReceipt(s3.stateDir, {
+        target: 'harness:opencode',
+        planHash: dummyPlanHash,
+        appliedAt: siblingIso,
+        appliedAtLevel: 'propose',
+        authorizedVia: 'interactive-tty',
+        success: true,
+        readBackVerified: true,
+        readBackLevel: 'file-byte-verified',
+        rolledBack: false,
+        snapshotOrBackupRef: opencodeBakRef,
+      });
+      appendApplyReceipt(s3.stateDir, {
+        target: 'router:omni/coding-main',
+        planHash: dummyPlanHash,
+        appliedAt: siblingIso,
+        appliedAtLevel: 'propose',
+        authorizedVia: 'interactive-tty',
+        success: true,
+        readBackVerified: true,
+        readBackLevel: 'db-only',
+        rolledBack: false,
+        snapshotOrBackupRef: 'snap_omni_sibling_001',
+      });
+
       await runRollbackCommand({
         configPath: s3.configPath,
         stateDir: s3.stateDir,
@@ -908,11 +953,83 @@ describe('C46-F3: apps apply --write Security Gates, Catalog Formats & Receipt L
 
       const histAfterManual = readApplyHistory(s3.stateDir);
       expect(histAfterManual.valid).toBe(true);
-      expect(histAfterManual.receipts).toHaveLength(1);
+      expect(histAfterManual.receipts).toHaveLength(4);
       expect(histAfterManual.receipts[0]!.snapshotOrBackupRef).toBe(snap1);
       expect(histAfterManual.receipts[0]!.rolledBack).toBe(true);
       expect(findVerifiedProposeReceipt(s3.stateDir, 'router:nine/coding-main')).toBeNull();
       expectAutoSafePromotionDenied(s3.stateDir, 'router:nine/coding-main');
+      // Sibling harness:* and router:omni/* receipts MUST remain untouched (kills Q16b & prefix scope mutations)
+      expect(findVerifiedProposeReceipt(s3.stateDir, 'harness:hermes')).not.toBeNull();
+      expect(findVerifiedProposeReceipt(s3.stateDir, 'harness:opencode')).not.toBeNull();
+      expect(findVerifiedProposeReceipt(s3.stateDir, 'router:omni/coding-main')).not.toBeNull();
+
+      // Direct target-only rollback without snapshotOrBackupRef hits !normRef branch (kills Q16c)
+      expect(markApplyReceiptRolledBack(s3.stateDir, { target: 'harness:hermes' })).toBe(1);
+      expect(findVerifiedProposeReceipt(s3.stateDir, 'harness:hermes')).toBeNull();
+      expect(findVerifiedProposeReceipt(s3.stateDir, 'harness:opencode')).not.toBeNull();
+      expect(findVerifiedProposeReceipt(s3.stateDir, 'router:omni/coding-main')).not.toBeNull();
+
+      // Unmatched backup ref fallback loop isolates target === normalizedTarget (kills Q16d)
+      expect(
+        markApplyReceiptRolledBack(s3.stateDir, {
+          target: 'harness:opencode',
+          snapshotOrBackupRef: path.join(s3.stateDir, 'opencode.pre-pilot.bak'),
+        })
+      ).toBe(1);
+      expect(findVerifiedProposeReceipt(s3.stateDir, 'harness:opencode')).toBeNull();
+      expect(findVerifiedProposeReceipt(s3.stateDir, 'router:omni/coding-main')).not.toBeNull();
+
+      // Scoped exact pivot index ignores earlier identical ref from another target (kills Q16e)
+      const sharedRef = path.join(s3.stateDir, 'shared-name.bak');
+      const keptClaudeRef = path.join(s3.stateDir, 'claude-first.bak');
+      appendApplyReceipt(s3.stateDir, {
+        target: 'harness:hermes',
+        planHash: dummyPlanHash,
+        appliedAt: siblingIso,
+        appliedAtLevel: 'propose',
+        authorizedVia: 'interactive-tty',
+        success: true,
+        readBackVerified: true,
+        readBackLevel: 'file-byte-verified',
+        rolledBack: false,
+        snapshotOrBackupRef: sharedRef,
+      });
+      appendApplyReceipt(s3.stateDir, {
+        target: 'harness:claude-code',
+        planHash: dummyPlanHash,
+        appliedAt: siblingIso,
+        appliedAtLevel: 'propose',
+        authorizedVia: 'interactive-tty',
+        success: true,
+        readBackVerified: true,
+        readBackLevel: 'file-byte-verified',
+        rolledBack: false,
+        snapshotOrBackupRef: keptClaudeRef,
+      });
+      appendApplyReceipt(s3.stateDir, {
+        target: 'harness:claude-code',
+        planHash: dummyPlanHash,
+        appliedAt: siblingIso,
+        appliedAtLevel: 'propose',
+        authorizedVia: 'interactive-tty',
+        success: true,
+        readBackVerified: true,
+        readBackLevel: 'file-byte-verified',
+        rolledBack: false,
+        snapshotOrBackupRef: sharedRef,
+      });
+      expect(
+        markApplyReceiptRolledBack(s3.stateDir, {
+          target: 'harness:claude-code',
+          snapshotOrBackupRef: sharedRef,
+        })
+      ).toBe(1);
+      expect(
+        findVerifiedProposeReceipt(s3.stateDir, 'harness:claude-code')?.snapshotOrBackupRef
+      ).toBe(keptClaudeRef);
+      expect(findVerifiedProposeReceipt(s3.stateDir, 'harness:hermes')?.snapshotOrBackupRef).toBe(
+        sharedRef
+      );
     }
   });
 });
@@ -1423,6 +1540,9 @@ describe('C46-F3: Full End-to-End os.tmpdir() Live Pilot Rehearsal (Router SQLit
         .receipts.filter((r) => r.target === 'router:nine/coding-main')
         .every((r) => r.rolledBack === true)
     ).toBe(true);
+    // Router rollback MUST NOT wipe sibling harness:* receipts (kills Q16a)
+    expect(findVerifiedProposeReceipt(stateDir, 'harness:hermes')).not.toBeNull();
+    expect(findVerifiedProposeReceipt(stateDir, 'harness:opencode')).not.toBeNull();
 
     // Also verify raw pre-pilot SQLite file backup restores 100% byte-identical SHA-256
     fs.copyFileSync(preRouterFileBackup, routerDbPath);
@@ -1436,6 +1556,10 @@ describe('C46-F3: Full End-to-End os.tmpdir() Live Pilot Rehearsal (Router SQLit
       stateDir,
       json: true,
     });
+    expect(findVerifiedProposeReceipt(stateDir, 'harness:hermes')).toBeNull();
+    expectAutoSafePromotionDenied(stateDir, 'harness:hermes');
+    expect(findVerifiedProposeReceipt(stateDir, 'harness:opencode')).not.toBeNull();
+
     await runAppsRollbackCommand({
       app: 'opencode',
       config: openCodeConfigPath,
@@ -1444,6 +1568,8 @@ describe('C46-F3: Full End-to-End os.tmpdir() Live Pilot Rehearsal (Router SQLit
       stateDir,
       json: true,
     });
+    expect(findVerifiedProposeReceipt(stateDir, 'harness:opencode')).toBeNull();
+    expectAutoSafePromotionDenied(stateDir, 'harness:opencode');
 
     expect(sha256File(hermesConfigPath)).toBe(preHermesSha);
     expect(sha256File(openCodeConfigPath)).toBe(preOpenCodeSha);
