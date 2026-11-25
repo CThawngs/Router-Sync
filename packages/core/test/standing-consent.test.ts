@@ -218,7 +218,7 @@ describe('C45-WP4 Standing Consent, Promotion Gate, Freeze & Persistent Approval
         planHash: 'hash-verified-02',
         appliedAt: '2026-11-24T02:00:00.000Z',
         appliedAtLevel: 'propose',
-        authorizedVia: 'standing-consent',
+        authorizedVia: 'interactive-tty',
         success: true,
         readBackVerified: true,
         readBackLevel: 'db-only',

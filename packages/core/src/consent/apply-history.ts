@@ -211,6 +211,7 @@ export function findVerifiedProposeReceipt(
     if (
       r.target === normalizedTarget &&
       r.appliedAtLevel === 'propose' &&
+      r.authorizedVia !== 'standing-consent' &&
       r.success === true &&
       r.readBackVerified === true &&
       r.rolledBack === false

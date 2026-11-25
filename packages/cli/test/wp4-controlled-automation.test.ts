@@ -422,14 +422,32 @@ describe('C45-WP4 Controlled Automation CLI Lifecycle', () => {
     );
     expect(mApply.exitCode).toBe(0);
 
-    // Also verify non-TTY `apply --write` succeeds under active standing consent
-    const nonTtyApply = await captureCli(() =>
+    // C46-F1: Non-TTY `apply --write` MUST be rejected while consent is only `propose`,
+    // while interactive TTY typing `'chay'` succeeds and records `appliedAtLevel: 'propose'`!
+    const nonTtyAtPropose = await captureCli(() =>
       runApplyCommand({ configPath, write: true, stateDir, isTTY: false, json: true })
     );
-    expect(nonTtyApply.exitCode).toBe(0);
+    expect(nonTtyAtPropose.exitCode).toBe(1);
+
+    seedNineDb();
+    const ttyProposeApply = await captureCli(() =>
+      runApplyCommand({
+        configPath,
+        write: true,
+        stateDir,
+        isTTY: true,
+        promptFn: async () => 'chay',
+        json: true,
+      })
+    );
+    expect(ttyProposeApply.exitCode).toBe(0);
 
     // Verify propose receipt recorded -> now promote coding-primary to auto-safe!
-    expect(readApplyHistory(stateDir).receipts.length).toBeGreaterThanOrEqual(1);
+    const histBeforePromote = readApplyHistory(stateDir);
+    expect(histBeforePromote.receipts.length).toBeGreaterThanOrEqual(1);
+    expect(
+      histBeforePromote.receipts[histBeforePromote.receipts.length - 1]?.appliedAtLevel
+    ).toBe('propose');
     const promoteAutoSafe = await captureCli(() =>
       runConsentGrantCommand({
         target: 'router:nine/coding-primary',
@@ -441,6 +459,20 @@ describe('C45-WP4 Controlled Automation CLI Lifecycle', () => {
       })
     );
     expect(promoteAutoSafe.exitCode).toBe(0);
+
+    // AFTER promotion to auto-safe, non-TTY `apply --write` succeeds without prompt and records `auto-safe`!
+    seedNineDb();
+    const nonTtyAutoSafeApply = await captureCli(() =>
+      runApplyCommand({ configPath, write: true, stateDir, isTTY: false, json: true })
+    );
+    expect(nonTtyAutoSafeApply.exitCode).toBe(0);
+    const histAfterAutoSafe = readApplyHistory(stateDir);
+    expect(
+      histAfterAutoSafe.receipts[histAfterAutoSafe.receipts.length - 1]?.appliedAtLevel
+    ).toBe('auto-safe');
+    expect(
+      histAfterAutoSafe.receipts[histAfterAutoSafe.receipts.length - 1]?.authorizedVia
+    ).toBe('standing-consent');
 
     // 5. Run scheduled `tick` in `auto-safe` mode with official deprecation of gpt-4o-legacy + new gpt-5.5-codex
     const baseMs = Date.parse('2026-11-24T12:00:00.000Z');

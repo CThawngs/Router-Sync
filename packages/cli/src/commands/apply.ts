@@ -5,9 +5,11 @@
  *  - Default dry-run mode
  *  - `--yes` flag strictly rejected
  *  - Enforces emergency `freeze.json` (`WRITE_FROZEN`) and `assertControlledWriteSandbox`
- *  - When active `standing-consent.json` covers all planned combos, `apply --write`
- *    executes without re-typing `'chay'` every run; otherwise requires interactive TTY + `'chay'`
- *  - Records HMAC-signed `ApplyHistoryReceipt` (`appliedAtLevel: 'propose'`) and notifies `inbox.json` + webhook
+ *  - `propose` targets ALWAYS require interactive TTY + typing `'chay'` (C46-F1);
+ *    only verified `auto-safe` targets (`level === 'auto-safe'` + verified `propose` receipt)
+ *    execute without re-typing `'chay'`
+ *  - Records HMAC-signed `ApplyHistoryReceipt` with accurate `appliedAtLevel` (`'propose' | 'auto-safe'`)
+ *    and `authorizedVia` (`'interactive-tty' | 'standing-consent'`), and notifies `inbox.json` + webhook
  */
 
 import * as crypto from 'node:crypto';
@@ -22,6 +24,7 @@ import {
   applyMultiRouterSafe,
   assertControlledWriteSandbox,
   atomicWriteFileSync,
+  findVerifiedProposeReceipt,
   readFreezeState,
   readStandingConsent,
   resolveControlStateDir,
@@ -173,11 +176,16 @@ export async function runApplyCommand(options: ApplyCommandOptions): Promise<Mul
     return report;
   }
 
-  // 5. Evaluate Standing Consent policy & sandbox path guard
+  // 5. Evaluate Standing Consent policy & sandbox path guard (C46-F1)
   const consent = readStandingConsent(sDir);
   if (consent.present && !consent.valid) {
-    const errorMsg = `Standing consent file is invalid (${consent.errorCode ?? 'CONSENT_HMAC_INVALID'}). Refusing write.`;
-    console.error(`[routersync] Error: ${errorMsg}`);
+    const code = consent.errorCode ?? 'CONSENT_HMAC_INVALID';
+    const errorMsg = `Standing consent file is invalid (${code}). Refusing write.`;
+    if (options.json) {
+      console.log(JSON.stringify({ ok: false, errorCode: code, error: errorMsg, status: 'FAILED' }));
+    } else {
+      console.error(`[routersync] Error: ${errorMsg}`);
+    }
     process.exitCode = 1;
     throw new Error(errorMsg);
   }
@@ -192,7 +200,10 @@ export async function runApplyCommand(options: ApplyCommandOptions): Promise<Mul
   );
 
   let totalPlannedMutations = 0;
-  let allCoveredByStandingConsent = consent.present && activeConsentSet.size > 0;
+  let totalRawPlannedMutations = 0;
+  let totalConfiguredCombos = 0;
+  let candidateCount = 0;
+  let everyCandidateAutoSafe = true;
 
   const filteredPlanResults: Array<{
     routerId: string;
@@ -215,17 +226,27 @@ export async function runApplyCommand(options: ApplyCommandOptions): Promise<Mul
     };
 
     const rawCombos = [
-      ...item.plan.additions.map((c) => c.name),
-      ...item.plan.modifications.map((c) => c.name),
-      ...item.plan.deletions,
+      ...new Set([
+        ...item.plan.additions.map((c) => c.name),
+        ...item.plan.modifications.map((c) => c.name),
+        ...item.plan.deletions,
+      ]),
     ];
-    for (const cName of rawCombos) {
-      const t1 = `router:${item.routerId}/${cName}`;
-      const t2 = `router:${routerConfig.adapter}/${cName}`;
-      if (!activeConsentSet.has(t1) && !activeConsentSet.has(t2)) {
-        allCoveredByStandingConsent = false;
-      }
-    }
+    totalRawPlannedMutations += rawCombos.length;
+
+    const configuredCombos = [
+      ...new Set([
+        ...config.combos
+          .filter(
+            (c) => c.routers.includes(item.routerId) || c.routers.includes(routerConfig.adapter)
+          )
+          .map((c) => c.name),
+        ...(config.adopt ?? [])
+          .filter((a) => a.router === item.routerId || a.router === routerConfig.adapter)
+          .map((a) => a.name),
+      ]),
+    ];
+    totalConfiguredCombos += configuredCombos.length;
 
     const additions = item.plan.additions.filter((c) => isComboAllowed(c.name));
     const modifications = item.plan.modifications.filter((c) => isComboAllowed(c.name));
@@ -238,6 +259,51 @@ export async function runApplyCommand(options: ApplyCommandOptions): Promise<Mul
       ]),
     ];
     totalPlannedMutations += touchedCombos.length;
+
+    const candidateCombos =
+      touchedCombos.length > 0
+        ? touchedCombos
+        : configuredCombos.filter((comboName) => isComboAllowed(comboName));
+
+    for (const comboName of candidateCombos) {
+      candidateCount++;
+      const t1 = `router:${item.routerId}/${comboName}`;
+      const t2 = `router:${routerConfig.adapter}/${comboName}`;
+      const matchedEntries = consent.activeTargets.filter(
+        (entry) => entry.targetKind === 'router' && (entry.target === t1 || entry.target === t2)
+      );
+
+      for (const entry of matchedEntries) {
+        if (entry.level === 'auto-safe') {
+          if (!findVerifiedProposeReceipt(sDir, entry.target)) {
+            const errorMsg =
+              `AUTO_SAFE_RECEIPT_MISSING: Runtime auto-safe check failed for '${entry.target}': ` +
+              `apply-history.json is missing, tampered, or lacks a verified propose receipt.`;
+            if (options.json) {
+              console.log(
+                JSON.stringify({
+                  ok: false,
+                  errorCode: 'AUTO_SAFE_RECEIPT_MISSING',
+                  error: errorMsg,
+                  status: 'FAILED',
+                })
+              );
+            } else {
+              console.error(`[routersync] Error: ${errorMsg}`);
+            }
+            process.exitCode = 1;
+            throw new Error(errorMsg);
+          }
+        }
+      }
+
+      const comboCoveredByAutoSafe =
+        matchedEntries.length > 0 &&
+        matchedEntries.every((entry) => entry.level === 'auto-safe');
+      if (!comboCoveredByAutoSafe) {
+        everyCandidateAutoSafe = false;
+      }
+    }
 
     filteredPlanResults.push({
       routerId: item.routerId,
@@ -252,19 +318,37 @@ export async function runApplyCommand(options: ApplyCommandOptions): Promise<Mul
     });
   }
 
-  if (consent.present && totalPlannedMutations === 0 && planResults.some(
-    (p) => p.plan.additions.length + p.plan.modifications.length + p.plan.deletions.length > 0
-  )) {
-    const errorMsg = `UNAUTHORIZED_TARGET: Zero planned combos are authorized by standing-consent.json.`;
-    console.error(`[routersync] Error: ${errorMsg}`);
+  if (
+    consent.present &&
+    ((totalRawPlannedMutations > 0 && totalPlannedMutations === 0) ||
+      (totalRawPlannedMutations === 0 && totalConfiguredCombos > 0 && candidateCount === 0))
+  ) {
+    const errorMsg = `UNAUTHORIZED_TARGET: Zero configured or planned combos are authorized by standing-consent.json.`;
+    if (options.json) {
+      console.log(
+        JSON.stringify({
+          ok: false,
+          errorCode: 'UNAUTHORIZED_TARGET',
+          error: errorMsg,
+          status: 'FAILED',
+        })
+      );
+    } else {
+      console.error(`[routersync] Error: ${errorMsg}`);
+    }
     process.exitCode = 1;
     throw new Error(errorMsg);
   }
 
+  const allCoveredByAutoSafe =
+    consent.present && consent.valid && candidateCount > 0 && everyCandidateAutoSafe;
+
   const isTTY = options.isTTY ?? Boolean(process.stdin.isTTY);
-  const authorizedVia: 'standing-consent' | 'interactive-tty' = allCoveredByStandingConsent
+  const authorizedVia: 'standing-consent' | 'interactive-tty' = allCoveredByAutoSafe
     ? 'standing-consent'
     : 'interactive-tty';
+  const appliedAtLevel: 'auto-safe' | 'propose' =
+    authorizedVia === 'standing-consent' ? 'auto-safe' : 'propose';
 
   if (authorizedVia === 'interactive-tty') {
     if (!isTTY) {
@@ -363,7 +447,7 @@ export async function runApplyCommand(options: ApplyCommandOptions): Promise<Mul
         target: targetScope,
         planHash: planDigest,
         appliedAt: timestamp,
-        appliedAtLevel: 'propose',
+        appliedAtLevel,
         authorizedVia,
         success: res.success,
         readBackVerified: Boolean(res.readBackVerified),

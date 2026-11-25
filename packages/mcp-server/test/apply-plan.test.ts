@@ -350,11 +350,17 @@ describe('C45-WP4 Controlled MCP `apply_plan` Tool', () => {
         'anthropic/claude-sonnet-4',
       ]);
 
-      // Grant propose consent
+      // Grant propose consent -> without approvalToken, Gate 3 rejects with APPROVAL_TOKEN_REQUIRED (C46-F1)
       upsertStandingConsentTarget(stateDir, {
         target: 'router:nine/coding-main',
         level: 'propose',
       });
+      const proposeWithoutToken = await mcp.call('apply_plan', {
+        planHash,
+        targets: ['router:nine/coding-main'],
+      });
+      expect(proposeWithoutToken.isError).toBe(true);
+      expect(proposeWithoutToken.body['errorCode']).toBe('APPROVAL_TOKEN_REQUIRED');
 
       // (b1) Wrong planHash argument -> PLAN_HASH_MISMATCH (kills M3)
       const badArgHash = await mcp.call('apply_plan', {
@@ -462,6 +468,7 @@ describe('C45-WP4 Controlled MCP `apply_plan` Tool', () => {
       const i3Res = await mcp.call('apply_plan', {
         planHash: i3Hash,
         targets: ['router:nine/coding-main'],
+        approvalToken: createApprovalToken(i3Hash).token,
       });
       expect(i3Res.isError).toBe(true);
       expect(i3Res.body['errorCode']).toBe('INVARIANT_VIOLATION');
@@ -515,6 +522,7 @@ describe('C45-WP4 Controlled MCP `apply_plan` Tool', () => {
         const i6Res = await mcpFree.call('apply_plan', {
           planHash: i6Hash,
           targets: ['router:nine/coding-main'],
+          approvalToken: createApprovalToken(i6Hash).token,
         });
         expect(i6Res.isError).toBe(true);
         expect(i6Res.body['errorCode']).toBe('INVARIANT_VIOLATION');
@@ -607,6 +615,7 @@ describe('C45-WP4 Controlled MCP `apply_plan` Tool', () => {
       const faultRes = await mcp.call('apply_plan', {
         planHash,
         targets: ['router:nine/coding-main', 'harness:opencode'],
+        approvalToken: createApprovalToken(planHash).token,
         injectReadBackFault: true,
       });
       expect(faultRes.isError).toBe(true);
@@ -787,6 +796,7 @@ describe('C45-WP4 Controlled MCP `apply_plan` Tool', () => {
       const hermesUnkeyedRes = await mcp.call('apply_plan', {
         planHash: hermesUnkeyedHash,
         targets: ['harness:hermes'],
+        approvalToken: createApprovalToken(hermesUnkeyedHash).token,
       });
       expect(hermesUnkeyedRes.isError).toBe(true);
       expect(hermesUnkeyedRes.body['errorCode']).toBe('UNKEYED_PROVIDER');
@@ -808,6 +818,7 @@ describe('C45-WP4 Controlled MCP `apply_plan` Tool', () => {
       const hermesOkRes = await mcp.call('apply_plan', {
         planHash: hermesOkHash,
         targets: ['harness:hermes'],
+        approvalToken: createApprovalToken(hermesOkHash).token,
       });
       expect(hermesOkRes.isError).toBe(false);
       expect(hermesOkRes.body['applied']).toBe(true);
@@ -863,6 +874,7 @@ describe('C45-WP4 Controlled MCP `apply_plan` Tool', () => {
       const ombBadDriverRes = await mcp.call('apply_plan', {
         planHash: ombBadDriverHash,
         targets: ['harness:openmausbot'],
+        approvalToken: createApprovalToken(ombBadDriverHash).token,
       });
       expect(ombBadDriverRes.isError).toBe(true);
       expect(Buffer.compare(fs.readFileSync(ombPath), preOmbBytes)).toBe(0);
@@ -883,6 +895,7 @@ describe('C45-WP4 Controlled MCP `apply_plan` Tool', () => {
       const ombInsertRes = await mcp.call('apply_plan', {
         planHash: ombInsertHash,
         targets: ['harness:openmausbot'],
+        approvalToken: createApprovalToken(ombInsertHash).token,
       });
       expect(ombInsertRes.isError).toBe(false);
       expect(ombInsertRes.body['applied']).toBe(true);
@@ -926,6 +939,7 @@ describe('C45-WP4 Controlled MCP `apply_plan` Tool', () => {
       const ocUnkeyedRes = await mcp.call('apply_plan', {
         planHash: ocUnkeyedHash,
         targets: ['harness:opencode'],
+        approvalToken: createApprovalToken(ocUnkeyedHash).token,
       });
       expect(ocUnkeyedRes.isError).toBe(true);
       expect(ocUnkeyedRes.body['errorCode']).toBe('UNKEYED_PROVIDER');
@@ -948,6 +962,7 @@ describe('C45-WP4 Controlled MCP `apply_plan` Tool', () => {
       const ocDefaultSlotRes = await mcp.call('apply_plan', {
         planHash: ocDefaultSlotHash,
         targets: ['harness:opencode'],
+        approvalToken: createApprovalToken(ocDefaultSlotHash).token,
       });
       expect(ocDefaultSlotRes.isError).toBe(true);
       expect(ocDefaultSlotRes.body['errorCode']).toBe('DEFAULT_SLOT_PROTECTED');
@@ -1002,6 +1017,7 @@ describe('C45-WP4 Controlled MCP `apply_plan` Tool', () => {
       const dshDefaultRes = await mcp.call('apply_plan', {
         planHash: dshDefaultHash,
         targets: ['harness:dsh'],
+        approvalToken: createApprovalToken(dshDefaultHash).token,
       });
       expect(dshDefaultRes.isError).toBe(true);
       expect(dshDefaultRes.body['errorCode']).toBe('DEFAULT_SLOT_PROTECTED');
@@ -1022,6 +1038,7 @@ describe('C45-WP4 Controlled MCP `apply_plan` Tool', () => {
       const dshOkRes = await mcp.call('apply_plan', {
         planHash: dshOkHash,
         targets: ['harness:dsh'],
+        approvalToken: createApprovalToken(dshOkHash).token,
       });
       expect(dshOkRes.isError).toBe(false);
       expect(dshOkRes.body['applied']).toBe(true);
