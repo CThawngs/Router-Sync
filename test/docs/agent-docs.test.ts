@@ -112,6 +112,7 @@ const ENROLLED_DOC_PATHS = [
   'docs/combos-probe.md',
   'docs/schedule-ladder.md',
   'docs/runbook/LIVE-E2E-v2.md',
+  'docs/runbook/OWNER-CHECKLIST.md',
   'docs/adr/ADR-MAINTAIN-02-apply-grant-lifecycle.md',
   'docs/adr/ADR-SQLITE-01-better-sqlite3-vs-node-sqlite.md',
   'docs/9router-combo-findings.md',

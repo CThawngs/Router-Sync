@@ -148,7 +148,8 @@ export function createCliProgram(): Command {
     const isAgents = actionCommand.name() === 'agents' || actionCommand.parent?.name() === 'agents';
     const isAppsConfig = actionCommand.parent?.name() === 'apps' && actionCommand.name() !== 'drift';
     const isLiteLLM = actionCommand.name() === 'litellm' || actionCommand.parent?.name() === 'litellm';
-    const cfg = actionCommand.name() === 'rank' || isAgents || isAppsConfig || isLiteLLM
+    const isPilotReport = actionCommand.name() === 'pilot-report';
+    const cfg = actionCommand.name() === 'rank' || isAgents || isAppsConfig || isLiteLLM || isPilotReport
       ? undefined // rank's -c is ranking.yaml, agents'/apps'/litellm's -c is target config, not routersync.yaml
       : (opts.configPath ?? opts.config);
     installConfiguredRouterDbPaths(cfg);
@@ -337,6 +338,38 @@ export function createCliProgram(): Command {
         if (report.status !== 'READY_FOR_OWNER_LIVE_PILOT') {
           process.exitCode = 1;
         }
+      }
+    );
+
+  // pilot-report command (C46-F6: 100% read-only S9 post-pilot sign-off aggregator - lazy loaded)
+  program
+    .command('pilot-report')
+    .allowUnknownOption(false)
+    .allowExcessArguments(false)
+    .description('Aggregate read-only post-pilot S9 sign-off metrics without modifying <stateDir>')
+    .option('--state-dir <dir>', 'Path to RouterSync control-plane state directory')
+    .option('-c, --config <path>', 'Optional path to routersync.yaml configuration')
+    .option('--router-target <scope>', 'Optional pilot router combo scope (e.g. router:omniroute/rs-pilot)')
+    .option('--harness-target <scope>', 'Optional pilot harness scope (e.g. harness:hermes)')
+    .option('--serving-reflection-ms <ms>', 'Optional observed /v1/models reflection latency in ms (reported separately from detectionLatencyMs)')
+    .option('--false-removals <n>', 'Optional observed healthy-model false removal count (default: 0)')
+    .option('--unplanned-interventions <n>', 'Optional unplanned manual intervention count (default: 0)')
+    .option('--out <file>', 'Write formatted report to external file (must be outside <stateDir>)')
+    .option('--json', 'Emit deterministic machine-readable PilotReportResult JSON')
+    .action(
+      async (opts: {
+        stateDir?: string;
+        config?: string;
+        routerTarget?: string;
+        harnessTarget?: string;
+        servingReflectionMs?: string;
+        falseRemovals?: string;
+        unplannedInterventions?: string;
+        out?: string;
+        json?: boolean;
+      }) => {
+        const { runPilotReportCommand } = await import('./commands/pilot-report.js');
+        await runPilotReportCommand(opts);
       }
     );
 
