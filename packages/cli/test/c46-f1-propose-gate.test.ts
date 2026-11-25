@@ -24,6 +24,7 @@ import {
   ensureConsentSigningKey,
   findVerifiedProposeReceipt,
   readApplyHistory,
+  readStandingConsent,
   upsertStandingConsentTarget,
 } from '@routersync/core';
 import { resetTokenRegistry } from '@routersync/daemon';
@@ -710,5 +711,290 @@ describe('C46-F1 CLI Propose Human-Approval Gate & Receipt Integrity', () => {
     expect(readComboModels('coding-primary')).toEqual(INITIAL_COMBO_MODELS);
     expect(fs.readFileSync(harnessPath, 'utf8')).toBe(initialHarnessRaw);
     expect(readApplyHistory(stateDir).receipts).toHaveLength(0);
+  });
+
+  it('7. REJECTS non-TTY apply --write on mixed multi-combo batch (1 auto-safe + 1 propose) with 0 DB mutations on both combos, and stamps interactive-tty + propose on chay (kills Q1b)', async () => {
+    const seedSecondaryCombo = (models: string[] = INITIAL_COMBO_MODELS): void => {
+      const db = openBetterSqlite3(nineDbPath, { allowLiveDbWrite: true });
+      const now = '2026-11-25T00:00:00.000Z';
+      db.prepare(
+        'INSERT OR REPLACE INTO combos (id, name, kind, models, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?)'
+      ).run('coding-secondary', 'coding-secondary', null, JSON.stringify(models), now, now);
+      db.close();
+    };
+
+    const writeTwoComboConfig = (primaryPin: string[], secondaryPin: string[]): void => {
+      fs.writeFileSync(
+        configPath,
+        [
+          'version: 1',
+          'routers:',
+          '  - id: nine',
+          '    adapter: 9router',
+          '    isolated: false',
+          '    baseUrl: http://127.0.0.1:9',
+          '    db:',
+          `      path: ${nineDbPath}`,
+          '    reload:',
+          '      type: none',
+          'policy:',
+          '  mode: manual',
+          'combos:',
+          '  - name: coding-primary',
+          '    routers:',
+          '      - nine',
+          '    size: 10',
+          '    constraints:',
+          '      freeOnly: false',
+          '    pin:',
+          ...primaryPin.map((m) => `      - ${m}`),
+          '    autoMaintain: true',
+          '  - name: coding-secondary',
+          '    routers:',
+          '      - nine',
+          '    size: 10',
+          '    constraints:',
+          '      freeOnly: false',
+          '    pin:',
+          ...secondaryPin.map((m) => `      - ${m}`),
+          '    autoMaintain: true',
+          'adopt:',
+          '  - router: nine',
+          '    name: coding-primary',
+          '    mode: full',
+          '  - router: nine',
+          '    name: coding-secondary',
+          '    mode: full',
+          '',
+        ].join('\n'),
+        'utf8'
+      );
+    };
+
+    // 1) Obtain a verified propose receipt for coding-primary and promote it to auto-safe
+    upsertStandingConsentTarget(stateDir, {
+      target: 'router:nine/coding-primary',
+      level: 'propose',
+    });
+    const firstPrimaryPropose = await captureCli(() =>
+      runApplyCommand({
+        configPath,
+        write: true,
+        stateDir,
+        isTTY: true,
+        promptFn: async () => 'chay',
+        json: true,
+      })
+    );
+    expect(firstPrimaryPropose.exitCode).toBe(0);
+    expect(readComboModels('coding-primary')).toEqual(PLANNED_PIN_MODELS_V1);
+
+    const promotePrimary = await captureCli(() =>
+      runConsentGrantCommand({
+        target: 'router:nine/coding-primary',
+        level: 'auto-safe',
+        stateDir,
+        isTTY: true,
+        promptFn: async () => 'consent',
+        json: true,
+      })
+    );
+    expect(promotePrimary.exitCode).toBe(0);
+
+    // 2) Add coding-secondary at propose with pending changes on BOTH combos
+    seedSecondaryCombo(INITIAL_COMBO_MODELS);
+    upsertStandingConsentTarget(stateDir, {
+      target: 'router:nine/coding-secondary',
+      level: 'propose',
+    });
+    writeTwoComboConfig(PLANNED_PIN_MODELS_V2, PLANNED_PIN_MODELS_V1);
+
+    const receiptsBeforeMixed = readApplyHistory(stateDir).receipts.length;
+    expect(receiptsBeforeMixed).toBe(1);
+
+    // Non-TTY apply --write MUST fail with 0 DB mutations on BOTH combos and 0 new receipts
+    const mixedNonTty = await captureCli(() =>
+      runApplyCommand({ configPath, write: true, stateDir, isTTY: false, json: true })
+    );
+    expect(mixedNonTty.exitCode).toBe(1);
+    expect(readComboModels('coding-primary')).toEqual(PLANNED_PIN_MODELS_V1);
+    expect(readComboModels('coding-secondary')).toEqual(INITIAL_COMBO_MODELS);
+    expect(readApplyHistory(stateDir).receipts).toHaveLength(receiptsBeforeMixed);
+
+    // Interactive TTY confirming 'chay' MUST succeed and stamp interactive-tty + propose
+    const mixedTtyApproved = await captureCli(() =>
+      runApplyCommand({
+        configPath,
+        write: true,
+        stateDir,
+        isTTY: true,
+        promptFn: async () => 'chay',
+        json: true,
+      })
+    );
+    expect(mixedTtyApproved.exitCode).toBe(0);
+    expect(readComboModels('coding-primary')).toEqual(PLANNED_PIN_MODELS_V2);
+    expect(readComboModels('coding-secondary')).toEqual(PLANNED_PIN_MODELS_V1);
+
+    const histAfterApproved = readApplyHistory(stateDir);
+    expect(histAfterApproved.valid).toBe(true);
+    const newReceipts = histAfterApproved.receipts.slice(receiptsBeforeMixed);
+    expect(newReceipts).toHaveLength(2);
+    expect(newReceipts.map((r) => r.target).sort()).toEqual([
+      'router:nine/coding-primary',
+      'router:nine/coding-secondary',
+    ]);
+    for (const r of newReceipts) {
+      expect(r.authorizedVia).toBe('interactive-tty');
+      expect(r.appliedAtLevel).toBe('propose');
+    }
+
+    // Symmetric order guard (coding-primary propose + coding-secondary auto-safe)
+    upsertStandingConsentTarget(stateDir, {
+      target: 'router:nine/coding-primary',
+      level: 'propose',
+    });
+    upsertStandingConsentTarget(stateDir, {
+      target: 'router:nine/coding-secondary',
+      level: 'auto-safe',
+    });
+    writeTwoComboConfig(INITIAL_COMBO_MODELS, PLANNED_PIN_MODELS_V2);
+    const receiptsBeforeReverse = readApplyHistory(stateDir).receipts.length;
+
+    const reverseMixedNonTty = await captureCli(() =>
+      runApplyCommand({ configPath, write: true, stateDir, isTTY: false, json: true })
+    );
+    expect(reverseMixedNonTty.exitCode).toBe(1);
+    expect(readComboModels('coding-primary')).toEqual(PLANNED_PIN_MODELS_V2);
+    expect(readComboModels('coding-secondary')).toEqual(PLANNED_PIN_MODELS_V1);
+    expect(readApplyHistory(stateDir).receipts).toHaveLength(receiptsBeforeReverse);
+  });
+
+  it('8. REJECTS non-TTY apply --write on dual-scope conflict when router:9router/coding-primary is auto-safe and router:nine/coding-primary is propose (kills Q1a)', async () => {
+    appendApplyReceipt(stateDir, {
+      target: 'router:9router/coding-primary',
+      planHash: 'abcdef0123456789',
+      appliedAt: '2026-11-25T01:00:00.000Z',
+      appliedAtLevel: 'propose',
+      authorizedVia: 'interactive-tty',
+      success: true,
+      readBackVerified: true,
+      readBackLevel: 'db-only',
+      rolledBack: false,
+      snapshotOrBackupRef: 'snap-adapter-propose',
+    });
+
+    const grantAdapterAutoSafe = await captureCli(() =>
+      runConsentGrantCommand({
+        target: 'router:9router/coding-primary',
+        level: 'auto-safe',
+        stateDir,
+        isTTY: true,
+        promptFn: async () => 'consent',
+        json: true,
+      })
+    );
+    expect(grantAdapterAutoSafe.exitCode).toBe(0);
+
+    upsertStandingConsentTarget(stateDir, {
+      target: 'router:nine/coding-primary',
+      level: 'propose',
+    });
+
+    const standing = readStandingConsent(stateDir);
+    expect(standing.valid).toBe(true);
+    expect(standing.activeTargets.map((e) => `${e.target}:${e.level}`).sort()).toEqual([
+      'router:9router/coding-primary:auto-safe',
+      'router:nine/coding-primary:propose',
+    ]);
+
+    const conflictNonTty = await captureCli(() =>
+      runApplyCommand({ configPath, write: true, stateDir, isTTY: false, json: true })
+    );
+    expect(conflictNonTty.exitCode).toBe(1);
+    expect(readComboModels('coding-primary')).toEqual(INITIAL_COMBO_MODELS);
+    expect(readApplyHistory(stateDir).receipts).toHaveLength(1);
+
+    const conflictTtyApproved = await captureCli(() =>
+      runApplyCommand({
+        configPath,
+        write: true,
+        stateDir,
+        isTTY: true,
+        promptFn: async () => 'chay',
+        json: true,
+      })
+    );
+    expect(conflictTtyApproved.exitCode).toBe(0);
+    expect(readComboModels('coding-primary')).toEqual(PLANNED_PIN_MODELS_V1);
+    const latestReceipt = readApplyHistory(stateDir).receipts.at(-1)!;
+    expect(latestReceipt.target).toBe('router:nine/coding-primary');
+    expect(latestReceipt.authorizedVia).toBe('interactive-tty');
+    expect(latestReceipt.appliedAtLevel).toBe('propose');
+  });
+
+  it('9. ISOLATES single negative flags in findVerifiedProposeReceipt (readBackVerified=false, success=false, appliedAtLevel=auto-safe) with valid HMAC (kills Q2b, Q2c, Q2d)', () => {
+    const assertRejectedCase = (subState: string): void => {
+      const hist = readApplyHistory(subState);
+      expect(hist.valid).toBe(true);
+      expect(hist.receipts).toHaveLength(1);
+      expect(findVerifiedProposeReceipt(subState, 'router:nine/coding-primary')).toBeNull();
+      let caught: unknown;
+      try {
+        assertEligibleForAutoSafe(subState, 'router:nine/coding-primary');
+      } catch (err) {
+        caught = err;
+      }
+      expect(caught).toBeInstanceOf(ConsentValidationError);
+      expect((caught as ConsentValidationError).code).toBe('AUTO_SAFE_PROMOTION_DENIED');
+    };
+
+    // Q2b: readBackVerified: false ONLY (every other field valid)
+    const q2bState = fs.mkdtempSync(path.join(tmpRoot, 'q2b-unverified-'));
+    appendApplyReceipt(q2bState, {
+      target: 'router:nine/coding-primary',
+      planHash: 'abcdef0123456789',
+      appliedAt: '2026-11-25T02:00:00.000Z',
+      appliedAtLevel: 'propose',
+      authorizedVia: 'interactive-tty',
+      success: true,
+      readBackVerified: false,
+      readBackLevel: 'db-only',
+      rolledBack: false,
+      snapshotOrBackupRef: 'snap-q2b-only',
+    });
+    assertRejectedCase(q2bState);
+
+    // Q2c: success: false ONLY (every other field valid)
+    const q2cState = fs.mkdtempSync(path.join(tmpRoot, 'q2c-unsuccessful-'));
+    appendApplyReceipt(q2cState, {
+      target: 'router:nine/coding-primary',
+      planHash: 'abcdef0123456789',
+      appliedAt: '2026-11-25T02:01:00.000Z',
+      appliedAtLevel: 'propose',
+      authorizedVia: 'interactive-tty',
+      success: false,
+      readBackVerified: true,
+      readBackLevel: 'db-only',
+      rolledBack: false,
+      snapshotOrBackupRef: 'snap-q2c-only',
+    });
+    assertRejectedCase(q2cState);
+
+    // Q2d: appliedAtLevel: 'auto-safe' ONLY (authorizedVia='approval-token', success=true, readBackVerified=true, rolledBack=false)
+    const q2dState = fs.mkdtempSync(path.join(tmpRoot, 'q2d-autosafe-level-'));
+    appendApplyReceipt(q2dState, {
+      target: 'router:nine/coding-primary',
+      planHash: 'abcdef0123456789',
+      appliedAt: '2026-11-25T02:02:00.000Z',
+      appliedAtLevel: 'auto-safe',
+      authorizedVia: 'approval-token',
+      success: true,
+      readBackVerified: true,
+      readBackLevel: 'db-only',
+      rolledBack: false,
+      snapshotOrBackupRef: 'snap-q2d-only',
+    });
+    assertRejectedCase(q2dState);
   });
 });
