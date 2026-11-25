@@ -132,6 +132,8 @@ function remediationForRule(ruleSlug) {
       return 'Ensure network connectivity and gh authentication before running --with-ci-logs; never treat unreachable CI logs as clean.';
     case 'ci-log-empty-runs':
       return 'Verify GitHub Actions has completed workflow runs for the target branch before running --with-ci-logs.';
+    case 'evidence-ref-scan-failed':
+      return 'Ensure git repository metadata and evidence/* refs are intact and readable by git for-each-ref, ls-tree, and cat-file.';
     case 'personal-windows-path':
     case 'personal-posix-path':
     case CLOUD_DRIVE_RULE_SLUG:
@@ -439,7 +441,10 @@ function discoverEvidenceRefs(root) {
       windowsHide: true,
     }
   );
-  if (res.status !== 0 || !res.stdout) return [];
+  if (res.error || res.status !== 0) {
+    throw new Error('EVIDENCE_REF_DISCOVERY_FAILED');
+  }
+  if (!res.stdout) return [];
 
   const entries = [];
   for (const line of res.stdout.split(/\r?\n/)) {
@@ -479,8 +484,29 @@ export function scanEvidenceRefs(
   makeFinding = createFindingCounter()
 ) {
   const ctx = buildScannerContext(root);
-  const targetRefs = Array.isArray(refs) ? refs : discoverEvidenceRefs(root);
   const findings = [];
+  let targetRefs;
+  try {
+    targetRefs = Array.isArray(refs) ? refs : discoverEvidenceRefs(root);
+  } catch {
+    findings.push(
+      makeFinding({
+        surface: 'evidence-refs',
+        location: 'git:for-each-ref',
+        rule: 'evidence-ref-scan-failed',
+        severity: SEVERITY.HIGH,
+        count: 1,
+      })
+    );
+    return {
+      ok: false,
+      surface: 'evidence-refs',
+      refsScanned: 0,
+      blobsScanned: 0,
+      refNames: [],
+      findings,
+    };
+  }
 
   if (targetRefs.length === 0) {
     return {
@@ -505,7 +531,18 @@ export function scanEvidenceRefs(
       maxBuffer: 64 * 1024 * 1024,
       windowsHide: true,
     });
-    if (treeRes.status !== 0) continue;
+    if (treeRes.error || treeRes.status !== 0) {
+      findings.push(
+        makeFinding({
+          surface: 'evidence-refs',
+          location: normalizeEvidenceRefName(ref) || 'git:ls-tree',
+          rule: 'evidence-ref-scan-failed',
+          severity: SEVERITY.HIGH,
+          count: 1,
+        })
+      );
+      continue;
+    }
     refsScanned += 1;
     refNames.push(normalizeEvidenceRefName(ref));
 
@@ -553,7 +590,17 @@ export function scanEvidenceRefs(
       windowsHide: true,
     });
 
-    if (batchRes.status === 0 && Buffer.isBuffer(batchRes.stdout)) {
+    if (batchRes.error || batchRes.status !== 0 || !Buffer.isBuffer(batchRes.stdout)) {
+      findings.push(
+        makeFinding({
+          surface: 'evidence-refs',
+          location: 'git:cat-file',
+          rule: 'evidence-ref-scan-failed',
+          severity: SEVERITY.HIGH,
+          count: 1,
+        })
+      );
+    } else {
       const outBuf = batchRes.stdout;
       let offset = 0;
       while (offset < outBuf.length) {
@@ -1568,25 +1615,40 @@ export function parseSecurityAuditArgs(argv = process.argv.slice(2)) {
     json: false,
   };
 
+  const readRequiredFlagValue = (index, flagName, { allowEmpty = false } = {}) => {
+    if (index + 1 >= argv.length || typeof argv[index + 1] !== 'string') {
+      throw new Error(`Missing value for ${flagName}`);
+    }
+    const nextVal = argv[index + 1];
+    if (nextVal.startsWith('-') || (!allowEmpty && nextVal.trim() === '')) {
+      throw new Error(`Missing value for ${flagName}`);
+    }
+    return nextVal;
+  };
+
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
     if (arg === '--repo-root') {
-      parsed.repoRoot = path.resolve(argv[++i] ?? '');
+      parsed.repoRoot = path.resolve(readRequiredFlagValue(i, '--repo-root'));
+      i += 1;
     } else if (arg === '--tarballs-dir') {
-      parsed.tarballsDir = path.resolve(argv[++i] ?? '');
+      parsed.tarballsDir = path.resolve(readRequiredFlagValue(i, '--tarballs-dir'));
+      i += 1;
     } else if (arg === '--with-ci-logs') {
       parsed.withCiLogs = true;
     } else if (arg === '--ci-runs-limit') {
-      const rawLimit = Number(argv[++i] ?? 10);
-      if (!Number.isFinite(rawLimit) || rawLimit < 1) {
+      if (i + 1 >= argv.length || typeof argv[i + 1] !== 'string' || argv[i + 1].startsWith('-')) {
         throw new Error('Invalid --ci-runs-limit value: expected positive integer');
       }
-      parsed.ciRunsLimit = Math.floor(rawLimit);
-    } else if (arg === '--ci-branch') {
-      if (i + 1 >= argv.length) {
-        throw new Error('Missing value for --ci-branch');
+      const rawStr = argv[++i];
+      const rawLimit = Number(rawStr);
+      if (!/^\d+$/.test(rawStr) || !Number.isSafeInteger(rawLimit) || rawLimit < 1) {
+        throw new Error('Invalid --ci-runs-limit value: expected positive integer');
       }
-      parsed.ciBranch = String(argv[++i] ?? '');
+      parsed.ciRunsLimit = rawLimit;
+    } else if (arg === '--ci-branch') {
+      parsed.ciBranch = readRequiredFlagValue(i, '--ci-branch', { allowEmpty: true });
+      i += 1;
     } else if (arg === '--skip-tarballs') {
       parsed.skipTarballs = true;
     } else if (arg === '--skip-write-gates') {

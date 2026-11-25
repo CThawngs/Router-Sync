@@ -16,8 +16,8 @@
  *      and fails closed (`HIGH` finding) when any gate check reports a bypass.
  *   5. Real repo `scanRepoFiles(REPO_ROOT)` + `scanEvidenceRefs(REPO_ROOT)` have `0` `HIGH` findings.
  *   6. C46-F4: `--with-ci-logs` defaults to 10 completed `main` runs, fails closed on offline/fetch
- *      errors, partial per-run log failures, and empty run lists, and records `ciLogs.runIds`
- *      + `evidenceRefs.refs` metadata.
+ *      errors, partial per-run/per-job log failures, mid-run cancelled jobs with executed steps,
+ *      and empty run lists, validates CLI flags strictly, and deduplicates `origin/evidence/*` refs.
  */
 
 import { test, describe, afterEach } from 'node:test';
@@ -274,7 +274,7 @@ describe('M4-02 (P7): tools/agent/security-audit.mjs multi-surface auditor & wri
 });
 
 describe('C46-F4 (P4): Hardened networked CI log & evidence ref security audit', () => {
-  test('parseSecurityAuditArgs defaults to ciRunsLimit=10 and ciBranch="main" and supports overrides', () => {
+  test('parseSecurityAuditArgs defaults to ciRunsLimit=10 and ciBranch="main", supports overrides, and rejects missing/flag-swallowed/non-integer values', () => {
     const defaults = parseSecurityAuditArgs(['--with-ci-logs', '--json']);
     assert.equal(defaults.withCiLogs, true);
     assert.equal(defaults.json, true);
@@ -293,6 +293,44 @@ describe('C46-F4 (P4): Hardened networked CI log & evidence ref security audit',
 
     const allBranches = parseSecurityAuditArgs(['--with-ci-logs', '--ci-branch', 'all']);
     assert.equal(allBranches.ciBranch, 'all');
+
+    const explicitEmptyBranch = parseSecurityAuditArgs(['--with-ci-logs', '--ci-branch', '']);
+    assert.equal(explicitEmptyBranch.ciBranch, '');
+
+    // Reject missing value, flag-swallowing, non-integer, zero, negative, and non-numeric --ci-runs-limit
+    for (const badArgs of [
+      ['--with-ci-logs', '--ci-runs-limit'],
+      ['--with-ci-logs', '--ci-runs-limit', '--json'],
+      ['--with-ci-logs', '--ci-runs-limit', '1.9'],
+      ['--with-ci-logs', '--ci-runs-limit', '0'],
+      ['--with-ci-logs', '--ci-runs-limit', '-5'],
+      ['--with-ci-logs', '--ci-runs-limit', ''],
+      ['--with-ci-logs', '--ci-runs-limit', 'ten'],
+    ]) {
+      assert.throws(
+        () => parseSecurityAuditArgs(badArgs),
+        /Invalid --ci-runs-limit value/,
+        `Expected parseSecurityAuditArgs(${JSON.stringify(badArgs)}) to reject invalid --ci-runs-limit`
+      );
+    }
+
+    // Reject missing value or flag-swallowing on --ci-branch, --repo-root, and --tarballs-dir
+    for (const [badArgs, expectedPattern] of [
+      [['--with-ci-logs', '--ci-branch'], /Missing value for --ci-branch/],
+      [['--with-ci-logs', '--ci-branch', '--json'], /Missing value for --ci-branch/],
+      [['--repo-root'], /Missing value for --repo-root/],
+      [['--repo-root', '--json'], /Missing value for --repo-root/],
+      [['--repo-root', ''], /Missing value for --repo-root/],
+      [['--tarballs-dir'], /Missing value for --tarballs-dir/],
+      [['--tarballs-dir', '--json'], /Missing value for --tarballs-dir/],
+      [['--tarballs-dir', ''], /Missing value for --tarballs-dir/],
+    ]) {
+      assert.throws(
+        () => parseSecurityAuditArgs(badArgs),
+        expectedPattern,
+        `Expected parseSecurityAuditArgs(${JSON.stringify(badArgs)}) to reject missing/swallowed flag value`
+      );
+    }
   });
 
   test('scanRecentCiLogs fails closed when logFetcher throws and leaks 0 error/secret characters', () => {
@@ -355,6 +393,51 @@ describe('C46-F4 (P4): Hardened networked CI log & evidence ref security audit',
     });
     assert.equal(allowedEmpty.ok, true);
     assert.equal(allowedEmpty.findings.length, 0);
+  });
+
+  test('runSecurityAudit forwards allowEmptyCiRuns=false by default and fails closed on 0 CI runs (kills Q7)', async () => {
+    const repoDir = makeTempDir('rs-sec-empty-ci-');
+    initTempGitRepo(repoDir);
+    fs.writeFileSync(path.join(repoDir, 'README.md'), '# Clean repo\n', 'utf8');
+    execFileSync('git', ['add', 'README.md'], { cwd: repoDir });
+    execFileSync('git', ['commit', '-q', '-m', 'initial main'], { cwd: repoDir });
+    execFileSync('git', ['branch', '-M', 'main'], { cwd: repoDir });
+
+    const report = await runSecurityAudit({
+      repoRoot: repoDir,
+      skipTarballs: true,
+      skipWriteGates: true,
+      withCiLogs: true,
+      ciLogFetcher: () => [],
+    });
+
+    assert.equal(report.ok, false);
+    assert.equal(report.highCount, 1);
+    assert.equal(report.surfaces.ciLogs.ok, false);
+    assert.equal(report.surfaces.ciLogs.status, 'empty_runs');
+    assert.equal(report.surfaces.ciLogs.runsScanned, 0);
+    assert.ok(
+      report.findings.some(
+        (f) =>
+          f.surface === 'ci-logs' &&
+          f.location === 'gh-run:list' &&
+          f.rule === 'ci-log-empty-runs' &&
+          f.severity === SEVERITY.HIGH
+      )
+    );
+    assertStrictZeroLeakSchema(report.findings);
+
+    const allowedReport = await runSecurityAudit({
+      repoRoot: repoDir,
+      skipTarballs: true,
+      skipWriteGates: true,
+      withCiLogs: true,
+      allowEmptyCiRuns: true,
+      ciLogFetcher: () => [],
+    });
+    assert.equal(allowedReport.ok, true);
+    assert.equal(allowedReport.highCount, 0);
+    assert.equal(allowedReport.surfaces.ciLogs.status, 'scanned');
   });
 
   test('scanRecentCiLogs and defaultCiLogFetcher fail closed on partial per-run log failure without swallowing errors', () => {
@@ -440,7 +523,66 @@ describe('C46-F4 (P4): Hardened networked CI log & evidence ref security audit',
     assert.equal(JSON.stringify(viaDefaultFetcher).includes(errorCanary), false);
   });
 
-  test('runSecurityAudit exposes surfaces.ciLogs.{branch,runIds} and surfaces.evidenceRefs.refs deterministically', async () => {
+  test('defaultCiLogFetcher fails closed when per-job --job <id> --log fallback throws with 0 secret canary leakage (kills Q1)', () => {
+    const errorCanary = buildOfflineErrorCanaryToken();
+    const execPerJobFailure = (_bin, args) => {
+      if (args[0] === 'run' && args[1] === 'list') {
+        return JSON.stringify([
+          {
+            databaseId: 990088,
+            headSha: '88aa99bb00cc11',
+            workflowName: 'CI',
+            status: 'completed',
+            headBranch: 'main',
+          },
+        ]);
+      }
+      if (args[0] === 'run' && args[1] === 'view' && args[2] === '990088' && args[3] === '--log') {
+        throw new Error('log not found: 66000');
+      }
+      if (args[0] === 'run' && args[1] === 'view' && args[2] === '990088' && args[3] === '--json') {
+        return JSON.stringify({
+          jobs: [
+            { databaseId: 66001, conclusion: 'success', steps: [{ conclusion: 'success' }] },
+            { databaseId: 66002, conclusion: 'success', steps: [{ conclusion: 'success' }] },
+          ],
+        });
+      }
+      if (args[0] === 'run' && args[1] === 'view' && args[3] === '--job' && args[4] === '66001') {
+        return '2026-11-25T00:00:01Z clean job J1 output\n';
+      }
+      if (args[0] === 'run' && args[1] === 'view' && args[3] === '--job' && args[4] === '66002') {
+        throw new Error(`job J2 log truncated ${errorCanary}`);
+      }
+      throw new Error('unexpected gh invocation');
+    };
+
+    const res = scanRecentCiLogs({
+      enabled: true,
+      execFn: execPerJobFailure,
+    });
+
+    assert.equal(res.ok, false);
+    assert.equal(res.status, 'fetch_failed');
+    assert.equal(res.runsScanned, 0);
+    assert.deepEqual(res.runIds, []);
+    assert.ok(
+      res.findings.some(
+        (f) =>
+          f.surface === 'ci-logs' &&
+          f.location === 'gh-run:990088' &&
+          f.rule === 'ci-log-fetch-failed' &&
+          f.severity === SEVERITY.HIGH &&
+          f.count === 1
+      )
+    );
+    assertStrictZeroLeakSchema(res.findings);
+    const serialized = JSON.stringify(res);
+    assert.equal(serialized.includes(errorCanary), false, 'Leaked canary from per-job log error');
+    assert.equal(serialized.includes('truncated'), false, 'Leaked raw per-job error message');
+  });
+
+  test('runSecurityAudit exposes surfaces.ciLogs.{branch,runIds} and deduplicates shared-SHA evidenceRefs remote-first (kills Q8)', async () => {
     const repoDir = makeTempDir('rs-sec-meta-');
     initTempGitRepo(repoDir);
 
@@ -449,15 +591,8 @@ describe('C46-F4 (P4): Hardened networked CI log & evidence ref security audit',
     execFileSync('git', ['commit', '-q', '-m', 'initial main'], { cwd: repoDir });
     execFileSync('git', ['branch', '-M', 'main'], { cwd: repoDir });
 
-    // Create two evidence refs (`refs/remotes/origin/evidence/d3` and `refs/heads/evidence/c44`)
-    execFileSync('git', ['checkout', '-q', '-b', 'evidence/c44'], { cwd: repoDir });
-    fs.mkdirSync(path.join(repoDir, 'evidence'), { recursive: true });
-    fs.writeFileSync(path.join(repoDir, 'evidence', 'c44.txt'), 'clean c44 proof\n', 'utf8');
-    execFileSync('git', ['add', '.'], { cwd: repoDir });
-    execFileSync('git', ['commit', '-q', '-m', 'c44 evidence'], { cwd: repoDir });
-
-    execFileSync('git', ['checkout', '-q', 'main'], { cwd: repoDir });
-    execFileSync('git', ['checkout', '-q', '-b', 'tmp-d3'], { cwd: repoDir });
+    // Create BOTH local `refs/heads/evidence/d3` AND remote-tracking `refs/remotes/origin/evidence/d3` at identical SHA
+    execFileSync('git', ['checkout', '-q', '-b', 'evidence/d3'], { cwd: repoDir });
     fs.mkdirSync(path.join(repoDir, 'evidence'), { recursive: true });
     fs.writeFileSync(path.join(repoDir, 'evidence', 'd3.txt'), 'clean d3 proof\n', 'utf8');
     execFileSync('git', ['add', '.'], { cwd: repoDir });
@@ -465,7 +600,6 @@ describe('C46-F4 (P4): Hardened networked CI log & evidence ref security audit',
     const d3Sha = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: repoDir, encoding: 'utf8' }).trim();
     execFileSync('git', ['update-ref', 'refs/remotes/origin/evidence/d3', d3Sha], { cwd: repoDir });
     execFileSync('git', ['checkout', '-q', 'main'], { cwd: repoDir });
-    execFileSync('git', ['branch', '-D', 'tmp-d3'], { cwd: repoDir });
 
     let receivedMeta = null;
     const report = await runSecurityAudit({
@@ -488,13 +622,35 @@ describe('C46-F4 (P4): Hardened networked CI log & evidence ref security audit',
     assert.equal(report.surfaces.ciLogs.branch, 'main');
     assert.equal(report.surfaces.ciLogs.runsScanned, 2);
     assert.deepEqual(report.surfaces.ciLogs.runIds, [501, 502]);
-    assert.equal(report.surfaces.evidenceRefs.refsScanned, 2);
-    assert.deepEqual(report.surfaces.evidenceRefs.refs, ['evidence/c44', 'origin/evidence/d3']);
+    assert.equal(report.surfaces.evidenceRefs.refsScanned, 1);
+    assert.deepEqual(report.surfaces.evidenceRefs.refs, ['origin/evidence/d3']);
+
+    // When local `refs/heads/evidence/d3` diverges to a distinct commit SHA, BOTH refs must be scanned
+    execFileSync('git', ['checkout', '-q', 'evidence/d3'], { cwd: repoDir });
+    fs.writeFileSync(path.join(repoDir, 'evidence', 'd3-extra.txt'), 'diverged local d3 proof\n', 'utf8');
+    execFileSync('git', ['add', '.'], { cwd: repoDir });
+    execFileSync('git', ['commit', '-q', '-m', 'diverged local d3'], { cwd: repoDir });
+    execFileSync('git', ['checkout', '-q', 'main'], { cwd: repoDir });
+
+    const divergedScan = scanEvidenceRefs(repoDir);
+    assert.equal(divergedScan.ok, true);
+    assert.equal(divergedScan.refsScanned, 2);
+    assert.deepEqual(divergedScan.refNames, ['evidence/d3', 'origin/evidence/d3']);
+
+    // Broken/missing evidence ref passed explicitly must fail closed instead of returning 0 findings
+    const brokenRefScan = scanEvidenceRefs(repoDir, ['refs/heads/evidence/missing-ref']);
+    assert.equal(brokenRefScan.ok, false);
+    assert.ok(
+      brokenRefScan.findings.some(
+        (f) => f.surface === 'evidence-refs' && f.rule === 'evidence-ref-scan-failed' && f.severity === SEVERITY.HIGH
+      )
+    );
+    assertStrictZeroLeakSchema(brokenRefScan.findings);
   });
 
-  test('defaultCiLogFetcher recovers executed job logs when a matrix run has a 0-step cancelled job and catches secrets', () => {
+  test('defaultCiLogFetcher skips 0-step cancelled jobs but scans mid-run cancelled jobs that executed steps (kills Q6)', () => {
     const skToken = buildSyntheticSkToken();
-    const execWithCancelledJob = (_bin, args) => {
+    const execWithCancelledJobs = (_bin, args) => {
       if (args[0] === 'run' && args[1] === 'list') {
         return JSON.stringify([
           {
@@ -514,28 +670,41 @@ describe('C46-F4 (P4): Hardened networked CI log & evidence ref security audit',
           jobs: [
             { databaseId: 55001, conclusion: 'success', steps: [{ conclusion: 'success' }] },
             { databaseId: 55002, conclusion: 'cancelled', steps: [] },
-            { databaseId: 55003, conclusion: 'failure', steps: [{ conclusion: 'failure' }] },
+            {
+              databaseId: 55004,
+              conclusion: 'cancelled',
+              steps: [{ conclusion: 'success' }, { conclusion: 'cancelled' }],
+            },
           ],
         });
       }
       if (args[0] === 'run' && args[1] === 'view' && args[3] === '--job' && args[4] === '55001') {
         return '2026-11-25T00:00:01Z clean job 1\n';
       }
-      if (args[0] === 'run' && args[1] === 'view' && args[3] === '--job' && args[4] === '55003') {
-        return `2026-11-25T00:00:02Z leaked=${skToken}\n`;
+      if (args[0] === 'run' && args[1] === 'view' && args[3] === '--job' && args[4] === '55004') {
+        return `2026-11-25T00:00:02Z mid-run cancelled leaked=${skToken}\n`;
       }
-      throw new Error('unexpected call');
+      throw new Error(`unexpected call: ${JSON.stringify(args)}`);
     };
 
     const res = scanRecentCiLogs({
       enabled: true,
-      execFn: execWithCancelledJob,
+      execFn: execWithCancelledJobs,
     });
     assert.equal(res.status, 'scanned');
     assert.equal(res.runsScanned, 1);
     assert.deepEqual(res.runIds, [990077]);
     assert.equal(res.ok, false);
-    assert.ok(res.findings.some((f) => f.location.startsWith('gh-run:990077:line:') && f.rule === 'openai-api-key'));
+    assert.ok(
+      res.findings.some(
+        (f) =>
+          f.surface === 'ci-logs' &&
+          f.location.startsWith('gh-run:990077:line:') &&
+          f.rule === 'openai-api-key' &&
+          f.severity === SEVERITY.HIGH
+      )
+    );
+    assertStrictZeroLeakSchema(res.findings);
     assert.equal(JSON.stringify(res).includes(skToken), false);
   });
 });
