@@ -337,13 +337,25 @@ interface ProviderMetaFingerprint {
   nonModelsFingerprint: string;
 }
 
+interface DefaultSlotInfo {
+  rawValue: string;
+  providerHint?: string | undefined;
+  strictProvider?: boolean | undefined;
+}
+
+interface ResolvedDefaultSlotBinding {
+  provider: string;
+  model: string;
+  hasProvPrefix: boolean;
+}
+
 interface ParsedHarnessState {
   /** All providers discovered -> ordered list of model IDs */
   allProviderModels: Map<string, string[]>;
   /** Subset of providers eligible for Direction A updates (keyed) */
   keyedProviders: Set<string>;
-  /** Default slot name -> raw string value */
-  defaultSlots: Map<string, { rawValue: string; providerHint?: string | undefined }>;
+  /** Default slot name -> raw string value & provider scoping metadata */
+  defaultSlots: Map<string, DefaultSlotInfo>;
   /** Immutable SHA-256 digests of endpoint URL, auth metadata, and non-model fields per provider */
   providerMeta: Map<string, ProviderMetaFingerprint>;
   /** Computes lossless next text for a given map of provider -> { removeSet, addIds } */
@@ -363,30 +375,166 @@ function omitKeys(obj: Record<string, unknown>, keysToOmit: readonly string[]): 
   return out;
 }
 
+function providerContainsCandidate(
+  provId: string,
+  candidate: string,
+  allProviderModels: ReadonlyMap<string, readonly string[]>,
+  catalog?: HarnessCatalogInput
+): boolean {
+  if (allProviderModels.get(provId)?.includes(candidate)) return true;
+  const cat = catalog?.[provId];
+  if (cat && (cat.liveModels.includes(candidate) || cat.deprecatedModels.includes(candidate))) {
+    return true;
+  }
+  return false;
+}
+
+const MULTI_SEGMENT_AGGREGATOR_PROVIDERS = new Set([
+  'openrouter',
+  'together',
+  'togetherai',
+  'together-ai',
+  'fireworks',
+  'fireworks-ai',
+  'fireworksai',
+  'groq',
+  'deepinfra',
+  'huggingface',
+  'hugging-face',
+  'nvidia',
+  'sambanova',
+  'hyperbolic',
+  '302ai',
+]);
+
+function resolveDefaultSlotBindings(
+  info: DefaultSlotInfo,
+  allProviderModels: ReadonlyMap<string, readonly string[]>,
+  catalog?: HarnessCatalogInput
+): ResolvedDefaultSlotBinding[] {
+  const raw = info.rawValue.trim();
+  if (!raw) return [];
+
+  const hint = info.providerHint?.trim();
+  if (info.strictProvider && hint) {
+    const hasPrefix = raw.startsWith(`${hint}/`);
+    const stripped = hasPrefix ? raw.slice(hint.length + 1) : raw;
+    if (hasPrefix && !providerContainsCandidate(hint, raw, allProviderModels, catalog)) {
+      return [{ provider: hint, model: stripped, hasProvPrefix: true }];
+    }
+    return [{ provider: hint, model: raw, hasProvPrefix: false }];
+  }
+
+  const slashIdx = raw.indexOf('/');
+  const leadingPrefix = slashIdx > 0 ? raw.slice(0, slashIdx) : undefined;
+  const afterSlash =
+    slashIdx > 0 && slashIdx < raw.length - 1 ? raw.slice(slashIdx + 1) : undefined;
+
+  if (!leadingPrefix || !afterSlash) {
+    if (hint) {
+      return [{ provider: hint, model: raw, hasProvPrefix: false }];
+    }
+    const known = new Set([...allProviderModels.keys(), ...Object.keys(catalog ?? {})]);
+    const matches: ResolvedDefaultSlotBinding[] = [];
+    for (const provId of known) {
+      if (providerContainsCandidate(provId, raw, allProviderModels, catalog)) {
+        matches.push({ provider: provId, model: raw, hasProvPrefix: false });
+      }
+    }
+    return matches;
+  }
+
+  // 1. Explicit `<hint>/...` prefix matches `hint`
+  if (hint && leadingPrefix === hint) {
+    if (providerContainsCandidate(hint, raw, allProviderModels, catalog)) {
+      return [{ provider: hint, model: raw, hasProvPrefix: false }];
+    }
+    return [{ provider: hint, model: afterSlash, hasProvPrefix: true }];
+  }
+
+  // 2. `hint` directly owns the slashed ID (e.g. `openrouter` owning `openai/gpt-or-retired`)
+  if (hint && providerContainsCandidate(hint, raw, allProviderModels, catalog)) {
+    return [{ provider: hint, model: raw, hasProvPrefix: false }];
+  }
+
+  // 3. Nested provider override: `leadingPrefix` is a configured/catalog provider that owns `afterSlash`
+  //    (e.g. Hermes `model.provider: openai` + `model.default` / `cron.model` = `openrouter/openai/...`).
+  const isAggregatorHint =
+    hint !== undefined && MULTI_SEGMENT_AGGREGATOR_PROVIDERS.has(hint.toLowerCase());
+  const isVendorModelUnderAggregatorHint =
+    isAggregatorHint &&
+    (!afterSlash.includes('/') || !MULTI_SEGMENT_AGGREGATOR_PROVIDERS.has(leadingPrefix.toLowerCase()));
+  if (!isVendorModelUnderAggregatorHint) {
+    if (
+      (allProviderModels.has(leadingPrefix) || Boolean(catalog?.[leadingPrefix])) &&
+      providerContainsCandidate(leadingPrefix, afterSlash, allProviderModels, catalog)
+    ) {
+      return [{ provider: leadingPrefix, model: afterSlash, hasProvPrefix: true }];
+    }
+  }
+
+  // 4. Configured provider in `allProviderModels` directly contains `raw`
+  const directConfigured: ResolvedDefaultSlotBinding[] = [];
+  for (const provId of allProviderModels.keys()) {
+    if (allProviderModels.get(provId)?.includes(raw)) {
+      directConfigured.push({ provider: provId, model: raw, hasProvPrefix: false });
+    }
+  }
+  if (directConfigured.length > 0) {
+    return directConfigured;
+  }
+
+  // 5. `leadingPrefix` is a configured provider in `allProviderModels`
+  if (!isVendorModelUnderAggregatorHint && allProviderModels.has(leadingPrefix)) {
+    return [{ provider: leadingPrefix, model: afterSlash, hasProvPrefix: true }];
+  }
+
+  // 6. Keep scoped to `hint` when present so unrelated catalog providers never false-positive
+  if (hint) {
+    return [{ provider: hint, model: raw, hasProvPrefix: false }];
+  }
+
+  // 7. No `hint` and not matched in `allProviderModels`: fall back to `catalog`
+  const catMatches: ResolvedDefaultSlotBinding[] = [];
+  for (const [provId, cat] of Object.entries(catalog ?? {})) {
+    if (cat.liveModels.includes(raw) || cat.deprecatedModels.includes(raw)) {
+      catMatches.push({ provider: provId, model: raw, hasProvPrefix: false });
+    } else if (
+      provId === leadingPrefix &&
+      (cat.liveModels.includes(afterSlash) || cat.deprecatedModels.includes(afterSlash))
+    ) {
+      catMatches.push({ provider: provId, model: afterSlash, hasProvPrefix: true });
+    }
+  }
+  return catMatches;
+}
+
 function checkDefaultSlotWarnings(
-  defaultSlots: Map<string, { rawValue: string; providerHint?: string | undefined }>,
+  defaultSlots: Map<string, DefaultSlotInfo>,
+  allProviderModels: ReadonlyMap<string, readonly string[]>,
   catalog: HarnessCatalogInput
 ): HarnessDefaultSlotWarning[] {
   const warnings: HarnessDefaultSlotWarning[] = [];
 
   for (const [slot, info] of defaultSlots.entries()) {
-    const raw = info.rawValue;
+    const raw = info.rawValue.trim();
     if (!raw) continue;
 
-    const slashIdx = raw.indexOf('/');
-    const parsedProvider = slashIdx > 0 ? raw.slice(0, slashIdx) : info.providerHint;
-    const bareModel = slashIdx > 0 ? raw.slice(slashIdx + 1) : raw;
-
-    const candidateEntries: Array<[string, { liveModels: string[]; deprecatedModels: string[] }]> =
-      parsedProvider && catalog[parsedProvider]
-        ? [[parsedProvider, catalog[parsedProvider]!]]
-        : Object.entries(catalog);
-
-    for (const [provId, cat] of candidateEntries) {
-      if (cat.deprecatedModels.includes(bareModel) || cat.deprecatedModels.includes(raw)) {
+    const bindings = resolveDefaultSlotBindings(info, allProviderModels, catalog);
+    for (const { provider: provId, model, hasProvPrefix } of bindings) {
+      const cat = catalog[provId];
+      if (!cat) continue;
+      const altStripped =
+        !hasProvPrefix && raw.startsWith(`${provId}/`) ? raw.slice(provId.length + 1) : undefined;
+      if (
+        cat.deprecatedModels.includes(model) ||
+        (altStripped !== undefined && cat.deprecatedModels.includes(altStripped))
+      ) {
         const nextLive = cat.liveModels[0];
+        const needsPrefix =
+          hasProvPrefix || Boolean(altStripped && cat.deprecatedModels.includes(altStripped));
         const suggestion = nextLive
-          ? slashIdx > 0
+          ? needsPrefix && !nextLive.startsWith(`${provId}/`)
             ? `${provId}/${nextLive}`
             : nextLive
           : 'chọn model đang hoạt động khác trong danh sách liveModels';
@@ -539,7 +687,7 @@ function parseHermesState(text: string, configPath: string, homeDir?: string): P
   const allProviderModels = new Map<string, string[]>();
   const keyedProviders = new Set<string>();
   const providerSeqNodes = new Map<string, { mapNode: YAMLMap; seqNode?: YAMLSeq | undefined }>();
-  const defaultSlots = new Map<string, { rawValue: string; providerHint?: string | undefined }>();
+  const defaultSlots = new Map<string, DefaultSlotInfo>();
   const providerMeta = new Map<string, ProviderMetaFingerprint>();
 
   const modelMap = root.get('model', true);
@@ -637,6 +785,7 @@ function parseHermesState(text: string, configPath: string, homeDir?: string): P
         defaultSlots.set(`custom_providers[${idx}].model`, {
           rawValue: slotModel,
           providerHint: provId,
+          strictProvider: true,
         });
       }
 
@@ -724,22 +873,39 @@ function parseOpenMausBotState(text: string, configPath: string): ParsedHarnessS
 
   const allProviderModels = new Map<string, string[]>();
   const keyedProviders = new Set<string>();
-  const defaultSlots = new Map<string, { rawValue: string; providerHint?: string | undefined }>();
+  const defaultSlots = new Map<string, DefaultSlotInfo>();
   const providerMeta = new Map<string, ProviderMetaFingerprint>();
   const configNodes = new Map<string, JsoncObjectNode>();
 
-  const topDef = value['defaultModelSelection'];
-  if (typeof topDef === 'string' && topDef.trim()) {
-    defaultSlots.set('defaultModelSelection', { rawValue: topDef.trim() });
-  } else if (topDef && typeof topDef === 'object' && !Array.isArray(topDef)) {
-    const nestedModel = nonEmptyStr((topDef as Record<string, unknown>)['model']);
-    if (nestedModel) {
-      defaultSlots.set('defaultModelSelection', {
-        rawValue: nestedModel,
-        providerHint: nonEmptyStr((topDef as Record<string, unknown>)['provider']),
+  const recordDefaultSlot = (
+    slotKey: string,
+    slotRaw: unknown,
+    fallbackProvider?: string,
+    strictFallback = false
+  ): void => {
+    if (typeof slotRaw === 'string' && slotRaw.trim()) {
+      defaultSlots.set(slotKey, {
+        rawValue: slotRaw.trim(),
+        providerHint: fallbackProvider,
+        strictProvider: strictFallback && Boolean(fallbackProvider),
       });
+    } else if (slotRaw && typeof slotRaw === 'object' && !Array.isArray(slotRaw)) {
+      const rec = slotRaw as Record<string, unknown>;
+      const nestedModel =
+        nonEmptyStr(rec['model']) ?? nonEmptyStr(rec['modelId']) ?? nonEmptyStr(rec['id']);
+      if (nestedModel) {
+        const explicitProv = nonEmptyStr(rec['provider']) ?? nonEmptyStr(rec['instanceId']);
+        defaultSlots.set(slotKey, {
+          rawValue: nestedModel,
+          providerHint: explicitProv ?? fallbackProvider,
+          strictProvider: Boolean(explicitProv) || (strictFallback && Boolean(fallbackProvider)),
+        });
+      }
     }
-  }
+  };
+
+  recordDefaultSlot('defaultModelSelection', value['defaultModelSelection']);
+  recordDefaultSlot('defaultModel', value['defaultModel']);
 
   const autoRecovery = value['automaticRecovery'];
   if (autoRecovery && typeof autoRecovery === 'object' && !Array.isArray(autoRecovery)) {
@@ -750,9 +916,11 @@ function parseOpenMausBotState(text: string, configPath: string): ParsedHarnessS
       const rec = backupRaw as Record<string, unknown>;
       const bm = nonEmptyStr(rec['model']);
       if (bm) {
+        const explicitProv = nonEmptyStr(rec['provider']) ?? nonEmptyStr(rec['instanceId']);
         defaultSlots.set('automaticRecovery.backup', {
           rawValue: bm,
-          providerHint: nonEmptyStr(rec['provider']) ?? nonEmptyStr(rec['instanceId']),
+          providerHint: explicitProv,
+          strictProvider: Boolean(explicitProv),
         });
       }
     } else if (Array.isArray(backupRaw)) {
@@ -764,9 +932,11 @@ function parseOpenMausBotState(text: string, configPath: string): ParsedHarnessS
           const rec = entry as Record<string, unknown>;
           const bm = nonEmptyStr(rec['model']);
           if (bm) {
+            const explicitProv = nonEmptyStr(rec['provider']) ?? nonEmptyStr(rec['instanceId']);
             defaultSlots.set(slotKey, {
               rawValue: bm,
-              providerHint: nonEmptyStr(rec['provider']) ?? nonEmptyStr(rec['instanceId']),
+              providerHint: explicitProv,
+              strictProvider: Boolean(explicitProv),
             });
           }
         }
@@ -777,7 +947,13 @@ function parseOpenMausBotState(text: string, configPath: string): ParsedHarnessS
   const decider = value['decider'];
   if (decider && typeof decider === 'object' && !Array.isArray(decider)) {
     const dm = nonEmptyStr((decider as Record<string, unknown>)['openrouterModel']);
-    if (dm) defaultSlots.set('decider.openrouterModel', { rawValue: dm });
+    if (dm) {
+      defaultSlots.set('decider.openrouterModel', {
+        rawValue: dm,
+        providerHint: 'openrouter',
+        strictProvider: true,
+      });
+    }
   }
 
   const instancesProp = findJsoncProperty(root, 'instances');
@@ -807,8 +983,11 @@ function parseOpenMausBotState(text: string, configPath: string): ParsedHarnessS
         defaultSlots.set(`instances.${instId}.config.model`, {
           rawValue: instModel,
           providerHint: instId,
+          strictProvider: true,
         });
       }
+      recordDefaultSlot(`instances.${instId}.config.defaultModel`, cfgVal['defaultModel'], instId, true);
+      recordDefaultSlot(`instances.${instId}.defaultModel`, instVal['defaultModel'], instId, true);
 
       // Only `openai-compat` instances maintain user-editable `managedModels`
       const isEditableDriver = driver === 'openai-compat';
@@ -953,7 +1132,7 @@ function parseOpenCodeState(text: string, configPath: string, homeDir?: string):
 
   const allProviderModels = new Map<string, string[]>();
   const keyedProviders = new Set<string>();
-  const defaultSlots = new Map<string, { rawValue: string; providerHint?: string | undefined }>();
+  const defaultSlots = new Map<string, DefaultSlotInfo>();
   const providerMeta = new Map<string, ProviderMetaFingerprint>();
   const providerNodes = new Map<string, { provNode: JsoncObjectNode; modelsNode?: JsoncObjectNode | undefined }>();
 
@@ -1115,7 +1294,7 @@ function parseDshState(text: string, configPath: string): ParsedHarnessState {
 
   const allProviderModels = new Map<string, string[]>();
   const keyedProviders = new Set<string>();
-  const defaultSlots = new Map<string, { rawValue: string; providerHint?: string | undefined }>();
+  const defaultSlots = new Map<string, DefaultSlotInfo>();
   const providerMeta = new Map<string, ProviderMetaFingerprint>();
   const providerSeqNodes = new Map<string, { mapNode: YAMLMap; seqNode?: YAMLSeq | undefined }>();
 
@@ -1325,7 +1504,11 @@ function createTierAWriteAdapter(cap: HarnessCapability, parseState: StateParser
         }
       }
 
-      const defaultSlotWarnings = checkDefaultSlotWarnings(state.defaultSlots, options.catalog);
+      const defaultSlotWarnings = checkDefaultSlotWarnings(
+        state.defaultSlots,
+        state.allProviderModels,
+        options.catalog
+      );
       const guidance: string[] = [];
       if (runningProcesses.length > 0) {
         guidance.push(
@@ -1520,17 +1703,30 @@ function createTierAWriteAdapter(cap: HarnessCapability, parseState: StateParser
 
       const backupBytes = fs.readFileSync(backupPath);
       const backupSha = sha256(backupBytes);
+      const expectedSha = options.expectedPreSha256 ?? backupSha;
+      if (backupSha.toLowerCase() !== expectedSha.toLowerCase()) {
+        const currentSha = fs.existsSync(options.configPath)
+          ? sha256(fs.readFileSync(options.configPath))
+          : '';
+        return {
+          app: cap.id,
+          configPath: options.configPath,
+          backupPath,
+          restored: false,
+          byteIdenticalToPreApply: false,
+          postSha256: currentSha,
+        };
+      }
       atomicWriteBytes(options.configPath, backupBytes);
 
       const postSha256 = sha256(fs.readFileSync(options.configPath));
-      const expectedSha = options.expectedPreSha256 ?? backupSha;
 
       return {
         app: cap.id,
         configPath: options.configPath,
         backupPath,
         restored: true,
-        byteIdenticalToPreApply: postSha256 === expectedSha,
+        byteIdenticalToPreApply: postSha256.toLowerCase() === expectedSha.toLowerCase(),
         postSha256,
       };
     },
@@ -1638,9 +1834,27 @@ export function inspectTierAHarnessForTick(
   }
   const rawText = fs.readFileSync(configPath, 'utf8');
   const state = parser(rawText, configPath, homeDir);
-  const defaultModels = [...state.defaultSlots.values()]
-    .map((s) => s.rawValue)
-    .filter((v) => v.length > 0);
+  const defaultModelSet = new Set<string>();
+  for (const s of state.defaultSlots.values()) {
+    const raw = s.rawValue.trim();
+    if (!raw) continue;
+    const bindings = resolveDefaultSlotBindings(s, state.allProviderModels);
+    if (bindings.length > 0) {
+      for (const b of bindings) {
+        defaultModelSet.add(`${b.provider}/${b.model}`);
+        if (
+          !b.hasProvPrefix &&
+          raw.startsWith(`${b.provider}/`) &&
+          raw.slice(b.provider.length + 1).length > 0
+        ) {
+          defaultModelSet.add(raw);
+        }
+      }
+    } else {
+      defaultModelSet.add(raw);
+    }
+  }
+  const defaultModels = [...defaultModelSet];
 
   const providers: DiscoveredTierAHarnessState['providers'] = [];
   for (const [provId, models] of state.allProviderModels.entries()) {
@@ -1665,4 +1879,56 @@ export function inspectTierAHarnessForTick(
     defaultModels,
     providers,
   };
+}
+
+export function isHarnessRemovalProtectedDefaultSlot(
+  harnessId: string,
+  configPath: string,
+  homeDir: string | undefined,
+  provider: string,
+  model: string,
+  catalog?: HarnessCatalogInput
+): boolean {
+  const parser = STATE_PARSERS[harnessId];
+  if (!parser || !fs.existsSync(configPath)) {
+    return false;
+  }
+  if (harnessId === 'openmausbot') {
+    assertOpenMausBotSafeFile(configPath);
+  }
+  const rawText = fs.readFileSync(configPath, 'utf8');
+  const state = parser(rawText, configPath, homeDir);
+  for (const info of state.defaultSlots.values()) {
+    const bindings = resolveDefaultSlotBindings(info, state.allProviderModels, catalog);
+    for (const b of bindings) {
+      if (b.provider !== provider) continue;
+      const raw = info.rawValue.trim();
+      if (
+        b.model === model ||
+        (!b.hasProvPrefix &&
+          raw.startsWith(`${provider}/`) &&
+          raw.slice(provider.length + 1) === model)
+      ) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+export function inspectHarnessConfiguredModels(
+  harnessId: string,
+  configPath: string,
+  homeDir: string
+): Map<string, string[]> {
+  const parser = STATE_PARSERS[harnessId];
+  if (!parser || !fs.existsSync(configPath)) {
+    return new Map();
+  }
+  if (harnessId === 'openmausbot') {
+    assertOpenMausBotSafeFile(configPath);
+  }
+  const rawText = fs.readFileSync(configPath, 'utf8');
+  const state = parser(rawText, configPath, homeDir);
+  return state.allProviderModels;
 }

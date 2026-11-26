@@ -449,6 +449,7 @@ describe('C45-WP3 Part 3 & 4: Tier 0 <-> Tier 1 Real-Time Research Loop', () => 
       url: 'https://docs.anthropic.com/en/docs/resources/model-deprecations',
       quote: 'claude-3-sonnet-20240229 was retired on 2026-07-21.',
       publishedAt,
+      submittedAt: new Date(baseNowMs + 30 * 60_000).toISOString(),
       shutdownDate: '2026-07-21',
       replacementModelId: 'claude-3-5-haiku-v1',
       claimedSourceTier: 'official',
@@ -456,7 +457,8 @@ describe('C45-WP3 Part 3 & 4: Tier 0 <-> Tier 1 Real-Time Research Loop', () => 
     });
 
     const tick3NowMs = baseNowMs + 40 * 60 * 1000; // 2026-11-24T12:40:00.000Z
-    const expectedLatencyMs = tick3NowMs - Date.parse(publishedAt);
+    const expectedLatencyMs = 0;
+    const expectedPublicationToPlanMs = tick3NowMs - Date.parse(publishedAt);
 
     const summary3 = await runTickCommand({
       stateDir: tmpDir,
@@ -488,15 +490,15 @@ describe('C45-WP3 Part 3 & 4: Tier 0 <-> Tier 1 Real-Time Research Loop', () => 
     expect(routerRemovals).toHaveLength(1);
     expect(routerRemovals[0]?.comboName).toBe('coding-combo');
     expect(routerRemovals[0]?.modelId).toBe(modelToRetire);
-    expect(routerRemovals[0]?.detectionLatencyMs).toBe(expectedLatencyMs);
+    expect(routerRemovals[0]).toMatchObject({ detectionLatencyMs: expectedLatencyMs, publicationToPlanMs: expectedPublicationToPlanMs });
 
     expect(harnessRemovals).toHaveLength(1);
     expect(harnessRemovals[0]?.harnessId).toBe('opencode');
     expect(harnessRemovals[0]?.modelId).toBe(modelToRetire);
-    expect(harnessRemovals[0]?.detectionLatencyMs).toBe(expectedLatencyMs);
+    expect(harnessRemovals[0]).toMatchObject({ detectionLatencyMs: expectedLatencyMs, publicationToPlanMs: expectedPublicationToPlanMs });
 
     // Latency persisted in all 3 places: tick-plan.json, status.json, tick.log
-    expect(plan3.detectionLatency.measuredCount).toBeGreaterThanOrEqual(2);
+    expect(plan3.detectionLatency.measuredCount).toBe(1);
     expect(plan3.detectionLatency.maxMs).toBe(expectedLatencyMs);
 
     const status3 = JSON.parse(fs.readFileSync(path.join(tmpDir, 'status.json'), 'utf8'));
@@ -563,6 +565,7 @@ describe('C45-WP3 Part 3 & 4: Tier 0 <-> Tier 1 Real-Time Research Loop', () => 
       quote: 'gpt-old-retired was shut down.',
       shutdownDate: '2026-06-01',
       publishedAt: '2026-06-01T00:00:00.000Z',
+      submittedAt: new Date(baseNowMs - 1000).toISOString(),
       claimedSourceTier: 'official',
       submittedVia: 'mcp',
     });
@@ -654,13 +657,17 @@ describe('C45-WP3 Part 3 & 4: Tier 0 <-> Tier 1 Real-Time Research Loop', () => 
     providerModels = healthy;
     const first = await runCycle(firstAbsentAt);
     const second = await runCycle(firstAbsentAt + hourMs);
-    expect(first).toMatchObject({ absenceCount: 1, removals: [], latency: { measuredCount: 0 } });
-    expect(second).toMatchObject({ absenceCount: 2, removals: [], latency: { measuredCount: 0 } });
+    expect(first.absenceCount).toBe(1);
+    expect(first.removals).toEqual([]);
+    expect(first.latency.measuredCount).toBe(1);
+    expect(first.latency.maxMs).toBeGreaterThanOrEqual(0);
+    expect(first.latency.maxMs!).toBeLessThanOrEqual(60_000);
+    expect(second).toMatchObject({ absenceCount: 2, removals: [], latency: { measuredCount: 0, maxMs: null } });
 
     const third = await runCycle(firstAbsentAt + 24 * hourMs);
     expect(third.absenceCount).toBe(3);
-    expect(third.removals).toEqual([expect.objectContaining({ modelId: absent })]);
-    expect(third.latency).toMatchObject({ measuredCount: 1, maxMs: 24 * hourMs });
+    expect(third.removals).toEqual([expect.objectContaining({ modelId: absent, detectionLatencyMs: null })]);
+    expect(third.latency).toMatchObject({ measuredCount: 0, maxMs: null });
   });
 
   it('enforces UNVERIFIABLE != ABSENT across 5 consecutive ticks (> 48h): absenceCount stays 0 and zero REMOVE_MODEL actions', async () => {

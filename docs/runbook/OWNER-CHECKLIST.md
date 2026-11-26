@@ -4,9 +4,12 @@
 > - **Chọn Combo & `<ID_ROUTER>`:** Chọn combo ít phụ thuộc hoặc tạo riêng `rs-pilot` ngoài vòng xoay tải chính (**không** chọn `rs-fast` hay combo chính đang chạy tải thật); `<ID_ROUTER>` phải khớp đúng `routers[].id` trong `routersync.yaml` (ví dụ `omni` hoặc `nine`, không điền tên adapter `omniroute`/`9router`).
 > - **Chọn Harness:** Chọn `Hermes` hoặc `OpenCode`; **không chọn `OpenMausBot` khi dàn bot đang chạy** (sửa `config.json` lúc chạy dễ làm gián đoạn phiên bot; `routines.json` và `bots.json` luôn bị chặn cứng).
 > - **Lưu ý D26 (`9Router`):** Hàng combo `kind=null` cần `20–31 giây` (`<= 60 giây`) để phản ánh trên `GET /v1/models`; ghi riêng qua `--serving-reflection-ms`, **không** cộng vào `detectionLatencyMs`.
+> - **Tách độ trễ C48:** `detectionLatencyMs` = bắt đầu quét tick → lần ghi `model_pending` đầu tiên (hoặc công bố chính thức → kế hoạch); **không** gộp thời gian chờ gỡ. `removalSettleMs` = lần vắng đầu tiên → gỡ thực tế, **không áp trần**. `observedScanIntervalMs` báo riêng chu kỳ quét.
+> - **Cửa sổ không quan sát được:** `providerToFirstScanMs` luôn `null` kèm `unobservableWindow=provider-to-first-scan`; không suy đoán. Phiên live chỉ dùng thông báo first-party thật. Với thông báo đã có hiệu lực, `detectionLatencyMs` đo từ lượt quét hợp lệ đầu tiên đến plan đầu tiên. Ghi riêng `publicationToPlanMs` từ ngày công bố đến plan, không áp trần.
+> - **Nhịp chờ vắng mặt:** lần quét hợp lệ đầu tiên (Day 0) ghi nhận vắng; chỉ loại khi đã có **ít nhất 3 lần quét hợp lệ ghi nhận vắng** và lần quét đủ điều kiện loại cách lần vắng đầu **ít nhất 24 giờ**, tôn trọng cổng 15 phút và backoff provider.
 > - **Cờ mở khóa ghi thật:** Chỉ chủ dự án tự đặt `ROUTERSYNC_ALLOW_LIVE_ROUTER_WRITE=1` và `ROUTERSYNC_ALLOW_LIVE_HOME_WRITE=1` tạm thời trong phiên shell tương tác; tuyệt đối không lưu vào tệp cấu hình, kho mã hay lệnh của bot.
 > - Các khối `sh` dùng chung cho PowerShell và Bash. Chạy tại thư mục chứa `routersync.yaml` của phiên thí điểm và thay các giá trị trong `<...>`. Dùng cùng một cấu hình và thư mục trạng thái suốt phiên.
-> - Chọn `<STATE_DIR>` mới cho phiên thí điểm để báo cáo chỉ dùng bằng chứng của phiên này. PowerShell đặt `$env:ROUTERSYNC_STATE_DIR = "<STATE_DIR>"`, Bash đặt `export ROUTERSYNC_STATE_DIR="<STATE_DIR>"`.
+> - Chọn `<STATE_DIR>` mới cho mỗi phiên thí điểm và ghi UTC lúc bắt đầu. Báo cáo mặc định đọc 30 ngày gần nhất; dùng `--pilot-started-at <ISO-8601>` để giới hạn theo phiên khi cần. PowerShell đặt `$env:ROUTERSYNC_STATE_DIR = "<STATE_DIR>"`, Bash đặt `export ROUTERSYNC_STATE_DIR="<STATE_DIR>"`.
 
 0. Trong dashboard router, tự tạo `rs-pilot` ngoài vòng xoay tải với 10 model (9 còn trong danh mục và 1 ID cố ý không tồn tại ở provider). Gỡ 1/10 là đúng trần 10%. Ghi lại danh sách và thứ tự ban đầu.
 
@@ -88,7 +91,7 @@
     ```sh
     routersync tick --mode auto-safe --json
     ```
-    **Kết quả đúng:** Cả hai lượt thực sự quét provider, `effectiveMode: "auto-safe"` và `tokens: 0`. Ghi kết quả sau hai lượt. Nếu model chỉ vắng mặt, nhánh này cần ít nhất 3 lần quét hợp lệ trong ít nhất 24 giờ từ lần vắng đầu tiên. Ghi riêng số model đã loại, `measuredCount` và độ trễ đo được, kể cả khi vượt 60.000 ms.
+    **Kết quả đúng:** Cả hai lượt thực sự quét provider, `effectiveMode: "auto-safe"` và `tokens: 0`. Ghi kết quả sau hai lượt. Nếu model chỉ vắng mặt, nhánh này cần ít nhất 3 lần quét hợp lệ trong ít nhất 24 giờ từ lần vắng đầu tiên. Ghi riêng số model đã loại, `measuredCount`, `detectionLatencyMs` (kể cả khi vượt 60.000 ms), `removalSettleMs` (không áp trần) và `observedScanIntervalMs`.
 17. Diễn tập kích hoạt cầu dao khẩn cấp `freeze`:
     ```sh
     routersync freeze --reason "live-pilot-drill"
@@ -117,4 +120,4 @@
     ```sh
     routersync pilot-report -c "<DUONG_DAN_ROUTERSYNC_YAML>" --state-dir "<STATE_DIR>" --router-target "router:<ID_ROUTER>/rs-pilot" --harness-target harness:hermes --false-removals "<SO_LOAI_NHAM>" --unplanned-interventions "<SO_CAN_THIEP_NGOAI_KE_HOACH>" --json
     ```
-    **Kết quả đúng:** `PASS` (mã thoát 0) khi đủ bằng chứng và cả 5 tiêu chí đạt. `INCOMPLETE` khi thiếu phép đo hoặc bằng chứng hoàn tác. `FAIL` khi có vi phạm hoặc bằng chứng hỏng.
+    **Kết quả đúng:** `PASS` (mã thoát 0) khi đủ bằng chứng và cả 5 tiêu chí đạt. `INCOMPLETE` khi thiếu phép đo hoặc bằng chứng hoàn tác. `FAIL` khi có vi phạm hoặc bằng chứng hỏng. Đọc riêng khối `removalSettle` (`removalSettleMs`, `removalPaths`, `noticeOrigin`, `observedScanIntervalMs`) và xác nhận `providerToFirstScanMs: null`.

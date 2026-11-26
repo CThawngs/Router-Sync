@@ -21,6 +21,10 @@ import { parse as parseYaml } from 'yaml';
 import {
   canonicalJsonStringify,
   computeWeeklyResearchBudget,
+  deriveRemovalSettlementMs,
+  COMPLETED_DETECTION_RETENTION_MS,
+  MAX_DETECTION_RECORDS,
+  parseRemovalEvidenceTimestamp,
   isPathInsideDir,
   parseTargetScope,
   readApplyHistory,
@@ -37,6 +41,8 @@ import { expandTilde } from '../config/loader.js';
 import { RouterSyncConfigSchema, type RouterSyncConfig } from '../config/schema.js';
 
 export const HARD_PASS_MAX_DETECTION_LATENCY_MS = 60_000;
+export const REMOVAL_SETTLE_ABSENCE_MIN_MS = 24 * 60 * 60 * 1000;
+export const REMOVAL_SETTLE_ABSENCE_MIN_SCANS = 3;
 
 const FORBIDDEN_RUNTIME_FILENAMES = new Set(['bots.json', 'routines.json']);
 const FOLD_PATH_CASE = process.platform === 'win32' || process.platform === 'darwin';
@@ -51,6 +57,7 @@ export interface PilotReportCommandOptions {
   falseRemovals?: number | string | undefined;
   unplannedInterventions?: number | string | undefined;
   acceptVacuousDetection?: boolean | undefined;
+  pilotStartedAt?: string | undefined;
   out?: string | undefined;
   json?: boolean | undefined;
   /** Programmatic seams for hermetic unit/rehearsal tests */
@@ -83,8 +90,15 @@ export interface PilotReportS9Criteria {
     maxMs: number | null;
     measuredCount: number;
     acceptedVacuous: boolean;
+    publicationToPlanMs: number | null;
     thresholdMs: number;
-    source: 'tick-plan.json' | 'status.json' | 'tick-plan.json+status.json' | 'missing';
+    source:
+      | 'tick-catalog.json'
+      | 'tick-plan.json'
+      | 'status.json'
+      | 'tick-plan.json+status.json'
+      | 'tick-catalog.json+tick-plan.json+status.json'
+      | 'missing';
     detail: string;
   };
   cost: {
@@ -108,6 +122,30 @@ export interface PilotReportS9Criteria {
   };
 }
 
+export interface PilotReportObservedScanInterval {
+  sampleCount: number;
+  minMs: number | null;
+  maxMs: number | null;
+  lastMs: number | null;
+}
+
+export interface PilotReportRemovalSettle {
+  status: 'PASS' | 'INCOMPLETE' | 'FAIL';
+  passed: boolean;
+  removedModelCount: number;
+  falseRemovalCount: number;
+  policySatisfiedAtRemoval: boolean | null;
+  minMs: number | null;
+  maxMs: number | null;
+  removalSettleMs: number | null;
+  removalPaths: Array<'absence-only' | 'official-notice'>;
+  noticeOrigin: 'genuine' | 'synthetic' | 'none';
+  observedScanIntervalMs: PilotReportObservedScanInterval;
+  providerToFirstScanMs: null;
+  unobservableWindow: 'provider-to-first-scan';
+  detail: string;
+}
+
 export interface PilotReportResult {
   schemaVersion: 1;
   generatedAt: string;
@@ -123,6 +161,7 @@ export interface PilotReportResult {
    * Reported strictly separately and NEVER added into `criteria.detectionLatencyMs.maxMs`.
    */
   servingReflectionMs: number | null;
+  removalSettle: PilotReportRemovalSettle;
   tickCount: number;
   warnings: string[];
   criteria: PilotReportS9Criteria;
@@ -286,7 +325,7 @@ function readOptionalNonNegativeAccountingNumber(
 }
 
 function isValidIsoTimestamp(val: unknown): boolean {
-  return typeof val === 'string' && val.trim().length > 0 && Number.isFinite(Date.parse(val));
+  return parseRemovalEvidenceTimestamp(val) !== null;
 }
 
 function assertCompletedSteadyStateTickRecord(
@@ -304,15 +343,25 @@ function assertCompletedSteadyStateTickRecord(
   if (fileLabel === 'plans/tick-plan.json') {
     const routerActions = rec['routerActions'];
     const harnessActions = rec['harnessActions'];
+    const hasNoNewDetection = (act: unknown): boolean => {
+      if (!act || typeof act !== 'object' || Array.isArray(act)) return false;
+      const a = act as Record<string, unknown>;
+      if (a['action'] !== 'REMOVE_MODEL') return false;
+      if (a['detectionKind'] === 'official-notice') return true;
+      return a['detectionKind'] === 'absence-settled' &&
+        typeof a['episodeId'] === 'string' &&
+        a['episodeId'].trim().length > 0 &&
+        a['detectionLatencyMs'] === null;
+    };
     if (
       !isValidIsoTimestamp(rec['planCreatedAt']) ||
       !Array.isArray(routerActions) ||
-      routerActions.length !== 0 ||
       !Array.isArray(harnessActions) ||
-      harnessActions.length !== 0
+      !routerActions.every(hasNoNewDetection) ||
+      !harnessActions.every(hasNoNewDetection)
     ) {
       throw new Error(
-        'plans/tick-plan.json with detectionLatency.measuredCount=0 requires a valid ISO planCreatedAt and empty routerActions/harnessActions.'
+        'plans/tick-plan.json with detectionLatency.measuredCount=0 requires a valid ISO planCreatedAt and empty (or previously measured or pending REMOVE_MODEL) routerActions/harnessActions.'
       );
     }
     return;
@@ -415,6 +464,20 @@ function formatMarkdownSignOffReport(report: PilotReportResult): string {
     ...report.warnings.map((warning) => `- **Cảnh báo:** ${warning}`),
   ];
 
+  const rs = report.removalSettle;
+  const settleText =
+    rs.removalSettleMs === null
+      ? 'chưa có model gỡ thực tế (null)'
+      : `${rs.removalSettleMs} ms (không áp trần thời gian; trạng thái=${rs.status}${rs.noticeOrigin !== 'none' ? `; noticeOrigin=${rs.noticeOrigin}` : ''})`;
+  const obsIntervalText =
+    rs.observedScanIntervalMs.lastMs === null
+      ? 'null (chưa đủ >= 2 lần quét hợp lệ)'
+      : `last=${rs.observedScanIntervalMs.lastMs} ms, min=${rs.observedScanIntervalMs.minMs} ms, max=${rs.observedScanIntervalMs.maxMs} ms (n=${rs.observedScanIntervalMs.sampleCount})`;
+  lines.push(
+    `- **Từ công bố đến plan (\`publicationToPlanMs\`):** \`${c.detectionLatencyMs.publicationToPlanMs ?? 'null'}\``,
+    `- **Thời gian hội tụ gỡ bỏ (\`removalSettleMs\`, tách biệt khỏi \`detectionLatencyMs\`):** \`${settleText}\``,
+    `- **Chu kỳ quét quan sát (\`observedScanIntervalMs\`):** \`${obsIntervalText}\` | **\`providerToFirstScanMs\`:** \`null\` (\`unobservableWindow=${rs.unobservableWindow}\`)`
+  );
   if (report.servingReflectionMs !== null) {
     lines.push(
       `- **Độ trễ phản ánh đường phục vụ HTTP \`/v1/models\` (D26, ghi riêng ngoài \`detectionLatencyMs\`):** \`${report.servingReflectionMs} ms\``
@@ -447,6 +510,15 @@ export async function runPilotReportCommand(
   options: PilotReportCommandOptions = {}
 ): Promise<PilotReportResult> {
   const nowMs = options.nowMs ?? Date.now();
+  const pilotStart = parseRemovalEvidenceTimestamp(options.pilotStartedAt);
+  if (options.pilotStartedAt !== undefined &&
+      (pilotStart === null || !options.pilotStartedAt.includes('T') || pilotStart > nowMs)) {
+    failPilotReportOption('INVALID_ARGUMENT: --pilot-started-at must be an ISO-8601 timestamp at or before report generation.');
+  }
+  const oldestRetainedMs = nowMs - COMPLETED_DETECTION_RETENTION_MS;
+  const effectiveWindowStartMs = Math.max(pilotStart ?? oldestRetainedMs, oldestRetainedMs);
+  const isInEvidenceWindow = (timestamp: number): boolean =>
+    timestamp >= effectiveWindowStartMs && timestamp <= nowMs;
   const generatedAt = new Date(nowMs).toISOString();
   const hasEmptyStateDirFlag =
     options.stateDir !== undefined && options.stateDir.trim().length === 0;
@@ -682,13 +754,196 @@ export async function runPilotReportCommand(
   }
 
   // -------------------------------------------------------------------------
-  // Parse status.json & plans/tick-plan.json for detectionLatencyMs + accounting
+  // Parse status.json, plans/tick-plan.json & tick-catalog.json for detectionLatencyMs + accounting
   // -------------------------------------------------------------------------
+  const matchesTargetScopes = (scopes: unknown): boolean => {
+    if (!routerTargetProvided && !harnessTargetProvided) return true;
+    if (!Array.isArray(scopes)) return false;
+    return scopes.some(
+      (rawScope) =>
+        typeof rawScope === 'string' &&
+        ((normalizedRouterTarget !== null && routerAliases.has(rawScope)) ||
+          (normalizedHarnessTarget !== null && rawScope === normalizedHarnessTarget))
+    );
+  };
+
   let statusLatencyMs: number | null = null;
   let tickPlanLatencyMs: number | null = null;
-  let measuredCount = 0;
+  let fileMeasuredCount = 0;
+  let hasLegacyAmbiguousAbsencePlan = false;
+  const catalogDetectionSamples: number[] = [];
+  const removalDetections: Array<Record<string, unknown>> = [];
+  const catalogDetectionKeys = new Set<string>();
+  let hasSyntheticNoticeDetection = false;
+  let hasIncompleteOfficialDetection = false;
+  let maxOverdueOfficialMs: number | null = null;
+  let hasOfficialPlanAction = false;
+  let hasMeasuredOfficialDetection = false;
+  let publicationToPlanMs: number | null = null;
+  let detectionHistoryCapExceeded = false;
+  const isSummaryInWindow = (value: unknown, label: string): boolean => {
+    if (value === undefined) return false;
+    const timestamp = parseRemovalEvidenceTimestamp(value);
+    if (timestamp === null || timestamp > nowMs) {
+      throw new Error(`${label} must be a valid timestamp at or before report generation.`);
+    }
+    return isInEvidenceWindow(timestamp);
+  };
+  const finishedAt = (record: Record<string, unknown>): number | null =>
+    parseRemovalEvidenceTimestamp(record['removedAt'] ?? record['recoveredAt'] ??
+      record['withdrawnAt'] ?? record['supersededAt'] ?? record['abandonedAt']);
+  const isEpisodeInWindow = (record: Record<string, unknown>): boolean => {
+    const terminalAt = finishedAt(record);
+    return terminalAt === null || isInEvidenceWindow(terminalAt);
+  };
+  const verifyCompletionChronology = (record: Record<string, unknown>, start: number | null): void => {
+    for (const field of ['removedAt', 'recoveredAt', 'withdrawnAt', 'supersededAt', 'abandonedAt']) {
+      if (record[field] === undefined) continue;
+      const timestamp = parseRemovalEvidenceTimestamp(record[field]);
+      if (timestamp === null || timestamp > nowMs || (start !== null && timestamp < start)) {
+        throw new Error('Invalid detection episode completion timestamp.');
+      }
+    }
+  };
+  const registerDetectionKey = (key: string): void => {
+    if (catalogDetectionKeys.has(key)) throw new Error('Duplicate catalog detection.');
+    catalogDetectionKeys.add(key);
+  };
+  const readCatalogDetection = (
+    record: Record<string, unknown>,
+    kind: 'absence' | 'official'
+  ): number | null => {
+    const { provider, modelId, fullStep, targetsAffected } = record;
+    if (
+      typeof provider !== 'string' || provider.length === 0 ||
+      typeof modelId !== 'string' || modelId.length === 0 ||
+      fullStep !== `${provider}/${modelId}` ||
+      !Array.isArray(targetsAffected) || targetsAffected.length === 0 ||
+      targetsAffected.some((target) => typeof target !== 'string' || !/^(router|harness):.+/.test(target))
+    ) throw new Error(`Invalid ${kind} detection provenance.`);
+
+    if (kind === 'absence') {
+      const start = parseRemovalEvidenceTimestamp(record['scanStartedAt']);
+      const end = parseRemovalEvidenceTimestamp(record['modelPendingAt']);
+      const key = `ep-${JSON.stringify([provider, modelId, start])}`;
+      const legacyKey = `ep-${provider}-${modelId}-${start}`;
+      verifyCompletionChronology(record, start);
+      if (record['status'] !== 'model_pending' || start === null || end === null ||
+          end < start || end > nowMs || record['detectionMs'] !== end - start ||
+          (record['episodeId'] !== key && record['episodeId'] !== legacyKey)) {
+        throw new Error('Invalid model_pending detection episode or chronology.');
+      }
+      registerDetectionKey(key);
+      return end - start;
+    }
+
+    const startRaw = record['firstQualifyingScanStartedAt'];
+    const endRaw = record['firstPlanCreatedAt'];
+    const publishedRaw = record['sourcePublishedAt'];
+    const start = parseRemovalEvidenceTimestamp(startRaw);
+    const end = parseRemovalEvidenceTimestamp(endRaw ?? record['planCreatedAt']);
+    const published = parseRemovalEvidenceTimestamp(publishedRaw);
+    verifyCompletionChronology(record, start);
+    if ((startRaw != null && start === null) || (endRaw != null && end === null) ||
+        (publishedRaw != null && published === null) ||
+        (start !== null && start > nowMs) || (end !== null && end > nowMs) ||
+        (start !== null && end !== null && end < start) ||
+        (published !== null && published > nowMs)) {
+      throw new Error('Invalid official notice detection chronology.');
+    }
+    if (typeof record['synthetic'] !== 'boolean') {
+      throw new Error('Invalid official notice detection provenance.');
+    }
+
+    if (startRaw == null) return null; // Legacy publication-to-plan records are not latency evidence.
+    const evidenceId = record['evidenceId'];
+    const legacyKey = JSON.stringify([fullStep, evidenceId]);
+    const episodeStartedAt = record['episodeStartedAt'] ?? startRaw;
+    const episodeStartMs = parseRemovalEvidenceTimestamp(episodeStartedAt);
+    const key = JSON.stringify([fullStep, evidenceId, episodeStartedAt]);
+    if (typeof evidenceId !== 'string' || evidenceId.length === 0 ||
+        episodeStartMs === null || episodeStartMs < start! || episodeStartMs > nowMs ||
+        (end !== null && episodeStartMs > end) ||
+        (record['recordKey'] !== key && record['recordKey'] !== legacyKey)) {
+      throw new Error('Invalid official notice detection provenance.');
+    }
+    const prevEvRaw = record['previousEvidenceIds'];
+    const prevKeysRaw = record['previousRecordKeys'];
+    const prevEvSet = new Set<string>();
+    if (prevEvRaw !== undefined) {
+      if (!Array.isArray(prevEvRaw)) {
+        throw new Error('Invalid official notice detection provenance.');
+      }
+      for (const item of prevEvRaw) {
+        if (typeof item !== 'string' || item.length === 0 || item === evidenceId || prevEvSet.has(item)) {
+          throw new Error('Invalid official notice detection provenance.');
+        }
+        prevEvSet.add(item);
+      }
+    }
+    if (prevKeysRaw !== undefined) {
+      if (!Array.isArray(prevKeysRaw)) {
+        throw new Error('Invalid official notice detection provenance.');
+      }
+      const seenPrevKeys = new Set<string>();
+      for (const prevKey of prevKeysRaw) {
+        if (typeof prevKey !== 'string' || prevKey.length === 0 || prevKey === record['recordKey'] || seenPrevKeys.has(prevKey)) {
+          throw new Error('Invalid official notice detection provenance.');
+        }
+        let parsedPrev: unknown;
+        try {
+          parsedPrev = JSON.parse(prevKey);
+        } catch {
+          throw new Error('Invalid official notice detection provenance.');
+        }
+        if (
+          !Array.isArray(parsedPrev) ||
+          (parsedPrev.length !== 2 && parsedPrev.length !== 3) ||
+          parsedPrev[0] !== fullStep ||
+          typeof parsedPrev[1] !== 'string' ||
+          parsedPrev[1].length === 0 ||
+          (parsedPrev[1] !== evidenceId && !prevEvSet.has(parsedPrev[1]))
+        ) {
+          throw new Error('Invalid official notice detection provenance.');
+        }
+        if (parsedPrev.length === 3) {
+          const prevAnchorMs = parseRemovalEvidenceTimestamp(parsedPrev[2]);
+          if (
+            prevAnchorMs === null ||
+            prevAnchorMs < start! ||
+            prevAnchorMs > nowMs ||
+            (end !== null && prevAnchorMs > end) ||
+            prevKey !== JSON.stringify([fullStep, parsedPrev[1], parsedPrev[2]])
+          ) {
+            throw new Error('Invalid official notice detection provenance.');
+          }
+        } else if (prevKey !== JSON.stringify([fullStep, parsedPrev[1]])) {
+          throw new Error('Invalid official notice detection provenance.');
+        }
+        seenPrevKeys.add(prevKey);
+        registerDetectionKey(prevKey);
+      }
+    }
+    registerDetectionKey(record['recordKey'] as string);
+    if (endRaw == null) {
+      if (record['detectionMs'] != null || record['publicationToPlanMs'] != null) {
+        throw new Error('Invalid official notice detection duration.');
+      }
+      return null;
+    }
+    const latency = end! - start!;
+    const publicationDelay = published === null ? null : end! - published;
+    if (record['detectionMs'] !== latency || record['publicationToPlanMs'] !== publicationDelay) {
+      throw new Error('Invalid official notice detection duration.');
+    }
+    return latency;
+  };
+  const observedScanIntervals: number[] = [];
+
   const countMeasurements = (rec: Record<string, unknown>, latency: number | null): number =>
-    latency === null ? 0 : ((rec['detectionLatency'] as { measuredCount?: number } | undefined)?.measuredCount ?? 1);
+    latency === null
+      ? 0
+      : ((rec['detectionLatency'] as { measuredCount?: number } | undefined)?.measuredCount ?? 1);
   let statusTokens = 0;
   let statusLlmCalls = 0;
   let statusPaidRequests = 0;
@@ -702,20 +957,25 @@ export async function runPilotReportCommand(
           throw new Error('status.json root must be an object.');
         }
         const rec = rawStatus as Record<string, unknown>;
-        statusLatencyMs = extractFiniteLatencyFromRecord(rec, 'status.json');
-        measuredCount = Math.max(measuredCount, countMeasurements(rec, statusLatencyMs));
-        statusTokens = Math.max(
-          statusTokens,
-          readOptionalNonNegativeAccountingNumber(rec, 'tokens', 'status.json')
-        );
-        statusLlmCalls = Math.max(
-          statusLlmCalls,
-          readOptionalNonNegativeAccountingNumber(rec, 'llmCalls', 'status.json')
-        );
-        statusPaidRequests = Math.max(
-          statusPaidRequests,
-          readOptionalNonNegativeAccountingNumber(rec, 'paidRequests', 'status.json')
-        );
+        if (rec['detectionHistoryError'] === 'DETECTION_HISTORY_CAP_EXCEEDED') detectionHistoryCapExceeded = true;
+        const summaryInWindow = isSummaryInWindow(rec['timestamp'], 'status.json.timestamp');
+        const summaryLatency = extractFiniteLatencyFromRecord(rec, 'status.json');
+        if (summaryInWindow) {
+          statusLatencyMs = summaryLatency;
+          fileMeasuredCount = Math.max(fileMeasuredCount, countMeasurements(rec, statusLatencyMs));
+          statusTokens = Math.max(
+            statusTokens,
+            readOptionalNonNegativeAccountingNumber(rec, 'tokens', 'status.json')
+          );
+          statusLlmCalls = Math.max(
+            statusLlmCalls,
+            readOptionalNonNegativeAccountingNumber(rec, 'llmCalls', 'status.json')
+          );
+          statusPaidRequests = Math.max(
+            statusPaidRequests,
+            readOptionalNonNegativeAccountingNumber(rec, 'paidRequests', 'status.json')
+          );
+        }
       } catch (err) {
         stateCorruptionCount += 1;
         blockingReasons.push(
@@ -732,38 +992,64 @@ export async function runPilotReportCommand(
           throw new Error('plans/tick-plan.json root must be an object.');
         }
         const rec = rawPlan as Record<string, unknown>;
-        tickPlanLatencyMs = extractFiniteLatencyFromRecord(rec, 'plans/tick-plan.json');
-        measuredCount = Math.max(measuredCount, countMeasurements(rec, tickPlanLatencyMs));
-        const acc = rec['accounting'];
-        if (acc !== undefined) {
-          if (!acc || typeof acc !== 'object' || Array.isArray(acc)) {
-            throw new Error('plans/tick-plan.json accounting must be an object.');
+        const summaryInWindow = isSummaryInWindow(rec['planCreatedAt'], 'plans/tick-plan.json.planCreatedAt');
+        const summaryLatency = extractFiniteLatencyFromRecord(rec, 'plans/tick-plan.json');
+        if (summaryInWindow) {
+          const planRouterActions = Array.isArray(rec['routerActions'])
+            ? (rec['routerActions'] as unknown[])
+            : [];
+          const planHarnessActions = Array.isArray(rec['harnessActions'])
+            ? (rec['harnessActions'] as unknown[])
+            : [];
+          for (const rawAct of [...planRouterActions, ...planHarnessActions]) {
+            if (rawAct && typeof rawAct === 'object' && !Array.isArray(rawAct)) {
+              const act = rawAct as Record<string, unknown>;
+              const reason = typeof act['reason'] === 'string' ? act['reason'] : '';
+              if (act['action'] === 'REMOVE_MODEL' && reason.startsWith('OFFICIAL_')) {
+                hasOfficialPlanAction = true;
+              }
+              if (
+                act['action'] === 'REMOVE_MODEL' &&
+                reason.startsWith('ABSENT_STABLE') &&
+                (act['detectionKind'] !== 'absence-settled' || act['detectionLatencyMs'] !== null)
+              ) {
+                hasLegacyAmbiguousAbsencePlan = true;
+              }
+            }
           }
-          const accRec = acc as Record<string, unknown>;
-          statusTokens = Math.max(
-            statusTokens,
-            readOptionalNonNegativeAccountingNumber(
-              accRec,
-              'tokens',
-              'plans/tick-plan.json.accounting'
-            )
-          );
-          statusLlmCalls = Math.max(
-            statusLlmCalls,
-            readOptionalNonNegativeAccountingNumber(
-              accRec,
-              'llmCalls',
-              'plans/tick-plan.json.accounting'
-            )
-          );
-          statusPaidRequests = Math.max(
-            statusPaidRequests,
-            readOptionalNonNegativeAccountingNumber(
-              accRec,
-              'paidRequests',
-              'plans/tick-plan.json.accounting'
-            )
-          );
+          tickPlanLatencyMs = summaryLatency;
+          fileMeasuredCount = Math.max(fileMeasuredCount, countMeasurements(rec, tickPlanLatencyMs));
+          const acc = rec['accounting'];
+          if (acc !== undefined) {
+            if (!acc || typeof acc !== 'object' || Array.isArray(acc)) {
+              throw new Error('plans/tick-plan.json accounting must be an object.');
+            }
+            const accRec = acc as Record<string, unknown>;
+            statusTokens = Math.max(
+              statusTokens,
+              readOptionalNonNegativeAccountingNumber(
+                accRec,
+                'tokens',
+                'plans/tick-plan.json.accounting'
+              )
+            );
+            statusLlmCalls = Math.max(
+              statusLlmCalls,
+              readOptionalNonNegativeAccountingNumber(
+                accRec,
+                'llmCalls',
+                'plans/tick-plan.json.accounting'
+              )
+            );
+            statusPaidRequests = Math.max(
+              statusPaidRequests,
+              readOptionalNonNegativeAccountingNumber(
+                accRec,
+                'paidRequests',
+                'plans/tick-plan.json.accounting'
+              )
+            );
+          }
         }
       } catch (err) {
         stateCorruptionCount += 1;
@@ -772,18 +1058,177 @@ export async function runPilotReportCommand(
         );
       }
     }
+
+    const tickCatalogPath = path.join(stateDir, 'tick-catalog.json');
+    if (fs.existsSync(tickCatalogPath)) {
+      try {
+        const rawCatalog = JSON.parse(fs.readFileSync(tickCatalogPath, 'utf8')) as unknown;
+        if (!rawCatalog || typeof rawCatalog !== 'object' || Array.isArray(rawCatalog)) {
+          throw new Error('tick-catalog.json root must be an object.');
+        }
+        const cat = rawCatalog as Record<string, unknown>;
+        const recordCount = ['absenceDetections', 'officialNoticeDetections'].reduce((count, field) => {
+          const records = cat[field];
+          return count + (Array.isArray(records) ? records.length : 0);
+        }, 0);
+        if (recordCount > MAX_DETECTION_RECORDS ||
+            cat['detectionHistoryError'] === 'DETECTION_HISTORY_CAP_EXCEEDED') detectionHistoryCapExceeded = true;
+        if (cat['absenceDetections'] !== undefined) {
+          if (!Array.isArray(cat['absenceDetections'])) {
+            throw new Error('tick-catalog.json.absenceDetections must be an array.');
+          }
+          for (const rawEp of cat['absenceDetections'] as unknown[]) {
+            if (!rawEp || typeof rawEp !== 'object' || Array.isArray(rawEp)) {
+              throw new Error('tick-catalog.json.absenceDetections entries must be objects.');
+            }
+            const ep = rawEp as Record<string, unknown>;
+            const duration = readCatalogDetection(ep, 'absence');
+            const start = parseRemovalEvidenceTimestamp(ep['scanStartedAt']);
+            if (duration !== null && start !== null && isEpisodeInWindow(ep) &&
+                matchesTargetScopes(ep['targetsAffected'])) {
+              catalogDetectionSamples.push(duration);
+              removalDetections.push(ep);
+            }
+          }
+        }
+        if (cat['officialNoticeDetections'] !== undefined) {
+          if (!Array.isArray(cat['officialNoticeDetections'])) {
+            throw new Error('tick-catalog.json.officialNoticeDetections must be an array.');
+          }
+          for (const rawNotice of cat['officialNoticeDetections'] as unknown[]) {
+            if (!rawNotice || typeof rawNotice !== 'object' || Array.isArray(rawNotice)) {
+              throw new Error(
+                'tick-catalog.json.officialNoticeDetections entries must be objects.'
+              );
+            }
+            const nd = rawNotice as Record<string, unknown>;
+            const duration = readCatalogDetection(nd, 'official');
+            if (nd['withdrawnAt'] !== undefined || nd['supersededAt'] !== undefined) {
+              const withdrawn = parseRemovalEvidenceTimestamp(nd['withdrawnAt'] ?? nd['supersededAt']);
+              const start = parseRemovalEvidenceTimestamp(nd['firstQualifyingScanStartedAt']);
+              if (withdrawn === null || start === null || withdrawn <= start || withdrawn > nowMs) {
+                throw new Error('Invalid official notice withdrawal chronology.');
+              }
+              if (duration === null) continue;
+            }
+            const anchor = parseRemovalEvidenceTimestamp(nd['firstQualifyingScanStartedAt'] ?? nd['planCreatedAt']);
+            if (!isEpisodeInWindow(nd)) continue;
+            if (nd['firstQualifyingScanStartedAt'] == null && anchor !== null && !isInEvidenceWindow(anchor)) continue;
+            if (matchesTargetScopes(nd['targetsAffected'])) {
+              if (nd['synthetic'] === true) {
+                hasSyntheticNoticeDetection = true;
+              } else if (duration === null) {
+                if (anchor !== null && finishedAt(nd) === null && nowMs - anchor > HARD_PASS_MAX_DETECTION_LATENCY_MS) {
+                  maxOverdueOfficialMs = Math.max(maxOverdueOfficialMs ?? 0, nowMs - anchor);
+                } else {
+                  hasIncompleteOfficialDetection = true;
+                }
+              } else {
+                hasMeasuredOfficialDetection = true;
+                catalogDetectionSamples.push(duration);
+                removalDetections.push(nd);
+                if (typeof nd['publicationToPlanMs'] === 'number') {
+                  publicationToPlanMs =
+                    publicationToPlanMs === null
+                      ? nd['publicationToPlanMs']
+                      : Math.max(publicationToPlanMs, nd['publicationToPlanMs']);
+                }
+              }
+            }
+          }
+        }
+        if (
+          cat['providers'] !== undefined &&
+          cat['providers'] !== null &&
+          typeof cat['providers'] === 'object' &&
+          !Array.isArray(cat['providers'])
+        ) {
+          for (const rawProv of Object.values(cat['providers'] as Record<string, unknown>)) {
+            if (!rawProv || typeof rawProv !== 'object' || Array.isArray(rawProv)) continue;
+            const pObj = rawProv as Record<string, unknown>;
+            const activeTargets = pObj['activeTargets'];
+            if (
+              (routerTargetProvided || harnessTargetProvided) &&
+              Array.isArray(activeTargets) &&
+              activeTargets.length > 0 &&
+              !matchesTargetScopes(activeTargets)
+            ) {
+              continue;
+            }
+            const scanStamps = pObj['qualifyingScanTimestamps'];
+            if (Array.isArray(scanStamps)) {
+              if (scanStamps.some((stamp) => (parseRemovalEvidenceTimestamp(stamp) ?? 0) > nowMs)) {
+                throw new Error('Future qualifying scan timestamp.');
+              }
+              const msList = scanStamps
+                .filter((s): s is string => isValidIsoTimestamp(s))
+                .map((s) => Date.parse(s))
+                .filter(isInEvidenceWindow);
+              for (let idx = 1; idx < msList.length; idx++) {
+                const delta = msList[idx]! - msList[idx - 1]!;
+                if (delta >= 0) observedScanIntervals.push(delta);
+              }
+            }
+          }
+        }
+      } catch (err) {
+        stateCorruptionCount += 1;
+        blockingReasons.push(
+          `TICK_CATALOG_CORRUPT: <stateDir>/tick-catalog.json is malformed (${err instanceof Error ? err.message : String(err)}).`
+        );
+      }
+    }
   }
 
+  if (detectionHistoryCapExceeded) {
+    blockingReasons.push('DETECTION_HISTORY_CAP_EXCEEDED: Detection history capacity exceeded.');
+  }
+  // Aggregates cannot distinguish ambiguous legacy or synthetic samples.
+  const hasSyntheticRemovalReceipt = applyHistory.valid && applyHistory.receipts.some(
+    (receipt) => matchesTargetScopes([receipt.target]) &&
+      isInEvidenceWindow(parseRemovalEvidenceTimestamp(receipt.appliedAt) ?? Number.NEGATIVE_INFINITY) &&
+      receipt.removedModels?.some((removal) =>
+        removal.removalPath === 'official-notice' && removal.syntheticNotice === true)
+  );
+  const hasOfficialRemovalReceipt = applyHistory.valid && applyHistory.receipts.some(
+    (receipt) => matchesTargetScopes([receipt.target]) &&
+      isInEvidenceWindow(parseRemovalEvidenceTimestamp(receipt.appliedAt) ?? Number.NEGATIVE_INFINITY) &&
+      receipt.removedModels?.some((removal) => removal.removalPath === 'official-notice')
+  );
+  const hasUnmeasuredOfficialDetection =
+    (hasOfficialPlanAction || hasOfficialRemovalReceipt) && !hasMeasuredOfficialDetection;
+  const discardAggregateDetection = hasLegacyAmbiguousAbsencePlan ||
+    hasSyntheticNoticeDetection || hasSyntheticRemovalReceipt || hasIncompleteOfficialDetection ||
+    hasUnmeasuredOfficialDetection;
+  const effectiveStatusLatencyMs = discardAggregateDetection ? null : statusLatencyMs;
+  const effectiveTickPlanLatencyMs = discardAggregateDetection ? null : tickPlanLatencyMs;
+  const effectiveFileMeasuredCount = discardAggregateDetection ? 0 : fileMeasuredCount;
+
+  const allLatencySamples: number[] = [...catalogDetectionSamples];
+  if (effectiveTickPlanLatencyMs !== null) allLatencySamples.push(effectiveTickPlanLatencyMs);
+  if (effectiveStatusLatencyMs !== null) allLatencySamples.push(effectiveStatusLatencyMs);
+
   let measuredLatencyMs: number | null = null;
+  if (allLatencySamples.length > 0) {
+    measuredLatencyMs = allLatencySamples.some((v) => v < 0)
+      ? Math.min(...allLatencySamples)
+      : Math.max(...allLatencySamples);
+  }
+  const measuredCount = Math.max(catalogDetectionSamples.length, effectiveFileMeasuredCount);
+
   let latencySource: PilotReportS9Criteria['detectionLatencyMs']['source'] = 'missing';
-  if (tickPlanLatencyMs !== null && statusLatencyMs !== null) {
-    measuredLatencyMs = Math.max(tickPlanLatencyMs, statusLatencyMs);
+  if (
+    catalogDetectionSamples.length > 0 &&
+    (effectiveTickPlanLatencyMs !== null || effectiveStatusLatencyMs !== null)
+  ) {
+    latencySource = 'tick-catalog.json+tick-plan.json+status.json';
+  } else if (catalogDetectionSamples.length > 0) {
+    latencySource = 'tick-catalog.json';
+  } else if (effectiveTickPlanLatencyMs !== null && effectiveStatusLatencyMs !== null) {
     latencySource = 'tick-plan.json+status.json';
-  } else if (tickPlanLatencyMs !== null) {
-    measuredLatencyMs = tickPlanLatencyMs;
+  } else if (effectiveTickPlanLatencyMs !== null) {
     latencySource = 'tick-plan.json';
-  } else if (statusLatencyMs !== null) {
-    measuredLatencyMs = statusLatencyMs;
+  } else if (effectiveStatusLatencyMs !== null) {
     latencySource = 'status.json';
   }
 
@@ -925,6 +1370,8 @@ export async function runPilotReportCommand(
   // -------------------------------------------------------------------------
   const receipts = applyHistory.valid ? applyHistory.receipts : [];
   const relevantReceipts = receipts.filter((r) => {
+    const appliedAt = parseRemovalEvidenceTimestamp(r.appliedAt);
+    if (appliedAt !== null && appliedAt < effectiveWindowStartMs) return false;
     if (!routerTargetProvided && !harnessTargetProvided) return true;
     const matchesRouter = normalizedRouterTarget ? routerAliases.has(r.target) : false;
     const matchesHarness = normalizedHarnessTarget ? r.target === normalizedHarnessTarget : false;
@@ -934,7 +1381,10 @@ export async function runPilotReportCommand(
   const failedAutoSafeReceiptCount = receipts.filter(
     (r) => r.appliedAtLevel === 'auto-safe' && (!r.success || !r.readBackVerified)
   ).length;
-  const removals = relevantReceipts.flatMap((receipt) => receipt.removedModels ?? []);
+  const removalReceipts = relevantReceipts.flatMap((receipt) =>
+    (receipt.removedModels ?? []).map((removal) => ({ removal, appliedAt: receipt.appliedAt, target: receipt.target }))
+  );
+  const removals = removalReceipts.map(({ removal }) => removal);
   const catalogFalseRemovals = removals.filter((model) => model.inProviderCatalog === true).length;
   const completeCatalogEvidence = removals.length > 0 &&
     removals.every((model) => model.inProviderCatalog !== null);
@@ -987,15 +1437,24 @@ export async function runPilotReportCommand(
     );
   }
 
+  if (maxOverdueOfficialMs !== null) {
+    blockingReasons.push(`S9_OFFICIAL_DETECTION_OVERDUE: An actionable official notice has no plan after ${maxOverdueOfficialMs} ms.`);
+  }
+  if (hasIncompleteOfficialDetection || (hasUnmeasuredOfficialDetection && !hasSyntheticNoticeDetection)) {
+    incompleteReasons.push('S9_OFFICIAL_DETECTION_INCOMPLETE: Missing official-notice scan or plan timestamp.');
+  }
+  if (hasSyntheticNoticeDetection) {
+    blockingReasons.push('SYNTHETIC_OFFICIAL_NOTICE: Synthetic detection is excluded from live sign-off.');
+  }
   const acceptedVacuous = stateDirExists && measuredCount === 0 &&
     options.acceptVacuousDetection === true && stateCorruptionCount === 0;
   const warnings = acceptedVacuous
     ? ['VACUOUS: --accept-vacuous-detection was supplied. No detection latency was measured.']
     : [];
-  const c3Passed = acceptedVacuous || (stateDirExists &&
+  const c3Passed = maxOverdueOfficialMs === null && (acceptedVacuous || (stateDirExists &&
     measuredLatencyMs !== null &&
     measuredLatencyMs >= 0 &&
-    measuredLatencyMs <= HARD_PASS_MAX_DETECTION_LATENCY_MS);
+    measuredLatencyMs <= HARD_PASS_MAX_DETECTION_LATENCY_MS));
   if (!c3Passed) {
     const reasons = measuredLatencyMs === null ? incompleteReasons : blockingReasons;
     reasons.push(
@@ -1004,6 +1463,167 @@ export async function runPilotReportCommand(
         : `S9_CRITERION_3_FAILED: detectionLatencyMs=${measuredLatencyMs} (expected finite measurement in 0..${HARD_PASS_MAX_DETECTION_LATENCY_MS} ms).`
     );
   }
+
+  const uncoveredRemovals = removalReceipts.filter(({ removal, appliedAt, target }) => {
+    const removalAt = parseRemovalEvidenceTimestamp(appliedAt);
+    if (removalAt === null) return true;
+    return !removalDetections.some((sample) => {
+      if (sample['provider'] !== removal.provider || sample['modelId'] !== removal.modelId ||
+          !Array.isArray(sample['targetsAffected']) || !sample['targetsAffected'].includes(target)) return false;
+      const detectedAt = parseRemovalEvidenceTimestamp(sample['firstPlanCreatedAt'] ?? sample['modelPendingAt']);
+      if (detectedAt === null || detectedAt > removalAt) return false;
+      if (removal.removalPath === 'official-notice') {
+        if (typeof removal.detectionEvidenceId !== 'string') return false;
+        if (
+          sample['evidenceId'] === removal.detectionEvidenceId &&
+          (removal.detectionEpisodeId === undefined || sample['recordKey'] === removal.detectionEpisodeId)
+        ) {
+          return true;
+        }
+        const prevEvIds = Array.isArray(sample['previousEvidenceIds']) ? sample['previousEvidenceIds'] : [];
+        const prevRecKeys = Array.isArray(sample['previousRecordKeys']) ? sample['previousRecordKeys'] : [];
+        if (!prevEvIds.includes(removal.detectionEvidenceId)) return false;
+        if (removal.detectionEpisodeId === undefined) return true;
+        if (!prevRecKeys.includes(removal.detectionEpisodeId)) return false;
+        try {
+          const parsedEp = JSON.parse(removal.detectionEpisodeId) as unknown;
+          return Array.isArray(parsedEp) && parsedEp[1] === removal.detectionEvidenceId;
+        } catch {
+          return false;
+        }
+      }
+      const absenceAt = parseRemovalEvidenceTimestamp(removal.firstObservedAbsentAt);
+      return sample['status'] === 'model_pending' &&
+        (removal.detectionEpisodeId === undefined
+          ? absenceAt !== null && parseRemovalEvidenceTimestamp(sample['scanStartedAt']) === absenceAt
+          : sample['episodeId'] === removal.detectionEpisodeId);
+    });
+  });
+  if (uncoveredRemovals.length > 0) {
+    incompleteReasons.push(
+      'S9_REMOVAL_DETECTION_INCOMPLETE: Missing matching detection evidence for ' +
+      uncoveredRemovals.map(({ removal, target }) => `${target}/${removal.provider}/${removal.modelId}`).join(', ')
+    );
+  }
+
+  // C48-H1: Separate removalSettleMs reporting (no time ceiling) + independent policy validation
+  const observedScanIntervalSummary: PilotReportObservedScanInterval =
+    observedScanIntervals.length > 0
+      ? {
+          sampleCount: observedScanIntervals.length,
+          minMs: Math.min(...observedScanIntervals),
+          maxMs: Math.max(...observedScanIntervals),
+          lastMs: observedScanIntervals[observedScanIntervals.length - 1]!,
+        }
+      : { sampleCount: 0, minMs: null, maxMs: null, lastMs: null };
+
+  const settleDurations: number[] = [];
+  const settlePathsSet = new Set<'absence-only' | 'official-notice'>();
+  let missingSettleProof = false;
+  const prematureRemovalViolations: string[] = [];
+  let hasSyntheticNoticeRemoval = false;
+  let hasGenuineNoticeRemoval = false;
+
+  for (const { removal: rem, appliedAt } of removalReceipts) {
+    if (rem.removalPath === undefined) {
+      missingSettleProof = true;
+      continue;
+    }
+
+    const model = `${rem.provider}/${rem.modelId}`;
+    settlePathsSet.add(rem.removalPath);
+    if (rem.removalPath === 'official-notice') {
+      if (rem.syntheticNotice === true) {
+        hasSyntheticNoticeRemoval = true;
+        prematureRemovalViolations.push(`${model} used synthetic official notice evidence`);
+      } else {
+        hasGenuineNoticeRemoval = true;
+      }
+    }
+
+    const duration = deriveRemovalSettlementMs(rem, appliedAt, { allowSyntheticFixture: rem.syntheticNotice === true });
+    const removedMs = parseRemovalEvidenceTimestamp(rem.removedAt);
+    if (duration === null || removedMs === null || removedMs > nowMs ||
+        rem.qualifyingScanCount === undefined) {
+      prematureRemovalViolations.push(`${model} has invalid removal timestamps, duration, or scan count`);
+      continue;
+    }
+    settleDurations.push(duration);
+
+    if (
+      rem.removalPath === 'absence-only' &&
+      (duration < REMOVAL_SETTLE_ABSENCE_MIN_MS ||
+        rem.qualifyingScanCount < REMOVAL_SETTLE_ABSENCE_MIN_SCANS)
+    ) {
+      prematureRemovalViolations.push(
+        `${model} removed prematurely (settleMs=${duration}, scans=${rem.qualifyingScanCount}; required >=${REMOVAL_SETTLE_ABSENCE_MIN_MS}ms and >=${REMOVAL_SETTLE_ABSENCE_MIN_SCANS} scans)`
+      );
+    } else if (rem.removalPath === 'official-notice' &&
+        (rem.officialDomainVerified !== true || typeof rem.syntheticNotice !== 'boolean')) {
+      prematureRemovalViolations.push(`${model} removed via unverified official domain`);
+    }
+  }
+
+  let removalSettleStatus: PilotReportRemovalSettle['status'];
+  let policySatisfiedAtRemoval: boolean | null;
+  let removalSettleDetail: string;
+
+  if (!stateDirExists || catalogFalseRemovals > 0 || prematureRemovalViolations.length > 0) {
+    removalSettleStatus = 'FAIL';
+    policySatisfiedAtRemoval = false;
+    removalSettleDetail =
+      catalogFalseRemovals > 0
+        ? `Healthy model(s) still present in provider catalog were removed (count=${catalogFalseRemovals}).`
+        : prematureRemovalViolations.join('; ') || 'State directory unavailable.';
+    if (stateDirExists && (catalogFalseRemovals > 0 || prematureRemovalViolations.length > 0)) {
+      blockingReasons.push(`S9_REMOVAL_SETTLE_FAILED: ${removalSettleDetail}`);
+    }
+  } else if (removals.length === 0) {
+    removalSettleStatus = 'INCOMPLETE';
+    policySatisfiedAtRemoval = null;
+    removalSettleDetail = '0 actual removals settled during pilot.';
+    incompleteReasons.push('S9_REMOVAL_SETTLE_INCOMPLETE: 0 actual removals settled during pilot.');
+  } else if (missingSettleProof) {
+    removalSettleStatus = 'INCOMPLETE';
+    policySatisfiedAtRemoval = null;
+    removalSettleDetail =
+      'Removal receipt is missing C48 policy proof (removalPath / timestamps / qualifyingScanCount).';
+    incompleteReasons.push(`S9_REMOVAL_SETTLE_INCOMPLETE: ${removalSettleDetail}`);
+  } else {
+    removalSettleStatus = 'PASS';
+    policySatisfiedAtRemoval = true;
+    removalSettleDetail = `${removals.length} removal(s) settled cleanly with verified policy proof.`;
+  }
+
+  const noticeOrigin: PilotReportRemovalSettle['noticeOrigin'] = hasSyntheticNoticeRemoval
+    ? 'synthetic'
+    : hasGenuineNoticeRemoval
+      ? 'genuine'
+      : 'none';
+  if (noticeOrigin === 'synthetic') {
+    warnings.push(
+      'SYNTHETIC_OFFICIAL_NOTICE: Removal settled via synthetic official notice (isolated fixture rehearsal only).'
+    );
+  }
+
+  const settleMinMs = settleDurations.length > 0 ? Math.min(...settleDurations) : null;
+  const settleMaxMs = settleDurations.length > 0 ? Math.max(...settleDurations) : null;
+  const removalSettle: PilotReportRemovalSettle = {
+    status: removalSettleStatus,
+    passed: removalSettleStatus === 'PASS',
+    removedModelCount: removals.length,
+    falseRemovalCount: catalogFalseRemovals,
+    policySatisfiedAtRemoval,
+    minMs: settleMinMs,
+    maxMs: settleMaxMs,
+    removalSettleMs: settleMaxMs,
+    removalPaths: [...settlePathsSet],
+    noticeOrigin,
+    observedScanIntervalMs: observedScanIntervalSummary,
+    providerToFirstScanMs: null,
+    unobservableWindow: 'provider-to-first-scan',
+    detail: removalSettleDetail,
+  };
 
   const c4Passed =
     stateDirExists &&
@@ -1047,6 +1667,7 @@ export async function runPilotReportCommand(
       harnessTarget: normalizedHarnessTarget,
     },
     servingReflectionMs,
+    removalSettle,
     tickCount,
     warnings,
     criteria: {
@@ -1079,6 +1700,7 @@ export async function runPilotReportCommand(
         maxMs: measuredLatencyMs,
         measuredCount,
         acceptedVacuous,
+        publicationToPlanMs,
         thresholdMs: HARD_PASS_MAX_DETECTION_LATENCY_MS,
         source: latencySource,
         detail: measuredLatencyMs === null

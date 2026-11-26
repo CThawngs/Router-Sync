@@ -551,6 +551,7 @@ describe('C45-WP4 Controlled Automation CLI Lifecycle', () => {
       quote: 'gpt-4o-legacy shut down on 2026-11-01.',
       shutdownDate: '2026-11-01',
       publishedAt: '2026-11-01T00:00:00.000Z',
+      submittedAt: '2026-11-24T11:00:00.000Z',
       submittedVia: 'cli',
     });
 

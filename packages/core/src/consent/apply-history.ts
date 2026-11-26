@@ -10,7 +10,10 @@
 import * as crypto from 'node:crypto';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import * as os from 'node:os';
 import { atomicWriteFileSync } from '../paths/atomic.js';
+import { isPathInsideDir } from '../sqlite/better-sqlite3.js';
+import { resolveDeepCanonicalPath } from './sandbox-guard.js';
 import {
   canonicalJsonStringify,
   computeHmacSha256Hex,
@@ -23,11 +26,94 @@ import {
   type ApplyHistoryReceipt,
   ConsentValidationError,
   type ReadApplyHistoryResult,
+  type RemovedModelReceiptEvidence,
   resolveControlStateDir,
 } from './types.js';
 
 export const APPLY_HISTORY_FILENAME = 'apply-history.json';
 export const MAX_APPLY_HISTORY_RECEIPTS = 500;
+
+function isValidRemovedModelEvidence(item: unknown): item is RemovedModelReceiptEvidence {
+  if (!item || typeof item !== 'object' || Array.isArray(item)) return false;
+  const m = item as Record<string, unknown>;
+  return (
+    typeof m['provider'] === 'string' &&
+    typeof m['modelId'] === 'string' &&
+    (m['inProviderCatalog'] === null || typeof m['inProviderCatalog'] === 'boolean') &&
+    (m['removalPath'] === undefined ||
+      m['removalPath'] === 'absence-only' ||
+      m['removalPath'] === 'official-notice') &&
+    (m['firstObservedAbsentAt'] === undefined ||
+      m['firstObservedAbsentAt'] === null ||
+      typeof m['firstObservedAbsentAt'] === 'string') &&
+    (m['removedAt'] === undefined || typeof m['removedAt'] === 'string') &&
+    (m['removalSettleMs'] === undefined ||
+      m['removalSettleMs'] === null ||
+      (typeof m['removalSettleMs'] === 'number' && Number.isFinite(m['removalSettleMs']))) &&
+    (m['qualifyingScanCount'] === undefined ||
+      (typeof m['qualifyingScanCount'] === 'number' &&
+        Number.isSafeInteger(m['qualifyingScanCount']) &&
+        m['qualifyingScanCount'] >= 0)) &&
+    (m['officialDomainVerified'] === undefined ||
+      typeof m['officialDomainVerified'] === 'boolean') &&
+    (m['officialPublishedAt'] === undefined ||
+      m['officialPublishedAt'] === null ||
+      typeof m['officialPublishedAt'] === 'string') &&
+    (m['officialShutdownDate'] === undefined ||
+      m['officialShutdownDate'] === null ||
+      typeof m['officialShutdownDate'] === 'string') &&
+    (m['syntheticNotice'] === undefined || typeof m['syntheticNotice'] === 'boolean') &&
+    (m['detectionEvidenceId'] === undefined || (typeof m['detectionEvidenceId'] === 'string' && m['detectionEvidenceId'].length > 0)) &&
+    (m['detectionEpisodeId'] === undefined || (typeof m['detectionEpisodeId'] === 'string' && m['detectionEpisodeId'].length > 0))
+  );
+}
+
+export function parseRemovalEvidenceTimestamp(value: unknown): number | null {
+  if (
+    typeof value !== 'string' ||
+    !/^\d{4}-\d{2}-\d{2}(?:T\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:?\d{2}))?$/.test(value)
+  ) return null;
+
+  const calendarDate = Date.parse(value.slice(0, 10));
+  const time = Date.parse(value);
+  return Number.isFinite(time) &&
+    Number.isFinite(calendarDate) &&
+    new Date(calendarDate).toISOString().slice(0, 10) === value.slice(0, 10)
+    ? time
+    : null;
+}
+
+/** Validate C48 receipt chronology and return the timestamp-derived duration. */
+export function deriveRemovalSettlementMs(
+  evidence: RemovedModelReceiptEvidence,
+  appliedAt: string,
+  options: { allowSyntheticFixture?: boolean } = {}
+): number | null {
+  const firstObservedMs = parseRemovalEvidenceTimestamp(evidence.firstObservedAbsentAt);
+  const removedMs = parseRemovalEvidenceTimestamp(evidence.removedAt);
+  const appliedMs = parseRemovalEvidenceTimestamp(appliedAt);
+  if (
+    firstObservedMs === null ||
+    removedMs === null ||
+    removedMs !== appliedMs ||
+    removedMs < firstObservedMs ||
+    evidence.removalSettleMs !== removedMs - firstObservedMs
+  ) return null;
+
+  if (evidence.removalPath === 'official-notice') {
+    const publishedMs = parseRemovalEvidenceTimestamp(evidence.officialPublishedAt);
+    const shutdownMs = parseRemovalEvidenceTimestamp(evidence.officialShutdownDate);
+    if (
+      evidence.officialDomainVerified !== true ||
+      (evidence.syntheticNotice !== false &&
+        !(options.allowSyntheticFixture === true && evidence.syntheticNotice === true)) ||
+      (evidence.officialPublishedAt != null && (publishedMs === null || publishedMs > removedMs)) ||
+      (evidence.officialShutdownDate != null && (shutdownMs === null || shutdownMs > removedMs)) ||
+      (publishedMs === null && shutdownMs === null)
+    ) return null;
+  }
+  return removedMs - firstObservedMs;
+}
 
 function isValidReceiptShape(item: unknown): item is ApplyHistoryReceipt {
   if (!item || typeof item !== 'object') return false;
@@ -50,9 +136,7 @@ function isValidReceiptShape(item: unknown): item is ApplyHistoryReceipt {
     typeof r['rolledBack'] === 'boolean' &&
     typeof r['snapshotOrBackupRef'] === 'string' &&
     (r['removedModels'] === undefined ||
-      (Array.isArray(r['removedModels']) && r['removedModels'].every((model) =>
-        model && typeof model.provider === 'string' && typeof model.modelId === 'string' &&
-        (model.inProviderCatalog === null || typeof model.inProviderCatalog === 'boolean')))) &&
+      (Array.isArray(r['removedModels']) && r['removedModels'].every(isValidRemovedModelEvidence))) &&
     (r['rollbackVerified'] === undefined ||
       (typeof r['rollbackVerified'] === 'boolean' &&
         typeof r['rollbackBeforeDigest'] === 'string' &&
@@ -158,9 +242,25 @@ export type AppendApplyReceiptInput = Omit<ApplyHistoryReceipt, 'receiptId'> & {
  */
 export function appendApplyReceipt(
   explicitStateDir: string | undefined,
-  input: AppendApplyReceiptInput
+  input: AppendApplyReceiptInput,
+  options: { allowSyntheticFixture?: boolean } = {}
 ): ApplyHistoryReceipt {
   const stateDir = resolveControlStateDir(explicitStateDir);
+  const allowSyntheticFixture = options.allowSyntheticFixture === true &&
+    isPathInsideDir(resolveDeepCanonicalPath(stateDir), resolveDeepCanonicalPath(os.tmpdir()));
+  for (const evidence of input.removedModels ?? []) {
+    if (
+      !isValidRemovedModelEvidence(evidence) ||
+      (evidence.removalPath !== undefined &&
+        (deriveRemovalSettlementMs(evidence, input.appliedAt, { allowSyntheticFixture }) === null ||
+          evidence.qualifyingScanCount === undefined))
+    ) {
+      throw new ConsentValidationError(
+        'CONSENT_SCHEMA_INVALID',
+        'Removal settlement evidence has invalid timestamps, duration, or scan count.'
+      );
+    }
+  }
   const signingKey = ensureConsentSigningKey(stateDir);
   const existing = readApplyHistory(stateDir);
   const baseReceipts = existing.valid ? existing.receipts : [];
