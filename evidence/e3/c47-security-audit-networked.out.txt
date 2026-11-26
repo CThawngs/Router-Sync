@@ -1,0 +1,97 @@
+{
+  "ok": true,
+  "highCount": 0,
+  "mediumCount": 0,
+  "lowCount": 0,
+  "surfaces": {
+    "repoFiles": {
+      "ok": true,
+      "filesScanned": 737,
+      "findingsCount": 0
+    },
+    "evidenceRefs": {
+      "ok": true,
+      "refsScanned": 29,
+      "blobsScanned": 1208,
+      "refs": [
+        "evidence/e3",
+        "origin/evidence/c25",
+        "origin/evidence/c26",
+        "origin/evidence/c27",
+        "origin/evidence/c30",
+        "origin/evidence/c31",
+        "origin/evidence/c32",
+        "origin/evidence/c33",
+        "origin/evidence/c34",
+        "origin/evidence/c36",
+        "origin/evidence/c37",
+        "origin/evidence/c37-apply",
+        "origin/evidence/c37-e2e",
+        "origin/evidence/c38",
+        "origin/evidence/c39",
+        "origin/evidence/c40",
+        "origin/evidence/c41",
+        "origin/evidence/c42",
+        "origin/evidence/c43",
+        "origin/evidence/c44",
+        "origin/evidence/d1",
+        "origin/evidence/d2",
+        "origin/evidence/d3",
+        "origin/evidence/e1",
+        "origin/evidence/e2",
+        "origin/evidence/m1",
+        "origin/evidence/m2",
+        "origin/evidence/m3",
+        "origin/evidence/m4"
+      ],
+      "findingsCount": 0
+    },
+    "tarballs": {
+      "ok": true,
+      "status": "packed_workspace_packages",
+      "packagesScanned": 8,
+      "findingsCount": 0
+    },
+    "ciLogs": {
+      "ok": true,
+      "status": "scanned",
+      "branch": "main",
+      "runsScanned": 10,
+      "runIds": [
+        45746982126,
+        45661135435,
+        45644456985,
+        45614734761,
+        45588079512,
+        45567507968,
+        45543669347,
+        45517172191,
+        45509893353,
+        45500443928
+      ],
+      "findingsCount": 0
+    },
+    "writeGates": {
+      "ok": true,
+      "gates": {
+        "grant": {
+          "ok": true,
+          "checksPassed": 5,
+          "checksTotal": 5
+        },
+        "approvalToken": {
+          "ok": true,
+          "checksPassed": 5,
+          "checksTotal": 5
+        },
+        "yesWriteRouter": {
+          "ok": true,
+          "checksPassed": 2,
+          "checksTotal": 2
+        }
+      },
+      "findingsCount": 0
+    }
+  },
+  "findings": []
+}

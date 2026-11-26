@@ -1,0 +1,1554 @@
+
+> routersync@0.1.0 test:file <private-provider-2>
+> vitest run "packages/cli/test/c46-f6-pilot-report.test.ts" "packages/cli/test/wp3-research-loop.test.ts"
+
+
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.12 [39m[90m<HOME>/.openmausbot/task-workspaces/a752da46-5147-4b20-9a6a-ff5045a56bb7/63a8dee8-84cb-454e-bfdd-07e0b3005610/repo[39m
+
+[90mstdout[2m | packages/cli/test/wp3-research-loop.test.ts[2m > [22m[2mC45-WP3 Part 3 & 4: Tier 0 <-> Tier 1 Real-Time Research Loop[2m > [22m[2menforces 4-trigger research-queue.json precision and zero-token accounting while excluding healthy & 429/5xx/401
+[22m[39mTICK-SUMMARY mode=propose scanned=4 skipped=1 changed=1 unchanged=0 backoff=0 inbox_added=4
+  PROVIDER prefix=openai label=OK status=200 models=4 changed=yes added=1 grace=1 dead=0
+  PROVIDER prefix=custom-no-list label=SKIPPED status=0 models=0 changed=no reason=unknown-prefix
+  PROVIDER prefix=groq label=QUOTA status=429 models=0 changed=no reason=QUOTA added=0 grace=0 dead=0 backoff=120s
+  PROVIDER prefix=mistral label=TRANSIENT status=503 models=0 changed=no reason=TRANSIENT added=0 grace=0 dead=0 backoff=120s
+  PROVIDER prefix=deepseek label=AUTH_ERROR status=401 models=0 changed=no reason=AUTH_ERROR added=0 grace=0 dead=0 backoff=120s
+TICK requests=11 paid-requests=0 tokens=0 llm-calls=0
+
+[90mstdout[2m | packages/cli/test/wp3-research-loop.test.ts[2m > [22m[2mC45-WP3 Part 3 & 4: Tier 0 <-> Tier 1 Real-Time Research Loop[2m > [22m[2mexecutes closed loop (tick -> secondary blocked -> official resolves & plans router + harness REMOVE_MODEL with detectionLatencyMs)
+[22m[39mTICK-SUMMARY mode=propose scanned=1 skipped=0 changed=1 unchanged=0 backoff=0 inbox_added=1
+  PROVIDER prefix=anthropic label=OK status=200 models=10 changed=yes added=0 grace=0 dead=0
+TICK requests=8 paid-requests=0 tokens=0 llm-calls=0
+
+[90mstdout[2m | packages/cli/test/wp3-research-loop.test.ts[2m > [22m[2mC45-WP3 Part 3 & 4: Tier 0 <-> Tier 1 Real-Time Research Loop[2m > [22m[2mexecutes closed loop (tick -> secondary blocked -> official resolves & plans router + harness REMOVE_MODEL with detectionLatencyMs)
+[22m[39mTICK-SUMMARY mode=propose scanned=1 skipped=0 changed=0 unchanged=1 backoff=0 inbox_added=0
+  PROVIDER prefix=anthropic label=UNCHANGED status=200 models=10 changed=no added=0 grace=0 dead=0
+TICK requests=1 paid-requests=0 tokens=0 llm-calls=0
+
+[90mstdout[2m | packages/cli/test/wp3-research-loop.test.ts[2m > [22m[2mC45-WP3 Part 3 & 4: Tier 0 <-> Tier 1 Real-Time Research Loop[2m > [22m[2mexecutes closed loop (tick -> secondary blocked -> official resolves & plans router + harness REMOVE_MODEL with detectionLatencyMs)
+[22m[39mTICK-SUMMARY mode=propose scanned=1 skipped=0 changed=0 unchanged=1 backoff=0 inbox_added=3
+  PROVIDER prefix=anthropic label=UNCHANGED status=200 models=10 changed=no added=0 grace=0 dead=0
+TICK requests=1 paid-requests=0 tokens=0 llm-calls=0
+
+[90mstdout[2m | packages/cli/test/wp3-research-loop.test.ts[2m > [22m[2mC45-WP3 Part 3 & 4: Tier 0 <-> Tier 1 Real-Time Research Loop[2m > [22m[2menforces 10% per-cycle removal shrink cap (SHRINK_CAP_EXCEEDED) on both 5-model and 10-model router & harness targets
+[22m[39mTICK-SUMMARY mode=propose scanned=1 skipped=0 changed=1 unchanged=0 backoff=0 inbox_added=3
+  PROVIDER prefix=openai label=OK status=200 models=4 changed=yes added=0 grace=0 dead=0
+TICK requests=8 paid-requests=0 tokens=0 llm-calls=0
+
+[90mstdout[2m | packages/cli/test/wp3-research-loop.test.ts[2m > [22m[2mC45-WP3 Part 3 & 4: Tier 0 <-> Tier 1 Real-Time Research Loop[2m > [22m[2mC47: measures the absence-only gate before planning a removal
+[22m[39mTICK-SUMMARY mode=auto-safe scanned=1 skipped=0 changed=1 unchanged=0 backoff=0 inbox_added=0
+  PROVIDER prefix=anthropic label=OK status=200 models=10 changed=yes added=0 grace=0 dead=0
+TICK requests=8 paid-requests=0 tokens=0 llm-calls=0
+
+[90mstdout[2m | packages/cli/test/wp3-research-loop.test.ts[2m > [22m[2mC45-WP3 Part 3 & 4: Tier 0 <-> Tier 1 Real-Time Research Loop[2m > [22m[2mC47: measures the absence-only gate before planning a removal
+[22m[39mTICK-SUMMARY mode=auto-safe scanned=1 skipped=0 changed=1 unchanged=0 backoff=0 inbox_added=0
+  PROVIDER prefix=anthropic label=OK status=200 models=10 changed=yes added=0 grace=1 dead=0
+TICK requests=3 paid-requests=0 tokens=0 llm-calls=0
+
+[90mstdout[2m | packages/cli/test/wp3-research-loop.test.ts[2m > [22m[2mC45-WP3 Part 3 & 4: Tier 0 <-> Tier 1 Real-Time Research Loop[2m > [22m[2mC47: measures the absence-only gate before planning a removal
+[22m[39mTICK-SUMMARY mode=auto-safe scanned=1 skipped=0 changed=1 unchanged=0 backoff=0 inbox_added=1
+  PROVIDER prefix=anthropic label=OK status=200 models=9 changed=yes added=0 grace=0 dead=1
+TICK requests=3 paid-requests=0 tokens=0 llm-calls=0
+
+[90mstdout[2m | packages/cli/test/wp3-research-loop.test.ts[2m > [22m[2mC45-WP3 Part 3 & 4: Tier 0 <-> Tier 1 Real-Time Research Loop[2m > [22m[2mC47: measures the absence-only gate before planning a removal
+[22m[39mTICK-SUMMARY mode=auto-safe scanned=1 skipped=0 changed=1 unchanged=0 backoff=0 inbox_added=1
+  PROVIDER prefix=anthropic label=OK status=200 models=9 changed=yes added=0 grace=0 dead=1
+TICK requests=8 paid-requests=0 tokens=0 llm-calls=0
+
+[90mstdout[2m | packages/cli/test/wp3-research-loop.test.ts[2m > [22m[2mC45-WP3 Part 3 & 4: Tier 0 <-> Tier 1 Real-Time Research Loop[2m > [22m[2menforces UNVERIFIABLE != ABSENT across 5 consecutive ticks (> 48h): absenceCount stays 0 and zero REMOVE_MODEL actions
+[22m[39mTICK-SUMMARY mode=propose scanned=0 skipped=1 changed=0 unchanged=0 backoff=0 inbox_added=0
+  PROVIDER prefix=custom-unscanned label=SKIPPED status=0 models=0 changed=no reason=no-key
+TICK requests=7 paid-requests=0 tokens=0 llm-calls=0
+
+[90mstdout[2m | packages/cli/test/wp3-research-loop.test.ts[2m > [22m[2mC45-WP3 Part 3 & 4: Tier 0 <-> Tier 1 Real-Time Research Loop[2m > [22m[2menforces UNVERIFIABLE != ABSENT across 5 consecutive ticks (> 48h): absenceCount stays 0 and zero REMOVE_MODEL actions
+[22m[39mTICK-SUMMARY mode=propose scanned=0 skipped=1 changed=0 unchanged=0 backoff=0 inbox_added=0
+  PROVIDER prefix=custom-unscanned label=SKIPPED status=0 models=0 changed=no reason=no-key
+TICK requests=2 paid-requests=0 tokens=0 llm-calls=0
+
+[90mstdout[2m | packages/cli/test/wp3-research-loop.test.ts[2m > [22m[2mC45-WP3 Part 3 & 4: Tier 0 <-> Tier 1 Real-Time Research Loop[2m > [22m[2menforces UNVERIFIABLE != ABSENT across 5 consecutive ticks (> 48h): absenceCount stays 0 and zero REMOVE_MODEL actions
+[22m[39mTICK-SUMMARY mode=propose scanned=0 skipped=1 changed=0 unchanged=0 backoff=0 inbox_added=0
+  PROVIDER prefix=custom-unscanned label=SKIPPED status=0 models=0 changed=no reason=no-key
+TICK requests=7 paid-requests=0 tokens=0 llm-calls=0
+
+[90mstdout[2m | packages/cli/test/wp3-research-loop.test.ts[2m > [22m[2mC45-WP3 Part 3 & 4: Tier 0 <-> Tier 1 Real-Time Research Loop[2m > [22m[2menforces UNVERIFIABLE != ABSENT across 5 consecutive ticks (> 48h): absenceCount stays 0 and zero REMOVE_MODEL actions
+[22m[39mTICK-SUMMARY mode=propose scanned=0 skipped=1 changed=0 unchanged=0 backoff=0 inbox_added=0
+  PROVIDER prefix=custom-unscanned label=SKIPPED status=0 models=0 changed=no reason=no-key
+TICK requests=2 paid-requests=0 tokens=0 llm-calls=0
+
+[90mstdout[2m | packages/cli/test/wp3-research-loop.test.ts[2m > [22m[2mC45-WP3 Part 3 & 4: Tier 0 <-> Tier 1 Real-Time Research Loop[2m > [22m[2menforces UNVERIFIABLE != ABSENT across 5 consecutive ticks (> 48h): absenceCount stays 0 and zero REMOVE_MODEL actions
+[22m[39mTICK-SUMMARY mode=propose scanned=0 skipped=1 changed=0 unchanged=0 backoff=0 inbox_added=0
+  PROVIDER prefix=custom-unscanned label=SKIPPED status=0 models=0 changed=no reason=no-key
+TICK requests=7 paid-requests=0 tokens=0 llm-calls=0
+
+ [32m✓[39m [30m[45m packages [49m[39m packages/cli/test/wp3-research-loop.test.ts [2m([22m[2m6 tests[22m[2m)[22m[33m 5803[2mms[22m[39m
+     [33m[2m✓[22m[39m enforces 4-trigger research-queue.json precision and zero-token accounting while excluding healthy & 429/5xx/401 [33m 1430[2mms[22m[39m
+     [33m[2m✓[22m[39m executes closed loop (tick -> secondary blocked -> official resolves & plans router + harness REMOVE_MODEL with detectionLatencyMs) [33m 1536[2mms[22m[39m
+     [33m[2m✓[22m[39m enforces 10% per-cycle removal shrink cap (SHRINK_CAP_EXCEEDED) on both 5-model and 10-model router & harness targets [33m 446[2mms[22m[39m
+     [33m[2m✓[22m[39m C47: measures the absence-only gate before planning a removal [33m 1017[2mms[22m[39m
+     [33m[2m✓[22m[39m enforces UNVERIFIABLE != ABSENT across 5 consecutive ticks (> 48h): absenceCount stays 0 and zero REMOVE_MODEL actions [33m 1350[2mms[22m[39m
+[90mstdout[2m | packages/cli/test/c46-f6-pilot-report.test.ts[2m > [22m[2mC46-F6: routersync pilot-report Read-Only Sign-Off Aggregator[2m > [22m[2mrequires verified rollback for a measured pilot to pass and leaves <stateDir> untouched
+[22m[39m{
+  "timestamp": "2026-11-25T10:00:00.000Z",
+  "mode": "observe",
+  "effectiveMode": "observe",
+  "requests": 8,
+  "paidRequests": 0,
+  "tokens": 0,
+  "llmCalls": 0,
+  "changedProviders": 1,
+  "unchangedProviders": 0,
+  "backoffSkipped": 0,
+  "inboxAdded": 0,
+  "researchQueueCount": 0,
+  "detectionLatency": {
+    "measuredCount": 0,
+    "minMs": null,
+    "maxMs": null,
+    "p50Ms": null
+  },
+  "providers": [
+    {
+      "prefix": "openai",
+      "label": "OK",
+      "status": 200,
+      "models": 10,
+      "changed": true,
+      "added": [],
+      "graceAbsent": [],
+      "deadConfirmed": [],
+      "backoffSec": 0
+    }
+  ],
+  "shrinkBlockReasons": {},
+  "absentNotInCombo": {},
+  "webhookDelivery": {
+    "status": "skipped",
+    "ok": true,
+    "reason": "no_actionable_alerts",
+    "durationMs": 0
+  }
+}
+
+{
+  "schemaVersion": 1,
+  "checkedAt": "2026-11-25T10:00:01.000Z",
+  "status": "READY_FOR_OWNER_LIVE_PILOT",
+  "vietnameseGateStatus": "sẵn sàng chạy thật",
+  "pilotTargets": {
+    "routerTarget": "router:nine/rs-pilot",
+    "harnessTarget": "harness:hermes"
+  },
+  "pilotPhase": "NEEDS_INITIAL_PROPOSE_CONSENT",
+  "checks": [
+    {
+      "id": "freeze_clear",
+      "passed": true,
+      "detail": "Emergency freeze circuit breaker is clear (frozen=false)."
+    },
+    {
+      "id": "config_and_doctor_health",
+      "passed": true,
+      "detail": "Config schema valid, 0 circular dependencies, status.json fresh (0m <= 30m threshold)."
+    },
+    {
+      "id": "pilot_targets_readable",
+      "passed": true,
+      "detail": "Pilot targets readable: router:nine/rs-pilot (nine-rehearsal.sqlite) + harness:hermes (config.yaml)."
+    },
+    {
+      "id": "tmpdir_backup_rollback_rehearsal",
+      "passed": true,
+      "detail": "Isolated backup + parser + byte-exact SHA-256 rollback rehearsal passed in os.tmpdir()/rs-livecheck-zadTAz (0 live mutations)."
+    },
+    {
+      "id": "consent_and_promotion_state",
+      "passed": true,
+      "detail": "Consent & apply-history HMAC integrity verified (pilotPhase=NEEDS_INITIAL_PROPOSE_CONSENT)."
+    },
+    {
+      "id": "cost_and_release_hygiene",
+      "passed": true,
+      "detail": "tier0Tokens=0, tier0LlmCalls=0, tier0PaidRequests=0, weeklySessions=0/5 (budgetExceeded=false). 8 publishable + 2 private manifests consistent at version 0.1.0 (prepareV1Release dry-run verified)."
+    },
+    {
+      "id": "live_gate_hint",
+      "passed": true,
+      "detail": "routerDb (nine-rehearsal.sqlite): trong os.tmpdir() — không cần cờ; harnessConfig (config.yaml): trong os.tmpdir() — không cần cờ."
+    }
+  ],
+  "blockingReasons": [],
+  "ownerNextCommands": [
+    "routersync consent grant --target router:nine/rs-pilot --level propose",
+    "routersync consent grant --target harness:hermes --level propose",
+    "routersync plan"
+  ]
+}
+[90mstdout[2m | packages/cli/test/c46-f6-pilot-report.test.ts[2m > [22m[2mC46-F6: routersync pilot-report Read-Only Sign-Off Aggregator[2m > [22m[2mrequires verified rollback for a measured pilot to pass and leaves <stateDir> untouched
+[22m[39m{
+  "ok": true,
+  "policyId": "a2475e072676131dbc84d5ad6d147e43",
+  "updatedAt": "2026-11-26T03:26:18.424Z",
+  "entry": {
+    "target": "router:nine/rs-pilot",
+    "targetKind": "router",
+    "routerId": "nine",
+    "comboName": "rs-pilot",
+    "level": "propose",
+    "grantedAt": "2026-11-26T03:26:18.424Z",
+    "expiresAt": "2026-12-26T03:26:18.424Z"
+  }
+}
+
+[90mstdout[2m | packages/cli/test/c46-f6-pilot-report.test.ts[2m > [22m[2mC46-F6: routersync pilot-report Read-Only Sign-Off Aggregator[2m > [22m[2mrequires verified rollback for a measured pilot to pass and leaves <stateDir> untouched
+[22m[39m{
+  "ok": true,
+  "policyId": "a2475e072676131dbc84d5ad6d147e43",
+  "updatedAt": "2026-11-26T03:26:18.467Z",
+  "entry": {
+    "target": "harness:hermes",
+    "targetKind": "harness",
+    "harnessId": "hermes",
+    "level": "propose",
+    "grantedAt": "2026-11-26T03:26:18.467Z",
+    "expiresAt": "2026-12-26T03:26:18.467Z"
+  }
+}
+
+[90mstdout[2m | packages/cli/test/c46-f6-pilot-report.test.ts[2m > [22m[2mC46-F6: routersync pilot-report Read-Only Sign-Off Aggregator[2m > [22m[2mrequires verified rollback for a measured pilot to pass and leaves <stateDir> untouched
+[22m[39m{
+  "ok": true,
+  "configFile": "C:\\Users\\<USER>\\.openmausbot\\tmp\\agy\\4c4db2442357\\rs-c46-f6-e2e-9w8kqZ\\router\\routersync.yaml",
+  "plans": [
+    {
+      "routerId": "nine",
+      "adapter": "9router",
+      "plan": {
+        "id": "plan_1795663578531_yocp7er",
+        "target": "nine",
+        "timestamp": "2026-11-26T03:26:18.531Z",
+        "additions": [],
+        "modifications": [
+          {
+            "id": "rs-pilot",
+            "name": "rs-pilot",
+            "strategy": "priority",
+            "models": [
+              "openai/gpt-4.1",
+              "openai/gpt-4.1-mini",
+              "openai/gpt-4.1-nano",
+              "openai/o3-mini",
+              "openai/o4-mini",
+              "openai/gpt-4o",
+              "openai/gpt-4o-mini",
+              "openai/gpt-4.5",
+              "openai/gpt-5-nano",
+              "openai/gpt-4o-legacy"
+            ],
+            "managed": true,
+            "minSteps": 1,
+            "freeOnly": false,
+            "autoMaintain": false,
+            "updatedAt": "2026-11-26T03:26:18.531Z"
+          }
+        ],
+        "deletions": [],
+        "reasons": {
+          "rs-pilot": "UPDATED: models or strategy adjusted"
+        }
+      },
+      "totalSteps": 10,
+      "keepSteps": 10
+    }
+  ]
+}
+
+{
+  "app": "hermes",
+  "directionAMode": "write-adapter",
+  "editable": true,
+  "targetProviders": [
+    "openai"
+  ],
+  "additions": [
+    {
+      "provider": "openai",
+      "model": "gpt-4.1-nano"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4.5"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4o"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4o-legacy"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4o-mini"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-5-nano"
+    },
+    {
+      "provider": "openai",
+      "model": "o3-mini"
+    },
+    {
+      "provider": "openai",
+      "model": "o4-mini"
+    }
+  ],
+  "removals": [],
+  "defaultSlotWarnings": [],
+  "configPath": "<HOME>\\.hermes\\config.yaml",
+  "guidance": [
+    "Use /reload-mcp in active chat for MCP changes; restart gateway or start a new CLI turn for config.yaml model/provider changes."
+  ],
+  "planHash": "1aeb98212c17f108445f111499687298f31796def6578c24ca928ac1514c39ae",
+  "reloadRequired": true,
+  "runningProcesses": []
+}
+[90mstdout[2m | packages/cli/test/c46-f6-pilot-report.test.ts[2m > [22m[2mC46-F6: routersync pilot-report Read-Only Sign-Off Aggregator[2m > [22m[2mrequires verified rollback for a measured pilot to pass and leaves <stateDir> untouched
+[22m[39m
+======================================================
+[routersync] REVIEWING PENDING CHANGES BEFORE WRITING
+======================================================
+Router [nine] (9router):
+  Additions: 0, Modifications: 1, Deletions: 0
+======================================================
+
+
+[90mstdout[2m | packages/cli/test/c46-f6-pilot-report.test.ts[2m > [22m[2mC46-F6: routersync pilot-report Read-Only Sign-Off Aggregator[2m > [22m[2mrequires verified rollback for a measured pilot to pass and leaves <stateDir> untouched
+[22m[39m{
+  "mode": "live-write",
+  "status": "SUCCESS",
+  "results": [
+    {
+      "success": true,
+      "target": "9router",
+      "appliedAt": "2026-11-26T03:26:20.130Z",
+      "planId": "plan_1795663580086_i1gvj8w",
+      "readBackVerified": true,
+      "staleDetected": false,
+      "readBackLevel": "db-only (degraded)",
+      "canonicalReadBackLevel": "db-only",
+      "degradedReason": "no-api-path"
+    }
+  ],
+  "timestamp": "2026-11-26T03:26:20.129Z",
+  "snapshots": [
+    {
+      "routerId": "nine",
+      "snapshotId": "snap_1795663580118_knk4xdd",
+      "file": "C:\\Users\\<USER>\\.openmausbot\\tmp\\agy\\4c4db2442357\\rs-c46-f6-e2e-9w8kqZ\\state\\snapshots\\snap_1795663580118_knk4xdd.json"
+    }
+  ]
+}
+
+{
+  "app": "hermes",
+  "configPath": "C:\\Users\\<USER>\\.openmausbot\\tmp\\agy\\4c4db2442357\\rs-c46-f6-e2e-9w8kqZ\\home\\.hermes\\config.yaml",
+  "backupPath": "C:\\Users\\<USER>\\.openmausbot\\tmp\\agy\\4c4db2442357\\rs-c46-f6-e2e-9w8kqZ\\home\\.hermes\\config.yaml.pre-pilot.bak",
+  "applied": true,
+  "rolledBack": false,
+  "readBackVerified": true,
+  "reloadRequired": true,
+  "runningProcesses": [],
+  "planHash": "1aeb98212c17f108445f111499687298f31796def6578c24ca928ac1514c39ae",
+  "preSha256": "58dad241e4ef1e1402cfd59e378e6fecf84a5104f9cb15c1914deb6c83f27d6a",
+  "postSha256": "e4dbd714e923f06d38d7cb93956c1863c04bdf0c8aeba94737cd1805a1c5c8e6",
+  "message": "Đã cập nhật danh sách model của Hermes Agent (Nous Research) an toàn (đã sao lưu & kiểm chứng đọc lại)."
+}
+[90mstdout[2m | packages/cli/test/c46-f6-pilot-report.test.ts[2m > [22m[2mC46-F6: routersync pilot-report Read-Only Sign-Off Aggregator[2m > [22m[2mrequires verified rollback for a measured pilot to pass and leaves <stateDir> untouched
+[22m[39m{
+  "ok": true,
+  "policyId": "a2475e072676131dbc84d5ad6d147e43",
+  "updatedAt": "2026-11-26T03:26:20.301Z",
+  "entry": {
+    "target": "router:nine/rs-pilot",
+    "targetKind": "router",
+    "routerId": "nine",
+    "comboName": "rs-pilot",
+    "level": "auto-safe",
+    "grantedAt": "2026-11-26T03:26:20.301Z",
+    "expiresAt": "2026-12-26T03:26:20.301Z",
+    "verifiedProposeReceiptId": "8e802a8c15d0d5e49019b5a45a89f9e0"
+  }
+}
+
+[90mstdout[2m | packages/cli/test/c46-f6-pilot-report.test.ts[2m > [22m[2mC46-F6: routersync pilot-report Read-Only Sign-Off Aggregator[2m > [22m[2mrequires verified rollback for a measured pilot to pass and leaves <stateDir> untouched
+[22m[39m{
+  "ok": true,
+  "policyId": "a2475e072676131dbc84d5ad6d147e43",
+  "updatedAt": "2026-11-26T03:26:20.328Z",
+  "entry": {
+    "target": "harness:hermes",
+    "targetKind": "harness",
+    "harnessId": "hermes",
+    "level": "auto-safe",
+    "grantedAt": "2026-11-26T03:26:20.328Z",
+    "expiresAt": "2026-12-26T03:26:20.328Z",
+    "verifiedProposeReceiptId": "f02686bbe4429bba2008cd6dea59e435"
+  }
+}
+
+[90mstdout[2m | packages/cli/test/c46-f6-pilot-report.test.ts[2m > [22m[2mC46-F6: routersync pilot-report Read-Only Sign-Off Aggregator[2m > [22m[2mrequires verified rollback for a measured pilot to pass and leaves <stateDir> untouched
+[22m[39m{
+  "timestamp": "2026-11-25T10:10:00.000Z",
+  "mode": "auto-safe",
+  "effectiveMode": "auto-safe",
+  "requests": 1,
+  "paidRequests": 0,
+  "tokens": 0,
+  "llmCalls": 0,
+  "changedProviders": 1,
+  "unchangedProviders": 0,
+  "backoffSkipped": 0,
+  "inboxAdded": 4,
+  "researchQueueCount": 1,
+  "detectionLatency": {
+    "measuredCount": 2,
+    "minMs": 0,
+    "maxMs": 0,
+    "p50Ms": 0
+  },
+  "providers": [
+    {
+      "prefix": "openai",
+      "label": "OK",
+      "status": 200,
+      "models": 11,
+      "changed": true,
+      "added": [
+        "gpt-5.2-codex"
+      ],
+      "graceAbsent": [],
+      "deadConfirmed": [],
+      "backoffSec": 0
+    }
+  ],
+  "shrinkBlockReasons": {},
+  "absentNotInCombo": {},
+  "webhookDelivery": {
+    "status": "skipped",
+    "ok": true,
+    "reason": "unconfigured",
+    "durationMs": 0
+  }
+}
+
+[90mstdout[2m | packages/cli/test/c46-f6-pilot-report.test.ts[2m > [22m[2mC46-F6: routersync pilot-report Read-Only Sign-Off Aggregator[2m > [22m[2mrequires verified rollback for a measured pilot to pass and leaves <stateDir> untouched
+[22m[39m{
+  "ok": true,
+  "frozen": true,
+  "frozenAt": "2026-11-26T03:26:22.516Z",
+  "reason": "live-pilot-drill"
+}
+
+[90mstdout[2m | packages/cli/test/c46-f6-pilot-report.test.ts[2m > [22m[2mC46-F6: routersync pilot-report Read-Only Sign-Off Aggregator[2m > [22m[2mrequires verified rollback for a measured pilot to pass and leaves <stateDir> untouched
+[22m[39m{
+  "ok": true,
+  "frozen": false,
+  "unfrozenAt": "2026-11-26T03:26:22.532Z"
+}
+
+[90mstdout[2m | packages/cli/test/c46-f6-pilot-report.test.ts[2m > [22m[2mC46-F6: routersync pilot-report Read-Only Sign-Off Aggregator[2m > [22m[2mrequires verified rollback for a measured pilot to pass and leaves <stateDir> untouched
+[22m[39m{
+  "ok": true,
+  "rollbackVerified": true,
+  "snapshotId": "snap_1795663580118_knk4xdd",
+  "target": "9router",
+  "combos": 1
+}
+
+{
+  "app": "hermes",
+  "configPath": "C:\\Users\\<USER>\\.openmausbot\\tmp\\agy\\4c4db2442357\\rs-c46-f6-e2e-9w8kqZ\\home\\.hermes\\config.yaml",
+  "backupPath": "C:\\Users\\<USER>\\.openmausbot\\tmp\\agy\\4c4db2442357\\rs-c46-f6-e2e-9w8kqZ\\home\\.hermes\\config.yaml.pre-pilot.bak",
+  "restored": true,
+  "byteIdenticalToPreApply": true,
+  "postSha256": "58dad241e4ef1e1402cfd59e378e6fecf84a5104f9cb15c1914deb6c83f27d6a"
+}
+[90mstdout[2m | packages/cli/test/c46-f6-pilot-report.test.ts[2m > [22m[2mC46-F6: routersync pilot-report Read-Only Sign-Off Aggregator[2m > [22m[2mreports a steady pilot after verified rollback
+[22m[39m{
+  "timestamp": "2026-11-25T11:00:00.000Z",
+  "mode": "observe",
+  "effectiveMode": "observe",
+  "requests": 8,
+  "paidRequests": 0,
+  "tokens": 0,
+  "llmCalls": 0,
+  "changedProviders": 1,
+  "unchangedProviders": 0,
+  "backoffSkipped": 0,
+  "inboxAdded": 0,
+  "researchQueueCount": 0,
+  "detectionLatency": {
+    "measuredCount": 0,
+    "minMs": null,
+    "maxMs": null,
+    "p50Ms": null
+  },
+  "providers": [
+    {
+      "prefix": "openai",
+      "label": "OK",
+      "status": 200,
+      "models": 10,
+      "changed": true,
+      "added": [],
+      "graceAbsent": [],
+      "deadConfirmed": [],
+      "backoffSec": 0
+    }
+  ],
+  "shrinkBlockReasons": {},
+  "absentNotInCombo": {},
+  "webhookDelivery": {
+    "status": "skipped",
+    "ok": true,
+    "reason": "no_actionable_alerts",
+    "durationMs": 0
+  }
+}
+
+{
+  "schemaVersion": 1,
+  "checkedAt": "2026-11-25T11:00:01.000Z",
+  "status": "READY_FOR_OWNER_LIVE_PILOT",
+  "vietnameseGateStatus": "sẵn sàng chạy thật",
+  "pilotTargets": {
+    "routerTarget": "router:nine/rs-pilot",
+    "harnessTarget": "harness:hermes"
+  },
+  "pilotPhase": "NEEDS_INITIAL_PROPOSE_CONSENT",
+  "checks": [
+    {
+      "id": "freeze_clear",
+      "passed": true,
+      "detail": "Emergency freeze circuit breaker is clear (frozen=false)."
+    },
+    {
+      "id": "config_and_doctor_health",
+      "passed": true,
+      "detail": "Config schema valid, 0 circular dependencies, status.json fresh (0m <= 30m threshold)."
+    },
+    {
+      "id": "pilot_targets_readable",
+      "passed": true,
+      "detail": "Pilot targets readable: router:nine/rs-pilot (nine-steady.sqlite) + harness:hermes (config.yaml)."
+    },
+    {
+      "id": "tmpdir_backup_rollback_rehearsal",
+      "passed": true,
+      "detail": "Isolated backup + parser + byte-exact SHA-256 rollback rehearsal passed in os.tmpdir()/rs-livecheck-zEbkW7 (0 live mutations)."
+    },
+    {
+      "id": "consent_and_promotion_state",
+      "passed": true,
+      "detail": "Consent & apply-history HMAC integrity verified (pilotPhase=NEEDS_INITIAL_PROPOSE_CONSENT)."
+    },
+    {
+      "id": "cost_and_release_hygiene",
+      "passed": true,
+      "detail": "tier0Tokens=0, tier0LlmCalls=0, tier0PaidRequests=0, weeklySessions=0/5 (budgetExceeded=false). 8 publishable + 2 private manifests consistent at version 0.1.0 (prepareV1Release dry-run verified)."
+    },
+    {
+      "id": "live_gate_hint",
+      "passed": true,
+      "detail": "routerDb (nine-steady.sqlite): trong os.tmpdir() — không cần cờ; harnessConfig (config.yaml): trong os.tmpdir() — không cần cờ."
+    }
+  ],
+  "blockingReasons": [],
+  "ownerNextCommands": [
+    "routersync consent grant --target router:nine/rs-pilot --level propose",
+    "routersync consent grant --target harness:hermes --level propose",
+    "routersync plan"
+  ]
+}
+[90mstdout[2m | packages/cli/test/c46-f6-pilot-report.test.ts[2m > [22m[2mC46-F6: routersync pilot-report Read-Only Sign-Off Aggregator[2m > [22m[2mreports a steady pilot after verified rollback
+[22m[39m{
+  "ok": true,
+  "policyId": "dd7fba2bbe8915506fbab17ca2f6bd96",
+  "updatedAt": "2026-11-26T03:26:23.857Z",
+  "entry": {
+    "target": "router:nine/rs-pilot",
+    "targetKind": "router",
+    "routerId": "nine",
+    "comboName": "rs-pilot",
+    "level": "propose",
+    "grantedAt": "2026-11-26T03:26:23.857Z",
+    "expiresAt": "2026-12-26T03:26:23.857Z"
+  }
+}
+
+[90mstdout[2m | packages/cli/test/c46-f6-pilot-report.test.ts[2m > [22m[2mC46-F6: routersync pilot-report Read-Only Sign-Off Aggregator[2m > [22m[2mreports a steady pilot after verified rollback
+[22m[39m{
+  "ok": true,
+  "policyId": "dd7fba2bbe8915506fbab17ca2f6bd96",
+  "updatedAt": "2026-11-26T03:26:23.891Z",
+  "entry": {
+    "target": "harness:hermes",
+    "targetKind": "harness",
+    "harnessId": "hermes",
+    "level": "propose",
+    "grantedAt": "2026-11-26T03:26:23.891Z",
+    "expiresAt": "2026-12-26T03:26:23.891Z"
+  }
+}
+
+[90mstdout[2m | packages/cli/test/c46-f6-pilot-report.test.ts[2m > [22m[2mC46-F6: routersync pilot-report Read-Only Sign-Off Aggregator[2m > [22m[2mreports a steady pilot after verified rollback
+[22m[39m
+======================================================
+[routersync] REVIEWING PENDING CHANGES BEFORE WRITING
+======================================================
+Router [nine] (9router):
+  Additions: 0, Modifications: 1, Deletions: 0
+======================================================
+
+
+[90mstdout[2m | packages/cli/test/c46-f6-pilot-report.test.ts[2m > [22m[2mC46-F6: routersync pilot-report Read-Only Sign-Off Aggregator[2m > [22m[2mreports a steady pilot after verified rollback
+[22m[39m{
+  "mode": "live-write",
+  "status": "SUCCESS",
+  "results": [
+    {
+      "success": true,
+      "target": "9router",
+      "appliedAt": "2026-11-26T03:26:23.970Z",
+      "planId": "plan_1795663583932_55zugte",
+      "readBackVerified": true,
+      "staleDetected": false,
+      "readBackLevel": "db-only (degraded)",
+      "canonicalReadBackLevel": "db-only",
+      "degradedReason": "no-api-path"
+    }
+  ],
+  "timestamp": "2026-11-26T03:26:23.970Z",
+  "snapshots": [
+    {
+      "routerId": "nine",
+      "snapshotId": "snap_1795663583962_1rw7ac5",
+      "file": "C:\\Users\\<USER>\\.openmausbot\\tmp\\agy\\4c4db2442357\\rs-c46-f6-steady-e2e-LOERLe\\state\\snapshots\\snap_1795663583962_1rw7ac5.json"
+    }
+  ]
+}
+
+{
+  "app": "hermes",
+  "configPath": "C:\\Users\\<USER>\\.openmausbot\\tmp\\agy\\4c4db2442357\\rs-c46-f6-steady-e2e-LOERLe\\home\\.hermes\\config.yaml",
+  "backupPath": "C:\\Users\\<USER>\\.openmausbot\\tmp\\agy\\4c4db2442357\\rs-c46-f6-steady-e2e-LOERLe\\home\\.hermes\\config.yaml.pre-pilot.bak",
+  "applied": true,
+  "rolledBack": false,
+  "readBackVerified": true,
+  "reloadRequired": true,
+  "runningProcesses": [],
+  "planHash": "1aeb98212c17f108445f111499687298f31796def6578c24ca928ac1514c39ae",
+  "preSha256": "1381934b9d32721f97c577c3d6eba3a292712901f038b141f9499a1fbbb4caba",
+  "postSha256": "7f6fb38623ae83694d41c1cf7c7246e38cdfdc38ad08bb6fc27cd5ebc33efe13",
+  "message": "Đã cập nhật danh sách model của Hermes Agent (Nous Research) an toàn (đã sao lưu & kiểm chứng đọc lại)."
+}
+[90mstdout[2m | packages/cli/test/c46-f6-pilot-report.test.ts[2m > [22m[2mC46-F6: routersync pilot-report Read-Only Sign-Off Aggregator[2m > [22m[2mreports a steady pilot after verified rollback
+[22m[39m{
+  "ok": true,
+  "policyId": "dd7fba2bbe8915506fbab17ca2f6bd96",
+  "updatedAt": "2026-11-26T03:26:25.193Z",
+  "entry": {
+    "target": "router:nine/rs-pilot",
+    "targetKind": "router",
+    "routerId": "nine",
+    "comboName": "rs-pilot",
+    "level": "auto-safe",
+    "grantedAt": "2026-11-26T03:26:25.193Z",
+    "expiresAt": "2026-12-26T03:26:25.193Z",
+    "verifiedProposeReceiptId": "d1eaf3c1c9b4e13cec537e45b6be8e15"
+  }
+}
+
+[90mstdout[2m | packages/cli/test/c46-f6-pilot-report.test.ts[2m > [22m[2mC46-F6: routersync pilot-report Read-Only Sign-Off Aggregator[2m > [22m[2mreports a steady pilot after verified rollback
+[22m[39m{
+  "ok": true,
+  "policyId": "dd7fba2bbe8915506fbab17ca2f6bd96",
+  "updatedAt": "2026-11-26T03:26:25.217Z",
+  "entry": {
+    "target": "harness:hermes",
+    "targetKind": "harness",
+    "harnessId": "hermes",
+    "level": "auto-safe",
+    "grantedAt": "2026-11-26T03:26:25.217Z",
+    "expiresAt": "2026-12-26T03:26:25.217Z",
+    "verifiedProposeReceiptId": "8fca84ca9415c47e262cad5c97512824"
+  }
+}
+
+[90mstdout[2m | packages/cli/test/c46-f6-pilot-report.test.ts[2m > [22m[2mC46-F6: routersync pilot-report Read-Only Sign-Off Aggregator[2m > [22m[2mreports a steady pilot after verified rollback
+[22m[39m{
+  "timestamp": "2026-11-25T11:10:00.000Z",
+  "mode": "auto-safe",
+  "effectiveMode": "auto-safe",
+  "requests": 1,
+  "paidRequests": 0,
+  "tokens": 0,
+  "llmCalls": 0,
+  "changedProviders": 0,
+  "unchangedProviders": 1,
+  "backoffSkipped": 0,
+  "inboxAdded": 0,
+  "researchQueueCount": 0,
+  "detectionLatency": {
+    "measuredCount": 0,
+    "minMs": null,
+    "maxMs": null,
+    "p50Ms": null
+  },
+  "providers": [
+    {
+      "prefix": "openai",
+      "label": "UNCHANGED",
+      "status": 200,
+      "models": 10,
+      "changed": false,
+      "added": [],
+      "graceAbsent": [],
+      "deadConfirmed": [],
+      "backoffSec": 0
+    }
+  ],
+  "shrinkBlockReasons": {},
+  "absentNotInCombo": {},
+  "webhookDelivery": {
+    "status": "skipped",
+    "ok": true,
+    "reason": "no_actionable_alerts",
+    "durationMs": 0
+  }
+}
+
+[90mstdout[2m | packages/cli/test/c46-f6-pilot-report.test.ts[2m > [22m[2mC46-F6: routersync pilot-report Read-Only Sign-Off Aggregator[2m > [22m[2mreports a steady pilot after verified rollback
+[22m[39m{
+  "ok": true,
+  "rollbackVerified": true,
+  "snapshotId": "snap_1795663583962_1rw7ac5",
+  "target": "9router",
+  "combos": 1
+}
+
+{
+  "app": "hermes",
+  "configPath": "C:\\Users\\<USER>\\.openmausbot\\tmp\\agy\\4c4db2442357\\rs-c46-f6-steady-e2e-LOERLe\\home\\.hermes\\config.yaml",
+  "backupPath": "C:\\Users\\<USER>\\.openmausbot\\tmp\\agy\\4c4db2442357\\rs-c46-f6-steady-e2e-LOERLe\\home\\.hermes\\config.yaml.pre-pilot.bak",
+  "restored": true,
+  "byteIdenticalToPreApply": true,
+  "postSha256": "1381934b9d32721f97c577c3d6eba3a292712901f038b141f9499a1fbbb4caba"
+}
+[90mstdout[2m | packages/cli/test/c46-f6-pilot-report.test.ts[2m > [22m[2mC46-F6: routersync pilot-report Read-Only Sign-Off Aggregator[2m > [22m[2mreports a steady pilot after verified rollback
+[22m[39mC47_PILOT {"scenario":"steady","simulatedClock":true,"comboSize":10,"tickCount":2,"status":"INCOMPLETE","exitCode":1,"removedModelCount":0,"falseRemovals":0,"measuredCount":0,"maxMs":null,"verifiedRollbacks":2,"harnessShaMatched":true}
+
+[90mstdout[2m | packages/cli/test/c46-f6-pilot-report.test.ts[2m > [22m[2mC46-F6: routersync pilot-report Read-Only Sign-Off Aggregator[2m > [22m[2mreports a absence-only pilot after verified rollback
+[22m[39m{
+  "timestamp": "2026-11-25T11:00:00.000Z",
+  "mode": "observe",
+  "effectiveMode": "observe",
+  "requests": 8,
+  "paidRequests": 0,
+  "tokens": 0,
+  "llmCalls": 0,
+  "changedProviders": 1,
+  "unchangedProviders": 0,
+  "backoffSkipped": 0,
+  "inboxAdded": 0,
+  "researchQueueCount": 0,
+  "detectionLatency": {
+    "measuredCount": 0,
+    "minMs": null,
+    "maxMs": null,
+    "p50Ms": null
+  },
+  "providers": [
+    {
+      "prefix": "openai",
+      "label": "OK",
+      "status": 200,
+      "models": 10,
+      "changed": true,
+      "added": [],
+      "graceAbsent": [],
+      "deadConfirmed": [],
+      "backoffSec": 0
+    }
+  ],
+  "shrinkBlockReasons": {},
+  "absentNotInCombo": {},
+  "webhookDelivery": {
+    "status": "skipped",
+    "ok": true,
+    "reason": "no_actionable_alerts",
+    "durationMs": 0
+  }
+}
+
+{
+  "schemaVersion": 1,
+  "checkedAt": "2026-11-25T11:00:01.000Z",
+  "status": "READY_FOR_OWNER_LIVE_PILOT",
+  "vietnameseGateStatus": "sẵn sàng chạy thật",
+  "pilotTargets": {
+    "routerTarget": "router:nine/rs-pilot",
+    "harnessTarget": "harness:hermes"
+  },
+  "pilotPhase": "NEEDS_INITIAL_PROPOSE_CONSENT",
+  "checks": [
+    {
+      "id": "freeze_clear",
+      "passed": true,
+      "detail": "Emergency freeze circuit breaker is clear (frozen=false)."
+    },
+    {
+      "id": "config_and_doctor_health",
+      "passed": true,
+      "detail": "Config schema valid, 0 circular dependencies, status.json fresh (0m <= 30m threshold)."
+    },
+    {
+      "id": "pilot_targets_readable",
+      "passed": true,
+      "detail": "Pilot targets readable: router:nine/rs-pilot (nine-steady.sqlite) + harness:hermes (config.yaml)."
+    },
+    {
+      "id": "tmpdir_backup_rollback_rehearsal",
+      "passed": true,
+      "detail": "Isolated backup + parser + byte-exact SHA-256 rollback rehearsal passed in os.tmpdir()/rs-livecheck-obUkPL (0 live mutations)."
+    },
+    {
+      "id": "consent_and_promotion_state",
+      "passed": true,
+      "detail": "Consent & apply-history HMAC integrity verified (pilotPhase=NEEDS_INITIAL_PROPOSE_CONSENT)."
+    },
+    {
+      "id": "cost_and_release_hygiene",
+      "passed": true,
+      "detail": "tier0Tokens=0, tier0LlmCalls=0, tier0PaidRequests=0, weeklySessions=0/5 (budgetExceeded=false). 8 publishable + 2 private manifests consistent at version 0.1.0 (prepareV1Release dry-run verified)."
+    },
+    {
+      "id": "live_gate_hint",
+      "passed": true,
+      "detail": "routerDb (nine-steady.sqlite): trong os.tmpdir() — không cần cờ; harnessConfig (config.yaml): trong os.tmpdir() — không cần cờ."
+    }
+  ],
+  "blockingReasons": [],
+  "ownerNextCommands": [
+    "routersync consent grant --target router:nine/rs-pilot --level propose",
+    "routersync consent grant --target harness:hermes --level propose",
+    "routersync plan"
+  ]
+}
+[90mstdout[2m | packages/cli/test/c46-f6-pilot-report.test.ts[2m > [22m[2mC46-F6: routersync pilot-report Read-Only Sign-Off Aggregator[2m > [22m[2mreports a absence-only pilot after verified rollback
+[22m[39m{
+  "ok": true,
+  "policyId": "f54966f6649371361f900b3ef2f568fa",
+  "updatedAt": "2026-11-26T03:26:26.432Z",
+  "entry": {
+    "target": "router:nine/rs-pilot",
+    "targetKind": "router",
+    "routerId": "nine",
+    "comboName": "rs-pilot",
+    "level": "propose",
+    "grantedAt": "2026-11-26T03:26:26.432Z",
+    "expiresAt": "2026-12-26T03:26:26.432Z"
+  }
+}
+
+[90mstdout[2m | packages/cli/test/c46-f6-pilot-report.test.ts[2m > [22m[2mC46-F6: routersync pilot-report Read-Only Sign-Off Aggregator[2m > [22m[2mreports a absence-only pilot after verified rollback
+[22m[39m{
+  "ok": true,
+  "policyId": "f54966f6649371361f900b3ef2f568fa",
+  "updatedAt": "2026-11-26T03:26:26.467Z",
+  "entry": {
+    "target": "harness:hermes",
+    "targetKind": "harness",
+    "harnessId": "hermes",
+    "level": "propose",
+    "grantedAt": "2026-11-26T03:26:26.467Z",
+    "expiresAt": "2026-12-26T03:26:26.467Z"
+  }
+}
+
+[90mstdout[2m | packages/cli/test/c46-f6-pilot-report.test.ts[2m > [22m[2mC46-F6: routersync pilot-report Read-Only Sign-Off Aggregator[2m > [22m[2mreports a absence-only pilot after verified rollback
+[22m[39m
+======================================================
+[routersync] REVIEWING PENDING CHANGES BEFORE WRITING
+======================================================
+Router [nine] (9router):
+  Additions: 0, Modifications: 1, Deletions: 0
+======================================================
+
+
+[90mstdout[2m | packages/cli/test/c46-f6-pilot-report.test.ts[2m > [22m[2mC46-F6: routersync pilot-report Read-Only Sign-Off Aggregator[2m > [22m[2mreports a absence-only pilot after verified rollback
+[22m[39m{
+  "mode": "live-write",
+  "status": "SUCCESS",
+  "results": [
+    {
+      "success": true,
+      "target": "9router",
+      "appliedAt": "2026-11-26T03:26:26.565Z",
+      "planId": "plan_1795663586508_zjm2bfc",
+      "readBackVerified": true,
+      "staleDetected": false,
+      "readBackLevel": "db-only (degraded)",
+      "canonicalReadBackLevel": "db-only",
+      "degradedReason": "no-api-path"
+    }
+  ],
+  "timestamp": "2026-11-26T03:26:26.565Z",
+  "snapshots": [
+    {
+      "routerId": "nine",
+      "snapshotId": "snap_1795663586555_ps3ab5m",
+      "file": "C:\\Users\\<USER>\\.openmausbot\\tmp\\agy\\4c4db2442357\\rs-c46-f6-steady-e2e-daCjZC\\state\\snapshots\\snap_1795663586555_ps3ab5m.json"
+    }
+  ]
+}
+
+{
+  "app": "hermes",
+  "configPath": "C:\\Users\\<USER>\\.openmausbot\\tmp\\agy\\4c4db2442357\\rs-c46-f6-steady-e2e-daCjZC\\home\\.hermes\\config.yaml",
+  "backupPath": "C:\\Users\\<USER>\\.openmausbot\\tmp\\agy\\4c4db2442357\\rs-c46-f6-steady-e2e-daCjZC\\home\\.hermes\\config.yaml.pre-pilot.bak",
+  "applied": true,
+  "rolledBack": false,
+  "readBackVerified": true,
+  "reloadRequired": true,
+  "runningProcesses": [],
+  "planHash": "1aeb98212c17f108445f111499687298f31796def6578c24ca928ac1514c39ae",
+  "preSha256": "1381934b9d32721f97c577c3d6eba3a292712901f038b141f9499a1fbbb4caba",
+  "postSha256": "7f6fb38623ae83694d41c1cf7c7246e38cdfdc38ad08bb6fc27cd5ebc33efe13",
+  "message": "Đã cập nhật danh sách model của Hermes Agent (Nous Research) an toàn (đã sao lưu & kiểm chứng đọc lại)."
+}
+[90mstdout[2m | packages/cli/test/c46-f6-pilot-report.test.ts[2m > [22m[2mC46-F6: routersync pilot-report Read-Only Sign-Off Aggregator[2m > [22m[2mreports a absence-only pilot after verified rollback
+[22m[39m{
+  "ok": true,
+  "policyId": "f54966f6649371361f900b3ef2f568fa",
+  "updatedAt": "2026-11-26T03:26:28.330Z",
+  "entry": {
+    "target": "router:nine/rs-pilot",
+    "targetKind": "router",
+    "routerId": "nine",
+    "comboName": "rs-pilot",
+    "level": "auto-safe",
+    "grantedAt": "2026-11-26T03:26:28.330Z",
+    "expiresAt": "2026-12-26T03:26:28.330Z",
+    "verifiedProposeReceiptId": "095d2fabfdd285fdbd954cb716974bb9"
+  }
+}
+
+[90mstdout[2m | packages/cli/test/c46-f6-pilot-report.test.ts[2m > [22m[2mC46-F6: routersync pilot-report Read-Only Sign-Off Aggregator[2m > [22m[2mreports a absence-only pilot after verified rollback
+[22m[39m{
+  "ok": true,
+  "policyId": "f54966f6649371361f900b3ef2f568fa",
+  "updatedAt": "2026-11-26T03:26:28.366Z",
+  "entry": {
+    "target": "harness:hermes",
+    "targetKind": "harness",
+    "harnessId": "hermes",
+    "level": "auto-safe",
+    "grantedAt": "2026-11-26T03:26:28.366Z",
+    "expiresAt": "2026-12-26T03:26:28.366Z",
+    "verifiedProposeReceiptId": "b4206474dc68ab1f650cdf4f5c79f175"
+  }
+}
+
+[90mstdout[2m | packages/cli/test/c46-f6-pilot-report.test.ts[2m > [22m[2mC46-F6: routersync pilot-report Read-Only Sign-Off Aggregator[2m > [22m[2mreports a absence-only pilot after verified rollback
+[22m[39m{
+  "timestamp": "2026-11-25T11:10:00.000Z",
+  "mode": "auto-safe",
+  "effectiveMode": "auto-safe",
+  "requests": 1,
+  "paidRequests": 0,
+  "tokens": 0,
+  "llmCalls": 0,
+  "changedProviders": 0,
+  "unchangedProviders": 1,
+  "backoffSkipped": 0,
+  "inboxAdded": 0,
+  "researchQueueCount": 0,
+  "detectionLatency": {
+    "measuredCount": 0,
+    "minMs": null,
+    "maxMs": null,
+    "p50Ms": null
+  },
+  "providers": [
+    {
+      "prefix": "openai",
+      "label": "UNCHANGED",
+      "status": 200,
+      "models": 10,
+      "changed": false,
+      "added": [],
+      "graceAbsent": [],
+      "deadConfirmed": [],
+      "backoffSec": 0
+    }
+  ],
+  "shrinkBlockReasons": {},
+  "absentNotInCombo": {},
+  "webhookDelivery": {
+    "status": "skipped",
+    "ok": true,
+    "reason": "no_actionable_alerts",
+    "durationMs": 0
+  }
+}
+
+[90mstdout[2m | packages/cli/test/c46-f6-pilot-report.test.ts[2m > [22m[2mC46-F6: routersync pilot-report Read-Only Sign-Off Aggregator[2m > [22m[2mreports a absence-only pilot after verified rollback
+[22m[39m{
+  "timestamp": "2026-11-25T11:30:00.000Z",
+  "mode": "auto-safe",
+  "effectiveMode": "auto-safe",
+  "requests": 1,
+  "paidRequests": 0,
+  "tokens": 0,
+  "llmCalls": 0,
+  "changedProviders": 1,
+  "unchangedProviders": 0,
+  "backoffSkipped": 0,
+  "inboxAdded": 0,
+  "researchQueueCount": 0,
+  "detectionLatency": {
+    "measuredCount": 0,
+    "minMs": null,
+    "maxMs": null,
+    "p50Ms": null
+  },
+  "providers": [
+    {
+      "prefix": "openai",
+      "label": "OK",
+      "status": 200,
+      "models": 10,
+      "changed": true,
+      "added": [],
+      "graceAbsent": [
+        "gpt-4o-legacy"
+      ],
+      "deadConfirmed": [],
+      "backoffSec": 0
+    }
+  ],
+  "shrinkBlockReasons": {},
+  "absentNotInCombo": {},
+  "webhookDelivery": {
+    "status": "skipped",
+    "ok": true,
+    "reason": "no_actionable_alerts",
+    "durationMs": 0
+  }
+}
+
+[90mstdout[2m | packages/cli/test/c46-f6-pilot-report.test.ts[2m > [22m[2mC46-F6: routersync pilot-report Read-Only Sign-Off Aggregator[2m > [22m[2mreports a absence-only pilot after verified rollback
+[22m[39m{
+  "timestamp": "2026-11-25T11:45:00.000Z",
+  "mode": "auto-safe",
+  "effectiveMode": "auto-safe",
+  "requests": 1,
+  "paidRequests": 0,
+  "tokens": 0,
+  "llmCalls": 0,
+  "changedProviders": 1,
+  "unchangedProviders": 0,
+  "backoffSkipped": 0,
+  "inboxAdded": 1,
+  "researchQueueCount": 0,
+  "detectionLatency": {
+    "measuredCount": 0,
+    "minMs": null,
+    "maxMs": null,
+    "p50Ms": null
+  },
+  "providers": [
+    {
+      "prefix": "openai",
+      "label": "OK",
+      "status": 200,
+      "models": 9,
+      "changed": true,
+      "added": [],
+      "graceAbsent": [],
+      "deadConfirmed": [
+        "gpt-4o-legacy"
+      ],
+      "backoffSec": 0
+    }
+  ],
+  "shrinkBlockReasons": {},
+  "absentNotInCombo": {
+    "openai": [
+      "openai/gpt-4o-legacy"
+    ]
+  },
+  "webhookDelivery": {
+    "status": "skipped",
+    "ok": true,
+    "reason": "unconfigured",
+    "durationMs": 0
+  }
+}
+
+[90mstdout[2m | packages/cli/test/c46-f6-pilot-report.test.ts[2m > [22m[2mC46-F6: routersync pilot-report Read-Only Sign-Off Aggregator[2m > [22m[2mreports a absence-only pilot after verified rollback
+[22m[39m{
+  "timestamp": "2026-11-26T11:30:00.000Z",
+  "mode": "auto-safe",
+  "effectiveMode": "auto-safe",
+  "requests": 8,
+  "paidRequests": 0,
+  "tokens": 0,
+  "llmCalls": 0,
+  "changedProviders": 1,
+  "unchangedProviders": 0,
+  "backoffSkipped": 0,
+  "inboxAdded": 2,
+  "researchQueueCount": 0,
+  "detectionLatency": {
+    "measuredCount": 1,
+    "minMs": 86400000,
+    "maxMs": 86400000,
+    "p50Ms": 86400000
+  },
+  "providers": [
+    {
+      "prefix": "openai",
+      "label": "OK",
+      "status": 200,
+      "models": 9,
+      "changed": true,
+      "added": [],
+      "graceAbsent": [],
+      "deadConfirmed": [
+        "gpt-4o-legacy"
+      ],
+      "backoffSec": 0
+    }
+  ],
+  "shrinkBlockReasons": {},
+  "absentNotInCombo": {
+    "openai": [
+      "openai/gpt-4o-legacy"
+    ]
+  },
+  "webhookDelivery": {
+    "status": "skipped",
+    "ok": true,
+    "reason": "unconfigured",
+    "durationMs": 0
+  }
+}
+
+[90mstdout[2m | packages/cli/test/c46-f6-pilot-report.test.ts[2m > [22m[2mC46-F6: routersync pilot-report Read-Only Sign-Off Aggregator[2m > [22m[2mreports a absence-only pilot after verified rollback
+[22m[39m{
+  "ok": true,
+  "rollbackVerified": true,
+  "snapshotId": "snap_1795663586555_ps3ab5m",
+  "target": "9router",
+  "combos": 1
+}
+
+{
+  "app": "hermes",
+  "configPath": "C:\\Users\\<USER>\\.openmausbot\\tmp\\agy\\4c4db2442357\\rs-c46-f6-steady-e2e-daCjZC\\home\\.hermes\\config.yaml",
+  "backupPath": "C:\\Users\\<USER>\\.openmausbot\\tmp\\agy\\4c4db2442357\\rs-c46-f6-steady-e2e-daCjZC\\home\\.hermes\\config.yaml.pre-pilot.bak",
+  "restored": true,
+  "byteIdenticalToPreApply": true,
+  "postSha256": "1381934b9d32721f97c577c3d6eba3a292712901f038b141f9499a1fbbb4caba"
+}
+[90mstdout[2m | packages/cli/test/c46-f6-pilot-report.test.ts[2m > [22m[2mC46-F6: routersync pilot-report Read-Only Sign-Off Aggregator[2m > [22m[2mreports a absence-only pilot after verified rollback
+[22m[39mC47_PILOT {"scenario":"absence-only","simulatedClock":true,"comboSize":10,"tickCount":5,"status":"FAIL","exitCode":1,"removedModelCount":1,"falseRemovals":0,"measuredCount":1,"maxMs":86400000,"verifiedRollbacks":3,"harnessShaMatched":true}
+
+[90mstdout[2m | packages/cli/test/c46-f6-pilot-report.test.ts[2m > [22m[2mC46-F6: routersync pilot-report Read-Only Sign-Off Aggregator[2m > [22m[2mreports a official-notice pilot after verified rollback
+[22m[39m{
+  "timestamp": "2026-11-25T11:00:00.000Z",
+  "mode": "observe",
+  "effectiveMode": "observe",
+  "requests": 8,
+  "paidRequests": 0,
+  "tokens": 0,
+  "llmCalls": 0,
+  "changedProviders": 1,
+  "unchangedProviders": 0,
+  "backoffSkipped": 0,
+  "inboxAdded": 0,
+  "researchQueueCount": 0,
+  "detectionLatency": {
+    "measuredCount": 0,
+    "minMs": null,
+    "maxMs": null,
+    "p50Ms": null
+  },
+  "providers": [
+    {
+      "prefix": "openai",
+      "label": "OK",
+      "status": 200,
+      "models": 10,
+      "changed": true,
+      "added": [],
+      "graceAbsent": [],
+      "deadConfirmed": [],
+      "backoffSec": 0
+    }
+  ],
+  "shrinkBlockReasons": {},
+  "absentNotInCombo": {},
+  "webhookDelivery": {
+    "status": "skipped",
+    "ok": true,
+    "reason": "no_actionable_alerts",
+    "durationMs": 0
+  }
+}
+
+{
+  "schemaVersion": 1,
+  "checkedAt": "2026-11-25T11:00:01.000Z",
+  "status": "READY_FOR_OWNER_LIVE_PILOT",
+  "vietnameseGateStatus": "sẵn sàng chạy thật",
+  "pilotTargets": {
+    "routerTarget": "router:nine/rs-pilot",
+    "harnessTarget": "harness:hermes"
+  },
+  "pilotPhase": "NEEDS_INITIAL_PROPOSE_CONSENT",
+  "checks": [
+    {
+      "id": "freeze_clear",
+      "passed": true,
+      "detail": "Emergency freeze circuit breaker is clear (frozen=false)."
+    },
+    {
+      "id": "config_and_doctor_health",
+      "passed": true,
+      "detail": "Config schema valid, 0 circular dependencies, status.json fresh (0m <= 30m threshold)."
+    },
+    {
+      "id": "pilot_targets_readable",
+      "passed": true,
+      "detail": "Pilot targets readable: router:nine/rs-pilot (nine-steady.sqlite) + harness:hermes (config.yaml)."
+    },
+    {
+      "id": "tmpdir_backup_rollback_rehearsal",
+      "passed": true,
+      "detail": "Isolated backup + parser + byte-exact SHA-256 rollback rehearsal passed in os.tmpdir()/rs-livecheck-T9qfwP (0 live mutations)."
+    },
+    {
+      "id": "consent_and_promotion_state",
+      "passed": true,
+      "detail": "Consent & apply-history HMAC integrity verified (pilotPhase=NEEDS_INITIAL_PROPOSE_CONSENT)."
+    },
+    {
+      "id": "cost_and_release_hygiene",
+      "passed": true,
+      "detail": "tier0Tokens=0, tier0LlmCalls=0, tier0PaidRequests=0, weeklySessions=0/5 (budgetExceeded=false). 8 publishable + 2 private manifests consistent at version 0.1.0 (prepareV1Release dry-run verified)."
+    },
+    {
+      "id": "live_gate_hint",
+      "passed": true,
+      "detail": "routerDb (nine-steady.sqlite): trong os.tmpdir() — không cần cờ; harnessConfig (config.yaml): trong os.tmpdir() — không cần cờ."
+    }
+  ],
+  "blockingReasons": [],
+  "ownerNextCommands": [
+    "routersync consent grant --target router:nine/rs-pilot --level propose",
+    "routersync consent grant --target harness:hermes --level propose",
+    "routersync plan"
+  ]
+}
+[90mstdout[2m | packages/cli/test/c46-f6-pilot-report.test.ts[2m > [22m[2mC46-F6: routersync pilot-report Read-Only Sign-Off Aggregator[2m > [22m[2mreports a official-notice pilot after verified rollback
+[22m[39m{
+  "ok": true,
+  "policyId": "692392c2a6dcd266b9d0b08c303b6002",
+  "updatedAt": "2026-11-26T03:26:31.114Z",
+  "entry": {
+    "target": "router:nine/rs-pilot",
+    "targetKind": "router",
+    "routerId": "nine",
+    "comboName": "rs-pilot",
+    "level": "propose",
+    "grantedAt": "2026-11-26T03:26:31.114Z",
+    "expiresAt": "2026-12-26T03:26:31.114Z"
+  }
+}
+
+[90mstdout[2m | packages/cli/test/c46-f6-pilot-report.test.ts[2m > [22m[2mC46-F6: routersync pilot-report Read-Only Sign-Off Aggregator[2m > [22m[2mreports a official-notice pilot after verified rollback
+[22m[39m{
+  "ok": true,
+  "policyId": "692392c2a6dcd266b9d0b08c303b6002",
+  "updatedAt": "2026-11-26T03:26:31.148Z",
+  "entry": {
+    "target": "harness:hermes",
+    "targetKind": "harness",
+    "harnessId": "hermes",
+    "level": "propose",
+    "grantedAt": "2026-11-26T03:26:31.148Z",
+    "expiresAt": "2026-12-26T03:26:31.148Z"
+  }
+}
+
+[90mstdout[2m | packages/cli/test/c46-f6-pilot-report.test.ts[2m > [22m[2mC46-F6: routersync pilot-report Read-Only Sign-Off Aggregator[2m > [22m[2mreports a official-notice pilot after verified rollback
+[22m[39m
+======================================================
+[routersync] REVIEWING PENDING CHANGES BEFORE WRITING
+======================================================
+Router [nine] (9router):
+  Additions: 0, Modifications: 1, Deletions: 0
+======================================================
+
+
+[90mstdout[2m | packages/cli/test/c46-f6-pilot-report.test.ts[2m > [22m[2mC46-F6: routersync pilot-report Read-Only Sign-Off Aggregator[2m > [22m[2mreports a official-notice pilot after verified rollback
+[22m[39m{
+  "mode": "live-write",
+  "status": "SUCCESS",
+  "results": [
+    {
+      "success": true,
+      "target": "9router",
+      "appliedAt": "2026-11-26T03:26:31.224Z",
+      "planId": "plan_1795663591187_r92frc5",
+      "readBackVerified": true,
+      "staleDetected": false,
+      "readBackLevel": "db-only (degraded)",
+      "canonicalReadBackLevel": "db-only",
+      "degradedReason": "no-api-path"
+    }
+  ],
+  "timestamp": "2026-11-26T03:26:31.224Z",
+  "snapshots": [
+    {
+      "routerId": "nine",
+      "snapshotId": "snap_1795663591213_vyurwo7",
+      "file": "C:\\Users\\<USER>\\.openmausbot\\tmp\\agy\\4c4db2442357\\rs-c46-f6-steady-e2e-O7C7kA\\state\\snapshots\\snap_1795663591213_vyurwo7.json"
+    }
+  ]
+}
+
+{
+  "app": "hermes",
+  "configPath": "C:\\Users\\<USER>\\.openmausbot\\tmp\\agy\\4c4db2442357\\rs-c46-f6-steady-e2e-O7C7kA\\home\\.hermes\\config.yaml",
+  "backupPath": "C:\\Users\\<USER>\\.openmausbot\\tmp\\agy\\4c4db2442357\\rs-c46-f6-steady-e2e-O7C7kA\\home\\.hermes\\config.yaml.pre-pilot.bak",
+  "applied": true,
+  "rolledBack": false,
+  "readBackVerified": true,
+  "reloadRequired": true,
+  "runningProcesses": [],
+  "planHash": "1aeb98212c17f108445f111499687298f31796def6578c24ca928ac1514c39ae",
+  "preSha256": "1381934b9d32721f97c577c3d6eba3a292712901f038b141f9499a1fbbb4caba",
+  "postSha256": "7f6fb38623ae83694d41c1cf7c7246e38cdfdc38ad08bb6fc27cd5ebc33efe13",
+  "message": "Đã cập nhật danh sách model của Hermes Agent (Nous Research) an toàn (đã sao lưu & kiểm chứng đọc lại)."
+}
+[90mstdout[2m | packages/cli/test/c46-f6-pilot-report.test.ts[2m > [22m[2mC46-F6: routersync pilot-report Read-Only Sign-Off Aggregator[2m > [22m[2mreports a official-notice pilot after verified rollback
+[22m[39m{
+  "ok": true,
+  "policyId": "692392c2a6dcd266b9d0b08c303b6002",
+  "updatedAt": "2026-11-26T03:26:33.059Z",
+  "entry": {
+    "target": "router:nine/rs-pilot",
+    "targetKind": "router",
+    "routerId": "nine",
+    "comboName": "rs-pilot",
+    "level": "auto-safe",
+    "grantedAt": "2026-11-26T03:26:33.059Z",
+    "expiresAt": "2026-12-26T03:26:33.059Z",
+    "verifiedProposeReceiptId": "4712b3693d128e4078191a54aea1d1ca"
+  }
+}
+
+[90mstdout[2m | packages/cli/test/c46-f6-pilot-report.test.ts[2m > [22m[2mC46-F6: routersync pilot-report Read-Only Sign-Off Aggregator[2m > [22m[2mreports a official-notice pilot after verified rollback
+[22m[39m{
+  "ok": true,
+  "policyId": "692392c2a6dcd266b9d0b08c303b6002",
+  "updatedAt": "2026-11-26T03:26:33.138Z",
+  "entry": {
+    "target": "harness:hermes",
+    "targetKind": "harness",
+    "harnessId": "hermes",
+    "level": "auto-safe",
+    "grantedAt": "2026-11-26T03:26:33.138Z",
+    "expiresAt": "2026-12-26T03:26:33.138Z",
+    "verifiedProposeReceiptId": "6125c875a5241908d384ecfbd77d2210"
+  }
+}
+
+[90mstdout[2m | packages/cli/test/c46-f6-pilot-report.test.ts[2m > [22m[2mC46-F6: routersync pilot-report Read-Only Sign-Off Aggregator[2m > [22m[2mreports a official-notice pilot after verified rollback
+[22m[39m{
+  "timestamp": "2026-11-25T11:10:00.000Z",
+  "mode": "auto-safe",
+  "effectiveMode": "auto-safe",
+  "requests": 1,
+  "paidRequests": 0,
+  "tokens": 0,
+  "llmCalls": 0,
+  "changedProviders": 0,
+  "unchangedProviders": 1,
+  "backoffSkipped": 0,
+  "inboxAdded": 0,
+  "researchQueueCount": 0,
+  "detectionLatency": {
+    "measuredCount": 0,
+    "minMs": null,
+    "maxMs": null,
+    "p50Ms": null
+  },
+  "providers": [
+    {
+      "prefix": "openai",
+      "label": "UNCHANGED",
+      "status": 200,
+      "models": 10,
+      "changed": false,
+      "added": [],
+      "graceAbsent": [],
+      "deadConfirmed": [],
+      "backoffSec": 0
+    }
+  ],
+  "shrinkBlockReasons": {},
+  "absentNotInCombo": {},
+  "webhookDelivery": {
+    "status": "skipped",
+    "ok": true,
+    "reason": "no_actionable_alerts",
+    "durationMs": 0
+  }
+}
+
+[90mstdout[2m | packages/cli/test/c46-f6-pilot-report.test.ts[2m > [22m[2mC46-F6: routersync pilot-report Read-Only Sign-Off Aggregator[2m > [22m[2mreports a official-notice pilot after verified rollback
+[22m[39m{
+  "timestamp": "2026-11-25T11:30:00.000Z",
+  "mode": "auto-safe",
+  "effectiveMode": "auto-safe",
+  "requests": 1,
+  "paidRequests": 0,
+  "tokens": 0,
+  "llmCalls": 0,
+  "changedProviders": 1,
+  "unchangedProviders": 0,
+  "backoffSkipped": 0,
+  "inboxAdded": 0,
+  "researchQueueCount": 0,
+  "detectionLatency": {
+    "measuredCount": 0,
+    "minMs": null,
+    "maxMs": null,
+    "p50Ms": null
+  },
+  "providers": [
+    {
+      "prefix": "openai",
+      "label": "OK",
+      "status": 200,
+      "models": 10,
+      "changed": true,
+      "added": [],
+      "graceAbsent": [
+        "gpt-4o-legacy"
+      ],
+      "deadConfirmed": [],
+      "backoffSec": 0
+    }
+  ],
+  "shrinkBlockReasons": {},
+  "absentNotInCombo": {},
+  "webhookDelivery": {
+    "status": "skipped",
+    "ok": true,
+    "reason": "no_actionable_alerts",
+    "durationMs": 0
+  }
+}
+
+[90mstdout[2m | packages/cli/test/c46-f6-pilot-report.test.ts[2m > [22m[2mC46-F6: routersync pilot-report Read-Only Sign-Off Aggregator[2m > [22m[2mreports a official-notice pilot after verified rollback
+[22m[39m{
+  "timestamp": "2026-11-25T11:45:00.000Z",
+  "mode": "auto-safe",
+  "effectiveMode": "auto-safe",
+  "requests": 1,
+  "paidRequests": 0,
+  "tokens": 0,
+  "llmCalls": 0,
+  "changedProviders": 1,
+  "unchangedProviders": 0,
+  "backoffSkipped": 0,
+  "inboxAdded": 3,
+  "researchQueueCount": 0,
+  "detectionLatency": {
+    "measuredCount": 1,
+    "minMs": 50,
+    "maxMs": 50,
+    "p50Ms": 50
+  },
+  "providers": [
+    {
+      "prefix": "openai",
+      "label": "OK",
+      "status": 200,
+      "models": 9,
+      "changed": true,
+      "added": [],
+      "graceAbsent": [],
+      "deadConfirmed": [
+        "gpt-4o-legacy"
+      ],
+      "backoffSec": 0
+    }
+  ],
+  "shrinkBlockReasons": {},
+  "absentNotInCombo": {
+    "openai": [
+      "openai/gpt-4o-legacy"
+    ]
+  },
+  "webhookDelivery": {
+    "status": "skipped",
+    "ok": true,
+    "reason": "unconfigured",
+    "durationMs": 0
+  }
+}
+
+[90mstdout[2m | packages/cli/test/c46-f6-pilot-report.test.ts[2m > [22m[2mC46-F6: routersync pilot-report Read-Only Sign-Off Aggregator[2m > [22m[2mreports a official-notice pilot after verified rollback
+[22m[39m{
+  "ok": true,
+  "rollbackVerified": true,
+  "snapshotId": "snap_1795663591213_vyurwo7",
+  "target": "9router",
+  "combos": 1
+}
+
+{
+  "app": "hermes",
+  "configPath": "C:\\Users\\<USER>\\.openmausbot\\tmp\\agy\\4c4db2442357\\rs-c46-f6-steady-e2e-O7C7kA\\home\\.hermes\\config.yaml",
+  "backupPath": "C:\\Users\\<USER>\\.openmausbot\\tmp\\agy\\4c4db2442357\\rs-c46-f6-steady-e2e-O7C7kA\\home\\.hermes\\config.yaml.pre-pilot.bak",
+  "restored": true,
+  "byteIdenticalToPreApply": true,
+  "postSha256": "1381934b9d32721f97c577c3d6eba3a292712901f038b141f9499a1fbbb4caba"
+}
+[90mstdout[2m | packages/cli/test/c46-f6-pilot-report.test.ts[2m > [22m[2mC46-F6: routersync pilot-report Read-Only Sign-Off Aggregator[2m > [22m[2mreports a official-notice pilot after verified rollback
+[22m[39mC47_PILOT {"scenario":"official-notice","simulatedClock":true,"comboSize":10,"tickCount":4,"status":"PASS","exitCode":0,"removedModelCount":1,"falseRemovals":0,"measuredCount":1,"maxMs":50,"verifiedRollbacks":3,"harnessShaMatched":true}
+
+ [32m✓[39m [30m[45m packages [49m[39m packages/cli/test/c46-f6-pilot-report.test.ts [2m([22m[2m15 tests[22m[2m)[22m[33m 31810[2mms[22m[39m
+     [33m[2m✓[22m[39m C47: a completed unchanged tick has no latency sample [33m 470[2mms[22m[39m
+     [33m[2m✓[22m[39m keeps servingReflectionMs strictly separate from detectionLatencyMs and respects 0ms & 60000ms boundaries [33m 394[2mms[22m[39m
+     [33m[2m✓[22m[39m blocks --out pointing to <stateDir>, a child inside <stateDir>, an existing directory, or a symlink/junction targeting <stateDir> or forbidden runtime files (Q6, Q7) [33m 352[2mms[22m[39m
+     [33m[2m✓[22m[39m fails closed (exitCode = 1) on invalid --serving-reflection-ms, empty/whitespace D3 flags (--router-target "", --harness-target "   ", -c ""), and unknown CLI flags [33m 720[2mms[22m[39m
+     [33m[2m✓[22m[39m enforces the isolated fail-closed state corruption matrix (each condition mutated independently) [33m 2120[2mms[22m[39m
+     [33m[2m✓[22m[39m fails closed on each of the 5 S9 quantitative criteria and kills Q1, Q2, Q3, Q4, Q5, D1, D2 mutants individually [33m 6451[2mms[22m[39m
+     [33m[2m✓[22m[39m requires verified rollback for a measured pilot to pass and leaves <stateDir> untouched [33m 6997[2mms[22m[39m
+     [33m[2m✓[22m[39m reports a steady pilot after verified rollback [33m 2634[2mms[22m[39m
+     [33m[2m✓[22m[39m reports a absence-only pilot after verified rollback [33m 4389[2mms[22m[39m
+     [33m[2m✓[22m[39m reports a official-notice pilot after verified rollback [33m 6374[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m2 passed[39m[22m[90m (2)[39m
+[2m      Tests [22m [1m[32m21 passed[39m[22m[90m (21)[39m
+[2m   Start at [22m 10:25:55
+[2m   Duration [22m 40.53s[2m (transform 8.39s, setup 5.36s, import 7.49s, tests 37.61s, environment 1ms)[22m
+

@@ -1,0 +1,171 @@
+
+> routersync@0.1.0 test:file <private-provider-2>
+> vitest run "packages/cli/test/c46-f2-live-gate-hint.test.ts" "test/docs/c46-f3-doc-cli-sync.test.ts"
+
+
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.12 [39m[90m<HOME>/.openmausbot/task-workspaces/a752da46-5147-4b20-9a6a-ff5045a56bb7/63a8dee8-84cb-454e-bfdd-07e0b3005610/repo[39m
+
+[90mstdout[2m | packages/cli/test/c46-f2-live-gate-hint.test.ts[2m > [22m[2mC46-F2: live_gate_hint & Unified Sandbox Write Guard (3-Case Suite)[2m > [22m[2mCase 1 (Outside os.tmpdir(), flags unset): live_gate_hint reports "chưa đặt" for both vars & blocks writes with SANDBOX_OUTSIDE_TMPDIR
+[22m[39m
+======================================================
+[routersync] REVIEWING PENDING CHANGES BEFORE WRITING
+======================================================
+Router [nine] (9router):
+  Additions: 0, Modifications: 1, Deletions: 0
+======================================================
+
+
+{
+  "ok": false,
+  "errorCode": "SANDBOX_OUTSIDE_TMPDIR",
+  "error": "SANDBOX_OUTSIDE_TMPDIR: Controlled harness config write path must reside inside os.tmpdir() unless ROUTERSYNC_ALLOW_LIVE_HOME_WRITE=1.",
+  "status": "FAILED"
+}
+[90mstdout[2m | packages/cli/test/c46-f2-live-gate-hint.test.ts[2m > [22m[2mC46-F2: live_gate_hint & Unified Sandbox Write Guard (3-Case Suite)[2m > [22m[2mCase 2 (Outside os.tmpdir(), flags =1 in try/finally): live_gate_hint reports "đã đặt" & controlled write + rollback succeed
+[22m[39m
+======================================================
+[routersync] REVIEWING PENDING CHANGES BEFORE WRITING
+======================================================
+Router [nine] (9router):
+  Additions: 0, Modifications: 1, Deletions: 0
+======================================================
+
+
+[90mstdout[2m | packages/cli/test/c46-f2-live-gate-hint.test.ts[2m > [22m[2mC46-F2: live_gate_hint & Unified Sandbox Write Guard (3-Case Suite)[2m > [22m[2mCase 2 (Outside os.tmpdir(), flags =1 in try/finally): live_gate_hint reports "đã đặt" & controlled write + rollback succeed
+[22m[39m{
+  "mode": "live-write",
+  "status": "SUCCESS",
+  "results": [
+    {
+      "success": true,
+      "target": "9router",
+      "appliedAt": "2026-11-26T03:26:55.027Z",
+      "planId": "plan_1795663614979_l37uvcc",
+      "readBackVerified": true,
+      "staleDetected": false,
+      "readBackLevel": "db-only (degraded)",
+      "canonicalReadBackLevel": "db-only",
+      "degradedReason": "no-api-path"
+    }
+  ],
+  "timestamp": "2026-11-26T03:26:55.026Z",
+  "snapshots": [
+    {
+      "routerId": "nine",
+      "snapshotId": "snap_1795663615011_f3t9acz",
+      "file": "C:\\Users\\<USER>\\.openmausbot\\task-workspaces\\a752da46-5147-4b20-9a6a-ff5045a56bb7\\63a8dee8-84cb-454e-bfdd-07e0b3005610\\repo\\.tmp-f2-outside-18f74256-c95a-43a3-9817-e5e6e83b3baa\\state\\snapshots\\snap_1795663615011_f3t9acz.json"
+    }
+  ]
+}
+
+[90mstdout[2m | packages/cli/test/c46-f2-live-gate-hint.test.ts[2m > [22m[2mC46-F2: live_gate_hint & Unified Sandbox Write Guard (3-Case Suite)[2m > [22m[2mCase 2 (Outside os.tmpdir(), flags =1 in try/finally): live_gate_hint reports "đã đặt" & controlled write + rollback succeed
+[22m[39m{
+  "ok": true,
+  "rollbackVerified": true,
+  "snapshotId": "snap_1795663615011_f3t9acz",
+  "target": "9router",
+  "combos": 1
+}
+
+{
+  "app": "hermes",
+  "configPath": "C:\\Users\\<USER>\\.openmausbot\\task-workspaces\\a752da46-5147-4b20-9a6a-ff5045a56bb7\\63a8dee8-84cb-454e-bfdd-07e0b3005610\\repo\\.tmp-f2-outside-18f74256-c95a-43a3-9817-e5e6e83b3baa\\harness\\config.yaml",
+  "backupPath": "C:\\Users\\<USER>\\.openmausbot\\task-workspaces\\a752da46-5147-4b20-9a6a-ff5045a56bb7\\63a8dee8-84cb-454e-bfdd-07e0b3005610\\repo\\.tmp-f2-outside-18f74256-c95a-43a3-9817-e5e6e83b3baa\\harness\\config.yaml.routersync.bak",
+  "applied": true,
+  "rolledBack": false,
+  "readBackVerified": true,
+  "reloadRequired": true,
+  "runningProcesses": [],
+  "planHash": "ed15cc6dc697a605fcdf9d075e028622428e5ce448a39cbd6d35bb5c690f674d",
+  "preSha256": "370b1947c1217b0f1a03111066b34b642599c06441e8d31e5fa69cad2f0623c4",
+  "postSha256": "f560fee857045d829388f516f330b0d46d222800b7dce260d6f0246ac8762123",
+  "message": "Đã cập nhật danh sách model của Hermes Agent (Nous Research) an toàn (đã sao lưu & kiểm chứng đọc lại)."
+}
+{
+  "app": "hermes",
+  "configPath": "C:\\Users\\<USER>\\.openmausbot\\task-workspaces\\a752da46-5147-4b20-9a6a-ff5045a56bb7\\63a8dee8-84cb-454e-bfdd-07e0b3005610\\repo\\.tmp-f2-outside-18f74256-c95a-43a3-9817-e5e6e83b3baa\\harness\\config.yaml",
+  "backupPath": "C:\\Users\\<USER>\\.openmausbot\\task-workspaces\\a752da46-5147-4b20-9a6a-ff5045a56bb7\\63a8dee8-84cb-454e-bfdd-07e0b3005610\\repo\\.tmp-f2-outside-18f74256-c95a-43a3-9817-e5e6e83b3baa\\harness\\config.yaml.routersync.bak",
+  "restored": true,
+  "byteIdenticalToPreApply": true,
+  "postSha256": "370b1947c1217b0f1a03111066b34b642599c06441e8d31e5fa69cad2f0623c4"
+}
+ [32m✓[39m [30m[45m root-tools [49m[39m test/docs/c46-f3-doc-cli-sync.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 183[2mms[22m[39m
+[90mstdout[2m | packages/cli/test/c46-f2-live-gate-hint.test.ts[2m > [22m[2mC46-F2: live_gate_hint & Unified Sandbox Write Guard (3-Case Suite)[2m > [22m[2mCase 3 (Inside os.tmpdir(), flags unset): live_gate_hint reports inside os.tmpdir() & controlled write + rollback succeed without flags
+[22m[39m
+======================================================
+[routersync] REVIEWING PENDING CHANGES BEFORE WRITING
+======================================================
+Router [nine] (9router):
+  Additions: 0, Modifications: 1, Deletions: 0
+======================================================
+
+
+[90mstdout[2m | packages/cli/test/c46-f2-live-gate-hint.test.ts[2m > [22m[2mC46-F2: live_gate_hint & Unified Sandbox Write Guard (3-Case Suite)[2m > [22m[2mCase 3 (Inside os.tmpdir(), flags unset): live_gate_hint reports inside os.tmpdir() & controlled write + rollback succeed without flags
+[22m[39m{
+  "mode": "live-write",
+  "status": "SUCCESS",
+  "results": [
+    {
+      "success": true,
+      "target": "9router",
+      "appliedAt": "2026-11-26T03:27:04.239Z",
+      "planId": "plan_1795663624206_y4gqeyf",
+      "readBackVerified": true,
+      "staleDetected": false,
+      "readBackLevel": "db-only (degraded)",
+      "canonicalReadBackLevel": "db-only",
+      "degradedReason": "no-api-path"
+    }
+  ],
+  "timestamp": "2026-11-26T03:27:04.239Z",
+  "snapshots": [
+    {
+      "routerId": "nine",
+      "snapshotId": "snap_1795663624230_a8k60zk",
+      "file": "C:\\Users\\<USER>\\.openmausbot\\tmp\\agy\\4c4db2442357\\rs-f2-inside-fFY8Ro\\state\\snapshots\\snap_1795663624230_a8k60zk.json"
+    }
+  ]
+}
+
+[90mstdout[2m | packages/cli/test/c46-f2-live-gate-hint.test.ts[2m > [22m[2mC46-F2: live_gate_hint & Unified Sandbox Write Guard (3-Case Suite)[2m > [22m[2mCase 3 (Inside os.tmpdir(), flags unset): live_gate_hint reports inside os.tmpdir() & controlled write + rollback succeed without flags
+[22m[39m{
+  "ok": true,
+  "rollbackVerified": true,
+  "snapshotId": "snap_1795663624230_a8k60zk",
+  "target": "9router",
+  "combos": 1
+}
+
+{
+  "app": "hermes",
+  "configPath": "C:\\Users\\<USER>\\.openmausbot\\tmp\\agy\\4c4db2442357\\rs-f2-inside-fFY8Ro\\harness\\config.yaml",
+  "backupPath": "C:\\Users\\<USER>\\.openmausbot\\tmp\\agy\\4c4db2442357\\rs-f2-inside-fFY8Ro\\harness\\config.yaml.routersync.bak",
+  "applied": true,
+  "rolledBack": false,
+  "readBackVerified": true,
+  "reloadRequired": true,
+  "runningProcesses": [],
+  "planHash": "ed15cc6dc697a605fcdf9d075e028622428e5ce448a39cbd6d35bb5c690f674d",
+  "preSha256": "370b1947c1217b0f1a03111066b34b642599c06441e8d31e5fa69cad2f0623c4",
+  "postSha256": "f560fee857045d829388f516f330b0d46d222800b7dce260d6f0246ac8762123",
+  "message": "Đã cập nhật danh sách model của Hermes Agent (Nous Research) an toàn (đã sao lưu & kiểm chứng đọc lại)."
+}
+{
+  "app": "hermes",
+  "configPath": "C:\\Users\\<USER>\\.openmausbot\\tmp\\agy\\4c4db2442357\\rs-f2-inside-fFY8Ro\\harness\\config.yaml",
+  "backupPath": "C:\\Users\\<USER>\\.openmausbot\\tmp\\agy\\4c4db2442357\\rs-f2-inside-fFY8Ro\\harness\\config.yaml.routersync.bak",
+  "restored": true,
+  "byteIdenticalToPreApply": true,
+  "postSha256": "370b1947c1217b0f1a03111066b34b642599c06441e8d31e5fa69cad2f0623c4"
+}
+ [32m✓[39m [30m[45m packages [49m[39m packages/cli/test/c46-f2-live-gate-hint.test.ts [2m([22m[2m4 tests[22m[2m)[22m[33m 13981[2mms[22m[39m
+     [33m[2m✓[22m[39m Case 1 (Outside os.tmpdir(), flags unset): live_gate_hint reports "chưa đặt" for both vars & blocks writes with SANDBOX_OUTSIDE_TMPDIR [33m 1735[2mms[22m[39m
+     [33m[2m✓[22m[39m Case 2 (Outside os.tmpdir(), flags =1 in try/finally): live_gate_hint reports "đã đặt" & controlled write + rollback succeed [33m 3720[2mms[22m[39m
+     [33m[2m✓[22m[39m C47: a flagged CLI child still refuses noninteractive propose, missing consent and protected files [33m 6205[2mms[22m[39m
+     [33m[2m✓[22m[39m Case 3 (Inside os.tmpdir(), flags unset): live_gate_hint reports inside os.tmpdir() & controlled write + rollback succeed without flags [33m 2314[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m2 passed[39m[22m[90m (2)[39m
+[2m      Tests [22m [1m[32m9 passed[39m[22m[90m (9)[39m
+[2m   Start at [22m 10:26:42
+[2m   Duration [22m 22.99s[2m (transform 14.92s, setup 10.63s, import 10.25s, tests 14.16s, environment 1ms)[22m
+
