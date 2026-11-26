@@ -114,7 +114,8 @@ function snapshotDirRecursive(rootDir: string): DirFileSnapshot[] {
 function seedPassingPilotState(
   stateDir: string,
   nowMs = Date.parse('2026-11-25T10:00:00.000Z'),
-  recordRollback = true
+  recordRollback = true,
+  opts: { includeSettledRemoval?: boolean; includeUncoveredRemoval?: boolean } = {}
 ): void {
   fs.mkdirSync(path.join(stateDir, 'plans'), { recursive: true });
 
@@ -142,6 +143,29 @@ function seedPassingPilotState(
     readBackVerified: true,
     readBackLevel: 'full',
     rolledBack: false,
+    ...(opts.includeSettledRemoval === false
+      ? {}
+      : {
+          removedModels: [
+            {
+              provider: 'openai',
+              modelId: 'gpt-4o-legacy',
+              inProviderCatalog: null,
+              removalPath: 'absence-only',
+              firstObservedAbsentAt: new Date(nowMs - 86_400_000).toISOString(),
+              removedAt: new Date(nowMs + 1000).toISOString(),
+              removalSettleMs: 86_401_000,
+              qualifyingScanCount: 3,
+            },
+            ...(opts.includeUncoveredRemoval ? [{
+              provider: 'openai', modelId: 'uncovered-model', inProviderCatalog: false,
+              removalPath: 'absence-only' as const,
+              firstObservedAbsentAt: new Date(nowMs - 86_400_000).toISOString(),
+              removedAt: new Date(nowMs + 1000).toISOString(),
+              removalSettleMs: 86_401_000, qualifyingScanCount: 3,
+            }] : []),
+          ],
+        }),
   });
   const harnessRec = appendApplyReceipt(stateDir, {
     target: 'harness:hermes',
@@ -182,6 +206,19 @@ function seedPassingPilotState(
         }),
       });
     }
+  }
+
+  if (opts.includeSettledRemoval !== false) {
+    const absenceAt = nowMs - 86_400_000;
+    fs.writeFileSync(path.join(stateDir, 'tick-catalog.json'), JSON.stringify({
+      absenceDetections: [{
+        episodeId: `ep-${JSON.stringify(['openai', 'gpt-4o-legacy', absenceAt])}`,
+        provider: 'openai', modelId: 'gpt-4o-legacy', fullStep: 'openai/gpt-4o-legacy',
+        status: 'model_pending', scanStartedAt: new Date(absenceAt).toISOString(),
+        modelPendingAt: new Date(absenceAt + 420).toISOString(), detectionMs: 420,
+        targetsAffected: ['router:omniroute/rs-pilot'],
+      }],
+    }));
   }
 
   fs.writeFileSync(
@@ -342,7 +379,7 @@ describe('C46-F6: routersync pilot-report Read-Only Sign-Off Aggregator', () => 
   it('C47: a completed unchanged tick has no latency sample', async () => {
     const stateDir = fs.mkdtempSync(path.join(os.tmpdir(), 'rs-c47-report-'));
     try {
-      seedPassingPilotState(stateDir);
+      seedPassingPilotState(stateDir, undefined, true, { includeSettledRemoval: false });
       const emptyMeasurement = { measuredCount: 0, maxMs: null, minMs: null, p50Ms: null };
       const statusPath = path.join(stateDir, 'status.json');
       const status = JSON.parse(fs.readFileSync(statusPath, 'utf8'));
@@ -360,7 +397,8 @@ describe('C46-F6: routersync pilot-report Read-Only Sign-Off Aggregator', () => 
       expect(report.criteria.detectionLatencyMs.maxMs).toBeNull();
       expect(report.criteria.detectionLatencyMs.detail).toContain('VACUOUS');
       const waived = await runPilotReportCommand({ falseRemovals: 0, unplannedInterventions: 0, stateDir, silent: true, acceptVacuousDetection: true });
-      expect(waived.status).toBe('PASS');
+      expect(waived.status).toBe('INCOMPLETE');
+      expect(waived.removalSettle).toMatchObject({ status: 'INCOMPLETE', removedModelCount: 0 });
       expect(waived.criteria.detectionLatencyMs).toMatchObject({
         maxMs: null, measuredCount: 0, acceptedVacuous: true,
       });
@@ -371,11 +409,114 @@ describe('C46-F6: routersync pilot-report Read-Only Sign-Off Aggregator', () => 
     }
   });
 
+  it.each([
+    ['QA_B', true],
+    ['QA_B2', false],
+  ] as const)('%s: vacuous detection cannot sign off on a settled removal', async (_probe, legacyAmbiguous) => {
+    const stateDir = fs.mkdtempSync(path.join(os.tmpdir(), 'rs-c48-waiver-'));
+    const fixtureNow = Date.parse('2026-11-25T10:00:00.000Z');
+    try {
+      seedPassingPilotState(stateDir, fixtureNow);
+      fs.rmSync(path.join(stateDir, 'tick-catalog.json'));
+      const statusPath = path.join(stateDir, 'status.json');
+      const planPath = path.join(stateDir, 'plans', 'tick-plan.json');
+      const status = JSON.parse(fs.readFileSync(statusPath, 'utf8'));
+      const plan = JSON.parse(fs.readFileSync(planPath, 'utf8'));
+      if (legacyAmbiguous) {
+        plan.routerActions = [{
+          action: 'REMOVE_MODEL', reason: 'ABSENT_STABLE', detectionLatencyMs: 420,
+        }];
+      } else {
+        const noSamples = { measuredCount: 0, minMs: null, maxMs: null, p50Ms: null };
+        status.detectionLatency = noSamples;
+        plan.detectionLatency = noSamples;
+      }
+      fs.writeFileSync(statusPath, JSON.stringify(status));
+      fs.writeFileSync(planPath, JSON.stringify(plan));
+
+      const report = await runPilotReportCommand({
+        stateDir, falseRemovals: 0, unplannedInterventions: 0, acceptVacuousDetection: true,
+        nowMs: fixtureNow + 60_000, silent: true,
+      });
+      expect(report.status).toBe('INCOMPLETE');
+      expect(process.exitCode).toBe(1);
+      expect(report.criteria.detectionLatencyMs).toMatchObject({
+        passed: true, acceptedVacuous: true, measuredCount: 0, maxMs: null,
+      });
+      expect(report.removalSettle).toMatchObject({
+        status: 'PASS', removedModelCount: 1, policySatisfiedAtRemoval: true,
+      });
+      expect(report.blockingReasons.join('\n')).toContain('S9_REMOVAL_DETECTION_INCOMPLETE');
+    } finally {
+      process.exitCode = 0;
+      fs.rmSync(stateDir, { recursive: true, force: true });
+    }
+  });
+
+  it('N4: detection evidence for one removal cannot cover another model', async () => {
+    const stateDir = fs.mkdtempSync(path.join(os.tmpdir(), 'rs-c48-coverage-'));
+    const fixtureNow = Date.parse('2026-11-25T10:00:00.000Z');
+    try {
+      seedPassingPilotState(stateDir, fixtureNow, true, { includeUncoveredRemoval: true });
+      const report = await runPilotReportCommand({
+        stateDir, falseRemovals: 0, unplannedInterventions: 0, nowMs: fixtureNow + 60_000, silent: true,
+      });
+      expect(report.status).toBe('INCOMPLETE');
+      expect(report.criteria.detectionLatencyMs).toMatchObject({ passed: true, maxMs: 420 });
+      expect(report.removalSettle).toMatchObject({ status: 'PASS', removedModelCount: 2 });
+      const missing = report.blockingReasons.find((reason) => reason.includes('S9_REMOVAL_DETECTION_INCOMPLETE'));
+      expect(missing).toContain('openai/uncovered-model');
+      expect(missing).not.toContain('openai/gpt-4o-legacy');
+    } finally {
+      process.exitCode = 0;
+      fs.rmSync(stateDir, { recursive: true, force: true });
+    }
+  });
+
+  it('M8: a same-model sample from another target cannot cover a removal', async () => {
+    const stateDir = makeTmpDir('rs-c48-m8-');
+    const now = Date.parse('2026-11-25T10:00:00.000Z');
+    seedPassingPilotState(stateDir, now);
+    const catalogPath = path.join(stateDir, 'tick-catalog.json');
+    const catalog = JSON.parse(fs.readFileSync(catalogPath, 'utf8'));
+    catalog.absenceDetections[0].targetsAffected = ['router:omniroute/another-pilot'];
+    fs.writeFileSync(catalogPath, JSON.stringify(catalog));
+    const report = await runPilotReportCommand({
+      stateDir, falseRemovals: 0, unplannedInterventions: 0, nowMs: now + 60_000, silent: true,
+    });
+    expect(report.criteria.detectionLatencyMs.maxMs).toBe(420);
+    expect(report.status).toBe('INCOMPLETE');
+    expect(report.blockingReasons.join('\n')).toContain('S9_REMOVAL_DETECTION_INCOMPLETE');
+  });
+
+  it('M14: an unplanned official notice independently makes the report incomplete', async () => {
+    const stateDir = makeTmpDir('rs-c48-m14-');
+    const now = Date.parse('2026-11-25T10:00:00.000Z');
+    seedPassingPilotState(stateDir, now);
+    const catalogPath = path.join(stateDir, 'tick-catalog.json');
+    const catalog = JSON.parse(fs.readFileSync(catalogPath, 'utf8'));
+    catalog.officialNoticeDetections = [{
+      recordKey: JSON.stringify(['openai/another-model', 'fixture-id']),
+      evidenceId: 'fixture-id', provider: 'openai', modelId: 'another-model', fullStep: 'openai/another-model',
+      synthetic: false, sourcePublishedAt: null, firstQualifyingScanStartedAt: new Date(now + 5_000).toISOString(),
+      firstPlanCreatedAt: null, detectionMs: null, publicationToPlanMs: null,
+      targetsAffected: ['router:omniroute/rs-pilot'],
+    }];
+    fs.writeFileSync(catalogPath, JSON.stringify(catalog));
+    const report = await runPilotReportCommand({
+      stateDir, falseRemovals: 0, unplannedInterventions: 0, nowMs: now + 30_000, silent: true,
+    });
+    expect(report.criteria.detectionLatencyMs.passed).toBe(true);
+    expect(report.removalSettle.status).toBe('PASS');
+    expect(report.status).toBe('INCOMPLETE');
+    expect(report.blockingReasons.join('\n')).toContain('S9_OFFICIAL_DETECTION_INCOMPLETE');
+  });
+
   it('C47: a model the provider still lists counts as a derived false removal', async () => {
     const stateDir = fs.mkdtempSync(path.join(os.tmpdir(), 'rs-c47-report-'));
     try {
       const now = Date.parse('2026-11-25T10:00:00.000Z');
-      seedPassingPilotState(stateDir, now);
+      seedPassingPilotState(stateDir, now, true, { includeSettledRemoval: false });
       appendApplyReceipt(stateDir, {
         target: 'router:omniroute/rs-pilot',
         planHash: 'fixture',
@@ -486,7 +627,7 @@ describe('C46-F6: routersync pilot-report Read-Only Sign-Off Aggregator', () => 
     for (const boundaryLatency of [0, 60_000]) {
       const root = makeTmpDir('rs-c46-f6-d26-');
       const stateDir = path.join(root, 'state');
-      seedPassingPilotState(stateDir);
+      seedPassingPilotState(stateDir, undefined, true, { includeSettledRemoval: false });
 
       fs.writeFileSync(
         path.join(stateDir, 'status.json'),
@@ -543,8 +684,8 @@ describe('C46-F6: routersync pilot-report Read-Only Sign-Off Aggregator', () => 
         nowMs: Date.parse('2026-11-25T10:01:00.000Z'),
       });
 
-      expect(process.exitCode).toBe(0);
-      expect(report.status).toBe('PASS');
+      expect(process.exitCode).toBe(1);
+      expect(report.status).toBe('INCOMPLETE');
       expect(report.servingReflectionMs).toBe(28500);
       expect(report.criteria.detectionLatencyMs.maxMs).toBe(boundaryLatency);
       expect(report.criteria.detectionLatencyMs.passed).toBe(true);
@@ -1285,6 +1426,7 @@ describe('C46-F6: routersync pilot-report Read-Only Sign-Off Aggregator', () => 
     for (const badLatency of [60_001, -1, null]) {
       const stateDir = path.join(makeTmpDir('rs-c46-f6-c3-'), 'state');
       seedPassingPilotState(stateDir);
+      if (badLatency === null) fs.rmSync(path.join(stateDir, 'tick-catalog.json'));
       const latencyObj =
         badLatency === null
           ? {}
@@ -1364,7 +1506,7 @@ describe('C46-F6: routersync pilot-report Read-Only Sign-Off Aggregator', () => 
     // D1 unit contracts: steady-state measuredCount === 0 (PASS at 0ms or durationMs override) vs corrupt measuredCount cases (FAIL)
     {
       const stateDir = path.join(makeTmpDir('rs-c46-f6-d1-unit-'), 'state');
-      seedPassingPilotState(stateDir);
+      seedPassingPilotState(stateDir, undefined, true, { includeSettledRemoval: false });
       const steadyLatency = { measuredCount: 0, minMs: null, maxMs: null, p50Ms: null };
       fs.writeFileSync(
         path.join(stateDir, 'status.json'),
@@ -1925,7 +2067,8 @@ describe('C46-F6: routersync pilot-report Read-Only Sign-Off Aggregator', () => 
 
     const observeFetch: typeof fetch = async (input) => {
       const url = String(input);
-      if (url.endsWith('/v1/models')) {
+      // Match the exact OpenAI catalog URL so the L2 external catalog (OpenRouter) stays isolated.
+      if (url === 'https://api.openai.com/v1/models') {
         return new Response(
           JSON.stringify({
             data: INITIAL_TEN_MODELS.map((m) => ({ id: m.split('/')[1]! })),
@@ -2032,35 +2175,39 @@ describe('C46-F6: routersync pilot-report Read-Only Sign-Off Aggregator', () => 
       json: true,
     });
 
-    // Step 16: Deterministic auto-safe tick (0 LLM tokens)
+    // Step 16: Deterministic auto-safe ticks (0 LLM tokens) settling 1 absence-only removal across >= 24h
+    const survivingNine = INITIAL_TEN_MODELS.filter((m) => m !== 'openai/gpt-4o-legacy');
     const autoSafeFetch: typeof fetch = async (input) => {
       const url = String(input);
-      if (url.endsWith('/v1/models')) {
+      // Match the exact OpenAI catalog URL so the L2 external catalog (OpenRouter) stays isolated.
+      if (url === 'https://api.openai.com/v1/models') {
         return new Response(
           JSON.stringify({
-            data: [
-              ...INITIAL_TEN_MODELS.map((m) => ({ id: m.split('/')[1]! })),
-              { id: 'gpt-5.2-codex' },
-            ],
+            data: survivingNine.map((m) => ({ id: m.split('/')[1]! })),
           }),
           { status: 200, headers: { 'content-type': 'application/json' } }
         );
       }
+      if (url.includes('api.openai.com/v1/models/')) return new Response(null, { status: 404 });
       return new Response(JSON.stringify({ data: [] }), {
         status: 200,
         headers: { 'content-type': 'application/json' },
       });
     };
 
-    await runTickCommand({
-      configPath,
-      stateDir,
-      mode: 'auto-safe',
-      nowMs: Date.parse('2026-11-25T10:10:00.000Z'),
-      minScanIntervalMs: 0,
-      fetchFn: autoSafeFetch,
-      json: true,
-    });
+    const t1Ms = Date.parse('2026-11-25T10:15:00.000Z');
+    for (const tickAt of [t1Ms, t1Ms + 15 * 60_000, t1Ms + 24 * 60 * 60_000]) {
+      await runTickCommand({
+        configPath,
+        stateDir,
+        mode: 'auto-safe',
+        nowMs: tickAt,
+        minScanIntervalMs: 0,
+        fetchFn: autoSafeFetch,
+        harnessTargets: [],
+        json: true,
+      });
+    }
 
     // Steps 17 & 18: Freeze & Unfreeze emergency circuit-breaker drill
     await runFreezeCommand({ reason: 'live-pilot-drill', stateDir, json: true });
@@ -2080,7 +2227,7 @@ describe('C46-F6: routersync pilot-report Read-Only Sign-Off Aggregator', () => 
       routerTarget: 'router:nine/rs-pilot',
       harnessTarget: 'harness:hermes',
       servingReflectionMs: 24300,
-      nowMs: Date.parse('2026-11-25T10:12:00.000Z'),
+      nowMs: t1Ms + 24 * 60 * 60_000 + 60_000,
       silent: true,
       json: true,
     });
@@ -2122,11 +2269,11 @@ describe('C46-F6: routersync pilot-report Read-Only Sign-Off Aggregator', () => 
       routerTarget: 'router:nine/rs-pilot',
       harnessTarget: 'harness:hermes',
       servingReflectionMs: 24300,
-      nowMs: Date.parse('2026-11-25T10:15:00.000Z'),
+      nowMs: t1Ms + 24 * 60 * 60_000 + 120_000,
       writeStdout: (text) => markdownLines.push(text),
     });
     expect(snapshotDirRecursive(stateDir)).toEqual(postRollbackStateSnap);
-    expect(process.exitCode).toBe(0);
+    expect(process.exitCode, postRollbackReport.blockingReasons.join('\n')).toBe(0);
     expect(postRollbackReport.status).toBe('PASS');
     expect(postRollbackReport.passed).toBe(true);
     expect(postRollbackReport.servingReflectionMs).toBe(24300);
@@ -2449,10 +2596,17 @@ describe('C46-F6: routersync pilot-report Read-Only Sign-Off Aggregator', () => 
       const before = modelsInPilotCombo();
       expect(before).toHaveLength(10);
       expect(before).toContain(missingModel);
-      const runAbsenceTick = (timestamp: number) => runTickCommand({
-        configPath, stateDir, mode: 'auto-safe', nowMs: timestamp, fetchFn: steadyFetch, json: true,
-        harnessTargets: [],
-      });
+      const runAbsenceTick = (timestamp: number) => {
+        let phaseMs = timestamp;
+        return runTickCommand({
+          configPath, stateDir, mode: 'auto-safe', clock: () => phaseMs, json: true,
+          fetchFn: async (input, init) => {
+            if (String(input) === 'https://api.openai.com/v1/models') phaseMs += 75;
+            return steadyFetch(input, init);
+          },
+          harnessTargets: [],
+        });
+      };
       const first = await runAbsenceTick(firstAbsentAt);
       expect(first.providers.find((provider) => provider.prefix === 'openai')?.graceAbsent)
         .toContain(missingModel.split('/')[1]);
@@ -2464,8 +2618,9 @@ describe('C46-F6: routersync pilot-report Read-Only Sign-Off Aggregator', () => 
           modelId: missingModel.split('/')[1]!,
           verdict: 'deprecated',
           url: 'https://platform.openai.com/docs/deprecations',
-          quote: 'Synthetic provider notice for this isolated fixture.',
+          quote: 'The provider deprecation notice confirms retirement.',
           publishedAt: new Date(secondAt - 50).toISOString(),
+          submittedAt: new Date(secondAt - 25).toISOString(),
           submittedVia: 'cli',
         });
       }
@@ -2506,31 +2661,41 @@ describe('C46-F6: routersync pilot-report Read-Only Sign-Off Aggregator', () => 
       config: configPath,
       routerTarget: 'router:nine/rs-pilot',
       harnessTarget: 'harness:hermes',
-      nowMs: Date.parse('2026-11-25T11:12:00.000Z'),
+      nowMs: scenario === 'absence-only'
+        ? nowMs + 24 * 60 * 60_000 + 31 * 60_000
+        : nowMs + 46 * 60_000,
       json: true,
       silent: true,
     });
     expect(snapshotDirRecursive(stateDir)).toEqual(beforeSnap);
-    const expectedStatus = scenario === 'official-notice' ? 'PASS'
-      : scenario === 'absence-only' ? 'FAIL' : 'INCOMPLETE';
-    expect(process.exitCode).toBe(scenario === 'official-notice' ? 0 : 1);
+    const expectedStatus = scenario === 'steady' ? 'INCOMPLETE' : 'PASS';
+    expect(process.exitCode).toBe(scenario === 'steady' ? 1 : 0);
     expect(steadyReport.status, steadyReport.blockingReasons.join('\n'))
       .toBe(expectedStatus);
-    expect(steadyReport.passed).toBe(scenario === 'official-notice');
+    expect(steadyReport.passed).toBe(scenario !== 'steady');
     expect(steadyReport.criteria.rollbackByteExactMatch.passed).toBe(true);
     expect(steadyReport.criteria.rollbackByteExactMatch.verifiedReceiptsCount).toBeGreaterThanOrEqual(2);
     expect(sha256File(hermesConfigPath)).toBe(preHermesSha);
-    expect(steadyReport.criteria.detectionLatencyMs.passed).toBe(scenario === 'official-notice');
+    expect(steadyReport.criteria.detectionLatencyMs.passed).toBe(scenario !== 'steady');
     expect(steadyReport.criteria.detectionLatencyMs.acceptedVacuous).toBe(false);
     if (scenario !== 'steady') {
       expect(steadyReport.criteria.falseRemovals).toMatchObject({
         count: 0, removedModelCount: 1, source: 'derived', manualReportedCount: null,
       });
       expect(steadyReport.criteria.detectionLatencyMs).toMatchObject({
-        measuredCount: 1, maxMs: scenario === 'official-notice' ? 50 : 24 * 60 * 60_000,
+        measuredCount: scenario === 'absence-only' ? 1 : 2,
+        maxMs: 75,
+        publicationToPlanMs: scenario === 'absence-only' ? null : 125,
       });
+      if (scenario === 'absence-only') {
+        expect(steadyReport.removalSettle.removalSettleMs).toBe(86_400_075);
+      } else {
+        expect(steadyReport.removalSettle.noticeOrigin).toBe('genuine');
+        expect(steadyReport.removalSettle.removalSettleMs).toBe(900_075);
+      }
     } else {
       expect(steadyReport.criteria.detectionLatencyMs.maxMs).toBeNull();
+      expect(steadyReport.removalSettle.removalSettleMs).toBeNull();
     }
     console.log('C47_PILOT', JSON.stringify({
       scenario,
@@ -2547,4 +2712,144 @@ describe('C46-F6: routersync pilot-report Read-Only Sign-Off Aggregator', () => 
       harnessShaMatched: true,
     }));
   }, 60_000);
+
+  it('P2-Lineage-BackwardsCompat-And-Forgery-Guard: accepts legacy/additive official lineage and rejects forged previousRecordKeys or mismatched E1/K2 receipts', async () => {
+    const stateDir = makeTmpDir('rs-c46-f6-lineage-guard-');
+    fs.mkdirSync(path.join(stateDir, 'plans'), { recursive: true });
+    const nowMs = Date.parse('2026-11-26T12:00:00.000Z');
+    const scanMs = nowMs - 30 * 60_000;
+    const planMs = scanMs + 50;
+    const pub1Iso = new Date(scanMs - 120_000).toISOString();
+    const pub2Iso = new Date(scanMs + 10 * 60_000).toISOString();
+    const scanIso = new Date(scanMs).toISOString();
+    const planIso = new Date(planMs).toISOString();
+    const fullStep = 'openai/gpt-4o-legacy';
+    const e1 = 'ev-lineage-e1';
+    const e2 = 'ev-lineage-e2';
+    const k1 = JSON.stringify([fullStep, e1, scanIso]);
+    const k2 = JSON.stringify([fullStep, e2, scanIso]);
+
+    upsertStandingConsentTarget(stateDir, { target: "harness:hermes", level: "propose", nowMs: scanMs - 5_000 });
+    // Receipt 1 (rolledBack + verified) uses E1/K1
+    appendApplyReceipt(stateDir, {
+      target: "harness:hermes",
+      planHash: "lineage-r1",
+      appliedAt: new Date(scanMs + 1_000).toISOString(),
+      appliedAtLevel: "propose",
+      authorizedVia: "interactive-tty",
+      snapshotOrBackupRef: "hermes-r1.bak",
+      preDigest: "a".repeat(64),
+      postDigest: "b".repeat(64),
+      success: true,
+      readBackVerified: true,
+      readBackLevel: "file-byte-verified",
+      rolledBack: false,
+      removedModels: [{
+        provider: "openai",
+        modelId: "gpt-4o-legacy",
+        removedAt: new Date(scanMs + 1_000).toISOString(),
+        inProviderCatalog: false,
+        qualifyingScanCount: 1,
+        removalPath: "official-notice",
+        firstObservedAbsentAt: scanIso,
+        removalSettleMs: 1_000,
+        officialDomainVerified: true,
+        officialPublishedAt: pub1Iso,
+        officialShutdownDate: pub1Iso,
+        syntheticNotice: false,
+        detectionEvidenceId: e1,
+        detectionEpisodeId: k1,
+      }],
+    });
+    markApplyReceiptRolledBack(stateDir, {
+      target: "harness:hermes",
+      snapshotOrBackupRef: "hermes-r1.bak",
+      verifyRollback: () => ({ beforeDigest: "a".repeat(64), afterDigest: "a".repeat(64) }),
+    });
+    // Receipt 2 (active) uses E2/K2
+    appendApplyReceipt(stateDir, {
+      target: "harness:hermes",
+      planHash: "lineage-r2",
+      appliedAt: new Date(scanMs + 20 * 60_000).toISOString(),
+      appliedAtLevel: "propose",
+      authorizedVia: "interactive-tty",
+      snapshotOrBackupRef: "hermes-r2.bak",
+      preDigest: "a".repeat(64),
+      postDigest: "c".repeat(64),
+      success: true,
+      readBackVerified: true,
+      readBackLevel: "file-byte-verified",
+      rolledBack: false,
+      removedModels: [{
+        provider: "openai",
+        modelId: "gpt-4o-legacy",
+        removedAt: new Date(scanMs + 20 * 60_000).toISOString(),
+        inProviderCatalog: false,
+        qualifyingScanCount: 2,
+        removalPath: "official-notice",
+        firstObservedAbsentAt: scanIso,
+        removalSettleMs: 20 * 60_000,
+        officialDomainVerified: true,
+        officialPublishedAt: pub2Iso,
+        officialShutdownDate: pub1Iso,
+        syntheticNotice: false,
+        detectionEvidenceId: e2,
+        detectionEpisodeId: k2,
+      }],
+    });
+    fs.writeFileSync(path.join(stateDir, "status.json"), JSON.stringify({ timestamp: scanIso, tokens: 0, llmCalls: 0, paidRequests: 0 }));
+
+    const writeCatalog = (noticeOverride: Record<string, unknown>) => {
+      fs.writeFileSync(path.join(stateDir, "tick-catalog.json"), JSON.stringify({
+        version: 1,
+        updatedAt: scanIso,
+        providers: {},
+        officialNoticeDetections: [{
+          recordKey: k2,
+          provider: "openai",
+          modelId: "gpt-4o-legacy",
+          fullStep,
+          evidenceId: e2,
+          previousEvidenceIds: [e1],
+          previousRecordKeys: [k1],
+          sourcePublishedAt: pub2Iso,
+          firstQualifyingScanStartedAt: scanIso,
+          episodeStartedAt: scanIso,
+          firstPlanCreatedAt: planIso,
+          publicationToPlanMs: planMs - Date.parse(pub2Iso),
+          detectionMs: 50,
+          synthetic: false,
+          targetsAffected: ["harness:hermes"],
+          removedAt: new Date(scanMs + 20 * 60_000).toISOString(),
+          ...noticeOverride,
+        }],
+      }));
+    };
+
+    // 1. Valid additive lineage -> PASS without S9_REMOVAL_DETECTION_INCOMPLETE
+    writeCatalog({});
+    process.exitCode = 0;
+    const okReport = await runPilotReportCommand({ stateDir, falseRemovals: 0, unplannedInterventions: 0, nowMs, silent: true });
+    expect(okReport.status, okReport.blockingReasons.join("\n")).toBe("PASS");
+
+    // 2. Without lineage fields, rolled-back E1/K1 receipt becomes uncovered -> INCOMPLETE (proves backwards-compat & non-triviality)
+    writeCatalog({ previousEvidenceIds: undefined, previousRecordKeys: undefined });
+    process.exitCode = 0;
+    const missingLineageReport = await runPilotReportCommand({ stateDir, falseRemovals: 0, unplannedInterventions: 0, nowMs, silent: true });
+    expect(missingLineageReport.status).toBe("INCOMPLETE");
+    expect(missingLineageReport.blockingReasons.join("\n")).toContain("S9_REMOVAL_DETECTION_INCOMPLETE");
+
+    // 3. Forged previousRecordKeys (unlinked evidenceId or out-of-bounds timestamp) -> FAIL with TICK_CATALOG_CORRUPT
+    writeCatalog({ previousRecordKeys: [JSON.stringify([fullStep, "forged-ev", scanIso])] });
+    process.exitCode = 0;
+    const forgedEvReport = await runPilotReportCommand({ stateDir, falseRemovals: 0, unplannedInterventions: 0, nowMs, silent: true });
+    expect(forgedEvReport.status).toBe("FAIL");
+    expect(forgedEvReport.blockingReasons.join("\n")).toContain("TICK_CATALOG_CORRUPT");
+
+    writeCatalog({ previousRecordKeys: [JSON.stringify([fullStep, e1, new Date(scanMs - 1_000).toISOString()])] });
+    process.exitCode = 0;
+    const forgedAnchorReport = await runPilotReportCommand({ stateDir, falseRemovals: 0, unplannedInterventions: 0, nowMs, silent: true });
+    expect(forgedAnchorReport.status).toBe("FAIL");
+    expect(forgedAnchorReport.blockingReasons.join("\n")).toContain("TICK_CATALOG_CORRUPT");
+  });
 });

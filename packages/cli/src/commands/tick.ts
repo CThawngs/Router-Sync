@@ -22,6 +22,11 @@ import { readRouterCombos } from '@routersync/daemon';
 import {
   activateFreeze,
   appendApplyReceipt,
+  readApplyHistory,
+  COMPLETED_DETECTION_RETENTION_MS,
+  MAX_DETECTION_RECORDS,
+  deriveRemovalSettlementMs,
+  parseRemovalEvidenceTimestamp,
   appendTickCostEntry,
   assertAllowedOutboundUrl,
   createAccountingFetch,
@@ -44,6 +49,7 @@ import {
   isPathInsideDir,
   loadHarnessMatrix,
   loadResearchEvidence,
+  researchEvidenceIdentity,
   loadResearchQueue,
   locateRouterDb,
   openBetterSqlite3,
@@ -53,6 +59,7 @@ import {
   sendActionableWebhook,
   verifyProviderSourceDomain,
   type ActionableWebhookAlert,
+  type RemovedModelReceiptEvidence,
   type ResearchEvidenceRecord,
   type ResearchQueueFile,
   type ResearchQueueItem,
@@ -137,6 +144,43 @@ export type ProviderHealthLabel =
   | 'AUTH_ERROR'
   | 'SHRINK-GUARD-BLOCKED';
 
+interface DetectionLifecycle {
+  removedAt?: string | undefined;
+  recoveredAt?: string | undefined;
+  withdrawnAt?: string | undefined;
+  supersededAt?: string | undefined;
+  abandonedAt?: string | undefined;
+}
+export interface ModelPendingRecord extends DetectionLifecycle {
+  episodeId: string;
+  provider: string;
+  modelId: string;
+  fullStep: string;
+  status: 'model_pending';
+  scanStartedAt: string;
+  modelPendingAt: string;
+  detectionMs: number;
+  targetsAffected: string[];
+}
+
+export interface OfficialNoticeDetectionRecord extends DetectionLifecycle {
+  recordKey: string;
+  provider: string;
+  modelId: string;
+  fullStep: string;
+  evidenceId: string;
+  previousEvidenceIds?: string[] | undefined;
+  previousRecordKeys?: string[] | undefined;
+  sourcePublishedAt: string | null;
+  firstQualifyingScanStartedAt: string;
+  episodeStartedAt?: string | undefined;
+  firstPlanCreatedAt: string | null;
+  publicationToPlanMs: number | null;
+  detectionMs: number | null;
+  synthetic: boolean;
+  targetsAffected: string[];
+}
+
 export interface ProviderCatalogEntry {
   prefix: string;
   router: string;
@@ -148,6 +192,9 @@ export interface ProviderCatalogEntry {
   absenceCounts: Record<string, number>;
   firstAbsentAt?: Record<string, string> | undefined;
   firstSeenAt?: Record<string, string> | undefined;
+  pendingEpisodes?: Record<string, string> | undefined;
+  qualifyingScanTimestamps?: string[] | undefined;
+  activeTargets?: string[] | undefined;
   consecutiveFailures: number;
   backoffUntilMs: number;
   lastStatus: number;
@@ -160,6 +207,10 @@ export interface TickCatalogState {
   version: 1;
   updatedAt: string;
   providers: Record<string, ProviderCatalogEntry>;
+  absenceDetections?: ModelPendingRecord[] | undefined;
+  officialNoticeDetections?: OfficialNoticeDetectionRecord[] | undefined;
+  routerTargetAliases?: Record<string, string[]> | undefined;
+  detectionHistoryError?: 'DETECTION_HISTORY_CAP_EXCEEDED' | undefined;
 }
 
 /**
@@ -250,6 +301,12 @@ export interface TickActionLatencyFields {
   sourceFirstChangedAt: string | null;
   planCreatedAt: string;
   detectionLatencyMs: number | null;
+  detectionKind?: 'absence-settled' | 'official-notice' | 'addition' | undefined;
+  episodeId?: string | null | undefined;
+  evidenceId?: string | undefined;
+  firstQualifyingScanStartedAt?: string | undefined;
+  firstPlanCreatedAt?: string | null | undefined;
+  publicationToPlanMs?: number | null | undefined;
 }
 
 export interface TickRouterPlanAction extends TickActionLatencyFields {
@@ -316,6 +373,9 @@ export interface TickCommandOptions {
   homeDir?: string | undefined;
   harnessTargets?: HarnessTickTarget[] | undefined;
   nowMs?: number | undefined;
+  clock?: (() => number) | undefined;
+  /** Programmatic rehearsal only. Requires an injected clock and transport. */
+  allowSyntheticNoticeFixture?: boolean | undefined;
   fetchFn?: typeof globalThis.fetch | undefined;
   disabledModels?: Set<string> | undefined;
   routerState?: RouterModelState | undefined;
@@ -325,6 +385,7 @@ export interface TickCommandOptions {
 
 export interface TickRunSummary {
   timestamp: string;
+  detectionHistoryError?: 'DETECTION_HISTORY_CAP_EXCEEDED' | undefined;
   mode: AutonomyMode;
   effectiveMode: EffectiveTickMode;
   requests: number;
@@ -391,13 +452,31 @@ function selectNewestEvidence(records: ResearchEvidenceRecord[]): ResearchEviden
   return [...records].sort((a, b) => Date.parse(b.submittedAt) - Date.parse(a.submittedAt))[0];
 }
 
-function isOfficialUrlForProvider(provider: string, rawUrl: string | undefined): boolean {
+export function isOfficialUrlForProvider(provider: string, rawUrl: string | undefined): boolean {
   if (!rawUrl) return false;
   try {
     return verifyProviderSourceDomain(provider, rawUrl).isOfficial;
   } catch {
     return false;
   }
+}
+
+export function isVerifiedOfficialLifecycleEvidence(
+  evidence: ResearchEvidenceRecord,
+  atMs: number,
+  allowSyntheticFixture = false
+): boolean {
+  if (evidence.sourceTier !== 'official' || !evidence.domainVerified ||
+      !isOfficialUrlForProvider(evidence.provider, evidence.url) ||
+      (!allowSyntheticFixture && evidence.synthetic === true)) return false;
+  const submittedMs = parseRemovalEvidenceTimestamp(evidence.submittedAt);
+  if (submittedMs === null || submittedMs > atMs) return false;
+  if (evidence.verdict !== 'deprecated') return true;
+  const publishedMs = parseRemovalEvidenceTimestamp(evidence.publishedAt);
+  const shutdownMs = parseRemovalEvidenceTimestamp(evidence.shutdownDate);
+  if (evidence.publishedAt != null && (publishedMs === null || publishedMs > submittedMs)) return false;
+  if (evidence.shutdownDate != null && shutdownMs === null) return false;
+  return publishedMs !== null || shutdownMs !== null;
 }
 
 async function discoverLocalHarnessTargets(
@@ -513,6 +592,19 @@ export function loadCatalogState(filePath: string): TickCatalogState {
         version: 1,
         updatedAt: typeof parsed.updatedAt === 'string' ? parsed.updatedAt : new Date(0).toISOString(),
         providers: parsed.providers as Record<string, ProviderCatalogEntry>,
+        detectionHistoryError: parsed.detectionHistoryError === 'DETECTION_HISTORY_CAP_EXCEEDED'
+          ? parsed.detectionHistoryError : undefined,
+        ...(Array.isArray(parsed.absenceDetections)
+          ? { absenceDetections: parsed.absenceDetections as ModelPendingRecord[] }
+          : {}),
+        ...(Array.isArray(parsed.officialNoticeDetections)
+          ? { officialNoticeDetections: parsed.officialNoticeDetections as OfficialNoticeDetectionRecord[] }
+          : {}),
+        ...(parsed.routerTargetAliases &&
+        typeof parsed.routerTargetAliases === 'object' &&
+        !Array.isArray(parsed.routerTargetAliases)
+          ? { routerTargetAliases: parsed.routerTargetAliases as Record<string, string[]> }
+          : {}),
       };
     }
   } catch {
@@ -649,7 +741,10 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
   const effectiveMode: EffectiveTickMode = freezeState.frozen ? 'FROZEN' : requestedMode;
   if (!fs.existsSync(sDir)) fs.mkdirSync(sDir, { recursive: true });
 
-  const nowMs = options.nowMs ?? Date.now();
+  const hasInjectedClock = typeof options.clock === 'function';
+  const readClock = options.clock ?? (() => Date.now());
+  const nowMs = hasInjectedClock ? readClock() : (options.nowMs ?? Date.now());
+  const readPhaseClock = options.nowMs !== undefined && !hasInjectedClock ? () => nowMs : readClock;
   const lock = tryAcquireTickLock(sDir, process.pid, nowMs);
   if (!lock.acquired) {
     throw new Error(`Another tick instance (pid ${lock.holderPid}) already holds ${lock.lockPath}`);
@@ -672,6 +767,122 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
     const allCombos = loadAllRouterCombos();
     const harnessTargets = await discoverLocalHarnessTargets(sDir, options);
     const disabledModels = options.disabledModels ?? loadRouterDisabledModels(options.env);
+    const evidenceRecords = loadResearchEvidence(sDir);
+
+    const targetsByStep = new Map<string, Set<string>>();
+    const targetsByPrefix = new Map<string, Set<string>>();
+    const configuredTargetModelsByPrefix = new Map<string, Set<string>>();
+    const routerTargetAliases: Record<string, string[]> = {
+      ...(catalogState.routerTargetAliases ?? {}),
+    };
+    for (const c of allCombos) {
+      const scopes = new Set<string>([`router:${c.router}/${c.name}`]);
+      for (const rCfg of config.routers) {
+        if (rCfg.adapter === c.router || rCfg.id === c.router) {
+          scopes.add(`router:${rCfg.id}/${c.name}`);
+          scopes.add(`router:${rCfg.adapter}/${c.name}`);
+        }
+      }
+      if (scopes.size > 1) {
+        const sortedScopes = [...scopes].sort();
+        for (const sc of sortedScopes) {
+          routerTargetAliases[sc] = sortedScopes;
+        }
+      }
+      for (const m of c.models) {
+        const set = targetsByStep.get(m) ?? new Set<string>();
+        for (const sc of scopes) set.add(sc);
+        targetsByStep.set(m, set);
+        const slashIdx = m.indexOf('/');
+        if (slashIdx > 0 && slashIdx < m.length - 1) {
+          const p = m.slice(0, slashIdx);
+          const mId = m.slice(slashIdx + 1);
+          const pSet = targetsByPrefix.get(p) ?? new Set<string>();
+          for (const sc of scopes) pSet.add(sc);
+          targetsByPrefix.set(p, pSet);
+          const mSet = configuredTargetModelsByPrefix.get(p) ?? new Set<string>();
+          mSet.add(mId);
+          configuredTargetModelsByPrefix.set(p, mSet);
+        }
+      }
+    }
+    if (Object.keys(routerTargetAliases).length > 0) {
+      catalogState.routerTargetAliases = routerTargetAliases;
+    }
+    const expandTargetAliasGroup = (tgt: string): ReadonlySet<string> => {
+      const set = new Set<string>([tgt]);
+      for (const alias of routerTargetAliases[tgt] ?? []) {
+        set.add(alias);
+      }
+      const m = /^router:([^/]+)\/(.+)$/.exec(tgt);
+      if (m) {
+        const [, rId, comboName] = m;
+        for (const rCfg of config.routers) {
+          if (rCfg.id === rId || rCfg.adapter === rId) {
+            set.add(`router:${rCfg.id}/${comboName}`);
+            set.add(`router:${rCfg.adapter}/${comboName}`);
+          }
+        }
+      }
+      return set;
+    };
+    for (const ht of harnessTargets) {
+      for (const hp of ht.providers) {
+        if (hp.proxyDelegated) continue;
+        const ref = `harness:${ht.harnessId}`;
+        const pSet = targetsByPrefix.get(hp.providerId) ?? new Set<string>();
+        pSet.add(ref);
+        targetsByPrefix.set(hp.providerId, pSet);
+        const explicitUnverifiable =
+          Boolean(hp.unverifiable) || isUnverifiableScanState(hp.unverifiableReason);
+        for (const m of hp.models) {
+          const step = `${hp.providerId}/${m}`;
+          const set = targetsByStep.get(step) ?? new Set<string>();
+          set.add(ref);
+          targetsByStep.set(step, set);
+          if (!explicitUnverifiable) {
+            const mSet = configuredTargetModelsByPrefix.get(hp.providerId) ?? new Set<string>();
+            mSet.add(m);
+            configuredTargetModelsByPrefix.set(hp.providerId, mSet);
+          }
+        }
+      }
+    }
+
+    const allowSyntheticNoticeFixture =
+      options.allowSyntheticNoticeFixture === true &&
+      options.clock !== undefined &&
+      options.fetchFn !== undefined && isPathInsideDir(sDir, os.tmpdir());
+    const isSyntheticNotice = (evidence: ResearchEvidenceRecord): boolean =>
+      evidence.synthetic === true;
+    const isUsableOfficialEvidence = (evidence: ResearchEvidenceRecord, atMs: number): boolean =>
+      isVerifiedOfficialLifecycleEvidence(evidence, atMs, allowSyntheticNoticeFixture);
+    function hasActiveVerifiedOfficialDeprecation(
+      prefix: string,
+      modelId: string,
+      atMs: number
+    ): boolean {
+      const canon = canonicalizeResearchProvider(prefix);
+      const fullStep = `${prefix}/${modelId}`;
+      const official = selectNewestEvidence(
+        evidenceRecords.filter(
+          (ev) =>
+            (ev.id === fullStep || (ev.provider === canon && ev.modelId === modelId)) &&
+            isUsableOfficialEvidence(ev, atMs)
+        )
+      );
+      if (!official || official.verdict !== 'deprecated') return false;
+      const shutdownMs = official.shutdownDate ? Date.parse(official.shutdownDate) : null;
+      return shutdownMs === null || (Number.isFinite(shutdownMs) && shutdownMs <= atMs);
+    }
+
+    const absenceDetections: ModelPendingRecord[] = [...(catalogState.absenceDetections ?? [])];
+    const officialNoticeDetections: OfficialNoticeDetectionRecord[] = [
+      ...(catalogState.officialNoticeDetections ?? []),
+    ];
+    const newAbsenceDetectionsThisTick: ModelPendingRecord[] = [];
+    const qualifyingScanStarts = new Map<string, number>();
+    const newOfficialDetectionSamples: number[] = [];
 
     const routerStateByRouter = new Map<string, RouterModelState>();
     function getRouterStateFor(routerName: string): RouterModelState | undefined {
@@ -747,6 +958,218 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
     let backoffSkipped = 0;
     const providerSummaries: TickRunSummary['providers'] = [];
     const newInboxCandidates: TickInboxItem[] = [];
+    const loadedDetectionCount = absenceDetections.length + officialNoticeDetections.length;
+    let detectionHistoryCapExceeded = loadedDetectionCount > MAX_DETECTION_RECORDS ||
+      (loadedDetectionCount >= MAX_DETECTION_RECORDS &&
+        catalogState.detectionHistoryError === 'DETECTION_HISTORY_CAP_EXCEEDED');
+    let slotBlockedThisTick = false;
+    const completedAt = (episode: DetectionLifecycle): string | undefined =>
+      episode.removedAt ?? episode.recoveredAt ?? episode.withdrawnAt ?? episode.supersededAt ?? episode.abandonedAt;
+    let completionChanged = false;
+    const episodeMatchesOfficialProof = (
+      record: OfficialNoticeDetectionRecord,
+      evId: string | undefined,
+      epKey: string | undefined
+    ): boolean => {
+      if (!evId) return false;
+      const validEvIds = [record.evidenceId, ...(record.previousEvidenceIds ?? [])];
+      const validKeys = [record.recordKey, ...(record.previousRecordKeys ?? [])];
+      return validEvIds.includes(evId) && (epKey === undefined || validKeys.includes(epKey));
+    };
+    const receiptMatchesEpisodeRemoval = (
+      cand: ReturnType<typeof readApplyHistory>['receipts'][number],
+      episode: ModelPendingRecord | OfficialNoticeDetectionRecord
+    ): boolean =>
+      (cand.removedModels ?? []).some((rm) => {
+        if (rm.provider !== episode.provider || rm.modelId !== episode.modelId) return false;
+        if ('recordKey' in episode) {
+          return episodeMatchesOfficialProof(episode, rm.detectionEvidenceId, rm.detectionEpisodeId);
+        }
+        return rm.detectionEpisodeId === episode.episodeId;
+      });
+    const isTargetGroupVerifiedAbsentLive = (
+      aliasSet: ReadonlySet<string>,
+      episode: ModelPendingRecord | OfficialNoticeDetectionRecord
+    ): boolean => {
+      const listedTargets = targetsByStep.get(episode.fullStep);
+      for (const a of aliasSet) {
+        if (listedTargets?.has(a)) return false;
+      }
+      const sample = [...aliasSet][0];
+      if (!sample) return false;
+      if (sample.startsWith('router:')) {
+        return allCombos.some((combo) => {
+          const configured = config.routers.find(
+            (router) => router.id === combo.router || router.adapter === combo.router
+          );
+          const comboAliases = [combo.router, configured?.id, configured?.adapter]
+            .filter((r): r is string => Boolean(r))
+            .map((r) => `router:${r}/${combo.name}`);
+          return (
+            comboAliases.some((ref) => aliasSet.has(ref)) &&
+            !combo.models.includes(episode.fullStep)
+          );
+        });
+      }
+      if (sample.startsWith('harness:')) {
+        const hId = sample.slice('harness:'.length);
+        const ht = harnessTargets.find((target) => target.harnessId === hId);
+        if (!ht || !fs.existsSync(ht.configPath)) return false;
+        const hasUnverifiableOrProxy = ht.providers.some(
+          (p) =>
+            p.providerId === episode.provider &&
+            (Boolean(p.unverifiable) ||
+              isUnverifiableScanState(p.unverifiableReason) ||
+              Boolean(p.proxyDelegated))
+        );
+        if (hasUnverifiableOrProxy) return false;
+        const provModels = ht.providers.find((p) => p.providerId === episode.provider)?.models ?? [];
+        return !provModels.includes(episode.modelId) && !provModels.includes(episode.fullStep);
+      }
+      return false;
+    };
+    const isEpisodeFullySettledAcrossTargets = (
+      history: ReturnType<typeof readApplyHistory>,
+      episode: ModelPendingRecord | OfficialNoticeDetectionRecord,
+      optionsForSettle: { checkLiveContradiction: boolean; allowLiveVerifiedFallback: boolean }
+    ): boolean => {
+      if (!history.present || !history.valid || episode.targetsAffected.length === 0) return false;
+      const seenGroups = new Set<string>();
+      for (const tgt of episode.targetsAffected) {
+        const aliasSet = expandTargetAliasGroup(tgt);
+        const groupKey = [...aliasSet].sort().join('\0');
+        if (seenGroups.has(groupKey)) continue;
+        seenGroups.add(groupKey);
+
+        let latestRolledBackIdx = -1;
+        let latestActiveIdx = -1;
+        history.receipts.forEach((cand, idx) => {
+          if (!cand.success || !cand.readBackVerified || !aliasSet.has(cand.target)) return;
+          if (!receiptMatchesEpisodeRemoval(cand, episode)) return;
+          if (cand.rolledBack) latestRolledBackIdx = idx;
+          else latestActiveIdx = idx;
+        });
+
+        if (latestRolledBackIdx > latestActiveIdx) {
+          return false;
+        }
+        if (latestActiveIdx >= 0 && latestActiveIdx > latestRolledBackIdx) {
+          if (optionsForSettle.checkLiveContradiction) {
+            const listedTargets = targetsByStep.get(episode.fullStep);
+            for (const a of aliasSet) {
+              if (listedTargets?.has(a)) return false;
+            }
+          }
+          continue;
+        }
+        if (!optionsForSettle.allowLiveVerifiedFallback || !isTargetGroupVerifiedAbsentLive(aliasSet, episode)) {
+          return false;
+        }
+      }
+      return true;
+    };
+    const markRemovalCompleted = (
+      models: ReadonlyArray<RemovedModelReceiptEvidence>,
+      removedAt: string,
+      historySnapshot?: ReturnType<typeof readApplyHistory>,
+      checkLiveContradiction = false
+    ): void => {
+      const effectiveHistory = historySnapshot ?? readApplyHistory(sDir);
+      if (!effectiveHistory.present || !effectiveHistory.valid) return;
+      for (const model of models) {
+        const episode = model.detectionEvidenceId
+          ? officialNoticeDetections.find(
+              (record) =>
+                record.provider === model.provider &&
+                record.modelId === model.modelId &&
+                episodeMatchesOfficialProof(record, model.detectionEvidenceId, model.detectionEpisodeId)
+            )
+          : absenceDetections.find((record) => record.episodeId === model.detectionEpisodeId);
+        if (!episode || episode.removedAt !== undefined) continue;
+        const canComplete = isEpisodeFullySettledAcrossTargets(effectiveHistory, episode, {
+          checkLiveContradiction,
+          allowLiveVerifiedFallback: true,
+        });
+        if (canComplete) {
+          episode.removedAt = removedAt;
+          const provEntry = catalogState.providers[model.provider];
+          const epId = 'episodeId' in episode ? episode.episodeId : model.detectionEpisodeId;
+          if (provEntry?.pendingEpisodes && provEntry.pendingEpisodes[model.modelId] === epId) {
+            delete provEntry.pendingEpisodes[model.modelId];
+          }
+          completionChanged = true;
+        }
+      }
+    };
+    // A signed receipt can survive an interrupted catalog write, while rolled-back or incomplete
+    // multi-target receipts keep their affected episodes open until every target is settled.
+    const priorApplyHistory = readApplyHistory(sDir);
+    if (priorApplyHistory.present && priorApplyHistory.valid) {
+      for (const receipt of priorApplyHistory.receipts) {
+        if (receipt.success && receipt.readBackVerified && !receipt.rolledBack && receipt.removedModels?.length) {
+          markRemovalCompleted(receipt.removedModels, receipt.appliedAt, priorApplyHistory, true);
+        }
+      }
+    }
+    // Older propose receipts lack per-model proof. Reconcile terminal state only when apply-history
+    // is present & valid and every affected target can be fail-closed verified to no longer list the model.
+    if (priorApplyHistory.present && priorApplyHistory.valid) {
+      for (const receipt of priorApplyHistory.receipts) {
+        if (!receipt.success || !receipt.readBackVerified || receipt.rolledBack ||
+            receipt.appliedAtLevel !== 'propose' || receipt.removedModels?.length) continue;
+        const appliedAt = parseRemovalEvidenceTimestamp(receipt.appliedAt);
+        if (appliedAt === null || appliedAt > nowMs) continue;
+        for (const episode of [...absenceDetections, ...officialNoticeDetections]) {
+          if (completedAt(episode)) continue;
+          const coversReceiptTarget = episode.targetsAffected.some((tgt) =>
+            expandTargetAliasGroup(tgt).has(receipt.target)
+          );
+          if (!coversReceiptTarget) continue;
+          const anchor = parseRemovalEvidenceTimestamp(
+            'scanStartedAt' in episode ? episode.scanStartedAt : episode.firstQualifyingScanStartedAt
+          );
+          if (anchor === null || appliedAt <= anchor) continue;
+          if (
+            isEpisodeFullySettledAcrossTargets(priorApplyHistory, episode, {
+              checkLiveContradiction: true,
+              allowLiveVerifiedFallback: true,
+            })
+          ) {
+            episode.removedAt = nowIso;
+            if ('episodeId' in episode) {
+              const provEntry = catalogState.providers[episode.provider];
+              if (provEntry?.pendingEpisodes?.[episode.modelId] === episode.episodeId) {
+                delete provEntry.pendingEpisodes[episode.modelId];
+              }
+            }
+            completionChanged = true;
+          }
+        }
+      }
+    }
+    const pruneDetectionHistory = (): void => {
+      const oldestAllowed = nowMs - COMPLETED_DETECTION_RETENTION_MS;
+      for (const episodes of [absenceDetections, officialNoticeDetections]) {
+        for (let index = episodes.length - 1; index >= 0; index--) {
+          const terminalMs = parseRemovalEvidenceTimestamp(completedAt(episodes[index]!));
+          if (terminalMs !== null && terminalMs < oldestAllowed) episodes.splice(index, 1);
+        }
+      }
+    };
+    pruneDetectionHistory();
+    if (absenceDetections.length + officialNoticeDetections.length < MAX_DETECTION_RECORDS) {
+      detectionHistoryCapExceeded = false;
+    }
+    const reserveDetectionSlot = (): boolean => {
+      pruneDetectionHistory();
+      if (absenceDetections.length + officialNoticeDetections.length < MAX_DETECTION_RECORDS) {
+        if (!slotBlockedThisTick) detectionHistoryCapExceeded = false;
+        return true;
+      }
+      slotBlockedThisTick = true;
+      detectionHistoryCapExceeded = true;
+      return false;
+    };
     const addedByPrefix = new Map<string, Set<string>>();
     const shrinkBlockReasons = new Map<string, string[]>();
     const absentNotInCombo = new Map<string, string[]>();
@@ -762,6 +1185,9 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
 
     for (const t of targets) {
       const prev = catalogState.providers[t.prefix];
+      const activeTargetsForPrefix = [
+        ...(targetsByPrefix.get(t.prefix) ?? new Set([`router:${t.router}`])),
+      ].sort();
 
       if (t.skipReason || !t.baseUrl) {
         // C45-WP3 §4.3: Skipped/unverifiable provider NEVER increments absenceCounts
@@ -775,6 +1201,9 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
           absenceCounts: prev?.absenceCounts ?? {},
           firstAbsentAt: prev?.firstAbsentAt,
           firstSeenAt: prev?.firstSeenAt,
+          pendingEpisodes: prev?.pendingEpisodes,
+          qualifyingScanTimestamps: prev?.qualifyingScanTimestamps,
+          activeTargets: activeTargetsForPrefix,
           consecutiveFailures: prev?.consecutiveFailures ?? 0,
           backoffUntilMs: prev?.backoffUntilMs ?? 0,
           lastStatus: 0,
@@ -843,6 +1272,8 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
 
       requests += 1;
       const tickTimeoutMs = isLowResource() ? 8_000 : 12_000;
+      const scanStartedAtMs = readPhaseClock();
+      const scanStartedAtIso = new Date(scanStartedAtMs).toISOString();
       const outcome = await fetchModelList(t, {
         fetchFn: l1AccountingFetch,
         timeoutMs: tickTimeoutMs,
@@ -899,12 +1330,15 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
           absenceCounts: prev?.absenceCounts ?? {},
           firstAbsentAt: prev?.firstAbsentAt,
           firstSeenAt: prev?.firstSeenAt,
+          pendingEpisodes: prev?.pendingEpisodes,
+          qualifyingScanTimestamps: prev?.qualifyingScanTimestamps,
+          activeTargets: activeTargetsForPrefix,
           consecutiveFailures: failures,
           backoffUntilMs: nowMs + backoffMs,
           lastStatus: outcome.status,
           lastLabel: failLabel,
           skipReason,
-          updatedAt: nowIso,
+          updatedAt: scanStartedAtIso,
         };
         providerSummaries.push({
           prefix: t.prefix,
@@ -921,16 +1355,24 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
         continue;
       }
 
+      const nextQualifyingScans = [
+        ...(prev?.qualifyingScanTimestamps ?? []),
+        scanStartedAtIso,
+      ].slice(-50);
+
       if (outcome.status === 304) {
+        qualifyingScanStarts.set(t.prefix, scanStartedAtMs);
         unchangedProviders++;
         catalogState.providers[t.prefix] = {
           ...prev!,
           skipReason: undefined,
+          qualifyingScanTimestamps: nextQualifyingScans,
+          activeTargets: activeTargetsForPrefix,
           consecutiveFailures: 0,
           backoffUntilMs: 0,
           lastStatus: 304,
           lastLabel: 'UNCHANGED',
-          updatedAt: nowIso,
+          updatedAt: scanStartedAtIso,
         };
         providerSummaries.push({
           prefix: t.prefix,
@@ -952,11 +1394,26 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
       const nextFirstSeenAt: Record<string, string> = { ...(prev?.firstSeenAt ?? {}) };
       for (const id of fetchedIds) {
         if (!nextFirstSeenAt[id]) {
-          nextFirstSeenAt[id] = nowIso;
+          nextFirstSeenAt[id] = scanStartedAtIso;
         }
       }
 
-      if (prev && (prev.contentHash ?? prev.hash) === nextHash && Object.keys(prev.absenceCounts ?? {}).length === 0) {
+      const configuredIdsForPrefix =
+        effectiveMode !== 'observe'
+          ? [...(configuredTargetModelsByPrefix.get(t.prefix) ?? [])]
+          : [];
+      const fetchedSetForShortcut = new Set(fetchedIds);
+      const hasMissingConfiguredTarget = configuredIdsForPrefix.some(
+        (id) => !fetchedSetForShortcut.has(id)
+      );
+
+      if (
+        prev &&
+        (prev.contentHash ?? prev.hash) === nextHash &&
+        Object.keys(prev.absenceCounts ?? {}).length === 0 &&
+        !hasMissingConfiguredTarget
+      ) {
+        qualifyingScanStarts.set(t.prefix, scanStartedAtMs);
         unchangedProviders++;
         catalogState.providers[t.prefix] = {
           ...prev,
@@ -965,11 +1422,13 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
           serverEtag: outcome.serverEtag ?? prev.serverEtag ?? null,
           hash: nextHash,
           firstSeenAt: nextFirstSeenAt,
+          qualifyingScanTimestamps: nextQualifyingScans,
+          activeTargets: activeTargetsForPrefix,
           consecutiveFailures: 0,
           backoffUntilMs: 0,
           lastStatus: outcome.status,
           lastLabel: 'UNCHANGED',
-          updatedAt: nowIso,
+          updatedAt: scanStartedAtIso,
         };
         providerSummaries.push({
           prefix: t.prefix,
@@ -1010,11 +1469,14 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
             absenceCounts: prev?.absenceCounts ?? {},
             firstAbsentAt: prev?.firstAbsentAt,
             firstSeenAt: prev?.firstSeenAt,
+            pendingEpisodes: prev?.pendingEpisodes,
+            qualifyingScanTimestamps: prev?.qualifyingScanTimestamps,
+            activeTargets: activeTargetsForPrefix,
             consecutiveFailures: 0,
             backoffUntilMs: 0,
             lastStatus: outcome.status,
             lastLabel: 'SHRINK-GUARD-BLOCKED',
-            updatedAt: nowIso,
+            updatedAt: scanStartedAtIso,
           };
           providerSummaries.push({
             prefix: t.prefix,
@@ -1031,37 +1493,63 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
         }
       }
 
+      qualifyingScanStarts.set(t.prefix, scanStartedAtMs);
       const prevSet = new Set(prevIds);
       const nextSet = new Set(fetchedIds);
       const added = prevIds.length > 0 ? fetchedIds.filter((id) => !prevSet.has(id)) : [];
       addedByPrefix.set(t.prefix, new Set(added));
       const nextAbsence: Record<string, number> = {};
       const nextFirstAbsentAt: Record<string, string> = { ...(prev?.firstAbsentAt ?? {}) };
+      const nextPendingEpisodes: Record<string, string> = {};
+      for (const [pendModelId, pendEpId] of Object.entries(prev?.pendingEpisodes ?? {})) {
+        const openEp = absenceDetections.find(
+          (ep) =>
+            ep.provider === t.prefix &&
+            ep.modelId === pendModelId &&
+            ep.episodeId === pendEpId &&
+            completedAt(ep) === undefined
+        );
+        if (openEp) {
+          nextPendingEpisodes[pendModelId] = pendEpId;
+        }
+      }
       const graceAbsent: string[] = [];
       const deadConfirmed: string[] = [];
+      const newlyPendingIds: string[] = [];
 
       const candidatesToCheck = new Set<string>([
         ...prevIds,
         ...Object.keys(prev?.absenceCounts ?? {}),
+        ...configuredIdsForPrefix,
       ]);
 
       for (const id of candidatesToCheck) {
         if (nextSet.has(id)) {
           delete nextFirstAbsentAt[id];
+          const activeEpisode = absenceDetections.find((episode) =>
+            episode.provider === t.prefix && episode.modelId === id && completedAt(episode) === undefined
+          );
+          if (activeEpisode) activeEpisode.recoveredAt = scanStartedAtIso;
+          delete nextPendingEpisodes[id];
           continue;
         }
         const fullStep = `${t.prefix}/${id}`;
         const firstAbsentIso = nextFirstAbsentAt[id];
-        const absentDurationMs = firstAbsentIso ? nowMs - Date.parse(firstAbsentIso) : 0;
-        if (absentDurationMs > 7 * 24 * 3600 * 1000 && !usedSteps.has(fullStep)) {
+        const absentDurationMs = firstAbsentIso ? scanStartedAtMs - Date.parse(firstAbsentIso) : 0;
+        if (absentDurationMs > 7 * 24 * 3600 * 1000 && !usedSteps.has(fullStep) && !targetsByStep.has(fullStep)) {
+          const episode = absenceDetections.find((record) =>
+            record.provider === t.prefix && record.modelId === id && completedAt(record) === undefined
+          );
+          if (episode) episode.abandonedAt = scanStartedAtIso;
           delete nextFirstAbsentAt[id];
           delete nextAbsence[id];
           delete nextFirstSeenAt[id];
+          delete nextPendingEpisodes[id];
           continue;
         }
 
         if (!nextFirstAbsentAt[id]) {
-          nextFirstAbsentAt[id] = nowIso;
+          nextFirstAbsentAt[id] = scanStartedAtIso;
         }
         const count = (prev?.absenceCounts?.[id] ?? 0) + 1;
         nextAbsence[id] = count;
@@ -1069,6 +1557,54 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
           graceAbsent.push(id);
         } else {
           deadConfirmed.push(id);
+        }
+
+        if (
+          effectiveMode !== 'observe' &&
+          !nextPendingEpisodes[id] &&
+          (usedSteps.has(fullStep) || targetsByStep.has(fullStep)) &&
+          !hasActiveVerifiedOfficialDeprecation(t.prefix, id, scanStartedAtMs)
+        ) {
+          newlyPendingIds.push(id);
+        }
+      }
+
+      if (newlyPendingIds.length > 0) {
+        const rawCommitMs = readPhaseClock();
+        // Fixed or injected clocks can deliberately place both events at the same instant.
+        const simulatesClock = hasInjectedClock || options.nowMs !== undefined;
+        const modelPendingAtMs =
+          simulatesClock && rawCommitMs === scanStartedAtMs ? scanStartedAtMs + 1 : rawCommitMs;
+        const modelPendingAtIso = new Date(modelPendingAtMs).toISOString();
+        const epDetectionMs = modelPendingAtMs - scanStartedAtMs;
+        for (const id of newlyPendingIds) {
+          const fullStep = `${t.prefix}/${id}`;
+          const episodeId = `ep-${JSON.stringify([t.prefix, id, scanStartedAtMs])}`;
+          const existingEpisode = absenceDetections.find((episode) =>
+            episode.provider === t.prefix && episode.modelId === id && completedAt(episode) === undefined
+          );
+          if (existingEpisode) {
+            nextPendingEpisodes[id] = existingEpisode.episodeId;
+            continue;
+          }
+          if (!reserveDetectionSlot()) continue;
+          nextPendingEpisodes[id] = episodeId;
+          const affected = [
+            ...(targetsByStep.get(fullStep) ?? targetsByPrefix.get(t.prefix) ?? new Set<string>()),
+          ].sort();
+          const pendingRec: ModelPendingRecord = {
+            episodeId,
+            provider: t.prefix,
+            modelId: id,
+            fullStep,
+            status: 'model_pending',
+            scanStartedAt: scanStartedAtIso,
+            modelPendingAt: modelPendingAtIso,
+            detectionMs: epDetectionMs,
+            targetsAffected: affected,
+          };
+          absenceDetections.push(pendingRec);
+          newAbsenceDetectionsThisTick.push(pendingRec);
         }
       }
 
@@ -1091,11 +1627,14 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
         absenceCounts: nextAbsence,
         firstAbsentAt: nextFirstAbsentAt,
         firstSeenAt: nextFirstSeenAt,
+        pendingEpisodes: nextPendingEpisodes,
+        qualifyingScanTimestamps: nextQualifyingScans,
+        activeTargets: activeTargetsForPrefix,
         consecutiveFailures: 0,
         backoffUntilMs: 0,
         lastStatus: outcome.status,
         lastLabel: didChange ? 'OK' : 'UNCHANGED',
-        updatedAt: nowIso,
+        updatedAt: scanStartedAtIso,
       };
 
       const candidateModels = prevIds.length === 0 ? fetchedIds : added;
@@ -1282,6 +1821,8 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
     }
 
     catalogState.updatedAt = nowIso;
+    catalogState.absenceDetections = absenceDetections;
+    catalogState.officialNoticeDetections = [...officialNoticeDetections];
     atomicWriteFileSync(catalogPath, JSON.stringify(catalogState, null, 2));
 
     // A3: Run L2 (1h TTL) and L3 (24h TTL) scans and aggregate requests into unified accounting
@@ -1289,8 +1830,7 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
     const l3Res = await runL3Scan({ stateDir: sDir, nowMs, fetchFn: strictAccounting.fetchFn });
     let totalRequests = requests + l2Res.requests + l3Res.requests;
 
-    // C45-WP3 §3.1: Load research-evidence.json and join with L1/L2/L3 verification
-    const evidenceRecords = loadResearchEvidence(sDir);
+    // C45-WP3 §3.1: Join research-evidence.json with L1/L2/L3 verification
     const matchedEvidenceRecordIds = new Set<string>();
 
     const verifyRecordsByStep = new Map<string, ModelVerificationRecord>();
@@ -1420,13 +1960,149 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
       }
       return {
         official: selectNewestEvidence(
-          matched.filter((ev) => ev.sourceTier === 'official' && ev.domainVerified)
+          matched.filter((ev) => isUsableOfficialEvidence(ev, qualifyingScanStarts.get(prefix) ?? nowMs))
         ),
         secondary: selectNewestEvidence(matched.filter((ev) => ev.sourceTier === 'secondary')),
         all: matched,
       };
     }
 
+    const latchOfficialScan = (
+      provider: string,
+      modelId: string,
+      evidenceId: string,
+      publishedAt: string | null,
+      synthetic: boolean,
+      effectiveAtMs: number,
+      legacyRecordId?: string
+    ): OfficialNoticeDetectionRecord | undefined => {
+      const fullStep = `${provider}/${modelId}`;
+      const scanStartedAtMs = qualifyingScanStarts.get(provider);
+      const scoped = officialNoticeDetections.filter((notice) =>
+        notice.fullStep === fullStep && notice.synthetic === synthetic
+      );
+      const current = scoped.find((notice) => !notice.withdrawnAt && !notice.supersededAt &&
+        (notice.evidenceId === evidenceId || (legacyRecordId !== undefined && notice.evidenceId === legacyRecordId)));
+      if (scanStartedAtMs === undefined) return current;
+      if (scanStartedAtMs < effectiveAtMs) return undefined;
+
+      const active = scoped.filter((notice) => completedAt(notice) === undefined);
+      const earliestAnchor = Math.min(...active.map((notice) => Date.parse(notice.firstQualifyingScanStartedAt)));
+      const canonicalProvider = canonicalizeResearchProvider(provider);
+      const gapCandidates = evidenceRecords.filter((evidence) =>
+        evidence.provider === canonicalProvider && evidence.modelId === modelId &&
+        !isSyntheticNotice(evidence) && isUsableOfficialEvidence(evidence, scanStartedAtMs) &&
+        (evidence.verdict === 'active' || evidence.verdict === 'upcoming_deprecation' ||
+          (evidence.verdict === 'deprecated' &&
+            (parseRemovalEvidenceTimestamp(evidence.shutdownDate) ?? 0) > Date.parse(evidence.submittedAt)))
+      );
+      const latestGap = selectNewestEvidence(gapCandidates);
+      const gapAt = latestGap ? Date.parse(latestGap.submittedAt) : Number.NEGATIVE_INFINITY;
+      if (active.length > 0 && gapAt <= earliestAnchor) {
+        // Continuous actionable chain (no verified non-actionable gap after earliestAnchor):
+        // keep anchor and any existing firstPlanCreatedAt/detectionMs latch intact, updating provenance in place.
+        const primary = active.reduce((best, cand) =>
+          Date.parse(cand.firstQualifyingScanStartedAt) <= Date.parse(best.firstQualifyingScanStartedAt)
+            ? cand
+            : best
+        );
+        const prevEvidenceId = primary.evidenceId;
+        const prevRecordKey = primary.recordKey;
+        const anchorMs = Math.min(earliestAnchor, scanStartedAtMs);
+        primary.firstQualifyingScanStartedAt = new Date(anchorMs).toISOString();
+        primary.evidenceId = evidenceId;
+        primary.sourcePublishedAt = publishedAt;
+        const keyAnchor = primary.episodeStartedAt ?? primary.firstQualifyingScanStartedAt;
+        const nextRecordKey = JSON.stringify([fullStep, evidenceId, keyAnchor]);
+        primary.recordKey = nextRecordKey;
+        if (prevEvidenceId && prevEvidenceId !== evidenceId) {
+          const prevEvList = [...(primary.previousEvidenceIds ?? [])];
+          if (!prevEvList.includes(prevEvidenceId)) prevEvList.push(prevEvidenceId);
+          const filteredEv = prevEvList.filter((id) => id !== evidenceId);
+          if (filteredEv.length > 0) primary.previousEvidenceIds = filteredEv;
+          else delete primary.previousEvidenceIds;
+        } else if (primary.previousEvidenceIds) {
+          const filteredEv = primary.previousEvidenceIds.filter((id) => id !== evidenceId);
+          if (filteredEv.length > 0) primary.previousEvidenceIds = filteredEv;
+          else delete primary.previousEvidenceIds;
+        }
+        if (prevRecordKey && prevRecordKey !== nextRecordKey) {
+          const prevKeyList = [...(primary.previousRecordKeys ?? [])];
+          if (!prevKeyList.includes(prevRecordKey)) prevKeyList.push(prevRecordKey);
+          const filteredKeys = prevKeyList.filter((k) => k !== nextRecordKey);
+          if (filteredKeys.length > 0) primary.previousRecordKeys = filteredKeys;
+          else delete primary.previousRecordKeys;
+        } else if (primary.previousRecordKeys) {
+          const filteredKeys = primary.previousRecordKeys.filter((k) => k !== nextRecordKey);
+          if (filteredKeys.length > 0) primary.previousRecordKeys = filteredKeys;
+          else delete primary.previousRecordKeys;
+        }
+        if (primary.firstPlanCreatedAt !== null) {
+          const planMs = Date.parse(primary.firstPlanCreatedAt);
+          primary.detectionMs = planMs - anchorMs;
+          const pubMs = parseRemovalEvidenceTimestamp(publishedAt);
+          primary.publicationToPlanMs = pubMs === null ? null : planMs - pubMs;
+        }
+        for (const tgt of targetsByStep.get(fullStep) ?? []) {
+          if (!primary.targetsAffected.includes(tgt)) {
+            primary.targetsAffected.push(tgt);
+          }
+        }
+        primary.targetsAffected.sort();
+        return primary;
+      }
+      if (!reserveDetectionSlot()) return undefined;
+      const anchor = earliestAnchor < gapAt ? scanStartedAtMs : Math.min(earliestAnchor, scanStartedAtMs);
+      const firstQualifyingScanStartedAt = new Date(anchor).toISOString();
+      const startedIso = new Date(scanStartedAtMs).toISOString();
+      for (const notice of active) {
+        if (gapAt > Date.parse(notice.firstQualifyingScanStartedAt)) {
+          const gapIso = new Date(gapAt).toISOString();
+          if (latestGap?.verdict === 'active') {
+            notice.withdrawnAt = gapIso;
+          } else {
+            notice.supersededAt = gapIso;
+          }
+        } else {
+          notice.supersededAt = startedIso;
+        }
+      }
+      const notice: OfficialNoticeDetectionRecord = {
+        recordKey: JSON.stringify([fullStep, evidenceId, startedIso]),
+        episodeStartedAt: startedIso,
+        evidenceId, fullStep, provider, modelId, synthetic,
+        sourcePublishedAt: publishedAt,
+        firstQualifyingScanStartedAt,
+        firstPlanCreatedAt: null,
+        publicationToPlanMs: null,
+        detectionMs: null,
+        targetsAffected: Array.from(targetsByStep.get(fullStep) ?? []).sort(),
+      };
+      officialNoticeDetections.push(notice);
+      return notice;
+    };
+    const recordOfficialPlan = (
+      notice: OfficialNoticeDetectionRecord | undefined,
+      planAt: string,
+      target: string
+    ): Partial<TickActionLatencyFields> => {
+      if (!notice) return { publicationToPlanMs: null };
+      if (!notice.targetsAffected.includes(target)) notice.targetsAffected.push(target);
+      if (notice.firstPlanCreatedAt === null) {
+        notice.firstPlanCreatedAt = planAt;
+        const planMs = Date.parse(planAt);
+        notice.detectionMs = planMs - Date.parse(notice.firstQualifyingScanStartedAt);
+        const publishedMs = parseRemovalEvidenceTimestamp(notice.sourcePublishedAt);
+        notice.publicationToPlanMs = publishedMs === null ? null : planMs - publishedMs;
+        newOfficialDetectionSamples.push(notice.detectionMs);
+      }
+      return {
+        evidenceId: notice.evidenceId,
+        firstQualifyingScanStartedAt: notice.firstQualifyingScanStartedAt,
+        firstPlanCreatedAt: notice.firstPlanCreatedAt,
+        publicationToPlanMs: notice.publicationToPlanMs,
+      };
+    };
     // Helper: evaluate WP3 Part 4 removal eligibility for one (prefix, modelId)
     function checkRemovalEligibility(
       prefix: string,
@@ -1439,6 +2115,7 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
       sourcePublishedAt: string | null;
       sourceFirstChangedAt: string | null;
       replacementModelId: string | null;
+      officialNotice?: OfficialNoticeDetectionRecord | undefined;
     } {
       const provEntry = catalogState.providers[prefix];
       const ev = findEvidenceForModel(prefix, modelId);
@@ -1471,14 +2148,18 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
 
       const firstAbsentAt = provEntry?.firstAbsentAt?.[modelId] ?? null;
 
+      const officialEvidenceAt = qualifyingScanStarts.get(prefix) ?? nowMs;
       // Path 1a: Verified official deprecation evidence in research-evidence.json
       if (ev.official && ev.official.verdict === 'deprecated') {
         const shutdownMs = ev.official.shutdownDate ? Date.parse(ev.official.shutdownDate) : null;
-        if (shutdownMs === null || (Number.isFinite(shutdownMs) && shutdownMs <= nowMs)) {
+        if (shutdownMs === null || (Number.isFinite(shutdownMs) && shutdownMs <= officialEvidenceAt)) {
           return {
             eligible: true,
             reason: `OFFICIAL_DEPRECATION (${ev.official.url})`,
-            sourcePublishedAt: ev.official.publishedAt ?? ev.official.shutdownDate ?? null,
+            sourcePublishedAt: ev.official.publishedAt ?? null,
+            officialNotice: latchOfficialScan(prefix, modelId, researchEvidenceIdentity(ev.official),
+              ev.official.publishedAt, isSyntheticNotice(ev.official),
+              Math.max(shutdownMs ?? 0, Date.parse(ev.official.submittedAt)), ev.official.recordId),
             sourceFirstChangedAt: firstAbsentAt,
             replacementModelId: ev.official.replacementModelId ?? null,
           };
@@ -1487,17 +2168,20 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
 
       // Path 1b: Official vendor L3 deprecation + absenceCount >= 2
       if (
+        (!ev.official || !['active', 'deprecated', 'upcoming_deprecation'].includes(ev.official.verdict)) &&
         verifyRec &&
         verifyRec.label === 'ĐÃ-XÁC-NHẬN-NGỪNG' &&
         (verifyRec.l1.absenceCount ?? 0) >= 2 &&
         isOfficialUrlForProvider(prefix, verifyRec.l3.url)
       ) {
-        const shutdownMs = verifyRec.l3.noticeDate ? Date.parse(verifyRec.l3.noticeDate) : null;
-        if (shutdownMs === null || (Number.isFinite(shutdownMs) && shutdownMs <= nowMs)) {
+        const shutdownMs = parseRemovalEvidenceTimestamp(verifyRec.l3.noticeDate);
+        if (shutdownMs !== null && shutdownMs <= officialEvidenceAt) {
           return {
             eligible: true,
             reason: `OFFICIAL_L3_DEPRECATION (${verifyRec.l3.url ?? 'l3'})`,
-            sourcePublishedAt: verifyRec.l3.noticeDate ?? null,
+            sourcePublishedAt: null,
+            officialNotice: latchOfficialScan(prefix, modelId,
+              JSON.stringify([verifyRec.l3.url, verifyRec.l3.noticeDate]), null, false, shutdownMs),
             sourceFirstChangedAt: firstAbsentAt,
             replacementModelId: null,
           };
@@ -1528,7 +2212,7 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
           return {
             eligible: true,
             reason: `ABSENT_STABLE (absenceCount=${presence.absenceCount})`,
-            sourcePublishedAt: verifyRec?.l3.noticeDate ?? null,
+            sourcePublishedAt: null,
             sourceFirstChangedAt: firstAbsentAt,
             replacementModelId: null,
           };
@@ -1572,6 +2256,7 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
         sourcePublishedAt: string | null;
         sourceFirstChangedAt: string | null;
         replacementModelId: string | null;
+        officialNotice?: OfficialNoticeDetectionRecord | undefined;
       }> = [];
 
       for (const fullStep of combo.models) {
@@ -1590,6 +2275,7 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
             sourcePublishedAt: check.sourcePublishedAt,
             sourceFirstChangedAt: check.sourceFirstChangedAt,
             replacementModelId: check.replacementModelId,
+            officialNotice: check.officialNotice,
           });
         } else if (check.blockedReason) {
           blockedRemovals.push({
@@ -1634,12 +2320,18 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
             proposed_by: { kind: 'system', source: 'tick' },
           });
         } else {
+          const planActionNowMs = readPhaseClock();
+          const planActionNowIso = new Date(planActionNowMs).toISOString();
           for (const rem of eligibleInCombo) {
-            const latencyMs = computeDetectionLatencyMs({
-              planCreatedAt: nowIso,
-              sourcePublishedAt: rem.sourcePublishedAt,
-              sourceFirstChangedAt: rem.sourceFirstChangedAt,
-            });
+            const isOfficialRemoval = rem.reason.startsWith('OFFICIAL_');
+            const epId = !isOfficialRemoval
+              ? (catalogState.providers[rem.prefix]?.pendingEpisodes?.[rem.modelId] ??
+                `ep-${rem.prefix}-${rem.modelId}-${rem.sourceFirstChangedAt ?? planActionNowIso}`)
+              : null;
+            const noticeFields = isOfficialRemoval
+              ? recordOfficialPlan(rem.officialNotice, planActionNowIso, `router:${combo.router}/${combo.name}`)
+              : {};
+            const latencyMs = rem.officialNotice?.detectionMs ?? null;
             routerActions.push({
               targetType: 'router',
               router: combo.router,
@@ -1652,8 +2344,11 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
               replacementModelId: rem.replacementModelId,
               sourcePublishedAt: rem.sourcePublishedAt,
               sourceFirstChangedAt: rem.sourceFirstChangedAt,
-              planCreatedAt: nowIso,
+              planCreatedAt: planActionNowIso,
               detectionLatencyMs: latencyMs,
+              ...noticeFields,
+              detectionKind: isOfficialRemoval ? 'official-notice' : 'absence-settled',
+              episodeId: rem.officialNotice?.recordKey ?? epId,
             });
 
             const alreadyProposed = newInboxCandidates.some(
@@ -1756,6 +2451,7 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
           sourcePublishedAt: string | null;
           sourceFirstChangedAt: string | null;
           replacementModelId: string | null;
+          officialNotice?: OfficialNoticeDetectionRecord | undefined;
         }> = [];
 
         for (const modelId of hp.models) {
@@ -1777,7 +2473,26 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
           }
 
           const fullStep = `${hp.providerId}/${modelId}`;
-          if ((defaultSlots.has(modelId) || defaultSlots.has(fullStep)) && !check.replacementModelId) {
+          const canonHp = canonicalizeResearchProvider(hp.providerId);
+          const hpCatalogEntry = catalogState.providers[hp.providerId];
+          const liveIdsForHp = new Set(
+            (hpCatalogEntry?.ids ?? []).filter((m) => resolveCatalogPresence(hpCatalogEntry, m).l1Exists)
+          );
+          const rawRep = check.replacementModelId?.trim();
+          const normRep = rawRep
+            ? rawRep.startsWith(`${hp.providerId}/`)
+              ? rawRep.slice(hp.providerId.length + 1)
+              : rawRep.startsWith(`${canonHp}/`) && !liveIdsForHp.has(rawRep)
+                ? rawRep.slice(canonHp.length + 1)
+                : rawRep
+            : undefined;
+          const hasLiveReplacement = Boolean(normRep && normRep !== modelId && liveIdsForHp.has(normRep));
+          if (
+            (defaultSlots.has(modelId) ||
+              defaultSlots.has(fullStep) ||
+              defaultSlots.has(`${canonHp}/${modelId}`)) &&
+            !hasLiveReplacement
+          ) {
             blockedRemovals.push({
               targetType: 'harness',
               targetId,
@@ -1795,6 +2510,7 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
             sourcePublishedAt: check.sourcePublishedAt,
             sourceFirstChangedAt: check.sourceFirstChangedAt,
             replacementModelId: check.replacementModelId,
+            officialNotice: check.officialNotice,
           });
         }
 
@@ -1826,12 +2542,19 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
               proposed_by: { kind: 'system', source: 'tick' },
             });
           } else {
+            const planActionNowMs = readPhaseClock();
+            const planActionNowIso = new Date(planActionNowMs).toISOString();
             for (const rem of eligibleInHarness) {
-              const latencyMs = computeDetectionLatencyMs({
-                planCreatedAt: nowIso,
-                sourcePublishedAt: rem.sourcePublishedAt,
-                sourceFirstChangedAt: rem.sourceFirstChangedAt,
-              });
+              const isOfficialRemoval = rem.reason.startsWith('OFFICIAL_');
+              const fullStep = `${hp.providerId}/${rem.modelId}`;
+              const epId = !isOfficialRemoval
+                ? (catalogState.providers[hp.providerId]?.pendingEpisodes?.[rem.modelId] ??
+                  `ep-${hp.providerId}-${rem.modelId}-${rem.sourceFirstChangedAt ?? planActionNowIso}`)
+                : null;
+              const noticeFields = isOfficialRemoval
+                ? recordOfficialPlan(rem.officialNotice, planActionNowIso, `harness:${ht.harnessId}`)
+                : {};
+              const latencyMs = rem.officialNotice?.detectionMs ?? null;
               harnessActions.push({
                 targetType: 'harness',
                 harnessId: ht.harnessId,
@@ -1843,8 +2566,11 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
                 replacementModelId: rem.replacementModelId,
                 sourcePublishedAt: rem.sourcePublishedAt,
                 sourceFirstChangedAt: rem.sourceFirstChangedAt,
-                planCreatedAt: nowIso,
+                planCreatedAt: planActionNowIso,
                 detectionLatencyMs: latencyMs,
+                ...noticeFields,
+                detectionKind: isOfficialRemoval ? 'official-notice' : 'absence-settled',
+                episodeId: rem.officialNotice?.recordKey ?? epId,
               });
               newInboxCandidates.push({
                 id: `harness-remove-${ht.harnessId}-${hp.providerId}-${rem.modelId}`,
@@ -1935,37 +2661,33 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
       }
     }
 
-    const targetsByStep = new Map<string, Set<string>>();
-    const targetsByPrefix = new Map<string, Set<string>>();
-    for (const c of allCombos) {
-      for (const m of c.models) {
-        const ref = `router:${c.router}/${c.name}`;
-        const set = targetsByStep.get(m) ?? new Set<string>();
-        set.add(ref);
-        targetsByStep.set(m, set);
-        const slashIdx = m.indexOf('/');
-        if (slashIdx > 0) {
-          const p = m.slice(0, slashIdx);
-          const pSet = targetsByPrefix.get(p) ?? new Set<string>();
-          pSet.add(ref);
-          targetsByPrefix.set(p, pSet);
-        }
+    for (const notice of officialNoticeDetections) {
+      if (completedAt(notice)) continue;
+      const current = findEvidenceForModel(notice.provider, notice.modelId).official;
+      if (current && !isSyntheticNotice(current) &&
+          (current.verdict === 'active' || current.verdict === 'upcoming_deprecation' ||
+            (current.verdict === 'deprecated' &&
+              (parseRemovalEvidenceTimestamp(current.shutdownDate) ?? 0) > nowMs)) &&
+          Date.parse(current.submittedAt) > Date.parse(notice.firstQualifyingScanStartedAt)) {
+        const planAt = parseRemovalEvidenceTimestamp(notice.firstPlanCreatedAt);
+        if (planAt !== null && Date.parse(current.submittedAt) < planAt) continue;
+        if (current.verdict === 'active') notice.withdrawnAt = current.submittedAt;
+        else notice.supersededAt = current.submittedAt;
       }
     }
-    for (const ht of harnessTargets) {
-      for (const hp of ht.providers) {
-        if (hp.proxyDelegated) continue;
-        const ref = `harness:${ht.harnessId}`;
-        const pSet = targetsByPrefix.get(hp.providerId) ?? new Set<string>();
-        pSet.add(ref);
-        targetsByPrefix.set(hp.providerId, pSet);
-        for (const m of hp.models) {
-          const step = `${hp.providerId}/${m}`;
-          const set = targetsByStep.get(step) ?? new Set<string>();
-          set.add(ref);
-          targetsByStep.set(step, set);
-        }
-      }
+    catalogState.officialNoticeDetections = officialNoticeDetections;
+    catalogState.detectionHistoryError = detectionHistoryCapExceeded ? 'DETECTION_HISTORY_CAP_EXCEEDED' : undefined;
+    atomicWriteFileSync(catalogPath, JSON.stringify(catalogState, null, 2));
+    if (detectionHistoryCapExceeded) {
+      newInboxCandidates.push({
+        id: 'detection-history-cap-exceeded',
+        title: '[AUTO-SAFE-BLOCKED] DETECTION_HISTORY_CAP_EXCEEDED',
+        type: 'warning',
+        timestamp: nowIso,
+        body: 'Detection history is full. Existing evidence was preserved and auto-safe writes were blocked.',
+        label: 'INVARIANT-BLOCKED',
+        proposed_by: { kind: 'system', source: 'tick' },
+      });
     }
 
     const nextQueueMap = new Map<string, ResearchQueueItem>();
@@ -2194,9 +2916,14 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
 
     // Persist deterministic <plansDir>/tick-plan.json
     const detectionLatency = summarizeDetectionLatencies([
-      ...routerActions.map((a) => a.detectionLatencyMs),
-      ...harnessActions.map((a) => a.detectionLatencyMs),
+      ...newAbsenceDetectionsThisTick.map((d) => d.detectionMs),
+      ...newOfficialDetectionSamples,
+      ...routerActions.filter((a) => a.detectionKind !== 'official-notice').map((a) => a.detectionLatencyMs),
+      ...harnessActions.filter((a) => a.detectionKind !== 'official-notice').map((a) => a.detectionLatencyMs),
     ]);
+    const planCreatedAtFinalIso = new Date(
+      readPhaseClock()
+    ).toISOString();
     const planHash =
       computeCanonicalTickPlanHash({
         routerActions,
@@ -2205,7 +2932,7 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
     const tickPlan: TickPlanFile = {
       version: 1,
       mode: effectiveMode,
-      planCreatedAt: nowIso,
+      planCreatedAt: planCreatedAtFinalIso,
       planHash,
       accounting: {
         requests: totalRequests,
@@ -2221,19 +2948,82 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
     atomicWriteFileSync(tickPlanPath, JSON.stringify(tickPlan, null, 2));
 
     const autoSafeWebhookAlerts: ActionableWebhookAlert[] = [];
-    const removalEvidence = (provider: string, modelId: string) => {
+    const removalEvidence = (
+      provider: string,
+      modelId: string,
+      reason: string,
+      appliedIso: string
+    ): RemovedModelReceiptEvidence => {
       // Use the same provider catalog persisted for this tick, before a later scan
       // can overwrite the evidence used for this removal.
       const entry = catalogState.providers[provider];
-      const inProviderCatalog = entry?.lastStatus === 200 &&
-        !isUnverifiableScanState(entry.lastLabel) && Array.isArray(entry.ids)
-        ? entry.ids.includes(modelId) && (entry.absenceCounts[modelId] ?? 0) === 0
-        : null;
-      return { provider, modelId, inProviderCatalog };
+      const entryPresence = resolveCatalogPresence(entry, modelId);
+      const inProviderCatalog =
+        entry &&
+        [200, 304].includes(entry.lastStatus) &&
+        !entryPresence.scanFailed &&
+        !isUnverifiableScanState(entry.lastLabel) &&
+        Array.isArray(entry.ids)
+          ? entryPresence.l1Exists
+          : null;
+      const removalPath = reason.startsWith('OFFICIAL_') ? 'official-notice' : 'absence-only';
+      const qualifyingScanCount = entry?.absenceCounts?.[modelId] ?? 0;
+
+      if (removalPath === 'official-notice') {
+        const ev = findEvidenceForModel(provider, modelId);
+        const verifyRec = verifyRecordsByStep.get(`${provider}/${modelId}`);
+        const isLedgerOfficial = reason.startsWith('OFFICIAL_DEPRECATION') && Boolean(ev.official);
+        const officialDomainVerified = isLedgerOfficial
+          ? Boolean(ev.official!.sourceTier === 'official' && ev.official!.domainVerified)
+          : isOfficialUrlForProvider(provider, verifyRec?.l3.url);
+        const officialPublishedAt = isLedgerOfficial ? ev.official!.publishedAt : null;
+        const officialShutdownDate = isLedgerOfficial
+          ? (ev.official!.shutdownDate ?? null)
+          : (verifyRec?.l3.noticeDate ?? null);
+        const syntheticNotice = isLedgerOfficial
+          ? isSyntheticNotice(ev.official!)
+          : false;
+        const firstObservedAbsentAt =
+          entry?.firstAbsentAt?.[modelId] ?? officialPublishedAt ?? appliedIso;
+        const removalSettleMs =
+          firstObservedAbsentAt && Number.isFinite(Date.parse(firstObservedAbsentAt))
+            ? Date.parse(appliedIso) - Date.parse(firstObservedAbsentAt)
+            : null;
+        return {
+          provider,
+          modelId,
+          inProviderCatalog,
+          removalPath,
+          firstObservedAbsentAt,
+          removedAt: appliedIso,
+          removalSettleMs,
+          qualifyingScanCount,
+          officialDomainVerified,
+          officialPublishedAt,
+          officialShutdownDate,
+          syntheticNotice,
+        };
+      }
+
+      const firstObservedAbsentAt = entry?.firstAbsentAt?.[modelId] ?? null;
+      const removalSettleMs =
+        firstObservedAbsentAt && Number.isFinite(Date.parse(firstObservedAbsentAt))
+          ? Date.parse(appliedIso) - Date.parse(firstObservedAbsentAt)
+          : null;
+      return {
+        provider,
+        modelId,
+        inProviderCatalog,
+        removalPath,
+        firstObservedAbsentAt,
+        removedAt: appliedIso,
+        removalSettleMs,
+        qualifyingScanCount,
+      };
     };
 
     // C45-WP4 §3.1: Controlled auto-safe execution phase (strictly gated per target)
-    if (effectiveMode === 'auto-safe') {
+    if (effectiveMode === 'auto-safe' && !detectionHistoryCapExceeded) {
       const consent = readStandingConsent(sDir, nowMs);
       if (consent.valid && consent.activeTargets.length > 0) {
         let autoSafeCircuitTripped = false;
@@ -2253,15 +3043,18 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
         const recordAutoSafeRollbackAndTripFreeze = (
           targetScope: string,
           idSuffix: string,
-          rawDetail: unknown
+          rawDetail: unknown,
+          rolledBack: boolean
         ): void => {
           const cleanDetail = sanitizeRollbackDetail(rawDetail);
+          const action = rolledBack ? 'Rolled back' : 'Rollback unconfirmed for';
+          const title = `[AUTO-ROLLBACK] ${action} ${targetScope} (planHash=${planHash})`;
           newInboxCandidates.push({
             id: `auto-rollback-${idSuffix}-${planHash}`,
-            title: `[AUTO-ROLLBACK] Rolled back ${targetScope} (planHash=${planHash})`,
+            title,
             type: 'warning',
             timestamp: nowIso,
-            body: `Auto-safe update on ${targetScope} rolled back cleanly and tripped emergency freeze (${cleanDetail}).`,
+            body: `Auto-safe update on ${targetScope} tripped emergency freeze (${cleanDetail}).`,
             label: 'AUTO-ROLLBACK',
             proposed_by: { kind: 'system', source: 'tick' },
           });
@@ -2269,7 +3062,7 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
             kind: 'auto_rollback',
             providerOrRouter: targetScope,
             code: 'AUTO_ROLLBACK',
-            message: `[AUTO-ROLLBACK] Rolled back ${targetScope} (planHash=${planHash}): ${cleanDetail}`,
+            message: `${title}: ${cleanDetail}`,
           });
           activateFreeze(sDir, 'auto-rollback-circuit-breaker', nowMs);
           autoSafeCircuitTripped = true;
@@ -2280,6 +3073,51 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
             .filter((entry) => entry.level === 'auto-safe')
             .map((entry) => entry.target)
         );
+        const pendingRemovals = [...routerActions, ...harnessActions].filter(
+          (action) => action.action === 'REMOVE_MODEL'
+        );
+        const removalProofs = new Map<
+          TickRouterPlanAction | TickHarnessPlanAction,
+          RemovedModelReceiptEvidence
+        >();
+        const hasPendingRemovals = pendingRemovals.length > 0 && autoSafeTargets.size > 0;
+        // Reuse the validated write-boundary timestamp when signing the receipt.
+        const writeStartedAt = new Date(hasPendingRemovals ? readPhaseClock() : nowMs);
+        const writeStartedMs = writeStartedAt.getTime();
+        const writeStartedIso = Number.isFinite(writeStartedMs) ? writeStartedAt.toISOString() : nowIso;
+        if (hasPendingRemovals) {
+          if (!Number.isFinite(writeStartedMs) ||
+              writeStartedMs < Math.max(nowMs, Date.parse(planCreatedAtFinalIso))) {
+            autoSafeCircuitTripped = true;
+          } else {
+            for (const action of pendingRemovals) {
+              const provider = action.targetType === 'router' ? action.provider : action.providerId;
+              const proof = removalEvidence(provider, action.modelId, action.reason, writeStartedIso);
+              const scanCount = proof.qualifyingScanCount;
+              if (deriveRemovalSettlementMs(proof, writeStartedIso, { allowSyntheticFixture: allowSyntheticNoticeFixture }) === null ||
+                  scanCount === undefined || !Number.isSafeInteger(scanCount) || scanCount < 0) {
+                autoSafeCircuitTripped = true;
+                break;
+              }
+              removalProofs.set(action, {
+                ...proof,
+                ...(action.evidenceId ? { detectionEvidenceId: action.evidenceId } : {}),
+                ...(action.episodeId ? { detectionEpisodeId: action.episodeId } : {}),
+              });
+            }
+          }
+          if (autoSafeCircuitTripped) {
+            newInboxCandidates.push({
+              id: `auto-safe-removal-evidence-invalid-${planHash}`,
+              title: '[AUTO-SAFE-BLOCKED] REMOVAL_EVIDENCE_INVALID',
+              type: 'warning',
+              timestamp: nowIso,
+              body: 'Removal settlement evidence or the pre-write clock failed validation. No target changed.',
+              label: 'INVARIANT-BLOCKED',
+              proposed_by: { kind: 'system', source: 'tick' },
+            });
+          }
+        }
         const configDir = path.dirname(path.resolve(resolveConfigFilePath(options.configPath)));
 
         // 1. Router combo auto-safe execution
@@ -2465,6 +3303,10 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
             continue;
           }
 
+          const removedModels = group.actions
+            .filter((action) => action.action === 'REMOVE_MODEL' &&
+              liveCombo.models.includes(action.fullStep) && !nextModels.includes(action.fullStep))
+            .map((action) => removalProofs.get(action)!);
           const snapshot = await adapter.createSnapshot();
           snapshot.metadata = {
             ...(snapshot.metadata ?? {}),
@@ -2479,6 +3321,7 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
 
           // I4 post-apply idempotency check
           let i4Verified = Boolean(applyRes.success && applyRes.readBackVerified);
+          let rolledBack = applyRes.rollbackExecuted === true;
           if (i4Verified) {
             try {
               const afterCombos = await adapter.readCombos();
@@ -2508,34 +3351,29 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
                 rePlan.modifications.length > 0 ||
                 rePlan.deletions.length > 0
               ) {
-                await adapter.rollback(snapshot);
                 i4Verified = false;
               }
             } catch {
-              await adapter.rollback(snapshot);
               i4Verified = false;
             }
+            if (!i4Verified) rolledBack = await adapter.rollback(snapshot).catch(() => false);
           }
 
           const finalSuccess = Boolean(applyRes.success && i4Verified);
           appendApplyReceipt(sDir, {
             target: matchedScope,
             planHash,
-            appliedAt: nowIso,
+            appliedAt: writeStartedIso,
             appliedAtLevel: 'auto-safe',
             authorizedVia: 'standing-consent',
             success: finalSuccess,
             readBackVerified: i4Verified,
             readBackLevel: applyRes.readBackLevel ?? 'db-only',
-            rolledBack: Boolean(applyRes.rollbackExecuted || !finalSuccess),
+            rolledBack,
             snapshotOrBackupRef: snapshot.id,
-            removedModels: finalSuccess && !applyRes.rollbackExecuted
-              ? group.actions
-                .filter((action) => action.action === 'REMOVE_MODEL' &&
-                  liveCombo.models.includes(action.fullStep) && !nextModels.includes(action.fullStep))
-                .map((action) => removalEvidence(action.provider, action.modelId))
-              : [],
-          });
+            removedModels: finalSuccess && !rolledBack ? removedModels : [],
+          }, { allowSyntheticFixture: allowSyntheticNoticeFixture });
+          if (finalSuccess && !rolledBack) markRemovalCompleted(removedModels, writeStartedIso);
 
           if (finalSuccess) {
             newInboxCandidates.push({
@@ -2557,7 +3395,8 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
             recordAutoSafeRollbackAndTripFreeze(
               matchedScope,
               `router-${group.comboName}`,
-              applyRes.error ?? 'router post-write read-back or I4 idempotency check failed'
+              applyRes.error ?? 'router post-write read-back or I4 idempotency check failed',
+              rolledBack
             );
             break;
           }
@@ -2600,21 +3439,32 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
             };
           }
 
+          let rolledBack = false;
           try {
             const explicitTickHome =
               options.homeDir ?? (options.env ?? process.env)['ROUTERSYNC_HOME'];
             const homeDir = resolveEffectiveHarnessHomeDir(cfgFile, explicitTickHome);
             const harnessPlan = await writeAdapter.plan({ configPath: cfgFile, homeDir, catalog: harnessCatalog });
+            const removedModels = harnessPlan.removals.map((removal) => {
+              const action = hActions.find((candidate) =>
+                candidate.action === 'REMOVE_MODEL' &&
+                candidate.providerId === removal.provider && candidate.modelId === removal.model
+              );
+              const proof = action ? removalProofs.get(action) : undefined;
+              if (!proof) throw new Error('REMOVAL_EVIDENCE_INVALID: Harness plan removal has no validated evidence.');
+              return proof;
+            });
             const hRes = await writeAdapter.apply({
               configPath: cfgFile,
               homeDir,
               catalog: harnessCatalog,
               expectedPlanHash: harnessPlan.planHash,
             });
+            rolledBack = hRes.rolledBack;
             appendApplyReceipt(sDir, {
               target: targetScope,
               planHash,
-              appliedAt: nowIso,
+              appliedAt: writeStartedIso,
               appliedAtLevel: 'auto-safe',
               authorizedVia: 'standing-consent',
               success: hRes.applied && !hRes.rolledBack,
@@ -2624,10 +3474,9 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
               snapshotOrBackupRef: hRes.backupPath,
               preDigest: hRes.preSha256,
               postDigest: hRes.postSha256,
-              removedModels: hRes.applied && hRes.readBackVerified && !hRes.rolledBack
-                ? harnessPlan.removals.map((removal) => removalEvidence(removal.provider, removal.model))
-                : [],
-            });
+              removedModels: hRes.applied && hRes.readBackVerified && !rolledBack ? removedModels : [],
+            }, { allowSyntheticFixture: allowSyntheticNoticeFixture });
+            if (hRes.applied && hRes.readBackVerified && !rolledBack) markRemovalCompleted(removedModels, writeStartedIso);
             if (hRes.applied && !hRes.rolledBack) {
               newInboxCandidates.push({
                 id: `auto-safe-applied-harness-${harnessId}-${planHash}`,
@@ -2648,7 +3497,8 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
               recordAutoSafeRollbackAndTripFreeze(
                 targetScope,
                 `harness-${harnessId}`,
-                'harness post-write byte/semantic verification failed'
+                'harness post-write byte/semantic verification failed',
+                rolledBack
               );
               break;
             }
@@ -2656,25 +3506,26 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
             appendApplyReceipt(sDir, {
               target: targetScope,
               planHash,
-              appliedAt: nowIso,
+              appliedAt: writeStartedIso,
               appliedAtLevel: 'auto-safe',
               authorizedVia: 'standing-consent',
               success: false,
               readBackVerified: false,
               readBackLevel: 'file-byte-verified',
-              rolledBack: true,
+              rolledBack,
               snapshotOrBackupRef: `${cfgFile}.routersync.bak`,
             });
-            recordAutoSafeRollbackAndTripFreeze(targetScope, `harness-${harnessId}`, err);
+            recordAutoSafeRollbackAndTripFreeze(targetScope, `harness-${harnessId}`, err, rolledBack);
             break;
           }
         }
       }
     }
 
+    if (completionChanged) atomicWriteFileSync(catalogPath, JSON.stringify(catalogState, null, 2));
     let inboxAdded = 0;
     const newlyAddedInboxItems: TickInboxItem[] = [];
-    if (effectiveMode === 'propose' || effectiveMode === 'auto-safe') {
+    if (effectiveMode === 'propose' || effectiveMode === 'auto-safe' || detectionHistoryCapExceeded) {
       const existingInbox = loadInboxItems(inboxPath);
       const existingIds = new Set(existingInbox.map((i) => i.id));
       for (const item of newInboxCandidates) {
@@ -2749,6 +3600,7 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
 
     const summary: TickRunSummary = {
       timestamp: nowIso,
+      detectionHistoryError: catalogState.detectionHistoryError,
       mode: requestedMode,
       effectiveMode,
       requests: totalRequests,

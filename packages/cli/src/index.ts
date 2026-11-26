@@ -354,6 +354,7 @@ export function createCliProgram(): Command {
     .option('--serving-reflection-ms <ms>', 'Optional observed /v1/models reflection latency in ms (reported separately from detectionLatencyMs)')
     .option('--false-removals <n>', 'Owner-observed false removals (required without complete catalog evidence)')
     .option('--unplanned-interventions <n>', 'Owner-observed unplanned interventions (required for a passing report)')
+    .option('--pilot-started-at <iso-8601>', 'Restrict evidence to this pilot start, within the last 30 days')
     .option('--accept-vacuous-detection', 'Explicitly waive an empty detection sample, with a report warning')
     .option('--out <file>', 'Write formatted report to external file (must be outside <stateDir>)')
     .option('--json', 'Emit deterministic machine-readable PilotReportResult JSON')
@@ -367,6 +368,7 @@ export function createCliProgram(): Command {
         falseRemovals?: string;
         unplannedInterventions?: string;
         acceptVacuousDetection?: boolean;
+        pilotStartedAt?: string;
         out?: string;
         json?: boolean;
       }) => {

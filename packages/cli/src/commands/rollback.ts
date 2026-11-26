@@ -27,9 +27,11 @@ import {
   listSnapshots,
   loadSnapshot,
   markApplyReceiptRolledBack,
+  readApplyHistory,
   resolveControlStateDir,
   type ApplyHistoryReceipt,
 } from '@routersync/core';
+import { reconcileRolledBackRemovalEpisodes } from './apps.js';
 
 export interface RollbackCommandOptions {
   configPath?: string | undefined;
@@ -236,6 +238,12 @@ export async function runRollbackCommand(options: RollbackCommandOptions): Promi
     }
     const verifyRollback = (receipt: ApplyHistoryReceipt) => rowChecks.get(receipt.target);
     const sDir = resolveControlStateDir(options.stateDir);
+    const beforeHistory = readApplyHistory(sDir);
+    const activeBeforeIds = new Set(
+      beforeHistory.valid
+        ? beforeHistory.receipts.filter((r) => !r.rolledBack).map((r) => r.receiptId)
+        : []
+    );
     markApplyReceiptRolledBack(sDir, {
       targetPrefix: `router:${router.id}/`,
       snapshotOrBackupRef: snapshot.id,
@@ -249,6 +257,27 @@ export async function runRollbackCommand(options: RollbackCommandOptions): Promi
         appliedAtOrAfter: snapshot.timestamp,
         verifyRollback,
       });
+    }
+    const allVerified =
+      rowChecks.size > 0 &&
+      [...rowChecks.values()].every(({ beforeDigest, afterDigest }) => beforeDigest === afterDigest);
+    if (allVerified) {
+      const afterHistory = readApplyHistory(sDir);
+      if (afterHistory.valid) {
+        const newlyRolledBack = afterHistory.receipts.filter(
+          (r) =>
+            activeBeforeIds.has(r.receiptId) &&
+            r.rolledBack &&
+            r.rollbackVerified === true &&
+            (r.removedModels?.length ?? 0) > 0
+        );
+        if (newlyRolledBack.length > 0) {
+          reconcileRolledBackRemovalEpisodes(
+            sDir,
+            newlyRolledBack.map((r) => ({ target: r.target, proofs: r.removedModels ?? [] }))
+          );
+        }
+      }
     }
   }
   const rollbackVerified = rowChecks.size > 0 &&

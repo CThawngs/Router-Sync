@@ -77,6 +77,7 @@ export interface ResearchEvidenceRecord {
   submittedVia: 'mcp' | 'cli';
   untrusted: true;
   consumedAt: string | null;
+  synthetic?: boolean | undefined;
 }
 
 export const ResearchEvidenceRecordSchema = z.object({
@@ -101,6 +102,7 @@ export const ResearchEvidenceRecordSchema = z.object({
   submittedVia: z.enum(['mcp', 'cli']),
   untrusted: z.literal(true),
   consumedAt: z.string().nullable(),
+  synthetic: z.boolean().optional(),
 });
 
 export interface ResearchQueueItem {
@@ -160,6 +162,7 @@ export interface AppendResearchEvidenceInput {
   accessedAt?: string | undefined;
   submittedAt?: string | undefined;
   submittedVia: 'mcp' | 'cli';
+  synthetic?: boolean | undefined;
 }
 
 const ISO_OR_DATE_RE = /^\d{4}-\d{2}-\d{2}(?:[T\s]\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:?\d{2})?)?$/;
@@ -310,6 +313,15 @@ export function saveResearchEvidence(stateDir: string, records: ResearchEvidence
   atomicWriteFileSync(filePath, JSON.stringify(capped, null, 2));
 }
 
+/** Stable identity of an evidence claim, independent of submission metadata. */
+export function researchEvidenceIdentity(record: ResearchEvidenceRecord): string {
+  return crypto.createHash('sha256').update(JSON.stringify([
+    record.provider, record.modelId, record.url, record.sourceTier, record.domainVerified,
+    record.verdict, record.publishedAt, record.shutdownDate, record.replacementModelId,
+    record.pricingTier,
+  ])).digest('hex');
+}
+
 export function appendResearchEvidence(
   stateDir: string,
   input: AppendResearchEvidenceInput
@@ -441,18 +453,18 @@ export function appendResearchEvidence(
     submittedVia: input.submittedVia,
     untrusted: true,
     consumedAt: null,
+    ...(input.synthetic === true ? { synthetic: true } : {}),
   };
 
   const existing = loadResearchEvidence(stateDir);
+  const identity = researchEvidenceIdentity(nextRecord);
+  const matching = existing.filter((entry) => researchEvidenceIdentity(entry) === identity);
+  if (nextRecord.synthetic === true || matching.some((entry) => entry.synthetic === true)) {
+    nextRecord.synthetic = true;
+    for (const entry of matching) entry.synthetic = true;
+  }
   const dupIdx = existing.findIndex(
-    (entry) =>
-      entry.consumedAt === null &&
-      entry.provider === nextRecord.provider &&
-      entry.modelId === nextRecord.modelId &&
-      entry.url === nextRecord.url &&
-      entry.verdict === nextRecord.verdict &&
-      entry.shutdownDate === nextRecord.shutdownDate &&
-      entry.pricingTier === nextRecord.pricingTier
+    (entry) => entry.consumedAt === null && matching.includes(entry)
   );
 
   if (dupIdx >= 0) {

@@ -102,6 +102,28 @@ export type AuthorizeTargetWriteResult =
       message: string;
     };
 
+export type ModelRemovalPath = 'absence-only' | 'official-notice';
+
+export const COMPLETED_DETECTION_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
+export const MAX_DETECTION_RECORDS = 500;
+
+export interface RemovedModelReceiptEvidence {
+  provider: string;
+  modelId: string;
+  inProviderCatalog: boolean | null;
+  removalPath?: ModelRemovalPath | undefined;
+  firstObservedAbsentAt?: string | null | undefined;
+  removedAt?: string | undefined;
+  removalSettleMs?: number | null | undefined;
+  qualifyingScanCount?: number | undefined;
+  officialDomainVerified?: boolean | undefined;
+  officialPublishedAt?: string | null | undefined;
+  officialShutdownDate?: string | null | undefined;
+  syntheticNotice?: boolean | undefined;
+  detectionEvidenceId?: string | undefined;
+  detectionEpisodeId?: string | undefined;
+}
+
 export interface ApplyHistoryReceipt {
   receiptId: string; // 32-char hex
   target: string; // "router:<routerId>/<comboName>" | "harness:<harnessId>"
@@ -119,7 +141,7 @@ export interface ApplyHistoryReceipt {
   rollbackVerified?: boolean | undefined;
   rollbackBeforeDigest?: string | undefined;
   rollbackAfterDigest?: string | undefined;
-  removedModels?: Array<{ provider: string; modelId: string; inProviderCatalog: boolean | null }> | undefined;
+  removedModels?: RemovedModelReceiptEvidence[] | undefined;
 }
 
 export interface ApplyHistoryFile {
