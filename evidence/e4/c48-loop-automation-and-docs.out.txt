@@ -1,0 +1,13 @@
+
+> routersync@0.1.0 test:file <private-provider-2>
+> vitest run "packages/cli/test/wp3-research-loop.test.ts" "packages/cli/test/wp4-controlled-automation.test.ts" "test/docs/c46-f3-doc-cli-sync.test.ts" "test/docs/agent-docs.test.ts"
+
+
+ RUN  v4.1.12 <private-provider-1>
+
+
+ Test Files  4 passed (4)
+      Tests  34 passed (34)
+   Start at  04:50:11
+   Duration  56.18s (transform 11.81s, setup 6.74s, import 10.70s, tests 48.39s, environment 1ms)
+

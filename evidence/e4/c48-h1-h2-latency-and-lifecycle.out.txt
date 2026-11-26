@@ -1,0 +1,3927 @@
+
+> routersync@0.1.0 test:file <private-provider-2>
+> vitest run "packages/cli/test/c48-h1-h2-latency-settle.test.ts"
+
+
+ RUN  v4.1.12 <private-provider-1>
+
+{
+  "schemaVersion": 1,
+  "checkedAt": "2026-11-26T08:00:01.000Z",
+  "status": "READY_FOR_OWNER_LIVE_PILOT",
+  "vietnameseGateStatus": "sẵn sàng chạy thật",
+  "pilotTargets": {
+    "routerTarget": "router:nine/rs-pilot",
+    "harnessTarget": "harness:hermes"
+  },
+  "pilotPhase": "NEEDS_INITIAL_PROPOSE_CONSENT",
+  "checks": [
+    {
+      "id": "freeze_clear",
+      "passed": true,
+      "detail": "Emergency freeze circuit breaker is clear (frozen=false)."
+    },
+    {
+      "id": "config_and_doctor_health",
+      "passed": true,
+      "detail": "Config schema valid, 0 circular dependencies, status.json fresh (0m <= 30m threshold)."
+    },
+    {
+      "id": "pilot_targets_readable",
+      "passed": true,
+      "detail": "Pilot targets readable: router:nine/rs-pilot (nine-c48-pilot.sqlite) + harness:hermes (config.yaml)."
+    },
+    {
+      "id": "tmpdir_backup_rollback_rehearsal",
+      "passed": true,
+      "detail": "Isolated backup + parser + byte-exact SHA-256 rollback rehearsal passed in os.tmpdir()/rs-livecheck-5eGiVP (0 live mutations)."
+    },
+    {
+      "id": "consent_and_promotion_state",
+      "passed": true,
+      "detail": "Consent & apply-history HMAC integrity verified (pilotPhase=NEEDS_INITIAL_PROPOSE_CONSENT)."
+    },
+    {
+      "id": "cost_and_release_hygiene",
+      "passed": true,
+      "detail": "tier0Tokens=0, tier0LlmCalls=0, tier0PaidRequests=0, weeklySessions=0/5 (budgetExceeded=false). 8 publishable + 2 private manifests consistent at version 0.1.0 (prepareV1Release dry-run verified)."
+    },
+    {
+      "id": "live_gate_hint",
+      "passed": true,
+      "detail": "routerDb (nine-c48-pilot.sqlite): trong os.tmpdir() — không cần cờ; harnessConfig (config.yaml): trong os.tmpdir() — không cần cờ."
+    }
+  ],
+  "blockingReasons": [],
+  "ownerNextCommands": [
+    "routersync consent grant --target router:nine/rs-pilot --level propose",
+    "routersync consent grant --target harness:hermes --level propose",
+    "routersync plan"
+  ]
+}
+{
+  "app": "hermes",
+  "directionAMode": "write-adapter",
+  "editable": true,
+  "targetProviders": [
+    "openai"
+  ],
+  "additions": [
+    {
+      "provider": "openai",
+      "model": "gpt-4.1-nano"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4.5"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4o"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4o-mini"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-5-nano"
+    },
+    {
+      "provider": "openai",
+      "model": "o3-mini"
+    },
+    {
+      "provider": "openai",
+      "model": "o4-mini"
+    }
+  ],
+  "removals": [],
+  "defaultSlotWarnings": [],
+  "configPath": "<HOME>\\.hermes\\config.yaml",
+  "guidance": [
+    "Use /reload-mcp in active chat for MCP changes; restart gateway or start a new CLI turn for config.yaml model/provider changes."
+  ],
+  "planHash": "c5cfcd9bbdb3eef19ad1bc22b04ffc086fe6d882e13104e331331b510a9ec294",
+  "reloadRequired": true,
+  "runningProcesses": []
+}
+{
+  "app": "hermes",
+  "configPath": "C:\\Users\\<USER>\\AppData\\Local\\Temp\\rs-c48-h1-episode-u3FffD\\home\\.hermes\\config.yaml",
+  "backupPath": "C:\\Users\\<USER>\\AppData\\Local\\Temp\\rs-c48-h1-episode-u3FffD\\home\\.hermes\\config.yaml.pre-pilot.bak",
+  "applied": true,
+  "rolledBack": false,
+  "readBackVerified": true,
+  "reloadRequired": true,
+  "runningProcesses": [],
+  "planHash": "c5cfcd9bbdb3eef19ad1bc22b04ffc086fe6d882e13104e331331b510a9ec294",
+  "preSha256": "99454bc655d2ca63adbf711b5485a1335e2fc52ad068780f5b430d136fa2c41c",
+  "postSha256": "271793812d991cddab05138251895810c9b1588337de712acb5cbec476626443",
+  "message": "Đã cập nhật danh sách model của Hermes Agent (Nous Research) an toàn (đã sao lưu & kiểm chứng đọc lại)."
+}
+{
+  "app": "hermes",
+  "configPath": "C:\\Users\\<USER>\\AppData\\Local\\Temp\\rs-c48-h1-episode-u3FffD\\home\\.hermes\\config.yaml",
+  "backupPath": "C:\\Users\\<USER>\\AppData\\Local\\Temp\\rs-c48-h1-episode-u3FffD\\home\\.hermes\\config.yaml.pre-pilot.bak",
+  "restored": true,
+  "byteIdenticalToPreApply": true,
+  "postSha256": "99454bc655d2ca63adbf711b5485a1335e2fc52ad068780f5b430d136fa2c41c"
+}
+{
+  "schemaVersion": 1,
+  "checkedAt": "2026-11-26T08:00:01.000Z",
+  "status": "READY_FOR_OWNER_LIVE_PILOT",
+  "vietnameseGateStatus": "sẵn sàng chạy thật",
+  "pilotTargets": {
+    "routerTarget": "router:nine/rs-pilot",
+    "harnessTarget": "harness:hermes"
+  },
+  "pilotPhase": "NEEDS_INITIAL_PROPOSE_CONSENT",
+  "checks": [
+    {
+      "id": "freeze_clear",
+      "passed": true,
+      "detail": "Emergency freeze circuit breaker is clear (frozen=false)."
+    },
+    {
+      "id": "config_and_doctor_health",
+      "passed": true,
+      "detail": "Config schema valid, 0 circular dependencies, status.json fresh (0m <= 30m threshold)."
+    },
+    {
+      "id": "pilot_targets_readable",
+      "passed": true,
+      "detail": "Pilot targets readable: router:nine/rs-pilot (nine-c48-pilot.sqlite) + harness:hermes (config.yaml)."
+    },
+    {
+      "id": "tmpdir_backup_rollback_rehearsal",
+      "passed": true,
+      "detail": "Isolated backup + parser + byte-exact SHA-256 rollback rehearsal passed in os.tmpdir()/rs-livecheck-M5ZxW7 (0 live mutations)."
+    },
+    {
+      "id": "consent_and_promotion_state",
+      "passed": true,
+      "detail": "Consent & apply-history HMAC integrity verified (pilotPhase=NEEDS_INITIAL_PROPOSE_CONSENT)."
+    },
+    {
+      "id": "cost_and_release_hygiene",
+      "passed": true,
+      "detail": "tier0Tokens=0, tier0LlmCalls=0, tier0PaidRequests=0, weeklySessions=0/5 (budgetExceeded=false). 8 publishable + 2 private manifests consistent at version 0.1.0 (prepareV1Release dry-run verified)."
+    },
+    {
+      "id": "live_gate_hint",
+      "passed": true,
+      "detail": "routerDb (nine-c48-pilot.sqlite): trong os.tmpdir() — không cần cờ; harnessConfig (config.yaml): trong os.tmpdir() — không cần cờ."
+    }
+  ],
+  "blockingReasons": [],
+  "ownerNextCommands": [
+    "routersync consent grant --target router:nine/rs-pilot --level propose",
+    "routersync consent grant --target harness:hermes --level propose",
+    "routersync plan"
+  ]
+}
+{
+  "app": "hermes",
+  "directionAMode": "write-adapter",
+  "editable": true,
+  "targetProviders": [
+    "openai"
+  ],
+  "additions": [
+    {
+      "provider": "openai",
+      "model": "gpt-4.1-nano"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4.5"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4o"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4o-legacy"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4o-mini"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-5-nano"
+    },
+    {
+      "provider": "openai",
+      "model": "o3-mini"
+    },
+    {
+      "provider": "openai",
+      "model": "o4-mini"
+    }
+  ],
+  "removals": [],
+  "defaultSlotWarnings": [],
+  "configPath": "<HOME>\\.hermes\\config.yaml",
+  "guidance": [
+    "Use /reload-mcp in active chat for MCP changes; restart gateway or start a new CLI turn for config.yaml model/provider changes."
+  ],
+  "planHash": "1aeb98212c17f108445f111499687298f31796def6578c24ca928ac1514c39ae",
+  "reloadRequired": true,
+  "runningProcesses": []
+}
+{
+  "app": "hermes",
+  "configPath": "C:\\Users\\<USER>\\AppData\\Local\\Temp\\rs-c48-qa-d-NBYHdt\\home\\.hermes\\config.yaml",
+  "backupPath": "C:\\Users\\<USER>\\AppData\\Local\\Temp\\rs-c48-qa-d-NBYHdt\\home\\.hermes\\config.yaml.pre-pilot.bak",
+  "applied": true,
+  "rolledBack": false,
+  "readBackVerified": true,
+  "reloadRequired": true,
+  "runningProcesses": [],
+  "planHash": "1aeb98212c17f108445f111499687298f31796def6578c24ca928ac1514c39ae",
+  "preSha256": "99454bc655d2ca63adbf711b5485a1335e2fc52ad068780f5b430d136fa2c41c",
+  "postSha256": "9df7955cd1cf2b4a2fb36bf5445518c3f87a28789140fc719ebcf519036e2b39",
+  "message": "Đã cập nhật danh sách model của Hermes Agent (Nous Research) an toàn (đã sao lưu & kiểm chứng đọc lại)."
+}
+{
+  "schemaVersion": 1,
+  "checkedAt": "2026-11-26T08:00:01.000Z",
+  "status": "READY_FOR_OWNER_LIVE_PILOT",
+  "vietnameseGateStatus": "sẵn sàng chạy thật",
+  "pilotTargets": {
+    "routerTarget": "router:nine/rs-pilot",
+    "harnessTarget": "harness:hermes"
+  },
+  "pilotPhase": "NEEDS_INITIAL_PROPOSE_CONSENT",
+  "checks": [
+    {
+      "id": "freeze_clear",
+      "passed": true,
+      "detail": "Emergency freeze circuit breaker is clear (frozen=false)."
+    },
+    {
+      "id": "config_and_doctor_health",
+      "passed": true,
+      "detail": "Config schema valid, 0 circular dependencies, status.json fresh (0m <= 30m threshold)."
+    },
+    {
+      "id": "pilot_targets_readable",
+      "passed": true,
+      "detail": "Pilot targets readable: router:nine/rs-pilot (nine-c48-pilot.sqlite) + harness:hermes (config.yaml)."
+    },
+    {
+      "id": "tmpdir_backup_rollback_rehearsal",
+      "passed": true,
+      "detail": "Isolated backup + parser + byte-exact SHA-256 rollback rehearsal passed in os.tmpdir()/rs-livecheck-JpVV5E (0 live mutations)."
+    },
+    {
+      "id": "consent_and_promotion_state",
+      "passed": true,
+      "detail": "Consent & apply-history HMAC integrity verified (pilotPhase=NEEDS_INITIAL_PROPOSE_CONSENT)."
+    },
+    {
+      "id": "cost_and_release_hygiene",
+      "passed": true,
+      "detail": "tier0Tokens=0, tier0LlmCalls=0, tier0PaidRequests=0, weeklySessions=0/5 (budgetExceeded=false). 8 publishable + 2 private manifests consistent at version 0.1.0 (prepareV1Release dry-run verified)."
+    },
+    {
+      "id": "live_gate_hint",
+      "passed": true,
+      "detail": "routerDb (nine-c48-pilot.sqlite): trong os.tmpdir() — không cần cờ; harnessConfig (config.yaml): trong os.tmpdir() — không cần cờ."
+    }
+  ],
+  "blockingReasons": [],
+  "ownerNextCommands": [
+    "routersync consent grant --target router:nine/rs-pilot --level propose",
+    "routersync consent grant --target harness:hermes --level propose",
+    "routersync plan"
+  ]
+}
+{
+  "app": "hermes",
+  "directionAMode": "write-adapter",
+  "editable": true,
+  "targetProviders": [
+    "openai"
+  ],
+  "additions": [
+    {
+      "provider": "openai",
+      "model": "gpt-4.1-nano"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4.5"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4o"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4o-legacy"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4o-mini"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-5-nano"
+    },
+    {
+      "provider": "openai",
+      "model": "o3-mini"
+    },
+    {
+      "provider": "openai",
+      "model": "o4-mini"
+    }
+  ],
+  "removals": [],
+  "defaultSlotWarnings": [],
+  "configPath": "<HOME>\\.hermes\\config.yaml",
+  "guidance": [
+    "Use /reload-mcp in active chat for MCP changes; restart gateway or start a new CLI turn for config.yaml model/provider changes."
+  ],
+  "planHash": "1aeb98212c17f108445f111499687298f31796def6578c24ca928ac1514c39ae",
+  "reloadRequired": true,
+  "runningProcesses": []
+}
+{
+  "app": "hermes",
+  "configPath": "C:\\Users\\<USER>\\AppData\\Local\\Temp\\rs-c48-qa-d-harness-elzyg8\\home\\.hermes\\config.yaml",
+  "backupPath": "C:\\Users\\<USER>\\AppData\\Local\\Temp\\rs-c48-qa-d-harness-elzyg8\\home\\.hermes\\config.yaml.pre-pilot.bak",
+  "applied": true,
+  "rolledBack": false,
+  "readBackVerified": true,
+  "reloadRequired": true,
+  "runningProcesses": [],
+  "planHash": "1aeb98212c17f108445f111499687298f31796def6578c24ca928ac1514c39ae",
+  "preSha256": "99454bc655d2ca63adbf711b5485a1335e2fc52ad068780f5b430d136fa2c41c",
+  "postSha256": "9df7955cd1cf2b4a2fb36bf5445518c3f87a28789140fc719ebcf519036e2b39",
+  "message": "Đã cập nhật danh sách model của Hermes Agent (Nous Research) an toàn (đã sao lưu & kiểm chứng đọc lại)."
+}
+{
+  "schemaVersion": 1,
+  "checkedAt": "2026-11-26T08:00:01.000Z",
+  "status": "READY_FOR_OWNER_LIVE_PILOT",
+  "vietnameseGateStatus": "sẵn sàng chạy thật",
+  "pilotTargets": {
+    "routerTarget": "router:nine/rs-pilot",
+    "harnessTarget": "harness:hermes"
+  },
+  "pilotPhase": "NEEDS_INITIAL_PROPOSE_CONSENT",
+  "checks": [
+    {
+      "id": "freeze_clear",
+      "passed": true,
+      "detail": "Emergency freeze circuit breaker is clear (frozen=false)."
+    },
+    {
+      "id": "config_and_doctor_health",
+      "passed": true,
+      "detail": "Config schema valid, 0 circular dependencies, status.json fresh (0m <= 30m threshold)."
+    },
+    {
+      "id": "pilot_targets_readable",
+      "passed": true,
+      "detail": "Pilot targets readable: router:nine/rs-pilot (nine-c48-pilot.sqlite) + harness:hermes (config.yaml)."
+    },
+    {
+      "id": "tmpdir_backup_rollback_rehearsal",
+      "passed": true,
+      "detail": "Isolated backup + parser + byte-exact SHA-256 rollback rehearsal passed in os.tmpdir()/rs-livecheck-ZpBlYs (0 live mutations)."
+    },
+    {
+      "id": "consent_and_promotion_state",
+      "passed": true,
+      "detail": "Consent & apply-history HMAC integrity verified (pilotPhase=NEEDS_INITIAL_PROPOSE_CONSENT)."
+    },
+    {
+      "id": "cost_and_release_hygiene",
+      "passed": true,
+      "detail": "tier0Tokens=0, tier0LlmCalls=0, tier0PaidRequests=0, weeklySessions=0/5 (budgetExceeded=false). 8 publishable + 2 private manifests consistent at version 0.1.0 (prepareV1Release dry-run verified)."
+    },
+    {
+      "id": "live_gate_hint",
+      "passed": true,
+      "detail": "routerDb (nine-c48-pilot.sqlite): trong os.tmpdir() — không cần cờ; harnessConfig (config.yaml): trong os.tmpdir() — không cần cờ."
+    }
+  ],
+  "blockingReasons": [],
+  "ownerNextCommands": [
+    "routersync consent grant --target router:nine/rs-pilot --level propose",
+    "routersync consent grant --target harness:hermes --level propose",
+    "routersync plan"
+  ]
+}
+{
+  "app": "hermes",
+  "directionAMode": "write-adapter",
+  "editable": true,
+  "targetProviders": [
+    "openai"
+  ],
+  "additions": [
+    {
+      "provider": "openai",
+      "model": "gpt-4.1-nano"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4.5"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4o"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4o-legacy"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4o-mini"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-5-nano"
+    },
+    {
+      "provider": "openai",
+      "model": "o3-mini"
+    },
+    {
+      "provider": "openai",
+      "model": "o4-mini"
+    }
+  ],
+  "removals": [],
+  "defaultSlotWarnings": [],
+  "configPath": "<HOME>\\.hermes\\config.yaml",
+  "guidance": [
+    "Use /reload-mcp in active chat for MCP changes; restart gateway or start a new CLI turn for config.yaml model/provider changes."
+  ],
+  "planHash": "1aeb98212c17f108445f111499687298f31796def6578c24ca928ac1514c39ae",
+  "reloadRequired": true,
+  "runningProcesses": []
+}
+{
+  "app": "hermes",
+  "configPath": "C:\\Users\\<USER>\\AppData\\Local\\Temp\\rs-c48-qa-d-harness-3AdBPG\\home\\.hermes\\config.yaml",
+  "backupPath": "C:\\Users\\<USER>\\AppData\\Local\\Temp\\rs-c48-qa-d-harness-3AdBPG\\home\\.hermes\\config.yaml.pre-pilot.bak",
+  "applied": true,
+  "rolledBack": false,
+  "readBackVerified": true,
+  "reloadRequired": true,
+  "runningProcesses": [],
+  "planHash": "1aeb98212c17f108445f111499687298f31796def6578c24ca928ac1514c39ae",
+  "preSha256": "99454bc655d2ca63adbf711b5485a1335e2fc52ad068780f5b430d136fa2c41c",
+  "postSha256": "9df7955cd1cf2b4a2fb36bf5445518c3f87a28789140fc719ebcf519036e2b39",
+  "message": "Đã cập nhật danh sách model của Hermes Agent (Nous Research) an toàn (đã sao lưu & kiểm chứng đọc lại)."
+}
+{
+  "schemaVersion": 1,
+  "checkedAt": "2026-11-26T08:00:01.000Z",
+  "status": "READY_FOR_OWNER_LIVE_PILOT",
+  "vietnameseGateStatus": "sẵn sàng chạy thật",
+  "pilotTargets": {
+    "routerTarget": "router:nine/rs-pilot",
+    "harnessTarget": "harness:hermes"
+  },
+  "pilotPhase": "NEEDS_INITIAL_PROPOSE_CONSENT",
+  "checks": [
+    {
+      "id": "freeze_clear",
+      "passed": true,
+      "detail": "Emergency freeze circuit breaker is clear (frozen=false)."
+    },
+    {
+      "id": "config_and_doctor_health",
+      "passed": true,
+      "detail": "Config schema valid, 0 circular dependencies, status.json fresh (0m <= 30m threshold)."
+    },
+    {
+      "id": "pilot_targets_readable",
+      "passed": true,
+      "detail": "Pilot targets readable: router:nine/rs-pilot (nine-c48-pilot.sqlite) + harness:hermes (config.yaml)."
+    },
+    {
+      "id": "tmpdir_backup_rollback_rehearsal",
+      "passed": true,
+      "detail": "Isolated backup + parser + byte-exact SHA-256 rollback rehearsal passed in os.tmpdir()/rs-livecheck-LBmTOM (0 live mutations)."
+    },
+    {
+      "id": "consent_and_promotion_state",
+      "passed": true,
+      "detail": "Consent & apply-history HMAC integrity verified (pilotPhase=NEEDS_INITIAL_PROPOSE_CONSENT)."
+    },
+    {
+      "id": "cost_and_release_hygiene",
+      "passed": true,
+      "detail": "tier0Tokens=0, tier0LlmCalls=0, tier0PaidRequests=0, weeklySessions=0/5 (budgetExceeded=false). 8 publishable + 2 private manifests consistent at version 0.1.0 (prepareV1Release dry-run verified)."
+    },
+    {
+      "id": "live_gate_hint",
+      "passed": true,
+      "detail": "routerDb (nine-c48-pilot.sqlite): trong os.tmpdir() — không cần cờ; harnessConfig (config.yaml): trong os.tmpdir() — không cần cờ."
+    }
+  ],
+  "blockingReasons": [],
+  "ownerNextCommands": [
+    "routersync consent grant --target router:nine/rs-pilot --level propose",
+    "routersync consent grant --target harness:hermes --level propose",
+    "routersync plan"
+  ]
+}
+{
+  "app": "hermes",
+  "directionAMode": "write-adapter",
+  "editable": true,
+  "targetProviders": [
+    "openai"
+  ],
+  "additions": [
+    {
+      "provider": "openai",
+      "model": "gpt-4.1-nano"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4.5"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4o"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4o-legacy"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4o-mini"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-5-nano"
+    },
+    {
+      "provider": "openai",
+      "model": "o3-mini"
+    },
+    {
+      "provider": "openai",
+      "model": "o4-mini"
+    }
+  ],
+  "removals": [],
+  "defaultSlotWarnings": [],
+  "configPath": "<HOME>\\.hermes\\config.yaml",
+  "guidance": [
+    "Use /reload-mcp in active chat for MCP changes; restart gateway or start a new CLI turn for config.yaml model/provider changes."
+  ],
+  "planHash": "1aeb98212c17f108445f111499687298f31796def6578c24ca928ac1514c39ae",
+  "reloadRequired": true,
+  "runningProcesses": []
+}
+{
+  "app": "hermes",
+  "configPath": "C:\\Users\\<USER>\\AppData\\Local\\Temp\\rs-c48-cto-clock-GIo0qA\\home\\.hermes\\config.yaml",
+  "backupPath": "C:\\Users\\<USER>\\AppData\\Local\\Temp\\rs-c48-cto-clock-GIo0qA\\home\\.hermes\\config.yaml.pre-pilot.bak",
+  "applied": true,
+  "rolledBack": false,
+  "readBackVerified": true,
+  "reloadRequired": true,
+  "runningProcesses": [],
+  "planHash": "1aeb98212c17f108445f111499687298f31796def6578c24ca928ac1514c39ae",
+  "preSha256": "99454bc655d2ca63adbf711b5485a1335e2fc52ad068780f5b430d136fa2c41c",
+  "postSha256": "9df7955cd1cf2b4a2fb36bf5445518c3f87a28789140fc719ebcf519036e2b39",
+  "message": "Đã cập nhật danh sách model của Hermes Agent (Nous Research) an toàn (đã sao lưu & kiểm chứng đọc lại)."
+}
+{
+  "app": "hermes",
+  "configPath": "C:\\Users\\<USER>\\AppData\\Local\\Temp\\rs-c48-cto-clock-GIo0qA\\home\\.hermes\\config.yaml",
+  "backupPath": "C:\\Users\\<USER>\\AppData\\Local\\Temp\\rs-c48-cto-clock-GIo0qA\\home\\.hermes\\config.yaml.pre-pilot.bak",
+  "restored": true,
+  "byteIdenticalToPreApply": true,
+  "postSha256": "99454bc655d2ca63adbf711b5485a1335e2fc52ad068780f5b430d136fa2c41c"
+}
+{
+  "schemaVersion": 1,
+  "checkedAt": "2026-11-26T08:00:01.000Z",
+  "status": "READY_FOR_OWNER_LIVE_PILOT",
+  "vietnameseGateStatus": "sẵn sàng chạy thật",
+  "pilotTargets": {
+    "routerTarget": "router:nine/rs-pilot",
+    "harnessTarget": "harness:hermes"
+  },
+  "pilotPhase": "NEEDS_INITIAL_PROPOSE_CONSENT",
+  "checks": [
+    {
+      "id": "freeze_clear",
+      "passed": true,
+      "detail": "Emergency freeze circuit breaker is clear (frozen=false)."
+    },
+    {
+      "id": "config_and_doctor_health",
+      "passed": true,
+      "detail": "Config schema valid, 0 circular dependencies, status.json fresh (0m <= 30m threshold)."
+    },
+    {
+      "id": "pilot_targets_readable",
+      "passed": true,
+      "detail": "Pilot targets readable: router:nine/rs-pilot (nine-c48-pilot.sqlite) + harness:hermes (config.yaml)."
+    },
+    {
+      "id": "tmpdir_backup_rollback_rehearsal",
+      "passed": true,
+      "detail": "Isolated backup + parser + byte-exact SHA-256 rollback rehearsal passed in os.tmpdir()/rs-livecheck-dmkwjI (0 live mutations)."
+    },
+    {
+      "id": "consent_and_promotion_state",
+      "passed": true,
+      "detail": "Consent & apply-history HMAC integrity verified (pilotPhase=NEEDS_INITIAL_PROPOSE_CONSENT)."
+    },
+    {
+      "id": "cost_and_release_hygiene",
+      "passed": true,
+      "detail": "tier0Tokens=0, tier0LlmCalls=0, tier0PaidRequests=0, weeklySessions=0/5 (budgetExceeded=false). 8 publishable + 2 private manifests consistent at version 0.1.0 (prepareV1Release dry-run verified)."
+    },
+    {
+      "id": "live_gate_hint",
+      "passed": true,
+      "detail": "routerDb (nine-c48-pilot.sqlite): trong os.tmpdir() — không cần cờ; harnessConfig (config.yaml): trong os.tmpdir() — không cần cờ."
+    }
+  ],
+  "blockingReasons": [],
+  "ownerNextCommands": [
+    "routersync consent grant --target router:nine/rs-pilot --level propose",
+    "routersync consent grant --target harness:hermes --level propose",
+    "routersync plan"
+  ]
+}
+{
+  "app": "hermes",
+  "directionAMode": "write-adapter",
+  "editable": true,
+  "targetProviders": [
+    "openai"
+  ],
+  "additions": [
+    {
+      "provider": "openai",
+      "model": "gpt-4.1-nano"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4.5"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4o"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4o-legacy"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4o-mini"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-5-nano"
+    },
+    {
+      "provider": "openai",
+      "model": "o3-mini"
+    },
+    {
+      "provider": "openai",
+      "model": "o4-mini"
+    }
+  ],
+  "removals": [],
+  "defaultSlotWarnings": [],
+  "configPath": "<HOME>\\.hermes\\config.yaml",
+  "guidance": [
+    "Use /reload-mcp in active chat for MCP changes; restart gateway or start a new CLI turn for config.yaml model/provider changes."
+  ],
+  "planHash": "1aeb98212c17f108445f111499687298f31796def6578c24ca928ac1514c39ae",
+  "reloadRequired": true,
+  "runningProcesses": []
+}
+{
+  "app": "hermes",
+  "configPath": "C:\\Users\\<USER>\\AppData\\Local\\Temp\\rs-c48-cto-clock-a0Tx11\\home\\.hermes\\config.yaml",
+  "backupPath": "C:\\Users\\<USER>\\AppData\\Local\\Temp\\rs-c48-cto-clock-a0Tx11\\home\\.hermes\\config.yaml.pre-pilot.bak",
+  "applied": true,
+  "rolledBack": false,
+  "readBackVerified": true,
+  "reloadRequired": true,
+  "runningProcesses": [],
+  "planHash": "1aeb98212c17f108445f111499687298f31796def6578c24ca928ac1514c39ae",
+  "preSha256": "99454bc655d2ca63adbf711b5485a1335e2fc52ad068780f5b430d136fa2c41c",
+  "postSha256": "9df7955cd1cf2b4a2fb36bf5445518c3f87a28789140fc719ebcf519036e2b39",
+  "message": "Đã cập nhật danh sách model của Hermes Agent (Nous Research) an toàn (đã sao lưu & kiểm chứng đọc lại)."
+}
+{
+  "app": "hermes",
+  "configPath": "C:\\Users\\<USER>\\AppData\\Local\\Temp\\rs-c48-cto-clock-a0Tx11\\home\\.hermes\\config.yaml",
+  "backupPath": "C:\\Users\\<USER>\\AppData\\Local\\Temp\\rs-c48-cto-clock-a0Tx11\\home\\.hermes\\config.yaml.pre-pilot.bak",
+  "restored": true,
+  "byteIdenticalToPreApply": true,
+  "postSha256": "99454bc655d2ca63adbf711b5485a1335e2fc52ad068780f5b430d136fa2c41c"
+}
+{
+  "schemaVersion": 1,
+  "checkedAt": "2026-11-26T08:00:01.000Z",
+  "status": "READY_FOR_OWNER_LIVE_PILOT",
+  "vietnameseGateStatus": "sẵn sàng chạy thật",
+  "pilotTargets": {
+    "routerTarget": "router:nine/rs-pilot",
+    "harnessTarget": "harness:hermes"
+  },
+  "pilotPhase": "NEEDS_INITIAL_PROPOSE_CONSENT",
+  "checks": [
+    {
+      "id": "freeze_clear",
+      "passed": true,
+      "detail": "Emergency freeze circuit breaker is clear (frozen=false)."
+    },
+    {
+      "id": "config_and_doctor_health",
+      "passed": true,
+      "detail": "Config schema valid, 0 circular dependencies, status.json fresh (0m <= 30m threshold)."
+    },
+    {
+      "id": "pilot_targets_readable",
+      "passed": true,
+      "detail": "Pilot targets readable: router:nine/rs-pilot (nine-c48-pilot.sqlite) + harness:hermes (config.yaml)."
+    },
+    {
+      "id": "tmpdir_backup_rollback_rehearsal",
+      "passed": true,
+      "detail": "Isolated backup + parser + byte-exact SHA-256 rollback rehearsal passed in os.tmpdir()/rs-livecheck-53q9eV (0 live mutations)."
+    },
+    {
+      "id": "consent_and_promotion_state",
+      "passed": true,
+      "detail": "Consent & apply-history HMAC integrity verified (pilotPhase=NEEDS_INITIAL_PROPOSE_CONSENT)."
+    },
+    {
+      "id": "cost_and_release_hygiene",
+      "passed": true,
+      "detail": "tier0Tokens=0, tier0LlmCalls=0, tier0PaidRequests=0, weeklySessions=0/5 (budgetExceeded=false). 8 publishable + 2 private manifests consistent at version 0.1.0 (prepareV1Release dry-run verified)."
+    },
+    {
+      "id": "live_gate_hint",
+      "passed": true,
+      "detail": "routerDb (nine-c48-pilot.sqlite): trong os.tmpdir() — không cần cờ; harnessConfig (config.yaml): trong os.tmpdir() — không cần cờ."
+    }
+  ],
+  "blockingReasons": [],
+  "ownerNextCommands": [
+    "routersync consent grant --target router:nine/rs-pilot --level propose",
+    "routersync consent grant --target harness:hermes --level propose",
+    "routersync plan"
+  ]
+}
+{
+  "app": "hermes",
+  "directionAMode": "write-adapter",
+  "editable": true,
+  "targetProviders": [
+    "openai"
+  ],
+  "additions": [
+    {
+      "provider": "openai",
+      "model": "gpt-4.1-nano"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4.5"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4o"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4o-legacy"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4o-mini"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-5-nano"
+    },
+    {
+      "provider": "openai",
+      "model": "o3-mini"
+    },
+    {
+      "provider": "openai",
+      "model": "o4-mini"
+    }
+  ],
+  "removals": [],
+  "defaultSlotWarnings": [],
+  "configPath": "<HOME>\\.hermes\\config.yaml",
+  "guidance": [
+    "Use /reload-mcp in active chat for MCP changes; restart gateway or start a new CLI turn for config.yaml model/provider changes."
+  ],
+  "planHash": "1aeb98212c17f108445f111499687298f31796def6578c24ca928ac1514c39ae",
+  "reloadRequired": true,
+  "runningProcesses": []
+}
+{
+  "app": "hermes",
+  "configPath": "C:\\Users\\<USER>\\AppData\\Local\\Temp\\rs-c48-cto-clock-3fkJUo\\home\\.hermes\\config.yaml",
+  "backupPath": "C:\\Users\\<USER>\\AppData\\Local\\Temp\\rs-c48-cto-clock-3fkJUo\\home\\.hermes\\config.yaml.pre-pilot.bak",
+  "applied": true,
+  "rolledBack": false,
+  "readBackVerified": true,
+  "reloadRequired": true,
+  "runningProcesses": [],
+  "planHash": "1aeb98212c17f108445f111499687298f31796def6578c24ca928ac1514c39ae",
+  "preSha256": "99454bc655d2ca63adbf711b5485a1335e2fc52ad068780f5b430d136fa2c41c",
+  "postSha256": "9df7955cd1cf2b4a2fb36bf5445518c3f87a28789140fc719ebcf519036e2b39",
+  "message": "Đã cập nhật danh sách model của Hermes Agent (Nous Research) an toàn (đã sao lưu & kiểm chứng đọc lại)."
+}
+{
+  "app": "hermes",
+  "configPath": "C:\\Users\\<USER>\\AppData\\Local\\Temp\\rs-c48-cto-clock-3fkJUo\\home\\.hermes\\config.yaml",
+  "backupPath": "C:\\Users\\<USER>\\AppData\\Local\\Temp\\rs-c48-cto-clock-3fkJUo\\home\\.hermes\\config.yaml.pre-pilot.bak",
+  "restored": true,
+  "byteIdenticalToPreApply": true,
+  "postSha256": "99454bc655d2ca63adbf711b5485a1335e2fc52ad068780f5b430d136fa2c41c"
+}
+{
+  "schemaVersion": 1,
+  "checkedAt": "2026-11-26T08:00:01.000Z",
+  "status": "READY_FOR_OWNER_LIVE_PILOT",
+  "vietnameseGateStatus": "sẵn sàng chạy thật",
+  "pilotTargets": {
+    "routerTarget": "router:nine/rs-pilot",
+    "harnessTarget": "harness:hermes"
+  },
+  "pilotPhase": "NEEDS_INITIAL_PROPOSE_CONSENT",
+  "checks": [
+    {
+      "id": "freeze_clear",
+      "passed": true,
+      "detail": "Emergency freeze circuit breaker is clear (frozen=false)."
+    },
+    {
+      "id": "config_and_doctor_health",
+      "passed": true,
+      "detail": "Config schema valid, 0 circular dependencies, status.json fresh (0m <= 30m threshold)."
+    },
+    {
+      "id": "pilot_targets_readable",
+      "passed": true,
+      "detail": "Pilot targets readable: router:nine/rs-pilot (nine-c48-pilot.sqlite) + harness:hermes (config.yaml)."
+    },
+    {
+      "id": "tmpdir_backup_rollback_rehearsal",
+      "passed": true,
+      "detail": "Isolated backup + parser + byte-exact SHA-256 rollback rehearsal passed in os.tmpdir()/rs-livecheck-GFDbWL (0 live mutations)."
+    },
+    {
+      "id": "consent_and_promotion_state",
+      "passed": true,
+      "detail": "Consent & apply-history HMAC integrity verified (pilotPhase=NEEDS_INITIAL_PROPOSE_CONSENT)."
+    },
+    {
+      "id": "cost_and_release_hygiene",
+      "passed": true,
+      "detail": "tier0Tokens=0, tier0LlmCalls=0, tier0PaidRequests=0, weeklySessions=0/5 (budgetExceeded=false). 8 publishable + 2 private manifests consistent at version 0.1.0 (prepareV1Release dry-run verified)."
+    },
+    {
+      "id": "live_gate_hint",
+      "passed": true,
+      "detail": "routerDb (nine-c48-pilot.sqlite): trong os.tmpdir() — không cần cờ; harnessConfig (config.yaml): trong os.tmpdir() — không cần cờ."
+    }
+  ],
+  "blockingReasons": [],
+  "ownerNextCommands": [
+    "routersync consent grant --target router:nine/rs-pilot --level propose",
+    "routersync consent grant --target harness:hermes --level propose",
+    "routersync plan"
+  ]
+}
+{
+  "app": "hermes",
+  "directionAMode": "write-adapter",
+  "editable": true,
+  "targetProviders": [
+    "openai"
+  ],
+  "additions": [
+    {
+      "provider": "openai",
+      "model": "gpt-4.1-nano"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4.5"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4o"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4o-legacy"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4o-mini"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-5-nano"
+    },
+    {
+      "provider": "openai",
+      "model": "o3-mini"
+    },
+    {
+      "provider": "openai",
+      "model": "o4-mini"
+    }
+  ],
+  "removals": [],
+  "defaultSlotWarnings": [],
+  "configPath": "<HOME>\\.hermes\\config.yaml",
+  "guidance": [
+    "Use /reload-mcp in active chat for MCP changes; restart gateway or start a new CLI turn for config.yaml model/provider changes."
+  ],
+  "planHash": "1aeb98212c17f108445f111499687298f31796def6578c24ca928ac1514c39ae",
+  "reloadRequired": true,
+  "runningProcesses": []
+}
+{
+  "app": "hermes",
+  "configPath": "C:\\Users\\<USER>\\AppData\\Local\\Temp\\rs-c48-cto-clock-tTW3iN\\home\\.hermes\\config.yaml",
+  "backupPath": "C:\\Users\\<USER>\\AppData\\Local\\Temp\\rs-c48-cto-clock-tTW3iN\\home\\.hermes\\config.yaml.pre-pilot.bak",
+  "applied": true,
+  "rolledBack": false,
+  "readBackVerified": true,
+  "reloadRequired": true,
+  "runningProcesses": [],
+  "planHash": "1aeb98212c17f108445f111499687298f31796def6578c24ca928ac1514c39ae",
+  "preSha256": "99454bc655d2ca63adbf711b5485a1335e2fc52ad068780f5b430d136fa2c41c",
+  "postSha256": "9df7955cd1cf2b4a2fb36bf5445518c3f87a28789140fc719ebcf519036e2b39",
+  "message": "Đã cập nhật danh sách model của Hermes Agent (Nous Research) an toàn (đã sao lưu & kiểm chứng đọc lại)."
+}
+{
+  "app": "hermes",
+  "configPath": "C:\\Users\\<USER>\\AppData\\Local\\Temp\\rs-c48-cto-clock-tTW3iN\\home\\.hermes\\config.yaml",
+  "backupPath": "C:\\Users\\<USER>\\AppData\\Local\\Temp\\rs-c48-cto-clock-tTW3iN\\home\\.hermes\\config.yaml.pre-pilot.bak",
+  "restored": true,
+  "byteIdenticalToPreApply": true,
+  "postSha256": "99454bc655d2ca63adbf711b5485a1335e2fc52ad068780f5b430d136fa2c41c"
+}
+{
+  "schemaVersion": 1,
+  "checkedAt": "2026-11-26T08:00:01.000Z",
+  "status": "READY_FOR_OWNER_LIVE_PILOT",
+  "vietnameseGateStatus": "sẵn sàng chạy thật",
+  "pilotTargets": {
+    "routerTarget": "router:nine/rs-pilot",
+    "harnessTarget": "harness:hermes"
+  },
+  "pilotPhase": "NEEDS_INITIAL_PROPOSE_CONSENT",
+  "checks": [
+    {
+      "id": "freeze_clear",
+      "passed": true,
+      "detail": "Emergency freeze circuit breaker is clear (frozen=false)."
+    },
+    {
+      "id": "config_and_doctor_health",
+      "passed": true,
+      "detail": "Config schema valid, 0 circular dependencies, status.json fresh (0m <= 30m threshold)."
+    },
+    {
+      "id": "pilot_targets_readable",
+      "passed": true,
+      "detail": "Pilot targets readable: router:nine/rs-pilot (nine-c48-pilot.sqlite) + harness:hermes (config.yaml)."
+    },
+    {
+      "id": "tmpdir_backup_rollback_rehearsal",
+      "passed": true,
+      "detail": "Isolated backup + parser + byte-exact SHA-256 rollback rehearsal passed in os.tmpdir()/rs-livecheck-H4a30Y (0 live mutations)."
+    },
+    {
+      "id": "consent_and_promotion_state",
+      "passed": true,
+      "detail": "Consent & apply-history HMAC integrity verified (pilotPhase=NEEDS_INITIAL_PROPOSE_CONSENT)."
+    },
+    {
+      "id": "cost_and_release_hygiene",
+      "passed": true,
+      "detail": "tier0Tokens=0, tier0LlmCalls=0, tier0PaidRequests=0, weeklySessions=0/5 (budgetExceeded=false). 8 publishable + 2 private manifests consistent at version 0.1.0 (prepareV1Release dry-run verified)."
+    },
+    {
+      "id": "live_gate_hint",
+      "passed": true,
+      "detail": "routerDb (nine-c48-pilot.sqlite): trong os.tmpdir() — không cần cờ; harnessConfig (config.yaml): trong os.tmpdir() — không cần cờ."
+    }
+  ],
+  "blockingReasons": [],
+  "ownerNextCommands": [
+    "routersync consent grant --target router:nine/rs-pilot --level propose",
+    "routersync consent grant --target harness:hermes --level propose",
+    "routersync plan"
+  ]
+}
+{
+  "app": "hermes",
+  "directionAMode": "write-adapter",
+  "editable": true,
+  "targetProviders": [
+    "openai"
+  ],
+  "additions": [
+    {
+      "provider": "openai",
+      "model": "gpt-4.1-nano"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4.5"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4o"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4o-legacy"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4o-mini"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-5-nano"
+    },
+    {
+      "provider": "openai",
+      "model": "o3-mini"
+    },
+    {
+      "provider": "openai",
+      "model": "o4-mini"
+    }
+  ],
+  "removals": [],
+  "defaultSlotWarnings": [],
+  "configPath": "<HOME>\\.hermes\\config.yaml",
+  "guidance": [
+    "Use /reload-mcp in active chat for MCP changes; restart gateway or start a new CLI turn for config.yaml model/provider changes."
+  ],
+  "planHash": "1aeb98212c17f108445f111499687298f31796def6578c24ca928ac1514c39ae",
+  "reloadRequired": true,
+  "runningProcesses": []
+}
+{
+  "app": "hermes",
+  "configPath": "C:\\Users\\<USER>\\AppData\\Local\\Temp\\rs-c48-cto-clock-QAfWXo\\home\\.hermes\\config.yaml",
+  "backupPath": "C:\\Users\\<USER>\\AppData\\Local\\Temp\\rs-c48-cto-clock-QAfWXo\\home\\.hermes\\config.yaml.pre-pilot.bak",
+  "applied": true,
+  "rolledBack": false,
+  "readBackVerified": true,
+  "reloadRequired": true,
+  "runningProcesses": [],
+  "planHash": "1aeb98212c17f108445f111499687298f31796def6578c24ca928ac1514c39ae",
+  "preSha256": "99454bc655d2ca63adbf711b5485a1335e2fc52ad068780f5b430d136fa2c41c",
+  "postSha256": "9df7955cd1cf2b4a2fb36bf5445518c3f87a28789140fc719ebcf519036e2b39",
+  "message": "Đã cập nhật danh sách model của Hermes Agent (Nous Research) an toàn (đã sao lưu & kiểm chứng đọc lại)."
+}
+{
+  "app": "hermes",
+  "configPath": "C:\\Users\\<USER>\\AppData\\Local\\Temp\\rs-c48-cto-clock-QAfWXo\\home\\.hermes\\config.yaml",
+  "backupPath": "C:\\Users\\<USER>\\AppData\\Local\\Temp\\rs-c48-cto-clock-QAfWXo\\home\\.hermes\\config.yaml.pre-pilot.bak",
+  "restored": true,
+  "byteIdenticalToPreApply": true,
+  "postSha256": "99454bc655d2ca63adbf711b5485a1335e2fc52ad068780f5b430d136fa2c41c"
+}
+{
+  "schemaVersion": 1,
+  "checkedAt": "2026-11-26T08:00:01.000Z",
+  "status": "READY_FOR_OWNER_LIVE_PILOT",
+  "vietnameseGateStatus": "sẵn sàng chạy thật",
+  "pilotTargets": {
+    "routerTarget": "router:nine/rs-pilot",
+    "harnessTarget": "harness:hermes"
+  },
+  "pilotPhase": "NEEDS_INITIAL_PROPOSE_CONSENT",
+  "checks": [
+    {
+      "id": "freeze_clear",
+      "passed": true,
+      "detail": "Emergency freeze circuit breaker is clear (frozen=false)."
+    },
+    {
+      "id": "config_and_doctor_health",
+      "passed": true,
+      "detail": "Config schema valid, 0 circular dependencies, status.json fresh (0m <= 30m threshold)."
+    },
+    {
+      "id": "pilot_targets_readable",
+      "passed": true,
+      "detail": "Pilot targets readable: router:nine/rs-pilot (nine-c48-pilot.sqlite) + harness:hermes (config.yaml)."
+    },
+    {
+      "id": "tmpdir_backup_rollback_rehearsal",
+      "passed": true,
+      "detail": "Isolated backup + parser + byte-exact SHA-256 rollback rehearsal passed in os.tmpdir()/rs-livecheck-bpuTYX (0 live mutations)."
+    },
+    {
+      "id": "consent_and_promotion_state",
+      "passed": true,
+      "detail": "Consent & apply-history HMAC integrity verified (pilotPhase=NEEDS_INITIAL_PROPOSE_CONSENT)."
+    },
+    {
+      "id": "cost_and_release_hygiene",
+      "passed": true,
+      "detail": "tier0Tokens=0, tier0LlmCalls=0, tier0PaidRequests=0, weeklySessions=0/5 (budgetExceeded=false). 8 publishable + 2 private manifests consistent at version 0.1.0 (prepareV1Release dry-run verified)."
+    },
+    {
+      "id": "live_gate_hint",
+      "passed": true,
+      "detail": "routerDb (nine-c48-pilot.sqlite): trong os.tmpdir() — không cần cờ; harnessConfig (config.yaml): trong os.tmpdir() — không cần cờ."
+    }
+  ],
+  "blockingReasons": [],
+  "ownerNextCommands": [
+    "routersync consent grant --target router:nine/rs-pilot --level propose",
+    "routersync consent grant --target harness:hermes --level propose",
+    "routersync plan"
+  ]
+}
+{
+  "app": "hermes",
+  "directionAMode": "write-adapter",
+  "editable": true,
+  "targetProviders": [
+    "openai"
+  ],
+  "additions": [
+    {
+      "provider": "openai",
+      "model": "gpt-4.1-nano"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4.5"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4o"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4o-legacy"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4o-mini"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-5-nano"
+    },
+    {
+      "provider": "openai",
+      "model": "o3-mini"
+    },
+    {
+      "provider": "openai",
+      "model": "o4-mini"
+    }
+  ],
+  "removals": [],
+  "defaultSlotWarnings": [],
+  "configPath": "<HOME>\\.hermes\\config.yaml",
+  "guidance": [
+    "Use /reload-mcp in active chat for MCP changes; restart gateway or start a new CLI turn for config.yaml model/provider changes."
+  ],
+  "planHash": "1aeb98212c17f108445f111499687298f31796def6578c24ca928ac1514c39ae",
+  "reloadRequired": true,
+  "runningProcesses": []
+}
+{
+  "app": "hermes",
+  "configPath": "C:\\Users\\<USER>\\AppData\\Local\\Temp\\rs-c48-cto-clock-ElAfPG\\home\\.hermes\\config.yaml",
+  "backupPath": "C:\\Users\\<USER>\\AppData\\Local\\Temp\\rs-c48-cto-clock-ElAfPG\\home\\.hermes\\config.yaml.pre-pilot.bak",
+  "applied": true,
+  "rolledBack": false,
+  "readBackVerified": true,
+  "reloadRequired": true,
+  "runningProcesses": [],
+  "planHash": "1aeb98212c17f108445f111499687298f31796def6578c24ca928ac1514c39ae",
+  "preSha256": "99454bc655d2ca63adbf711b5485a1335e2fc52ad068780f5b430d136fa2c41c",
+  "postSha256": "9df7955cd1cf2b4a2fb36bf5445518c3f87a28789140fc719ebcf519036e2b39",
+  "message": "Đã cập nhật danh sách model của Hermes Agent (Nous Research) an toàn (đã sao lưu & kiểm chứng đọc lại)."
+}
+{
+  "app": "hermes",
+  "configPath": "C:\\Users\\<USER>\\AppData\\Local\\Temp\\rs-c48-cto-clock-ElAfPG\\home\\.hermes\\config.yaml",
+  "backupPath": "C:\\Users\\<USER>\\AppData\\Local\\Temp\\rs-c48-cto-clock-ElAfPG\\home\\.hermes\\config.yaml.pre-pilot.bak",
+  "restored": true,
+  "byteIdenticalToPreApply": true,
+  "postSha256": "99454bc655d2ca63adbf711b5485a1335e2fc52ad068780f5b430d136fa2c41c"
+}
+{
+  "schemaVersion": 1,
+  "checkedAt": "2026-11-26T08:00:01.000Z",
+  "status": "READY_FOR_OWNER_LIVE_PILOT",
+  "vietnameseGateStatus": "sẵn sàng chạy thật",
+  "pilotTargets": {
+    "routerTarget": "router:nine/rs-pilot",
+    "harnessTarget": "harness:hermes"
+  },
+  "pilotPhase": "NEEDS_INITIAL_PROPOSE_CONSENT",
+  "checks": [
+    {
+      "id": "freeze_clear",
+      "passed": true,
+      "detail": "Emergency freeze circuit breaker is clear (frozen=false)."
+    },
+    {
+      "id": "config_and_doctor_health",
+      "passed": true,
+      "detail": "Config schema valid, 0 circular dependencies, status.json fresh (0m <= 30m threshold)."
+    },
+    {
+      "id": "pilot_targets_readable",
+      "passed": true,
+      "detail": "Pilot targets readable: router:nine/rs-pilot (nine-c48-pilot.sqlite) + harness:hermes (config.yaml)."
+    },
+    {
+      "id": "tmpdir_backup_rollback_rehearsal",
+      "passed": true,
+      "detail": "Isolated backup + parser + byte-exact SHA-256 rollback rehearsal passed in os.tmpdir()/rs-livecheck-t5WAMI (0 live mutations)."
+    },
+    {
+      "id": "consent_and_promotion_state",
+      "passed": true,
+      "detail": "Consent & apply-history HMAC integrity verified (pilotPhase=NEEDS_INITIAL_PROPOSE_CONSENT)."
+    },
+    {
+      "id": "cost_and_release_hygiene",
+      "passed": true,
+      "detail": "tier0Tokens=0, tier0LlmCalls=0, tier0PaidRequests=0, weeklySessions=0/5 (budgetExceeded=false). 8 publishable + 2 private manifests consistent at version 0.1.0 (prepareV1Release dry-run verified)."
+    },
+    {
+      "id": "live_gate_hint",
+      "passed": true,
+      "detail": "routerDb (nine-c48-pilot.sqlite): trong os.tmpdir() — không cần cờ; harnessConfig (config.yaml): trong os.tmpdir() — không cần cờ."
+    }
+  ],
+  "blockingReasons": [],
+  "ownerNextCommands": [
+    "routersync consent grant --target router:nine/rs-pilot --level propose",
+    "routersync consent grant --target harness:hermes --level propose",
+    "routersync plan"
+  ]
+}
+{
+  "app": "hermes",
+  "directionAMode": "write-adapter",
+  "editable": true,
+  "targetProviders": [
+    "openai"
+  ],
+  "additions": [
+    {
+      "provider": "openai",
+      "model": "gpt-4.1-nano"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4.5"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4o"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4o-legacy"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4o-mini"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-5-nano"
+    },
+    {
+      "provider": "openai",
+      "model": "o3-mini"
+    },
+    {
+      "provider": "openai",
+      "model": "o4-mini"
+    }
+  ],
+  "removals": [],
+  "defaultSlotWarnings": [],
+  "configPath": "<HOME>\\.hermes\\config.yaml",
+  "guidance": [
+    "Use /reload-mcp in active chat for MCP changes; restart gateway or start a new CLI turn for config.yaml model/provider changes."
+  ],
+  "planHash": "1aeb98212c17f108445f111499687298f31796def6578c24ca928ac1514c39ae",
+  "reloadRequired": true,
+  "runningProcesses": []
+}
+{
+  "app": "hermes",
+  "configPath": "C:\\Users\\<USER>\\AppData\\Local\\Temp\\rs-c48-cto-clock-fV3Cko\\home\\.hermes\\config.yaml",
+  "backupPath": "C:\\Users\\<USER>\\AppData\\Local\\Temp\\rs-c48-cto-clock-fV3Cko\\home\\.hermes\\config.yaml.pre-pilot.bak",
+  "applied": true,
+  "rolledBack": false,
+  "readBackVerified": true,
+  "reloadRequired": true,
+  "runningProcesses": [],
+  "planHash": "1aeb98212c17f108445f111499687298f31796def6578c24ca928ac1514c39ae",
+  "preSha256": "99454bc655d2ca63adbf711b5485a1335e2fc52ad068780f5b430d136fa2c41c",
+  "postSha256": "9df7955cd1cf2b4a2fb36bf5445518c3f87a28789140fc719ebcf519036e2b39",
+  "message": "Đã cập nhật danh sách model của Hermes Agent (Nous Research) an toàn (đã sao lưu & kiểm chứng đọc lại)."
+}
+{
+  "app": "hermes",
+  "configPath": "C:\\Users\\<USER>\\AppData\\Local\\Temp\\rs-c48-cto-clock-fV3Cko\\home\\.hermes\\config.yaml",
+  "backupPath": "C:\\Users\\<USER>\\AppData\\Local\\Temp\\rs-c48-cto-clock-fV3Cko\\home\\.hermes\\config.yaml.pre-pilot.bak",
+  "restored": true,
+  "byteIdenticalToPreApply": true,
+  "postSha256": "99454bc655d2ca63adbf711b5485a1335e2fc52ad068780f5b430d136fa2c41c"
+}
+{
+  "schemaVersion": 1,
+  "checkedAt": "2026-11-26T08:00:01.000Z",
+  "status": "READY_FOR_OWNER_LIVE_PILOT",
+  "vietnameseGateStatus": "sẵn sàng chạy thật",
+  "pilotTargets": {
+    "routerTarget": "router:nine/rs-pilot",
+    "harnessTarget": "harness:hermes"
+  },
+  "pilotPhase": "NEEDS_INITIAL_PROPOSE_CONSENT",
+  "checks": [
+    {
+      "id": "freeze_clear",
+      "passed": true,
+      "detail": "Emergency freeze circuit breaker is clear (frozen=false)."
+    },
+    {
+      "id": "config_and_doctor_health",
+      "passed": true,
+      "detail": "Config schema valid, 0 circular dependencies, status.json fresh (0m <= 30m threshold)."
+    },
+    {
+      "id": "pilot_targets_readable",
+      "passed": true,
+      "detail": "Pilot targets readable: router:nine/rs-pilot (nine-c48-pilot.sqlite) + harness:hermes (config.yaml)."
+    },
+    {
+      "id": "tmpdir_backup_rollback_rehearsal",
+      "passed": true,
+      "detail": "Isolated backup + parser + byte-exact SHA-256 rollback rehearsal passed in os.tmpdir()/rs-livecheck-KZUs1Y (0 live mutations)."
+    },
+    {
+      "id": "consent_and_promotion_state",
+      "passed": true,
+      "detail": "Consent & apply-history HMAC integrity verified (pilotPhase=NEEDS_INITIAL_PROPOSE_CONSENT)."
+    },
+    {
+      "id": "cost_and_release_hygiene",
+      "passed": true,
+      "detail": "tier0Tokens=0, tier0LlmCalls=0, tier0PaidRequests=0, weeklySessions=0/5 (budgetExceeded=false). 8 publishable + 2 private manifests consistent at version 0.1.0 (prepareV1Release dry-run verified)."
+    },
+    {
+      "id": "live_gate_hint",
+      "passed": true,
+      "detail": "routerDb (nine-c48-pilot.sqlite): trong os.tmpdir() — không cần cờ; harnessConfig (config.yaml): trong os.tmpdir() — không cần cờ."
+    }
+  ],
+  "blockingReasons": [],
+  "ownerNextCommands": [
+    "routersync consent grant --target router:nine/rs-pilot --level propose",
+    "routersync consent grant --target harness:hermes --level propose",
+    "routersync plan"
+  ]
+}
+{
+  "app": "hermes",
+  "directionAMode": "write-adapter",
+  "editable": true,
+  "targetProviders": [
+    "openai"
+  ],
+  "additions": [
+    {
+      "provider": "openai",
+      "model": "gpt-4.1-nano"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4.5"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4o"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4o-legacy"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4o-mini"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-5-nano"
+    },
+    {
+      "provider": "openai",
+      "model": "o3-mini"
+    },
+    {
+      "provider": "openai",
+      "model": "o4-mini"
+    }
+  ],
+  "removals": [],
+  "defaultSlotWarnings": [],
+  "configPath": "<HOME>\\.hermes\\config.yaml",
+  "guidance": [
+    "Use /reload-mcp in active chat for MCP changes; restart gateway or start a new CLI turn for config.yaml model/provider changes."
+  ],
+  "planHash": "1aeb98212c17f108445f111499687298f31796def6578c24ca928ac1514c39ae",
+  "reloadRequired": true,
+  "runningProcesses": []
+}
+{
+  "app": "hermes",
+  "configPath": "C:\\Users\\<USER>\\AppData\\Local\\Temp\\rs-c48-cto-clock-3UMUXi\\home\\.hermes\\config.yaml",
+  "backupPath": "C:\\Users\\<USER>\\AppData\\Local\\Temp\\rs-c48-cto-clock-3UMUXi\\home\\.hermes\\config.yaml.pre-pilot.bak",
+  "applied": true,
+  "rolledBack": false,
+  "readBackVerified": true,
+  "reloadRequired": true,
+  "runningProcesses": [],
+  "planHash": "1aeb98212c17f108445f111499687298f31796def6578c24ca928ac1514c39ae",
+  "preSha256": "99454bc655d2ca63adbf711b5485a1335e2fc52ad068780f5b430d136fa2c41c",
+  "postSha256": "9df7955cd1cf2b4a2fb36bf5445518c3f87a28789140fc719ebcf519036e2b39",
+  "message": "Đã cập nhật danh sách model của Hermes Agent (Nous Research) an toàn (đã sao lưu & kiểm chứng đọc lại)."
+}
+{
+  "app": "hermes",
+  "configPath": "C:\\Users\\<USER>\\AppData\\Local\\Temp\\rs-c48-cto-clock-3UMUXi\\home\\.hermes\\config.yaml",
+  "backupPath": "C:\\Users\\<USER>\\AppData\\Local\\Temp\\rs-c48-cto-clock-3UMUXi\\home\\.hermes\\config.yaml.pre-pilot.bak",
+  "restored": true,
+  "byteIdenticalToPreApply": true,
+  "postSha256": "99454bc655d2ca63adbf711b5485a1335e2fc52ad068780f5b430d136fa2c41c"
+}
+{
+  "schemaVersion": 1,
+  "checkedAt": "2026-11-26T08:00:01.000Z",
+  "status": "READY_FOR_OWNER_LIVE_PILOT",
+  "vietnameseGateStatus": "sẵn sàng chạy thật",
+  "pilotTargets": {
+    "routerTarget": "router:nine/rs-pilot",
+    "harnessTarget": "harness:hermes"
+  },
+  "pilotPhase": "NEEDS_INITIAL_PROPOSE_CONSENT",
+  "checks": [
+    {
+      "id": "freeze_clear",
+      "passed": true,
+      "detail": "Emergency freeze circuit breaker is clear (frozen=false)."
+    },
+    {
+      "id": "config_and_doctor_health",
+      "passed": true,
+      "detail": "Config schema valid, 0 circular dependencies, status.json fresh (0m <= 30m threshold)."
+    },
+    {
+      "id": "pilot_targets_readable",
+      "passed": true,
+      "detail": "Pilot targets readable: router:nine/rs-pilot (nine-c48-pilot.sqlite) + harness:hermes (config.yaml)."
+    },
+    {
+      "id": "tmpdir_backup_rollback_rehearsal",
+      "passed": true,
+      "detail": "Isolated backup + parser + byte-exact SHA-256 rollback rehearsal passed in os.tmpdir()/rs-livecheck-Hyd7uu (0 live mutations)."
+    },
+    {
+      "id": "consent_and_promotion_state",
+      "passed": true,
+      "detail": "Consent & apply-history HMAC integrity verified (pilotPhase=NEEDS_INITIAL_PROPOSE_CONSENT)."
+    },
+    {
+      "id": "cost_and_release_hygiene",
+      "passed": true,
+      "detail": "tier0Tokens=0, tier0LlmCalls=0, tier0PaidRequests=0, weeklySessions=0/5 (budgetExceeded=false). 8 publishable + 2 private manifests consistent at version 0.1.0 (prepareV1Release dry-run verified)."
+    },
+    {
+      "id": "live_gate_hint",
+      "passed": true,
+      "detail": "routerDb (nine-c48-pilot.sqlite): trong os.tmpdir() — không cần cờ; harnessConfig (config.yaml): trong os.tmpdir() — không cần cờ."
+    }
+  ],
+  "blockingReasons": [],
+  "ownerNextCommands": [
+    "routersync consent grant --target router:nine/rs-pilot --level propose",
+    "routersync consent grant --target harness:hermes --level propose",
+    "routersync plan"
+  ]
+}
+{
+  "app": "hermes",
+  "directionAMode": "write-adapter",
+  "editable": true,
+  "targetProviders": [
+    "openai"
+  ],
+  "additions": [
+    {
+      "provider": "openai",
+      "model": "gpt-4.1-nano"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4.5"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4o"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4o-legacy"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4o-mini"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-5-nano"
+    },
+    {
+      "provider": "openai",
+      "model": "o3-mini"
+    },
+    {
+      "provider": "openai",
+      "model": "o4-mini"
+    }
+  ],
+  "removals": [],
+  "defaultSlotWarnings": [],
+  "configPath": "<HOME>\\.hermes\\config.yaml",
+  "guidance": [
+    "Use /reload-mcp in active chat for MCP changes; restart gateway or start a new CLI turn for config.yaml model/provider changes."
+  ],
+  "planHash": "1aeb98212c17f108445f111499687298f31796def6578c24ca928ac1514c39ae",
+  "reloadRequired": true,
+  "runningProcesses": []
+}
+{
+  "app": "hermes",
+  "configPath": "C:\\Users\\<USER>\\AppData\\Local\\Temp\\rs-c48-cto-clock-qyOUEI\\home\\.hermes\\config.yaml",
+  "backupPath": "C:\\Users\\<USER>\\AppData\\Local\\Temp\\rs-c48-cto-clock-qyOUEI\\home\\.hermes\\config.yaml.pre-pilot.bak",
+  "applied": true,
+  "rolledBack": false,
+  "readBackVerified": true,
+  "reloadRequired": true,
+  "runningProcesses": [],
+  "planHash": "1aeb98212c17f108445f111499687298f31796def6578c24ca928ac1514c39ae",
+  "preSha256": "99454bc655d2ca63adbf711b5485a1335e2fc52ad068780f5b430d136fa2c41c",
+  "postSha256": "9df7955cd1cf2b4a2fb36bf5445518c3f87a28789140fc719ebcf519036e2b39",
+  "message": "Đã cập nhật danh sách model của Hermes Agent (Nous Research) an toàn (đã sao lưu & kiểm chứng đọc lại)."
+}
+{
+  "app": "hermes",
+  "configPath": "C:\\Users\\<USER>\\AppData\\Local\\Temp\\rs-c48-cto-clock-qyOUEI\\home\\.hermes\\config.yaml",
+  "backupPath": "C:\\Users\\<USER>\\AppData\\Local\\Temp\\rs-c48-cto-clock-qyOUEI\\home\\.hermes\\config.yaml.pre-pilot.bak",
+  "restored": true,
+  "byteIdenticalToPreApply": true,
+  "postSha256": "99454bc655d2ca63adbf711b5485a1335e2fc52ad068780f5b430d136fa2c41c"
+}
+{
+  "schemaVersion": 1,
+  "checkedAt": "2026-11-26T08:00:01.000Z",
+  "status": "READY_FOR_OWNER_LIVE_PILOT",
+  "vietnameseGateStatus": "sẵn sàng chạy thật",
+  "pilotTargets": {
+    "routerTarget": "router:nine/rs-pilot",
+    "harnessTarget": "harness:hermes"
+  },
+  "pilotPhase": "NEEDS_INITIAL_PROPOSE_CONSENT",
+  "checks": [
+    {
+      "id": "freeze_clear",
+      "passed": true,
+      "detail": "Emergency freeze circuit breaker is clear (frozen=false)."
+    },
+    {
+      "id": "config_and_doctor_health",
+      "passed": true,
+      "detail": "Config schema valid, 0 circular dependencies, status.json fresh (0m <= 30m threshold)."
+    },
+    {
+      "id": "pilot_targets_readable",
+      "passed": true,
+      "detail": "Pilot targets readable: router:nine/rs-pilot (nine-c48-pilot.sqlite) + harness:hermes (config.yaml)."
+    },
+    {
+      "id": "tmpdir_backup_rollback_rehearsal",
+      "passed": true,
+      "detail": "Isolated backup + parser + byte-exact SHA-256 rollback rehearsal passed in os.tmpdir()/rs-livecheck-9WF66c (0 live mutations)."
+    },
+    {
+      "id": "consent_and_promotion_state",
+      "passed": true,
+      "detail": "Consent & apply-history HMAC integrity verified (pilotPhase=NEEDS_INITIAL_PROPOSE_CONSENT)."
+    },
+    {
+      "id": "cost_and_release_hygiene",
+      "passed": true,
+      "detail": "tier0Tokens=0, tier0LlmCalls=0, tier0PaidRequests=0, weeklySessions=0/5 (budgetExceeded=false). 8 publishable + 2 private manifests consistent at version 0.1.0 (prepareV1Release dry-run verified)."
+    },
+    {
+      "id": "live_gate_hint",
+      "passed": true,
+      "detail": "routerDb (nine-c48-pilot.sqlite): trong os.tmpdir() — không cần cờ; harnessConfig (config.yaml): trong os.tmpdir() — không cần cờ."
+    }
+  ],
+  "blockingReasons": [],
+  "ownerNextCommands": [
+    "routersync consent grant --target router:nine/rs-pilot --level propose",
+    "routersync consent grant --target harness:hermes --level propose",
+    "routersync plan"
+  ]
+}
+{
+  "app": "hermes",
+  "directionAMode": "write-adapter",
+  "editable": true,
+  "targetProviders": [
+    "openai"
+  ],
+  "additions": [
+    {
+      "provider": "openai",
+      "model": "gpt-4.1-nano"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4.5"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4o"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4o-legacy"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4o-mini"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-5-nano"
+    },
+    {
+      "provider": "openai",
+      "model": "o3-mini"
+    },
+    {
+      "provider": "openai",
+      "model": "o4-mini"
+    }
+  ],
+  "removals": [],
+  "defaultSlotWarnings": [],
+  "configPath": "<HOME>\\.hermes\\config.yaml",
+  "guidance": [
+    "Use /reload-mcp in active chat for MCP changes; restart gateway or start a new CLI turn for config.yaml model/provider changes."
+  ],
+  "planHash": "1aeb98212c17f108445f111499687298f31796def6578c24ca928ac1514c39ae",
+  "reloadRequired": true,
+  "runningProcesses": []
+}
+{
+  "app": "hermes",
+  "configPath": "C:\\Users\\<USER>\\AppData\\Local\\Temp\\rs-c48-retention-cap-DG6N2M\\home\\.hermes\\config.yaml",
+  "backupPath": "C:\\Users\\<USER>\\AppData\\Local\\Temp\\rs-c48-retention-cap-DG6N2M\\home\\.hermes\\config.yaml.pre-pilot.bak",
+  "applied": true,
+  "rolledBack": false,
+  "readBackVerified": true,
+  "reloadRequired": true,
+  "runningProcesses": [],
+  "planHash": "1aeb98212c17f108445f111499687298f31796def6578c24ca928ac1514c39ae",
+  "preSha256": "99454bc655d2ca63adbf711b5485a1335e2fc52ad068780f5b430d136fa2c41c",
+  "postSha256": "9df7955cd1cf2b4a2fb36bf5445518c3f87a28789140fc719ebcf519036e2b39",
+  "message": "Đã cập nhật danh sách model của Hermes Agent (Nous Research) an toàn (đã sao lưu & kiểm chứng đọc lại)."
+}
+{
+  "schemaVersion": 1,
+  "checkedAt": "2026-11-26T08:00:01.000Z",
+  "status": "READY_FOR_OWNER_LIVE_PILOT",
+  "vietnameseGateStatus": "sẵn sàng chạy thật",
+  "pilotTargets": {
+    "routerTarget": "router:nine/rs-pilot",
+    "harnessTarget": "harness:hermes"
+  },
+  "pilotPhase": "NEEDS_INITIAL_PROPOSE_CONSENT",
+  "checks": [
+    {
+      "id": "freeze_clear",
+      "passed": true,
+      "detail": "Emergency freeze circuit breaker is clear (frozen=false)."
+    },
+    {
+      "id": "config_and_doctor_health",
+      "passed": true,
+      "detail": "Config schema valid, 0 circular dependencies, status.json fresh (0m <= 30m threshold)."
+    },
+    {
+      "id": "pilot_targets_readable",
+      "passed": true,
+      "detail": "Pilot targets readable: router:nine/rs-pilot (nine-c48-pilot.sqlite) + harness:hermes (config.yaml)."
+    },
+    {
+      "id": "tmpdir_backup_rollback_rehearsal",
+      "passed": true,
+      "detail": "Isolated backup + parser + byte-exact SHA-256 rollback rehearsal passed in os.tmpdir()/rs-livecheck-nmq6AR (0 live mutations)."
+    },
+    {
+      "id": "consent_and_promotion_state",
+      "passed": true,
+      "detail": "Consent & apply-history HMAC integrity verified (pilotPhase=NEEDS_INITIAL_PROPOSE_CONSENT)."
+    },
+    {
+      "id": "cost_and_release_hygiene",
+      "passed": true,
+      "detail": "tier0Tokens=0, tier0LlmCalls=0, tier0PaidRequests=0, weeklySessions=0/5 (budgetExceeded=false). 8 publishable + 2 private manifests consistent at version 0.1.0 (prepareV1Release dry-run verified)."
+    },
+    {
+      "id": "live_gate_hint",
+      "passed": true,
+      "detail": "routerDb (nine-c48-pilot.sqlite): trong os.tmpdir() — không cần cờ; harnessConfig (config.yaml): trong os.tmpdir() — không cần cờ."
+    }
+  ],
+  "blockingReasons": [],
+  "ownerNextCommands": [
+    "routersync consent grant --target router:nine/rs-pilot --level propose",
+    "routersync consent grant --target harness:hermes --level propose",
+    "routersync plan"
+  ]
+}
+{
+  "app": "hermes",
+  "directionAMode": "write-adapter",
+  "editable": true,
+  "targetProviders": [
+    "openai"
+  ],
+  "additions": [
+    {
+      "provider": "openai",
+      "model": "gpt-4.1-nano"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4.5"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4o"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4o-legacy"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4o-mini"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-5-nano"
+    },
+    {
+      "provider": "openai",
+      "model": "o3-mini"
+    },
+    {
+      "provider": "openai",
+      "model": "o4-mini"
+    }
+  ],
+  "removals": [],
+  "defaultSlotWarnings": [],
+  "configPath": "<HOME>\\.hermes\\config.yaml",
+  "guidance": [
+    "Use /reload-mcp in active chat for MCP changes; restart gateway or start a new CLI turn for config.yaml model/provider changes."
+  ],
+  "planHash": "1aeb98212c17f108445f111499687298f31796def6578c24ca928ac1514c39ae",
+  "reloadRequired": true,
+  "runningProcesses": []
+}
+{
+  "app": "hermes",
+  "configPath": "C:\\Users\\<USER>\\AppData\\Local\\Temp\\rs-c48-retention-cap-t97McA\\home\\.hermes\\config.yaml",
+  "backupPath": "C:\\Users\\<USER>\\AppData\\Local\\Temp\\rs-c48-retention-cap-t97McA\\home\\.hermes\\config.yaml.pre-pilot.bak",
+  "applied": true,
+  "rolledBack": false,
+  "readBackVerified": true,
+  "reloadRequired": true,
+  "runningProcesses": [],
+  "planHash": "1aeb98212c17f108445f111499687298f31796def6578c24ca928ac1514c39ae",
+  "preSha256": "99454bc655d2ca63adbf711b5485a1335e2fc52ad068780f5b430d136fa2c41c",
+  "postSha256": "9df7955cd1cf2b4a2fb36bf5445518c3f87a28789140fc719ebcf519036e2b39",
+  "message": "Đã cập nhật danh sách model của Hermes Agent (Nous Research) an toàn (đã sao lưu & kiểm chứng đọc lại)."
+}
+{
+  "schemaVersion": 1,
+  "checkedAt": "2026-11-26T08:00:01.000Z",
+  "status": "READY_FOR_OWNER_LIVE_PILOT",
+  "vietnameseGateStatus": "sẵn sàng chạy thật",
+  "pilotTargets": {
+    "routerTarget": "router:nine/rs-pilot",
+    "harnessTarget": "harness:hermes"
+  },
+  "pilotPhase": "NEEDS_INITIAL_PROPOSE_CONSENT",
+  "checks": [
+    {
+      "id": "freeze_clear",
+      "passed": true,
+      "detail": "Emergency freeze circuit breaker is clear (frozen=false)."
+    },
+    {
+      "id": "config_and_doctor_health",
+      "passed": true,
+      "detail": "Config schema valid, 0 circular dependencies, status.json fresh (0m <= 30m threshold)."
+    },
+    {
+      "id": "pilot_targets_readable",
+      "passed": true,
+      "detail": "Pilot targets readable: router:nine/rs-pilot (nine-c48-pilot.sqlite) + harness:hermes (config.yaml)."
+    },
+    {
+      "id": "tmpdir_backup_rollback_rehearsal",
+      "passed": true,
+      "detail": "Isolated backup + parser + byte-exact SHA-256 rollback rehearsal passed in os.tmpdir()/rs-livecheck-u8uCnv (0 live mutations)."
+    },
+    {
+      "id": "consent_and_promotion_state",
+      "passed": true,
+      "detail": "Consent & apply-history HMAC integrity verified (pilotPhase=NEEDS_INITIAL_PROPOSE_CONSENT)."
+    },
+    {
+      "id": "cost_and_release_hygiene",
+      "passed": true,
+      "detail": "tier0Tokens=0, tier0LlmCalls=0, tier0PaidRequests=0, weeklySessions=0/5 (budgetExceeded=false). 8 publishable + 2 private manifests consistent at version 0.1.0 (prepareV1Release dry-run verified)."
+    },
+    {
+      "id": "live_gate_hint",
+      "passed": true,
+      "detail": "routerDb (nine-c48-pilot.sqlite): trong os.tmpdir() — không cần cờ; harnessConfig (config.yaml): trong os.tmpdir() — không cần cờ."
+    }
+  ],
+  "blockingReasons": [],
+  "ownerNextCommands": [
+    "routersync consent grant --target router:nine/rs-pilot --level propose",
+    "routersync consent grant --target harness:hermes --level propose",
+    "routersync plan"
+  ]
+}
+{
+  "app": "hermes",
+  "directionAMode": "write-adapter",
+  "editable": true,
+  "targetProviders": [
+    "openai"
+  ],
+  "additions": [
+    {
+      "provider": "openai",
+      "model": "gpt-4.1-nano"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4.5"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4o"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4o-legacy"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4o-mini"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-5-nano"
+    },
+    {
+      "provider": "openai",
+      "model": "o3-mini"
+    },
+    {
+      "provider": "openai",
+      "model": "o4-mini"
+    }
+  ],
+  "removals": [],
+  "defaultSlotWarnings": [],
+  "configPath": "<HOME>\\.hermes\\config.yaml",
+  "guidance": [
+    "Use /reload-mcp in active chat for MCP changes; restart gateway or start a new CLI turn for config.yaml model/provider changes."
+  ],
+  "planHash": "1aeb98212c17f108445f111499687298f31796def6578c24ca928ac1514c39ae",
+  "reloadRequired": true,
+  "runningProcesses": []
+}
+{
+  "app": "hermes",
+  "configPath": "C:\\Users\\<USER>\\AppData\\Local\\Temp\\rs-c48-retention-cap-8toypq\\home\\.hermes\\config.yaml",
+  "backupPath": "C:\\Users\\<USER>\\AppData\\Local\\Temp\\rs-c48-retention-cap-8toypq\\home\\.hermes\\config.yaml.pre-pilot.bak",
+  "applied": true,
+  "rolledBack": false,
+  "readBackVerified": true,
+  "reloadRequired": true,
+  "runningProcesses": [],
+  "planHash": "1aeb98212c17f108445f111499687298f31796def6578c24ca928ac1514c39ae",
+  "preSha256": "99454bc655d2ca63adbf711b5485a1335e2fc52ad068780f5b430d136fa2c41c",
+  "postSha256": "9df7955cd1cf2b4a2fb36bf5445518c3f87a28789140fc719ebcf519036e2b39",
+  "message": "Đã cập nhật danh sách model của Hermes Agent (Nous Research) an toàn (đã sao lưu & kiểm chứng đọc lại)."
+}
+{
+  "schemaVersion": 1,
+  "checkedAt": "2026-11-26T08:00:01.000Z",
+  "status": "READY_FOR_OWNER_LIVE_PILOT",
+  "vietnameseGateStatus": "sẵn sàng chạy thật",
+  "pilotTargets": {
+    "routerTarget": "router:nine/rs-pilot",
+    "harnessTarget": "harness:hermes"
+  },
+  "pilotPhase": "NEEDS_INITIAL_PROPOSE_CONSENT",
+  "checks": [
+    {
+      "id": "freeze_clear",
+      "passed": true,
+      "detail": "Emergency freeze circuit breaker is clear (frozen=false)."
+    },
+    {
+      "id": "config_and_doctor_health",
+      "passed": true,
+      "detail": "Config schema valid, 0 circular dependencies, status.json fresh (0m <= 30m threshold)."
+    },
+    {
+      "id": "pilot_targets_readable",
+      "passed": true,
+      "detail": "Pilot targets readable: router:nine/rs-pilot (nine-c48-pilot.sqlite) + harness:hermes (config.yaml)."
+    },
+    {
+      "id": "tmpdir_backup_rollback_rehearsal",
+      "passed": true,
+      "detail": "Isolated backup + parser + byte-exact SHA-256 rollback rehearsal passed in os.tmpdir()/rs-livecheck-id7D74 (0 live mutations)."
+    },
+    {
+      "id": "consent_and_promotion_state",
+      "passed": true,
+      "detail": "Consent & apply-history HMAC integrity verified (pilotPhase=NEEDS_INITIAL_PROPOSE_CONSENT)."
+    },
+    {
+      "id": "cost_and_release_hygiene",
+      "passed": true,
+      "detail": "tier0Tokens=0, tier0LlmCalls=0, tier0PaidRequests=0, weeklySessions=0/5 (budgetExceeded=false). 8 publishable + 2 private manifests consistent at version 0.1.0 (prepareV1Release dry-run verified)."
+    },
+    {
+      "id": "live_gate_hint",
+      "passed": true,
+      "detail": "routerDb (nine-c48-pilot.sqlite): trong os.tmpdir() — không cần cờ; harnessConfig (config.yaml): trong os.tmpdir() — không cần cờ."
+    }
+  ],
+  "blockingReasons": [],
+  "ownerNextCommands": [
+    "routersync consent grant --target router:nine/rs-pilot --level propose",
+    "routersync consent grant --target harness:hermes --level propose",
+    "routersync plan"
+  ]
+}
+{
+  "app": "hermes",
+  "directionAMode": "write-adapter",
+  "editable": true,
+  "targetProviders": [
+    "openai"
+  ],
+  "additions": [
+    {
+      "provider": "openai",
+      "model": "gpt-4.1-nano"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4.5"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4o"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4o-legacy"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4o-mini"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-5-nano"
+    },
+    {
+      "provider": "openai",
+      "model": "o3-mini"
+    },
+    {
+      "provider": "openai",
+      "model": "o4-mini"
+    }
+  ],
+  "removals": [],
+  "defaultSlotWarnings": [],
+  "configPath": "<HOME>\\.hermes\\config.yaml",
+  "guidance": [
+    "Use /reload-mcp in active chat for MCP changes; restart gateway or start a new CLI turn for config.yaml model/provider changes."
+  ],
+  "planHash": "1aeb98212c17f108445f111499687298f31796def6578c24ca928ac1514c39ae",
+  "reloadRequired": true,
+  "runningProcesses": []
+}
+{
+  "app": "hermes",
+  "configPath": "C:\\Users\\<USER>\\AppData\\Local\\Temp\\rs-c48-wall-clock-bxx4P3\\home\\.hermes\\config.yaml",
+  "backupPath": "C:\\Users\\<USER>\\AppData\\Local\\Temp\\rs-c48-wall-clock-bxx4P3\\home\\.hermes\\config.yaml.pre-pilot.bak",
+  "applied": true,
+  "rolledBack": false,
+  "readBackVerified": true,
+  "reloadRequired": true,
+  "runningProcesses": [],
+  "planHash": "1aeb98212c17f108445f111499687298f31796def6578c24ca928ac1514c39ae",
+  "preSha256": "99454bc655d2ca63adbf711b5485a1335e2fc52ad068780f5b430d136fa2c41c",
+  "postSha256": "9df7955cd1cf2b4a2fb36bf5445518c3f87a28789140fc719ebcf519036e2b39",
+  "message": "Đã cập nhật danh sách model của Hermes Agent (Nous Research) an toàn (đã sao lưu & kiểm chứng đọc lại)."
+}
+{
+  "schemaVersion": 1,
+  "checkedAt": "2026-11-26T08:00:01.000Z",
+  "status": "READY_FOR_OWNER_LIVE_PILOT",
+  "vietnameseGateStatus": "sẵn sàng chạy thật",
+  "pilotTargets": {
+    "routerTarget": "router:nine/rs-pilot",
+    "harnessTarget": "harness:hermes"
+  },
+  "pilotPhase": "NEEDS_INITIAL_PROPOSE_CONSENT",
+  "checks": [
+    {
+      "id": "freeze_clear",
+      "passed": true,
+      "detail": "Emergency freeze circuit breaker is clear (frozen=false)."
+    },
+    {
+      "id": "config_and_doctor_health",
+      "passed": true,
+      "detail": "Config schema valid, 0 circular dependencies, status.json fresh (0m <= 30m threshold)."
+    },
+    {
+      "id": "pilot_targets_readable",
+      "passed": true,
+      "detail": "Pilot targets readable: router:nine/rs-pilot (nine-c48-pilot.sqlite) + harness:hermes (config.yaml)."
+    },
+    {
+      "id": "tmpdir_backup_rollback_rehearsal",
+      "passed": true,
+      "detail": "Isolated backup + parser + byte-exact SHA-256 rollback rehearsal passed in os.tmpdir()/rs-livecheck-0Nwm6v (0 live mutations)."
+    },
+    {
+      "id": "consent_and_promotion_state",
+      "passed": true,
+      "detail": "Consent & apply-history HMAC integrity verified (pilotPhase=NEEDS_INITIAL_PROPOSE_CONSENT)."
+    },
+    {
+      "id": "cost_and_release_hygiene",
+      "passed": true,
+      "detail": "tier0Tokens=0, tier0LlmCalls=0, tier0PaidRequests=0, weeklySessions=0/5 (budgetExceeded=false). 8 publishable + 2 private manifests consistent at version 0.1.0 (prepareV1Release dry-run verified)."
+    },
+    {
+      "id": "live_gate_hint",
+      "passed": true,
+      "detail": "routerDb (nine-c48-pilot.sqlite): trong os.tmpdir() — không cần cờ; harnessConfig (config.yaml): trong os.tmpdir() — không cần cờ."
+    }
+  ],
+  "blockingReasons": [],
+  "ownerNextCommands": [
+    "routersync consent grant --target router:nine/rs-pilot --level propose",
+    "routersync consent grant --target harness:hermes --level propose",
+    "routersync plan"
+  ]
+}
+{
+  "app": "hermes",
+  "directionAMode": "write-adapter",
+  "editable": true,
+  "targetProviders": [
+    "openai"
+  ],
+  "additions": [
+    {
+      "provider": "openai",
+      "model": "gpt-4.1-nano"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4.5"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4o"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4o-legacy"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4o-mini"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-5-nano"
+    },
+    {
+      "provider": "openai",
+      "model": "o3-mini"
+    },
+    {
+      "provider": "openai",
+      "model": "o4-mini"
+    }
+  ],
+  "removals": [],
+  "defaultSlotWarnings": [],
+  "configPath": "<HOME>\\.hermes\\config.yaml",
+  "guidance": [
+    "Use /reload-mcp in active chat for MCP changes; restart gateway or start a new CLI turn for config.yaml model/provider changes."
+  ],
+  "planHash": "1aeb98212c17f108445f111499687298f31796def6578c24ca928ac1514c39ae",
+  "reloadRequired": true,
+  "runningProcesses": []
+}
+{
+  "app": "hermes",
+  "configPath": "C:\\Users\\<USER>\\AppData\\Local\\Temp\\rs-c48-wall-clock-bQnmhO\\home\\.hermes\\config.yaml",
+  "backupPath": "C:\\Users\\<USER>\\AppData\\Local\\Temp\\rs-c48-wall-clock-bQnmhO\\home\\.hermes\\config.yaml.pre-pilot.bak",
+  "applied": true,
+  "rolledBack": false,
+  "readBackVerified": true,
+  "reloadRequired": true,
+  "runningProcesses": [],
+  "planHash": "1aeb98212c17f108445f111499687298f31796def6578c24ca928ac1514c39ae",
+  "preSha256": "99454bc655d2ca63adbf711b5485a1335e2fc52ad068780f5b430d136fa2c41c",
+  "postSha256": "9df7955cd1cf2b4a2fb36bf5445518c3f87a28789140fc719ebcf519036e2b39",
+  "message": "Đã cập nhật danh sách model của Hermes Agent (Nous Research) an toàn (đã sao lưu & kiểm chứng đọc lại)."
+}
+{
+  "schemaVersion": 1,
+  "checkedAt": "2026-11-26T08:00:01.000Z",
+  "status": "READY_FOR_OWNER_LIVE_PILOT",
+  "vietnameseGateStatus": "sẵn sàng chạy thật",
+  "pilotTargets": {
+    "routerTarget": "router:nine/rs-pilot",
+    "harnessTarget": "harness:hermes"
+  },
+  "pilotPhase": "NEEDS_INITIAL_PROPOSE_CONSENT",
+  "checks": [
+    {
+      "id": "freeze_clear",
+      "passed": true,
+      "detail": "Emergency freeze circuit breaker is clear (frozen=false)."
+    },
+    {
+      "id": "config_and_doctor_health",
+      "passed": true,
+      "detail": "Config schema valid, 0 circular dependencies, status.json fresh (0m <= 30m threshold)."
+    },
+    {
+      "id": "pilot_targets_readable",
+      "passed": true,
+      "detail": "Pilot targets readable: router:nine/rs-pilot (nine-c48-pilot.sqlite) + harness:hermes (config.yaml)."
+    },
+    {
+      "id": "tmpdir_backup_rollback_rehearsal",
+      "passed": true,
+      "detail": "Isolated backup + parser + byte-exact SHA-256 rollback rehearsal passed in os.tmpdir()/rs-livecheck-0gBcC6 (0 live mutations)."
+    },
+    {
+      "id": "consent_and_promotion_state",
+      "passed": true,
+      "detail": "Consent & apply-history HMAC integrity verified (pilotPhase=NEEDS_INITIAL_PROPOSE_CONSENT)."
+    },
+    {
+      "id": "cost_and_release_hygiene",
+      "passed": true,
+      "detail": "tier0Tokens=0, tier0LlmCalls=0, tier0PaidRequests=0, weeklySessions=0/5 (budgetExceeded=false). 8 publishable + 2 private manifests consistent at version 0.1.0 (prepareV1Release dry-run verified)."
+    },
+    {
+      "id": "live_gate_hint",
+      "passed": true,
+      "detail": "routerDb (nine-c48-pilot.sqlite): trong os.tmpdir() — không cần cờ; harnessConfig (config.yaml): trong os.tmpdir() — không cần cờ."
+    }
+  ],
+  "blockingReasons": [],
+  "ownerNextCommands": [
+    "routersync consent grant --target router:nine/rs-pilot --level propose",
+    "routersync consent grant --target harness:hermes --level propose",
+    "routersync plan"
+  ]
+}
+{
+  "app": "hermes",
+  "directionAMode": "write-adapter",
+  "editable": true,
+  "targetProviders": [
+    "openai"
+  ],
+  "additions": [
+    {
+      "provider": "openai",
+      "model": "gpt-4.1-nano"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4.5"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4o"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4o-legacy"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4o-mini"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-5-nano"
+    },
+    {
+      "provider": "openai",
+      "model": "o3-mini"
+    },
+    {
+      "provider": "openai",
+      "model": "o4-mini"
+    }
+  ],
+  "removals": [],
+  "defaultSlotWarnings": [],
+  "configPath": "<HOME>\\.hermes\\config.yaml",
+  "guidance": [
+    "Use /reload-mcp in active chat for MCP changes; restart gateway or start a new CLI turn for config.yaml model/provider changes."
+  ],
+  "planHash": "1aeb98212c17f108445f111499687298f31796def6578c24ca928ac1514c39ae",
+  "reloadRequired": true,
+  "runningProcesses": []
+}
+{
+  "app": "hermes",
+  "configPath": "C:\\Users\\<USER>\\AppData\\Local\\Temp\\rs-c48-idle-retention-IT6wN8\\home\\.hermes\\config.yaml",
+  "backupPath": "C:\\Users\\<USER>\\AppData\\Local\\Temp\\rs-c48-idle-retention-IT6wN8\\home\\.hermes\\config.yaml.pre-pilot.bak",
+  "applied": true,
+  "rolledBack": false,
+  "readBackVerified": true,
+  "reloadRequired": true,
+  "runningProcesses": [],
+  "planHash": "1aeb98212c17f108445f111499687298f31796def6578c24ca928ac1514c39ae",
+  "preSha256": "99454bc655d2ca63adbf711b5485a1335e2fc52ad068780f5b430d136fa2c41c",
+  "postSha256": "9df7955cd1cf2b4a2fb36bf5445518c3f87a28789140fc719ebcf519036e2b39",
+  "message": "Đã cập nhật danh sách model của Hermes Agent (Nous Research) an toàn (đã sao lưu & kiểm chứng đọc lại)."
+}
+{
+  "schemaVersion": 1,
+  "checkedAt": "2026-11-26T08:00:01.000Z",
+  "status": "READY_FOR_OWNER_LIVE_PILOT",
+  "vietnameseGateStatus": "sẵn sàng chạy thật",
+  "pilotTargets": {
+    "routerTarget": "router:nine/rs-pilot",
+    "harnessTarget": "harness:hermes"
+  },
+  "pilotPhase": "NEEDS_INITIAL_PROPOSE_CONSENT",
+  "checks": [
+    {
+      "id": "freeze_clear",
+      "passed": true,
+      "detail": "Emergency freeze circuit breaker is clear (frozen=false)."
+    },
+    {
+      "id": "config_and_doctor_health",
+      "passed": true,
+      "detail": "Config schema valid, 0 circular dependencies, status.json fresh (0m <= 30m threshold)."
+    },
+    {
+      "id": "pilot_targets_readable",
+      "passed": true,
+      "detail": "Pilot targets readable: router:nine/rs-pilot (nine-c48-pilot.sqlite) + harness:hermes (config.yaml)."
+    },
+    {
+      "id": "tmpdir_backup_rollback_rehearsal",
+      "passed": true,
+      "detail": "Isolated backup + parser + byte-exact SHA-256 rollback rehearsal passed in os.tmpdir()/rs-livecheck-pVwNbG (0 live mutations)."
+    },
+    {
+      "id": "consent_and_promotion_state",
+      "passed": true,
+      "detail": "Consent & apply-history HMAC integrity verified (pilotPhase=NEEDS_INITIAL_PROPOSE_CONSENT)."
+    },
+    {
+      "id": "cost_and_release_hygiene",
+      "passed": true,
+      "detail": "tier0Tokens=0, tier0LlmCalls=0, tier0PaidRequests=0, weeklySessions=0/5 (budgetExceeded=false). 8 publishable + 2 private manifests consistent at version 0.1.0 (prepareV1Release dry-run verified)."
+    },
+    {
+      "id": "live_gate_hint",
+      "passed": true,
+      "detail": "routerDb (nine-c48-pilot.sqlite): trong os.tmpdir() — không cần cờ; harnessConfig (config.yaml): trong os.tmpdir() — không cần cờ."
+    }
+  ],
+  "blockingReasons": [],
+  "ownerNextCommands": [
+    "routersync consent grant --target router:nine/rs-pilot --level propose",
+    "routersync consent grant --target harness:hermes --level propose",
+    "routersync plan"
+  ]
+}
+{
+  "app": "hermes",
+  "directionAMode": "write-adapter",
+  "editable": true,
+  "targetProviders": [
+    "openai"
+  ],
+  "additions": [
+    {
+      "provider": "openai",
+      "model": "gpt-4.1-nano"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4.5"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4o"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4o-legacy"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4o-mini"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-5-nano"
+    },
+    {
+      "provider": "openai",
+      "model": "o3-mini"
+    },
+    {
+      "provider": "openai",
+      "model": "o4-mini"
+    }
+  ],
+  "removals": [],
+  "defaultSlotWarnings": [],
+  "configPath": "<HOME>\\.hermes\\config.yaml",
+  "guidance": [
+    "Use /reload-mcp in active chat for MCP changes; restart gateway or start a new CLI turn for config.yaml model/provider changes."
+  ],
+  "planHash": "1aeb98212c17f108445f111499687298f31796def6578c24ca928ac1514c39ae",
+  "reloadRequired": true,
+  "runningProcesses": []
+}
+{
+  "app": "hermes",
+  "configPath": "C:\\Users\\<USER>\\AppData\\Local\\Temp\\rs-c48-h2-case1-u8EBsq\\home\\.hermes\\config.yaml",
+  "backupPath": "C:\\Users\\<USER>\\AppData\\Local\\Temp\\rs-c48-h2-case1-u8EBsq\\home\\.hermes\\config.yaml.pre-pilot.bak",
+  "applied": true,
+  "rolledBack": false,
+  "readBackVerified": true,
+  "reloadRequired": true,
+  "runningProcesses": [],
+  "planHash": "1aeb98212c17f108445f111499687298f31796def6578c24ca928ac1514c39ae",
+  "preSha256": "99454bc655d2ca63adbf711b5485a1335e2fc52ad068780f5b430d136fa2c41c",
+  "postSha256": "9df7955cd1cf2b4a2fb36bf5445518c3f87a28789140fc719ebcf519036e2b39",
+  "message": "Đã cập nhật danh sách model của Hermes Agent (Nous Research) an toàn (đã sao lưu & kiểm chứng đọc lại)."
+}
+{
+  "app": "hermes",
+  "configPath": "C:\\Users\\<USER>\\AppData\\Local\\Temp\\rs-c48-h2-case1-u8EBsq\\home\\.hermes\\config.yaml",
+  "backupPath": "C:\\Users\\<USER>\\AppData\\Local\\Temp\\rs-c48-h2-case1-u8EBsq\\home\\.hermes\\config.yaml.pre-pilot.bak",
+  "restored": true,
+  "byteIdenticalToPreApply": true,
+  "postSha256": "99454bc655d2ca63adbf711b5485a1335e2fc52ad068780f5b430d136fa2c41c"
+}
+{
+  "schemaVersion": 1,
+  "checkedAt": "2026-11-26T08:00:01.000Z",
+  "status": "READY_FOR_OWNER_LIVE_PILOT",
+  "vietnameseGateStatus": "sẵn sàng chạy thật",
+  "pilotTargets": {
+    "routerTarget": "router:nine/rs-pilot",
+    "harnessTarget": "harness:hermes"
+  },
+  "pilotPhase": "NEEDS_INITIAL_PROPOSE_CONSENT",
+  "checks": [
+    {
+      "id": "freeze_clear",
+      "passed": true,
+      "detail": "Emergency freeze circuit breaker is clear (frozen=false)."
+    },
+    {
+      "id": "config_and_doctor_health",
+      "passed": true,
+      "detail": "Config schema valid, 0 circular dependencies, status.json fresh (0m <= 30m threshold)."
+    },
+    {
+      "id": "pilot_targets_readable",
+      "passed": true,
+      "detail": "Pilot targets readable: router:nine/rs-pilot (nine-c48-pilot.sqlite) + harness:hermes (config.yaml)."
+    },
+    {
+      "id": "tmpdir_backup_rollback_rehearsal",
+      "passed": true,
+      "detail": "Isolated backup + parser + byte-exact SHA-256 rollback rehearsal passed in os.tmpdir()/rs-livecheck-NPo9Iz (0 live mutations)."
+    },
+    {
+      "id": "consent_and_promotion_state",
+      "passed": true,
+      "detail": "Consent & apply-history HMAC integrity verified (pilotPhase=NEEDS_INITIAL_PROPOSE_CONSENT)."
+    },
+    {
+      "id": "cost_and_release_hygiene",
+      "passed": true,
+      "detail": "tier0Tokens=0, tier0LlmCalls=0, tier0PaidRequests=0, weeklySessions=0/5 (budgetExceeded=false). 8 publishable + 2 private manifests consistent at version 0.1.0 (prepareV1Release dry-run verified)."
+    },
+    {
+      "id": "live_gate_hint",
+      "passed": true,
+      "detail": "routerDb (nine-c48-pilot.sqlite): trong os.tmpdir() — không cần cờ; harnessConfig (config.yaml): trong os.tmpdir() — không cần cờ."
+    }
+  ],
+  "blockingReasons": [],
+  "ownerNextCommands": [
+    "routersync consent grant --target router:nine/rs-pilot --level propose",
+    "routersync consent grant --target harness:hermes --level propose",
+    "routersync plan"
+  ]
+}
+{
+  "app": "hermes",
+  "directionAMode": "write-adapter",
+  "editable": true,
+  "targetProviders": [
+    "openai"
+  ],
+  "additions": [
+    {
+      "provider": "openai",
+      "model": "gpt-4.1-nano"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4.5"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4o"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4o-legacy"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4o-mini"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-5-nano"
+    },
+    {
+      "provider": "openai",
+      "model": "o3-mini"
+    },
+    {
+      "provider": "openai",
+      "model": "o4-mini"
+    }
+  ],
+  "removals": [],
+  "defaultSlotWarnings": [],
+  "configPath": "<HOME>\\.hermes\\config.yaml",
+  "guidance": [
+    "Use /reload-mcp in active chat for MCP changes; restart gateway or start a new CLI turn for config.yaml model/provider changes."
+  ],
+  "planHash": "1aeb98212c17f108445f111499687298f31796def6578c24ca928ac1514c39ae",
+  "reloadRequired": true,
+  "runningProcesses": []
+}
+{
+  "app": "hermes",
+  "configPath": "C:\\Users\\<USER>\\AppData\\Local\\Temp\\rs-c48-h2-case2-ybO3Mg\\home\\.hermes\\config.yaml",
+  "backupPath": "C:\\Users\\<USER>\\AppData\\Local\\Temp\\rs-c48-h2-case2-ybO3Mg\\home\\.hermes\\config.yaml.pre-pilot.bak",
+  "applied": true,
+  "rolledBack": false,
+  "readBackVerified": true,
+  "reloadRequired": true,
+  "runningProcesses": [],
+  "planHash": "1aeb98212c17f108445f111499687298f31796def6578c24ca928ac1514c39ae",
+  "preSha256": "99454bc655d2ca63adbf711b5485a1335e2fc52ad068780f5b430d136fa2c41c",
+  "postSha256": "9df7955cd1cf2b4a2fb36bf5445518c3f87a28789140fc719ebcf519036e2b39",
+  "message": "Đã cập nhật danh sách model của Hermes Agent (Nous Research) an toàn (đã sao lưu & kiểm chứng đọc lại)."
+}
+{
+  "app": "hermes",
+  "configPath": "C:\\Users\\<USER>\\AppData\\Local\\Temp\\rs-c48-h2-case2-ybO3Mg\\home\\.hermes\\config.yaml",
+  "backupPath": "C:\\Users\\<USER>\\AppData\\Local\\Temp\\rs-c48-h2-case2-ybO3Mg\\home\\.hermes\\config.yaml.pre-pilot.bak",
+  "restored": true,
+  "byteIdenticalToPreApply": true,
+  "postSha256": "99454bc655d2ca63adbf711b5485a1335e2fc52ad068780f5b430d136fa2c41c"
+}
+{
+  "schemaVersion": 1,
+  "checkedAt": "2026-11-26T08:00:01.000Z",
+  "status": "READY_FOR_OWNER_LIVE_PILOT",
+  "vietnameseGateStatus": "sẵn sàng chạy thật",
+  "pilotTargets": {
+    "routerTarget": "router:nine/rs-pilot",
+    "harnessTarget": "harness:hermes"
+  },
+  "pilotPhase": "NEEDS_INITIAL_PROPOSE_CONSENT",
+  "checks": [
+    {
+      "id": "freeze_clear",
+      "passed": true,
+      "detail": "Emergency freeze circuit breaker is clear (frozen=false)."
+    },
+    {
+      "id": "config_and_doctor_health",
+      "passed": true,
+      "detail": "Config schema valid, 0 circular dependencies, status.json fresh (0m <= 30m threshold)."
+    },
+    {
+      "id": "pilot_targets_readable",
+      "passed": true,
+      "detail": "Pilot targets readable: router:nine/rs-pilot (nine-c48-pilot.sqlite) + harness:hermes (config.yaml)."
+    },
+    {
+      "id": "tmpdir_backup_rollback_rehearsal",
+      "passed": true,
+      "detail": "Isolated backup + parser + byte-exact SHA-256 rollback rehearsal passed in os.tmpdir()/rs-livecheck-DJnwfS (0 live mutations)."
+    },
+    {
+      "id": "consent_and_promotion_state",
+      "passed": true,
+      "detail": "Consent & apply-history HMAC integrity verified (pilotPhase=NEEDS_INITIAL_PROPOSE_CONSENT)."
+    },
+    {
+      "id": "cost_and_release_hygiene",
+      "passed": true,
+      "detail": "tier0Tokens=0, tier0LlmCalls=0, tier0PaidRequests=0, weeklySessions=0/5 (budgetExceeded=false). 8 publishable + 2 private manifests consistent at version 0.1.0 (prepareV1Release dry-run verified)."
+    },
+    {
+      "id": "live_gate_hint",
+      "passed": true,
+      "detail": "routerDb (nine-c48-pilot.sqlite): trong os.tmpdir() — không cần cờ; harnessConfig (config.yaml): trong os.tmpdir() — không cần cờ."
+    }
+  ],
+  "blockingReasons": [],
+  "ownerNextCommands": [
+    "routersync consent grant --target router:nine/rs-pilot --level propose",
+    "routersync consent grant --target harness:hermes --level propose",
+    "routersync plan"
+  ]
+}
+{
+  "app": "hermes",
+  "directionAMode": "write-adapter",
+  "editable": true,
+  "targetProviders": [
+    "openai"
+  ],
+  "additions": [
+    {
+      "provider": "openai",
+      "model": "gpt-4.1-nano"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4.5"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4o"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4o-legacy"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4o-mini"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-5-nano"
+    },
+    {
+      "provider": "openai",
+      "model": "o3-mini"
+    },
+    {
+      "provider": "openai",
+      "model": "o4-mini"
+    }
+  ],
+  "removals": [],
+  "defaultSlotWarnings": [],
+  "configPath": "<HOME>\\.hermes\\config.yaml",
+  "guidance": [
+    "Use /reload-mcp in active chat for MCP changes; restart gateway or start a new CLI turn for config.yaml model/provider changes."
+  ],
+  "planHash": "1aeb98212c17f108445f111499687298f31796def6578c24ca928ac1514c39ae",
+  "reloadRequired": true,
+  "runningProcesses": []
+}
+{
+  "app": "hermes",
+  "configPath": "C:\\Users\\<USER>\\AppData\\Local\\Temp\\rs-c48-h2-case3-n6TnGM\\home\\.hermes\\config.yaml",
+  "backupPath": "C:\\Users\\<USER>\\AppData\\Local\\Temp\\rs-c48-h2-case3-n6TnGM\\home\\.hermes\\config.yaml.pre-pilot.bak",
+  "applied": true,
+  "rolledBack": false,
+  "readBackVerified": true,
+  "reloadRequired": true,
+  "runningProcesses": [],
+  "planHash": "1aeb98212c17f108445f111499687298f31796def6578c24ca928ac1514c39ae",
+  "preSha256": "99454bc655d2ca63adbf711b5485a1335e2fc52ad068780f5b430d136fa2c41c",
+  "postSha256": "9df7955cd1cf2b4a2fb36bf5445518c3f87a28789140fc719ebcf519036e2b39",
+  "message": "Đã cập nhật danh sách model của Hermes Agent (Nous Research) an toàn (đã sao lưu & kiểm chứng đọc lại)."
+}
+{
+  "app": "hermes",
+  "configPath": "C:\\Users\\<USER>\\AppData\\Local\\Temp\\rs-c48-h2-case3-n6TnGM\\home\\.hermes\\config.yaml",
+  "backupPath": "C:\\Users\\<USER>\\AppData\\Local\\Temp\\rs-c48-h2-case3-n6TnGM\\home\\.hermes\\config.yaml.pre-pilot.bak",
+  "restored": true,
+  "byteIdenticalToPreApply": true,
+  "postSha256": "99454bc655d2ca63adbf711b5485a1335e2fc52ad068780f5b430d136fa2c41c"
+}
+{
+  "schemaVersion": 1,
+  "checkedAt": "2026-11-26T08:00:01.000Z",
+  "status": "READY_FOR_OWNER_LIVE_PILOT",
+  "vietnameseGateStatus": "sẵn sàng chạy thật",
+  "pilotTargets": {
+    "routerTarget": "router:nine/rs-pilot",
+    "harnessTarget": "harness:hermes"
+  },
+  "pilotPhase": "NEEDS_INITIAL_PROPOSE_CONSENT",
+  "checks": [
+    {
+      "id": "freeze_clear",
+      "passed": true,
+      "detail": "Emergency freeze circuit breaker is clear (frozen=false)."
+    },
+    {
+      "id": "config_and_doctor_health",
+      "passed": true,
+      "detail": "Config schema valid, 0 circular dependencies, status.json fresh (0m <= 30m threshold)."
+    },
+    {
+      "id": "pilot_targets_readable",
+      "passed": true,
+      "detail": "Pilot targets readable: router:nine/rs-pilot (nine-c48-pilot.sqlite) + harness:hermes (config.yaml)."
+    },
+    {
+      "id": "tmpdir_backup_rollback_rehearsal",
+      "passed": true,
+      "detail": "Isolated backup + parser + byte-exact SHA-256 rollback rehearsal passed in os.tmpdir()/rs-livecheck-jUeiUZ (0 live mutations)."
+    },
+    {
+      "id": "consent_and_promotion_state",
+      "passed": true,
+      "detail": "Consent & apply-history HMAC integrity verified (pilotPhase=NEEDS_INITIAL_PROPOSE_CONSENT)."
+    },
+    {
+      "id": "cost_and_release_hygiene",
+      "passed": true,
+      "detail": "tier0Tokens=0, tier0LlmCalls=0, tier0PaidRequests=0, weeklySessions=0/5 (budgetExceeded=false). 8 publishable + 2 private manifests consistent at version 0.1.0 (prepareV1Release dry-run verified)."
+    },
+    {
+      "id": "live_gate_hint",
+      "passed": true,
+      "detail": "routerDb (nine-c48-pilot.sqlite): trong os.tmpdir() — không cần cờ; harnessConfig (config.yaml): trong os.tmpdir() — không cần cờ."
+    }
+  ],
+  "blockingReasons": [],
+  "ownerNextCommands": [
+    "routersync consent grant --target router:nine/rs-pilot --level propose",
+    "routersync consent grant --target harness:hermes --level propose",
+    "routersync plan"
+  ]
+}
+{
+  "app": "hermes",
+  "directionAMode": "write-adapter",
+  "editable": true,
+  "targetProviders": [
+    "openai"
+  ],
+  "additions": [
+    {
+      "provider": "openai",
+      "model": "gpt-4.1-nano"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4.5"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4o"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4o-legacy"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4o-mini"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-5-nano"
+    },
+    {
+      "provider": "openai",
+      "model": "o3-mini"
+    },
+    {
+      "provider": "openai",
+      "model": "o4-mini"
+    }
+  ],
+  "removals": [],
+  "defaultSlotWarnings": [],
+  "configPath": "<HOME>\\.hermes\\config.yaml",
+  "guidance": [
+    "Use /reload-mcp in active chat for MCP changes; restart gateway or start a new CLI turn for config.yaml model/provider changes."
+  ],
+  "planHash": "1aeb98212c17f108445f111499687298f31796def6578c24ca928ac1514c39ae",
+  "reloadRequired": true,
+  "runningProcesses": []
+}
+{
+  "app": "hermes",
+  "configPath": "C:\\Users\\<USER>\\AppData\\Local\\Temp\\rs-c48-h2-case4-t02Rhc\\home\\.hermes\\config.yaml",
+  "backupPath": "C:\\Users\\<USER>\\AppData\\Local\\Temp\\rs-c48-h2-case4-t02Rhc\\home\\.hermes\\config.yaml.pre-pilot.bak",
+  "applied": true,
+  "rolledBack": false,
+  "readBackVerified": true,
+  "reloadRequired": true,
+  "runningProcesses": [],
+  "planHash": "1aeb98212c17f108445f111499687298f31796def6578c24ca928ac1514c39ae",
+  "preSha256": "99454bc655d2ca63adbf711b5485a1335e2fc52ad068780f5b430d136fa2c41c",
+  "postSha256": "9df7955cd1cf2b4a2fb36bf5445518c3f87a28789140fc719ebcf519036e2b39",
+  "message": "Đã cập nhật danh sách model của Hermes Agent (Nous Research) an toàn (đã sao lưu & kiểm chứng đọc lại)."
+}
+{
+  "app": "hermes",
+  "configPath": "C:\\Users\\<USER>\\AppData\\Local\\Temp\\rs-c48-h2-case4-t02Rhc\\home\\.hermes\\config.yaml",
+  "backupPath": "C:\\Users\\<USER>\\AppData\\Local\\Temp\\rs-c48-h2-case4-t02Rhc\\home\\.hermes\\config.yaml.pre-pilot.bak",
+  "restored": true,
+  "byteIdenticalToPreApply": true,
+  "postSha256": "99454bc655d2ca63adbf711b5485a1335e2fc52ad068780f5b430d136fa2c41c"
+}
+{
+  "schemaVersion": 1,
+  "checkedAt": "2026-11-26T08:00:01.000Z",
+  "status": "READY_FOR_OWNER_LIVE_PILOT",
+  "vietnameseGateStatus": "sẵn sàng chạy thật",
+  "pilotTargets": {
+    "routerTarget": "router:nine/rs-pilot",
+    "harnessTarget": "harness:hermes"
+  },
+  "pilotPhase": "NEEDS_INITIAL_PROPOSE_CONSENT",
+  "checks": [
+    {
+      "id": "freeze_clear",
+      "passed": true,
+      "detail": "Emergency freeze circuit breaker is clear (frozen=false)."
+    },
+    {
+      "id": "config_and_doctor_health",
+      "passed": true,
+      "detail": "Config schema valid, 0 circular dependencies, status.json fresh (0m <= 30m threshold)."
+    },
+    {
+      "id": "pilot_targets_readable",
+      "passed": true,
+      "detail": "Pilot targets readable: router:nine/rs-pilot (nine-c48-pilot.sqlite) + harness:hermes (config.yaml)."
+    },
+    {
+      "id": "tmpdir_backup_rollback_rehearsal",
+      "passed": true,
+      "detail": "Isolated backup + parser + byte-exact SHA-256 rollback rehearsal passed in os.tmpdir()/rs-livecheck-i2BKyD (0 live mutations)."
+    },
+    {
+      "id": "consent_and_promotion_state",
+      "passed": true,
+      "detail": "Consent & apply-history HMAC integrity verified (pilotPhase=NEEDS_INITIAL_PROPOSE_CONSENT)."
+    },
+    {
+      "id": "cost_and_release_hygiene",
+      "passed": true,
+      "detail": "tier0Tokens=0, tier0LlmCalls=0, tier0PaidRequests=0, weeklySessions=0/5 (budgetExceeded=false). 8 publishable + 2 private manifests consistent at version 0.1.0 (prepareV1Release dry-run verified)."
+    },
+    {
+      "id": "live_gate_hint",
+      "passed": true,
+      "detail": "routerDb (nine-c48-pilot.sqlite): trong os.tmpdir() — không cần cờ; harnessConfig (config.yaml): trong os.tmpdir() — không cần cờ."
+    }
+  ],
+  "blockingReasons": [],
+  "ownerNextCommands": [
+    "routersync consent grant --target router:nine/rs-pilot --level propose",
+    "routersync consent grant --target harness:hermes --level propose",
+    "routersync plan"
+  ]
+}
+{
+  "app": "hermes",
+  "directionAMode": "write-adapter",
+  "editable": true,
+  "targetProviders": [
+    "openai"
+  ],
+  "additions": [
+    {
+      "provider": "openai",
+      "model": "gpt-4.1-nano"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4.5"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4o"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4o-mini"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-5-nano"
+    },
+    {
+      "provider": "openai",
+      "model": "o3-mini"
+    },
+    {
+      "provider": "openai",
+      "model": "o4-mini"
+    }
+  ],
+  "removals": [],
+  "defaultSlotWarnings": [],
+  "configPath": "<HOME>\\.hermes\\config.yaml",
+  "guidance": [
+    "Use /reload-mcp in active chat for MCP changes; restart gateway or start a new CLI turn for config.yaml model/provider changes."
+  ],
+  "planHash": "c5cfcd9bbdb3eef19ad1bc22b04ffc086fe6d882e13104e331331b510a9ec294",
+  "reloadRequired": true,
+  "runningProcesses": []
+}
+{
+  "app": "hermes",
+  "configPath": "C:\\Users\\<USER>\\AppData\\Local\\Temp\\rs-c48-h2-case5-zgEoD1\\home\\.hermes\\config.yaml",
+  "backupPath": "C:\\Users\\<USER>\\AppData\\Local\\Temp\\rs-c48-h2-case5-zgEoD1\\home\\.hermes\\config.yaml.pre-pilot.bak",
+  "applied": true,
+  "rolledBack": false,
+  "readBackVerified": true,
+  "reloadRequired": true,
+  "runningProcesses": [],
+  "planHash": "c5cfcd9bbdb3eef19ad1bc22b04ffc086fe6d882e13104e331331b510a9ec294",
+  "preSha256": "99454bc655d2ca63adbf711b5485a1335e2fc52ad068780f5b430d136fa2c41c",
+  "postSha256": "271793812d991cddab05138251895810c9b1588337de712acb5cbec476626443",
+  "message": "Đã cập nhật danh sách model của Hermes Agent (Nous Research) an toàn (đã sao lưu & kiểm chứng đọc lại)."
+}
+{
+  "app": "hermes",
+  "configPath": "C:\\Users\\<USER>\\AppData\\Local\\Temp\\rs-c48-h2-case5-zgEoD1\\home\\.hermes\\config.yaml",
+  "backupPath": "C:\\Users\\<USER>\\AppData\\Local\\Temp\\rs-c48-h2-case5-zgEoD1\\home\\.hermes\\config.yaml.pre-pilot.bak",
+  "restored": true,
+  "byteIdenticalToPreApply": true,
+  "postSha256": "99454bc655d2ca63adbf711b5485a1335e2fc52ad068780f5b430d136fa2c41c"
+}
+{
+  "schemaVersion": 1,
+  "checkedAt": "2026-11-26T08:00:01.000Z",
+  "status": "READY_FOR_OWNER_LIVE_PILOT",
+  "vietnameseGateStatus": "sẵn sàng chạy thật",
+  "pilotTargets": {
+    "routerTarget": "router:nine/rs-pilot",
+    "harnessTarget": "harness:hermes"
+  },
+  "pilotPhase": "NEEDS_INITIAL_PROPOSE_CONSENT",
+  "checks": [
+    {
+      "id": "freeze_clear",
+      "passed": true,
+      "detail": "Emergency freeze circuit breaker is clear (frozen=false)."
+    },
+    {
+      "id": "config_and_doctor_health",
+      "passed": true,
+      "detail": "Config schema valid, 0 circular dependencies, status.json fresh (0m <= 30m threshold)."
+    },
+    {
+      "id": "pilot_targets_readable",
+      "passed": true,
+      "detail": "Pilot targets readable: router:nine/rs-pilot (nine-c48-pilot.sqlite) + harness:hermes (config.yaml)."
+    },
+    {
+      "id": "tmpdir_backup_rollback_rehearsal",
+      "passed": true,
+      "detail": "Isolated backup + parser + byte-exact SHA-256 rollback rehearsal passed in os.tmpdir()/rs-livecheck-6I2TUj (0 live mutations)."
+    },
+    {
+      "id": "consent_and_promotion_state",
+      "passed": true,
+      "detail": "Consent & apply-history HMAC integrity verified (pilotPhase=NEEDS_INITIAL_PROPOSE_CONSENT)."
+    },
+    {
+      "id": "cost_and_release_hygiene",
+      "passed": true,
+      "detail": "tier0Tokens=0, tier0LlmCalls=0, tier0PaidRequests=0, weeklySessions=0/5 (budgetExceeded=false). 8 publishable + 2 private manifests consistent at version 0.1.0 (prepareV1Release dry-run verified)."
+    },
+    {
+      "id": "live_gate_hint",
+      "passed": true,
+      "detail": "routerDb (nine-c48-pilot.sqlite): trong os.tmpdir() — không cần cờ; harnessConfig (config.yaml): trong os.tmpdir() — không cần cờ."
+    }
+  ],
+  "blockingReasons": [],
+  "ownerNextCommands": [
+    "routersync consent grant --target router:nine/rs-pilot --level propose",
+    "routersync consent grant --target harness:hermes --level propose",
+    "routersync plan"
+  ]
+}
+{
+  "app": "hermes",
+  "directionAMode": "write-adapter",
+  "editable": true,
+  "targetProviders": [
+    "openai"
+  ],
+  "additions": [
+    {
+      "provider": "openai",
+      "model": "gpt-4.1-nano"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4.5"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4o"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4o-legacy"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4o-mini"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-5-nano"
+    },
+    {
+      "provider": "openai",
+      "model": "o3-mini"
+    },
+    {
+      "provider": "openai",
+      "model": "o4-mini"
+    }
+  ],
+  "removals": [],
+  "defaultSlotWarnings": [],
+  "configPath": "<HOME>\\.hermes\\config.yaml",
+  "guidance": [
+    "Use /reload-mcp in active chat for MCP changes; restart gateway or start a new CLI turn for config.yaml model/provider changes."
+  ],
+  "planHash": "1aeb98212c17f108445f111499687298f31796def6578c24ca928ac1514c39ae",
+  "reloadRequired": true,
+  "runningProcesses": []
+}
+{
+  "app": "hermes",
+  "configPath": "C:\\Users\\<USER>\\AppData\\Local\\Temp\\qaf3-propose-successorxn6EZK\\home\\.hermes\\config.yaml",
+  "backupPath": "C:\\Users\\<USER>\\AppData\\Local\\Temp\\qaf3-propose-successorxn6EZK\\home\\.hermes\\config.yaml.pre-pilot.bak",
+  "applied": true,
+  "rolledBack": false,
+  "readBackVerified": true,
+  "reloadRequired": true,
+  "runningProcesses": [],
+  "planHash": "1aeb98212c17f108445f111499687298f31796def6578c24ca928ac1514c39ae",
+  "preSha256": "99454bc655d2ca63adbf711b5485a1335e2fc52ad068780f5b430d136fa2c41c",
+  "postSha256": "9df7955cd1cf2b4a2fb36bf5445518c3f87a28789140fc719ebcf519036e2b39",
+  "message": "Đã cập nhật danh sách model của Hermes Agent (Nous Research) an toàn (đã sao lưu & kiểm chứng đọc lại)."
+}
+{
+  "app": "hermes",
+  "configPath": "C:\\Users\\<USER>\\AppData\\Local\\Temp\\qaf3-propose-successorxn6EZK\\home\\.hermes\\config.yaml",
+  "backupPath": "C:\\Users\\<USER>\\AppData\\Local\\Temp\\qaf3-propose-successorxn6EZK\\home\\.hermes\\config.yaml.pre-pilot.bak",
+  "restored": true,
+  "byteIdenticalToPreApply": true,
+  "postSha256": "99454bc655d2ca63adbf711b5485a1335e2fc52ad068780f5b430d136fa2c41c"
+}
+{
+  "schemaVersion": 1,
+  "checkedAt": "2026-11-26T08:00:01.000Z",
+  "status": "READY_FOR_OWNER_LIVE_PILOT",
+  "vietnameseGateStatus": "sẵn sàng chạy thật",
+  "pilotTargets": {
+    "routerTarget": "router:nine/rs-pilot",
+    "harnessTarget": "harness:hermes"
+  },
+  "pilotPhase": "NEEDS_INITIAL_PROPOSE_CONSENT",
+  "checks": [
+    {
+      "id": "freeze_clear",
+      "passed": true,
+      "detail": "Emergency freeze circuit breaker is clear (frozen=false)."
+    },
+    {
+      "id": "config_and_doctor_health",
+      "passed": true,
+      "detail": "Config schema valid, 0 circular dependencies, status.json fresh (0m <= 30m threshold)."
+    },
+    {
+      "id": "pilot_targets_readable",
+      "passed": true,
+      "detail": "Pilot targets readable: router:nine/rs-pilot (nine-c48-pilot.sqlite) + harness:hermes (config.yaml)."
+    },
+    {
+      "id": "tmpdir_backup_rollback_rehearsal",
+      "passed": true,
+      "detail": "Isolated backup + parser + byte-exact SHA-256 rollback rehearsal passed in os.tmpdir()/rs-livecheck-KJWiZW (0 live mutations)."
+    },
+    {
+      "id": "consent_and_promotion_state",
+      "passed": true,
+      "detail": "Consent & apply-history HMAC integrity verified (pilotPhase=NEEDS_INITIAL_PROPOSE_CONSENT)."
+    },
+    {
+      "id": "cost_and_release_hygiene",
+      "passed": true,
+      "detail": "tier0Tokens=0, tier0LlmCalls=0, tier0PaidRequests=0, weeklySessions=0/5 (budgetExceeded=false). 8 publishable + 2 private manifests consistent at version 0.1.0 (prepareV1Release dry-run verified)."
+    },
+    {
+      "id": "live_gate_hint",
+      "passed": true,
+      "detail": "routerDb (nine-c48-pilot.sqlite): trong os.tmpdir() — không cần cờ; harnessConfig (config.yaml): trong os.tmpdir() — không cần cờ."
+    }
+  ],
+  "blockingReasons": [],
+  "ownerNextCommands": [
+    "routersync consent grant --target router:nine/rs-pilot --level propose",
+    "routersync consent grant --target harness:hermes --level propose",
+    "routersync plan"
+  ]
+}
+{
+  "app": "hermes",
+  "directionAMode": "write-adapter",
+  "editable": true,
+  "targetProviders": [
+    "openai"
+  ],
+  "additions": [
+    {
+      "provider": "openai",
+      "model": "gpt-4.1-nano"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4.5"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4o"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4o-legacy"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4o-mini"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-5-nano"
+    },
+    {
+      "provider": "openai",
+      "model": "o3-mini"
+    },
+    {
+      "provider": "openai",
+      "model": "o4-mini"
+    }
+  ],
+  "removals": [],
+  "defaultSlotWarnings": [],
+  "configPath": "<HOME>\\.hermes\\config.yaml",
+  "guidance": [
+    "Use /reload-mcp in active chat for MCP changes; restart gateway or start a new CLI turn for config.yaml model/provider changes."
+  ],
+  "planHash": "1aeb98212c17f108445f111499687298f31796def6578c24ca928ac1514c39ae",
+  "reloadRequired": true,
+  "runningProcesses": []
+}
+{
+  "app": "hermes",
+  "configPath": "C:\\Users\\<USER>\\AppData\\Local\\Temp\\qaf4-rollback-reapplytAEiCI\\home\\.hermes\\config.yaml",
+  "backupPath": "C:\\Users\\<USER>\\AppData\\Local\\Temp\\qaf4-rollback-reapplytAEiCI\\home\\.hermes\\config.yaml.pre-pilot.bak",
+  "applied": true,
+  "rolledBack": false,
+  "readBackVerified": true,
+  "reloadRequired": true,
+  "runningProcesses": [],
+  "planHash": "1aeb98212c17f108445f111499687298f31796def6578c24ca928ac1514c39ae",
+  "preSha256": "99454bc655d2ca63adbf711b5485a1335e2fc52ad068780f5b430d136fa2c41c",
+  "postSha256": "9df7955cd1cf2b4a2fb36bf5445518c3f87a28789140fc719ebcf519036e2b39",
+  "message": "Đã cập nhật danh sách model của Hermes Agent (Nous Research) an toàn (đã sao lưu & kiểm chứng đọc lại)."
+}
+{
+  "app": "hermes",
+  "configPath": "C:\\Users\\<USER>\\AppData\\Local\\Temp\\qaf4-rollback-reapplytAEiCI\\home\\.hermes\\config.yaml",
+  "backupPath": "C:\\Users\\<USER>\\AppData\\Local\\Temp\\qaf4-rollback-reapplytAEiCI\\home\\.hermes\\config.yaml.post-day0.bak",
+  "restored": true,
+  "byteIdenticalToPreApply": true,
+  "postSha256": "9df7955cd1cf2b4a2fb36bf5445518c3f87a28789140fc719ebcf519036e2b39"
+}
+{
+  "app": "hermes",
+  "configPath": "C:\\Users\\<USER>\\AppData\\Local\\Temp\\qaf4-rollback-reapplytAEiCI\\home\\.hermes\\config.yaml",
+  "backupPath": "C:\\Users\\<USER>\\AppData\\Local\\Temp\\qaf4-rollback-reapplytAEiCI\\home\\.hermes\\config.yaml.routersync.bak",
+  "applied": true,
+  "rolledBack": false,
+  "readBackVerified": true,
+  "reloadRequired": true,
+  "runningProcesses": [],
+  "planHash": "05be4b1f3e34d27dea61f864e0e7cb2bbf6cfb44281586f899cf22801e16f2ae",
+  "preSha256": "9df7955cd1cf2b4a2fb36bf5445518c3f87a28789140fc719ebcf519036e2b39",
+  "postSha256": "271793812d991cddab05138251895810c9b1588337de712acb5cbec476626443",
+  "message": "Đã cập nhật danh sách model của Hermes Agent (Nous Research) an toàn (đã sao lưu & kiểm chứng đọc lại)."
+}
+{
+  "app": "hermes",
+  "configPath": "C:\\Users\\<USER>\\AppData\\Local\\Temp\\qaf4-rollback-reapplytAEiCI\\home\\.hermes\\config.yaml",
+  "backupPath": "C:\\Users\\<USER>\\AppData\\Local\\Temp\\qaf4-rollback-reapplytAEiCI\\home\\.hermes\\config.yaml.post-day0.bak",
+  "restored": true,
+  "byteIdenticalToPreApply": true,
+  "postSha256": "9df7955cd1cf2b4a2fb36bf5445518c3f87a28789140fc719ebcf519036e2b39"
+}
+{
+  "app": "hermes",
+  "configPath": "C:\\Users\\<USER>\\AppData\\Local\\Temp\\qaf4-rollback-reapplytAEiCI\\home\\.hermes\\config.yaml",
+  "backupPath": "C:\\Users\\<USER>\\AppData\\Local\\Temp\\qaf4-rollback-reapplytAEiCI\\home\\.hermes\\config.yaml.routersync.bak",
+  "applied": true,
+  "rolledBack": false,
+  "readBackVerified": true,
+  "reloadRequired": true,
+  "runningProcesses": [],
+  "planHash": "05be4b1f3e34d27dea61f864e0e7cb2bbf6cfb44281586f899cf22801e16f2ae",
+  "preSha256": "9df7955cd1cf2b4a2fb36bf5445518c3f87a28789140fc719ebcf519036e2b39",
+  "postSha256": "271793812d991cddab05138251895810c9b1588337de712acb5cbec476626443",
+  "message": "Đã cập nhật danh sách model của Hermes Agent (Nous Research) an toàn (đã sao lưu & kiểm chứng đọc lại)."
+}
+{
+  "schemaVersion": 1,
+  "checkedAt": "2026-11-26T08:00:01.000Z",
+  "status": "READY_FOR_OWNER_LIVE_PILOT",
+  "vietnameseGateStatus": "sẵn sàng chạy thật",
+  "pilotTargets": {
+    "routerTarget": "router:nine/rs-pilot",
+    "harnessTarget": "harness:hermes"
+  },
+  "pilotPhase": "NEEDS_INITIAL_PROPOSE_CONSENT",
+  "checks": [
+    {
+      "id": "freeze_clear",
+      "passed": true,
+      "detail": "Emergency freeze circuit breaker is clear (frozen=false)."
+    },
+    {
+      "id": "config_and_doctor_health",
+      "passed": true,
+      "detail": "Config schema valid, 0 circular dependencies, status.json fresh (0m <= 30m threshold)."
+    },
+    {
+      "id": "pilot_targets_readable",
+      "passed": true,
+      "detail": "Pilot targets readable: router:nine/rs-pilot (nine-c48-pilot.sqlite) + harness:hermes (config.yaml)."
+    },
+    {
+      "id": "tmpdir_backup_rollback_rehearsal",
+      "passed": true,
+      "detail": "Isolated backup + parser + byte-exact SHA-256 rollback rehearsal passed in os.tmpdir()/rs-livecheck-VHhC2I (0 live mutations)."
+    },
+    {
+      "id": "consent_and_promotion_state",
+      "passed": true,
+      "detail": "Consent & apply-history HMAC integrity verified (pilotPhase=NEEDS_INITIAL_PROPOSE_CONSENT)."
+    },
+    {
+      "id": "cost_and_release_hygiene",
+      "passed": true,
+      "detail": "tier0Tokens=0, tier0LlmCalls=0, tier0PaidRequests=0, weeklySessions=0/5 (budgetExceeded=false). 8 publishable + 2 private manifests consistent at version 0.1.0 (prepareV1Release dry-run verified)."
+    },
+    {
+      "id": "live_gate_hint",
+      "passed": true,
+      "detail": "routerDb (nine-c48-pilot.sqlite): trong os.tmpdir() — không cần cờ; harnessConfig (config.yaml): trong os.tmpdir() — không cần cờ."
+    }
+  ],
+  "blockingReasons": [],
+  "ownerNextCommands": [
+    "routersync consent grant --target router:nine/rs-pilot --level propose",
+    "routersync consent grant --target harness:hermes --level propose",
+    "routersync plan"
+  ]
+}
+{
+  "app": "hermes",
+  "directionAMode": "write-adapter",
+  "editable": true,
+  "targetProviders": [
+    "openai"
+  ],
+  "additions": [
+    {
+      "provider": "openai",
+      "model": "gpt-4.1-nano"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4.5"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4o"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4o-legacy"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4o-mini"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-5-nano"
+    },
+    {
+      "provider": "openai",
+      "model": "o3-mini"
+    },
+    {
+      "provider": "openai",
+      "model": "o4-mini"
+    }
+  ],
+  "removals": [],
+  "defaultSlotWarnings": [],
+  "configPath": "<HOME>\\.hermes\\config.yaml",
+  "guidance": [
+    "Use /reload-mcp in active chat for MCP changes; restart gateway or start a new CLI turn for config.yaml model/provider changes."
+  ],
+  "planHash": "1aeb98212c17f108445f111499687298f31796def6578c24ca928ac1514c39ae",
+  "reloadRequired": true,
+  "runningProcesses": []
+}
+{
+  "app": "hermes",
+  "configPath": "C:\\Users\\<USER>\\AppData\\Local\\Temp\\qaf5-m4-withdrawal-before-plan9loVot\\home\\.hermes\\config.yaml",
+  "backupPath": "C:\\Users\\<USER>\\AppData\\Local\\Temp\\qaf5-m4-withdrawal-before-plan9loVot\\home\\.hermes\\config.yaml.pre-pilot.bak",
+  "applied": true,
+  "rolledBack": false,
+  "readBackVerified": true,
+  "reloadRequired": true,
+  "runningProcesses": [],
+  "planHash": "1aeb98212c17f108445f111499687298f31796def6578c24ca928ac1514c39ae",
+  "preSha256": "99454bc655d2ca63adbf711b5485a1335e2fc52ad068780f5b430d136fa2c41c",
+  "postSha256": "9df7955cd1cf2b4a2fb36bf5445518c3f87a28789140fc719ebcf519036e2b39",
+  "message": "Đã cập nhật danh sách model của Hermes Agent (Nous Research) an toàn (đã sao lưu & kiểm chứng đọc lại)."
+}
+{
+  "app": "hermes",
+  "configPath": "C:\\Users\\<USER>\\AppData\\Local\\Temp\\qaf5-m4-withdrawal-before-plan9loVot\\home\\.hermes\\config.yaml",
+  "backupPath": "C:\\Users\\<USER>\\AppData\\Local\\Temp\\qaf5-m4-withdrawal-before-plan9loVot\\home\\.hermes\\config.yaml.pre-pilot.bak",
+  "restored": true,
+  "byteIdenticalToPreApply": true,
+  "postSha256": "99454bc655d2ca63adbf711b5485a1335e2fc52ad068780f5b430d136fa2c41c"
+}
+{
+  "schemaVersion": 1,
+  "checkedAt": "2026-11-26T08:00:01.000Z",
+  "status": "READY_FOR_OWNER_LIVE_PILOT",
+  "vietnameseGateStatus": "sẵn sàng chạy thật",
+  "pilotTargets": {
+    "routerTarget": "router:nine/rs-pilot",
+    "harnessTarget": "harness:hermes"
+  },
+  "pilotPhase": "NEEDS_INITIAL_PROPOSE_CONSENT",
+  "checks": [
+    {
+      "id": "freeze_clear",
+      "passed": true,
+      "detail": "Emergency freeze circuit breaker is clear (frozen=false)."
+    },
+    {
+      "id": "config_and_doctor_health",
+      "passed": true,
+      "detail": "Config schema valid, 0 circular dependencies, status.json fresh (0m <= 30m threshold)."
+    },
+    {
+      "id": "pilot_targets_readable",
+      "passed": true,
+      "detail": "Pilot targets readable: router:nine/rs-pilot (nine-c48-pilot.sqlite) + harness:hermes (config.yaml)."
+    },
+    {
+      "id": "tmpdir_backup_rollback_rehearsal",
+      "passed": true,
+      "detail": "Isolated backup + parser + byte-exact SHA-256 rollback rehearsal passed in os.tmpdir()/rs-livecheck-1OYn3f (0 live mutations)."
+    },
+    {
+      "id": "consent_and_promotion_state",
+      "passed": true,
+      "detail": "Consent & apply-history HMAC integrity verified (pilotPhase=NEEDS_INITIAL_PROPOSE_CONSENT)."
+    },
+    {
+      "id": "cost_and_release_hygiene",
+      "passed": true,
+      "detail": "tier0Tokens=0, tier0LlmCalls=0, tier0PaidRequests=0, weeklySessions=0/5 (budgetExceeded=false). 8 publishable + 2 private manifests consistent at version 0.1.0 (prepareV1Release dry-run verified)."
+    },
+    {
+      "id": "live_gate_hint",
+      "passed": true,
+      "detail": "routerDb (nine-c48-pilot.sqlite): trong os.tmpdir() — không cần cờ; harnessConfig (config.yaml): trong os.tmpdir() — không cần cờ."
+    }
+  ],
+  "blockingReasons": [],
+  "ownerNextCommands": [
+    "routersync consent grant --target router:nine/rs-pilot --level propose",
+    "routersync consent grant --target harness:hermes --level propose",
+    "routersync plan"
+  ]
+}
+{
+  "app": "hermes",
+  "directionAMode": "write-adapter",
+  "editable": true,
+  "targetProviders": [
+    "openai"
+  ],
+  "additions": [
+    {
+      "provider": "openai",
+      "model": "gpt-4.1-nano"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4.5"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4o"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4o-legacy"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4o-mini"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-5-nano"
+    },
+    {
+      "provider": "openai",
+      "model": "o3-mini"
+    },
+    {
+      "provider": "openai",
+      "model": "o4-mini"
+    }
+  ],
+  "removals": [],
+  "defaultSlotWarnings": [],
+  "configPath": "<HOME>\\.hermes\\config.yaml",
+  "guidance": [
+    "Use /reload-mcp in active chat for MCP changes; restart gateway or start a new CLI turn for config.yaml model/provider changes."
+  ],
+  "planHash": "1aeb98212c17f108445f111499687298f31796def6578c24ca928ac1514c39ae",
+  "reloadRequired": true,
+  "runningProcesses": []
+}
+{
+  "app": "hermes",
+  "configPath": "C:\\Users\\<USER>\\AppData\\Local\\Temp\\qaf5-m15-abandoned-rependQ1lOEB\\home\\.hermes\\config.yaml",
+  "backupPath": "C:\\Users\\<USER>\\AppData\\Local\\Temp\\qaf5-m15-abandoned-rependQ1lOEB\\home\\.hermes\\config.yaml.pre-pilot.bak",
+  "applied": true,
+  "rolledBack": false,
+  "readBackVerified": true,
+  "reloadRequired": true,
+  "runningProcesses": [],
+  "planHash": "1aeb98212c17f108445f111499687298f31796def6578c24ca928ac1514c39ae",
+  "preSha256": "99454bc655d2ca63adbf711b5485a1335e2fc52ad068780f5b430d136fa2c41c",
+  "postSha256": "9df7955cd1cf2b4a2fb36bf5445518c3f87a28789140fc719ebcf519036e2b39",
+  "message": "Đã cập nhật danh sách model của Hermes Agent (Nous Research) an toàn (đã sao lưu & kiểm chứng đọc lại)."
+}
+{
+  "schemaVersion": 1,
+  "checkedAt": "2026-11-26T08:00:01.000Z",
+  "status": "READY_FOR_OWNER_LIVE_PILOT",
+  "vietnameseGateStatus": "sẵn sàng chạy thật",
+  "pilotTargets": {
+    "routerTarget": "router:nine/rs-pilot",
+    "harnessTarget": "harness:hermes"
+  },
+  "pilotPhase": "NEEDS_INITIAL_PROPOSE_CONSENT",
+  "checks": [
+    {
+      "id": "freeze_clear",
+      "passed": true,
+      "detail": "Emergency freeze circuit breaker is clear (frozen=false)."
+    },
+    {
+      "id": "config_and_doctor_health",
+      "passed": true,
+      "detail": "Config schema valid, 0 circular dependencies, status.json fresh (0m <= 30m threshold)."
+    },
+    {
+      "id": "pilot_targets_readable",
+      "passed": true,
+      "detail": "Pilot targets readable: router:nine/rs-pilot (nine-c48-pilot.sqlite) + harness:hermes (config.yaml)."
+    },
+    {
+      "id": "tmpdir_backup_rollback_rehearsal",
+      "passed": true,
+      "detail": "Isolated backup + parser + byte-exact SHA-256 rollback rehearsal passed in os.tmpdir()/rs-livecheck-yy0rnY (0 live mutations)."
+    },
+    {
+      "id": "consent_and_promotion_state",
+      "passed": true,
+      "detail": "Consent & apply-history HMAC integrity verified (pilotPhase=NEEDS_INITIAL_PROPOSE_CONSENT)."
+    },
+    {
+      "id": "cost_and_release_hygiene",
+      "passed": true,
+      "detail": "tier0Tokens=0, tier0LlmCalls=0, tier0PaidRequests=0, weeklySessions=0/5 (budgetExceeded=false). 8 publishable + 2 private manifests consistent at version 0.1.0 (prepareV1Release dry-run verified)."
+    },
+    {
+      "id": "live_gate_hint",
+      "passed": true,
+      "detail": "routerDb (nine-c48-pilot.sqlite): trong os.tmpdir() — không cần cờ; harnessConfig (config.yaml): trong os.tmpdir() — không cần cờ."
+    }
+  ],
+  "blockingReasons": [],
+  "ownerNextCommands": [
+    "routersync consent grant --target router:nine/rs-pilot --level propose",
+    "routersync consent grant --target harness:hermes --level propose",
+    "routersync plan"
+  ]
+}
+{
+  "app": "hermes",
+  "directionAMode": "write-adapter",
+  "editable": true,
+  "targetProviders": [
+    "openai"
+  ],
+  "additions": [
+    {
+      "provider": "openai",
+      "model": "gpt-4.1-nano"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4.5"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4o"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4o-legacy"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4o-mini"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-5-nano"
+    },
+    {
+      "provider": "openai",
+      "model": "o3-mini"
+    },
+    {
+      "provider": "openai",
+      "model": "o4-mini"
+    }
+  ],
+  "removals": [],
+  "defaultSlotWarnings": [],
+  "configPath": "<HOME>\\.hermes\\config.yaml",
+  "guidance": [
+    "Use /reload-mcp in active chat for MCP changes; restart gateway or start a new CLI turn for config.yaml model/provider changes."
+  ],
+  "planHash": "1aeb98212c17f108445f111499687298f31796def6578c24ca928ac1514c39ae",
+  "reloadRequired": true,
+  "runningProcesses": []
+}
+{
+  "app": "hermes",
+  "configPath": "C:\\Users\\<USER>\\AppData\\Local\\Temp\\ac6-rollback-verify-guard-MAidn5\\home\\.hermes\\config.yaml",
+  "backupPath": "C:\\Users\\<USER>\\AppData\\Local\\Temp\\ac6-rollback-verify-guard-MAidn5\\home\\.hermes\\config.yaml.pre-pilot.bak",
+  "applied": true,
+  "rolledBack": false,
+  "readBackVerified": true,
+  "reloadRequired": true,
+  "runningProcesses": [],
+  "planHash": "1aeb98212c17f108445f111499687298f31796def6578c24ca928ac1514c39ae",
+  "preSha256": "99454bc655d2ca63adbf711b5485a1335e2fc52ad068780f5b430d136fa2c41c",
+  "postSha256": "9df7955cd1cf2b4a2fb36bf5445518c3f87a28789140fc719ebcf519036e2b39",
+  "message": "Đã cập nhật danh sách model của Hermes Agent (Nous Research) an toàn (đã sao lưu & kiểm chứng đọc lại)."
+}
+{
+  "ok": false,
+  "error": "[hermes] Rollback verification failed for harness:hermes: backup digest mismatch or restore incomplete.",
+  "status": "FAILED"
+}
+{
+  "app": "hermes",
+  "configPath": "C:\\Users\\<USER>\\AppData\\Local\\Temp\\ac6-rollback-verify-guard-MAidn5\\home\\.hermes\\config.yaml",
+  "backupPath": "C:\\Users\\<USER>\\AppData\\Local\\Temp\\ac6-rollback-verify-guard-MAidn5\\home\\.hermes\\config.yaml.routersync.bak",
+  "restored": true,
+  "byteIdenticalToPreApply": true,
+  "postSha256": "2d839d7fd160362cd25e09a86a88144a95a42732436e183f77e3e28b187fefe5"
+}
+{
+  "ok": false,
+  "error": "C48_REMOVAL_INELIGIBLE: No eligible C48 removal evidence for harness:hermes/openai/gpt-4o-legacy.",
+  "status": "FAILED"
+}
+{
+  "ok": false,
+  "error": "C48_REMOVAL_INELIGIBLE: No eligible C48 removal evidence for harness:hermes/openai/gpt-4o-legacy.",
+  "status": "FAILED"
+}
+{
+  "schemaVersion": 1,
+  "checkedAt": "2026-11-26T08:00:01.000Z",
+  "status": "READY_FOR_OWNER_LIVE_PILOT",
+  "vietnameseGateStatus": "sẵn sàng chạy thật",
+  "pilotTargets": {
+    "routerTarget": "router:nine/rs-pilot",
+    "harnessTarget": "harness:hermes"
+  },
+  "pilotPhase": "NEEDS_INITIAL_PROPOSE_CONSENT",
+  "checks": [
+    {
+      "id": "freeze_clear",
+      "passed": true,
+      "detail": "Emergency freeze circuit breaker is clear (frozen=false)."
+    },
+    {
+      "id": "config_and_doctor_health",
+      "passed": true,
+      "detail": "Config schema valid, 0 circular dependencies, status.json fresh (0m <= 30m threshold)."
+    },
+    {
+      "id": "pilot_targets_readable",
+      "passed": true,
+      "detail": "Pilot targets readable: router:nine/rs-pilot (nine-c48-pilot.sqlite) + harness:hermes (config.yaml)."
+    },
+    {
+      "id": "tmpdir_backup_rollback_rehearsal",
+      "passed": true,
+      "detail": "Isolated backup + parser + byte-exact SHA-256 rollback rehearsal passed in os.tmpdir()/rs-livecheck-BISpOe (0 live mutations)."
+    },
+    {
+      "id": "consent_and_promotion_state",
+      "passed": true,
+      "detail": "Consent & apply-history HMAC integrity verified (pilotPhase=NEEDS_INITIAL_PROPOSE_CONSENT)."
+    },
+    {
+      "id": "cost_and_release_hygiene",
+      "passed": true,
+      "detail": "tier0Tokens=0, tier0LlmCalls=0, tier0PaidRequests=0, weeklySessions=0/5 (budgetExceeded=false). 8 publishable + 2 private manifests consistent at version 0.1.0 (prepareV1Release dry-run verified)."
+    },
+    {
+      "id": "live_gate_hint",
+      "passed": true,
+      "detail": "routerDb (nine-c48-pilot.sqlite): trong os.tmpdir() — không cần cờ; harnessConfig (config.yaml): trong os.tmpdir() — không cần cờ."
+    }
+  ],
+  "blockingReasons": [],
+  "ownerNextCommands": [
+    "routersync consent grant --target router:nine/rs-pilot --level propose",
+    "routersync consent grant --target harness:hermes --level propose",
+    "routersync plan"
+  ]
+}
+{
+  "app": "hermes",
+  "directionAMode": "write-adapter",
+  "editable": true,
+  "targetProviders": [
+    "openai"
+  ],
+  "additions": [
+    {
+      "provider": "openai",
+      "model": "gpt-4.1-nano"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4.5"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4o"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4o-legacy"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4o-mini"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-5-nano"
+    },
+    {
+      "provider": "openai",
+      "model": "o3-mini"
+    },
+    {
+      "provider": "openai",
+      "model": "o4-mini"
+    }
+  ],
+  "removals": [],
+  "defaultSlotWarnings": [],
+  "configPath": "<HOME>\\.hermes\\config.yaml",
+  "guidance": [
+    "Use /reload-mcp in active chat for MCP changes; restart gateway or start a new CLI turn for config.yaml model/provider changes."
+  ],
+  "planHash": "1aeb98212c17f108445f111499687298f31796def6578c24ca928ac1514c39ae",
+  "reloadRequired": true,
+  "runningProcesses": []
+}
+{
+  "app": "hermes",
+  "configPath": "C:\\Users\\<USER>\\AppData\\Local\\Temp\\probe6-router-auto-harness-proposetJEBi1\\home\\.hermes\\config.yaml",
+  "backupPath": "C:\\Users\\<USER>\\AppData\\Local\\Temp\\probe6-router-auto-harness-proposetJEBi1\\home\\.hermes\\config.yaml.pre-pilot.bak",
+  "applied": true,
+  "rolledBack": false,
+  "readBackVerified": true,
+  "reloadRequired": true,
+  "runningProcesses": [],
+  "planHash": "1aeb98212c17f108445f111499687298f31796def6578c24ca928ac1514c39ae",
+  "preSha256": "99454bc655d2ca63adbf711b5485a1335e2fc52ad068780f5b430d136fa2c41c",
+  "postSha256": "9df7955cd1cf2b4a2fb36bf5445518c3f87a28789140fc719ebcf519036e2b39",
+  "message": "Đã cập nhật danh sách model của Hermes Agent (Nous Research) an toàn (đã sao lưu & kiểm chứng đọc lại)."
+}
+{
+  "app": "hermes",
+  "configPath": "C:\\Users\\<USER>\\AppData\\Local\\Temp\\probe6-router-auto-harness-proposetJEBi1\\home\\.hermes\\config.yaml",
+  "backupPath": "C:\\Users\\<USER>\\AppData\\Local\\Temp\\probe6-router-auto-harness-proposetJEBi1\\home\\.hermes\\config.yaml.probe6-post-day0.bak",
+  "applied": true,
+  "rolledBack": false,
+  "readBackVerified": true,
+  "reloadRequired": true,
+  "runningProcesses": [],
+  "planHash": "05be4b1f3e34d27dea61f864e0e7cb2bbf6cfb44281586f899cf22801e16f2ae",
+  "preSha256": "9df7955cd1cf2b4a2fb36bf5445518c3f87a28789140fc719ebcf519036e2b39",
+  "postSha256": "271793812d991cddab05138251895810c9b1588337de712acb5cbec476626443",
+  "message": "Đã cập nhật danh sách model của Hermes Agent (Nous Research) an toàn (đã sao lưu & kiểm chứng đọc lại)."
+}
+{
+  "app": "hermes",
+  "configPath": "C:\\Users\\<USER>\\AppData\\Local\\Temp\\probe6-router-auto-harness-proposetJEBi1\\home\\.hermes\\config.yaml",
+  "backupPath": "C:\\Users\\<USER>\\AppData\\Local\\Temp\\probe6-router-auto-harness-proposetJEBi1\\home\\.hermes\\config.yaml.probe6-post-day0.bak",
+  "restored": true,
+  "byteIdenticalToPreApply": true,
+  "postSha256": "9df7955cd1cf2b4a2fb36bf5445518c3f87a28789140fc719ebcf519036e2b39"
+}
+{
+  "schemaVersion": 1,
+  "checkedAt": "2026-11-26T08:00:01.000Z",
+  "status": "READY_FOR_OWNER_LIVE_PILOT",
+  "vietnameseGateStatus": "sẵn sàng chạy thật",
+  "pilotTargets": {
+    "routerTarget": "router:nine/rs-pilot",
+    "harnessTarget": "harness:hermes"
+  },
+  "pilotPhase": "NEEDS_INITIAL_PROPOSE_CONSENT",
+  "checks": [
+    {
+      "id": "freeze_clear",
+      "passed": true,
+      "detail": "Emergency freeze circuit breaker is clear (frozen=false)."
+    },
+    {
+      "id": "config_and_doctor_health",
+      "passed": true,
+      "detail": "Config schema valid, 0 circular dependencies, status.json fresh (0m <= 30m threshold)."
+    },
+    {
+      "id": "pilot_targets_readable",
+      "passed": true,
+      "detail": "Pilot targets readable: router:nine/rs-pilot (nine-c48-pilot.sqlite) + harness:hermes (config.yaml)."
+    },
+    {
+      "id": "tmpdir_backup_rollback_rehearsal",
+      "passed": true,
+      "detail": "Isolated backup + parser + byte-exact SHA-256 rollback rehearsal passed in os.tmpdir()/rs-livecheck-BbENu2 (0 live mutations)."
+    },
+    {
+      "id": "consent_and_promotion_state",
+      "passed": true,
+      "detail": "Consent & apply-history HMAC integrity verified (pilotPhase=NEEDS_INITIAL_PROPOSE_CONSENT)."
+    },
+    {
+      "id": "cost_and_release_hygiene",
+      "passed": true,
+      "detail": "tier0Tokens=0, tier0LlmCalls=0, tier0PaidRequests=0, weeklySessions=0/5 (budgetExceeded=false). 8 publishable + 2 private manifests consistent at version 0.1.0 (prepareV1Release dry-run verified)."
+    },
+    {
+      "id": "live_gate_hint",
+      "passed": true,
+      "detail": "routerDb (nine-c48-pilot.sqlite): trong os.tmpdir() — không cần cờ; harnessConfig (config.yaml): trong os.tmpdir() — không cần cờ."
+    }
+  ],
+  "blockingReasons": [],
+  "ownerNextCommands": [
+    "routersync consent grant --target router:nine/rs-pilot --level propose",
+    "routersync consent grant --target harness:hermes --level propose",
+    "routersync plan"
+  ]
+}
+{
+  "app": "hermes",
+  "directionAMode": "write-adapter",
+  "editable": true,
+  "targetProviders": [
+    "openai"
+  ],
+  "additions": [
+    {
+      "provider": "openai",
+      "model": "gpt-4.1-nano"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4.5"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4o"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4o-legacy"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4o-mini"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-5-nano"
+    },
+    {
+      "provider": "openai",
+      "model": "o3-mini"
+    },
+    {
+      "provider": "openai",
+      "model": "o4-mini"
+    }
+  ],
+  "removals": [],
+  "defaultSlotWarnings": [],
+  "configPath": "<HOME>\\.hermes\\config.yaml",
+  "guidance": [
+    "Use /reload-mcp in active chat for MCP changes; restart gateway or start a new CLI turn for config.yaml model/provider changes."
+  ],
+  "planHash": "1aeb98212c17f108445f111499687298f31796def6578c24ca928ac1514c39ae",
+  "reloadRequired": true,
+  "runningProcesses": []
+}
+{
+  "app": "hermes",
+  "configPath": "C:\\Users\\<USER>\\AppData\\Local\\Temp\\probe3c-rollback-e1-update-e2-reapplyprTF1Q\\home\\.hermes\\config.yaml",
+  "backupPath": "C:\\Users\\<USER>\\AppData\\Local\\Temp\\probe3c-rollback-e1-update-e2-reapplyprTF1Q\\home\\.hermes\\config.yaml.pre-pilot.bak",
+  "applied": true,
+  "rolledBack": false,
+  "readBackVerified": true,
+  "reloadRequired": true,
+  "runningProcesses": [],
+  "planHash": "1aeb98212c17f108445f111499687298f31796def6578c24ca928ac1514c39ae",
+  "preSha256": "99454bc655d2ca63adbf711b5485a1335e2fc52ad068780f5b430d136fa2c41c",
+  "postSha256": "9df7955cd1cf2b4a2fb36bf5445518c3f87a28789140fc719ebcf519036e2b39",
+  "message": "Đã cập nhật danh sách model của Hermes Agent (Nous Research) an toàn (đã sao lưu & kiểm chứng đọc lại)."
+}
+{
+  "app": "hermes",
+  "configPath": "C:\\Users\\<USER>\\AppData\\Local\\Temp\\probe3c-rollback-e1-update-e2-reapplyprTF1Q\\home\\.hermes\\config.yaml",
+  "backupPath": "C:\\Users\\<USER>\\AppData\\Local\\Temp\\probe3c-rollback-e1-update-e2-reapplyprTF1Q\\home\\.hermes\\config.yaml.probe3c-post-day0.bak",
+  "restored": true,
+  "byteIdenticalToPreApply": true,
+  "postSha256": "9df7955cd1cf2b4a2fb36bf5445518c3f87a28789140fc719ebcf519036e2b39"
+}
+
+ Test Files  1 passed (1)
+      Tests  38 passed (38)
+   Start at  04:47:15
+   Duration  152.69s (transform 2.30s, setup 1.81s, import 1.99s, tests 147.89s, environment 0ms)
+
