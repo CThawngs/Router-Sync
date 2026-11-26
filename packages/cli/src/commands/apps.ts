@@ -672,9 +672,27 @@ export async function runAppsRollbackCommand(options: AppsRollbackCommandOptions
 
   if (res.restored) {
     const sDir = resolveControlStateDir(options.stateDir);
+    const target = `harness:${adapter.app}`;
+    const history = readApplyHistory(sDir);
+    const candidates = history.receipts.filter((receipt) =>
+      receipt.target === target && !receipt.rolledBack &&
+      receipt.success && receipt.readBackVerified &&
+      /^[0-9a-f]{64}$/i.test(receipt.preDigest ?? '')
+    ).reverse();
+    const expected = options.expectedPreSha256 ?? res.postSha256;
+    const receiptToVerify = candidates.find((receipt) =>
+      receipt.preDigest?.toLowerCase() === expected.toLowerCase()
+    ) ?? candidates.find((receipt) =>
+      path.resolve(receipt.snapshotOrBackupRef) === path.resolve(res.backupPath)
+    );
     markApplyReceiptRolledBack(sDir, {
-      target: `harness:${adapter.app}`,
+      target,
       snapshotOrBackupRef: res.backupPath,
+      verifyRollback: (receipt) => {
+        const beforeDigest = receipt.preDigest;
+        if (receipt.receiptId !== receiptToVerify?.receiptId || !beforeDigest) return undefined;
+        return { beforeDigest: beforeDigest.toLowerCase(), afterDigest: res.postSha256.toLowerCase() };
+      },
     });
   }
 

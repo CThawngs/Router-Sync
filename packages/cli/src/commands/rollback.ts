@@ -16,15 +16,19 @@
  */
 
 import * as path from 'node:path';
+import { createHash } from 'node:crypto';
 import * as readline from 'node:readline';
+import type { ComboDefinition } from '@routersync/adapter-sdk';
 import { loadConfigFile, resolveRouterDbPath } from '../config/loader.js';
 import { createAdapterForRouter } from '../adapters.js';
 import {
   assertControlledWriteSandbox,
+  canonicalJsonStringify,
   listSnapshots,
   loadSnapshot,
   markApplyReceiptRolledBack,
   resolveControlStateDir,
+  type ApplyHistoryReceipt,
 } from '@routersync/core';
 
 export interface RollbackCommandOptions {
@@ -199,27 +203,61 @@ export async function runRollbackCommand(options: RollbackCommandOptions): Promi
 
   const adapter = createAdapterForRouter(router, options.stateDir);
   const ok = await adapter.rollback(snapshot);
+  const rowChecks = new Map<string, { beforeDigest: string; afterDigest: string }>();
 
   if (ok) {
+    const touched = snapshot.metadata?.['touchedComboIds'];
+    const touchedIds = new Set(Array.isArray(touched) ? touched : []);
+    const touchedRows = snapshot.combos.filter((combo) => touchedIds.has(combo.id));
+    if (touchedRows.length > 0) {
+      const restoredRows = new Map((await adapter.readCombos()).map((combo) => [combo.id, combo]));
+      const digest = (row: ComboDefinition | undefined) => {
+        const persistedRow = row && (router.adapter === '9router'
+          ? {
+              id: row.id, name: row.name, kind: row.rawData?.kind,
+              models: row.rawData?.__rawRowModels, createdAt: row.rawData?.createdAt,
+              updatedAt: row.rawData?.__rawRowUpdatedAt, strategy: row.strategy,
+            }
+          : {
+              id: row.id, name: row.name, data: row.rawData?.__rawRowData,
+              sortOrder: row.sortOrder, systemMessage: row.systemMessage, updatedAt: row.updatedAt,
+            });
+        return createHash('sha256').update(canonicalJsonStringify(persistedRow ?? null)).digest('hex');
+      };
+      for (const row of touchedRows) {
+        const actual = restoredRows.get(row.id);
+        const check = {
+          beforeDigest: digest(row),
+          afterDigest: digest(actual),
+        };
+        rowChecks.set(`router:${router.id}/${row.name}`, check);
+        rowChecks.set(`router:${router.adapter}/${row.name}`, check);
+      }
+    }
+    const verifyRollback = (receipt: ApplyHistoryReceipt) => rowChecks.get(receipt.target);
     const sDir = resolveControlStateDir(options.stateDir);
     markApplyReceiptRolledBack(sDir, {
       targetPrefix: `router:${router.id}/`,
       snapshotOrBackupRef: snapshot.id,
       appliedAtOrAfter: snapshot.timestamp,
+      verifyRollback,
     });
     if (router.adapter && router.adapter !== router.id) {
       markApplyReceiptRolledBack(sDir, {
         targetPrefix: `router:${router.adapter}/`,
         snapshotOrBackupRef: snapshot.id,
         appliedAtOrAfter: snapshot.timestamp,
+        verifyRollback,
       });
     }
   }
+  const rollbackVerified = rowChecks.size > 0 &&
+    [...rowChecks.values()].every(({ beforeDigest, afterDigest }) => beforeDigest === afterDigest);
 
   if (options.json) {
     console.log(
       JSON.stringify(
-        { ok, snapshotId: snapshot.id, target: snapshot.target, combos: snapshot.combos.length },
+        { ok, rollbackVerified, snapshotId: snapshot.id, target: snapshot.target, combos: snapshot.combos.length },
         null,
         2
       )

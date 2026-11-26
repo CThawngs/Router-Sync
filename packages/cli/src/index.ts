@@ -352,8 +352,9 @@ export function createCliProgram(): Command {
     .option('--router-target <scope>', 'Optional pilot router combo scope (e.g. router:omniroute/rs-pilot)')
     .option('--harness-target <scope>', 'Optional pilot harness scope (e.g. harness:hermes)')
     .option('--serving-reflection-ms <ms>', 'Optional observed /v1/models reflection latency in ms (reported separately from detectionLatencyMs)')
-    .option('--false-removals <n>', 'Optional observed healthy-model false removal count (default: 0)')
-    .option('--unplanned-interventions <n>', 'Optional unplanned manual intervention count (default: 0)')
+    .option('--false-removals <n>', 'Owner-observed false removals (required without complete catalog evidence)')
+    .option('--unplanned-interventions <n>', 'Owner-observed unplanned interventions (required for a passing report)')
+    .option('--accept-vacuous-detection', 'Explicitly waive an empty detection sample, with a report warning')
     .option('--out <file>', 'Write formatted report to external file (must be outside <stateDir>)')
     .option('--json', 'Emit deterministic machine-readable PilotReportResult JSON')
     .action(
@@ -365,6 +366,7 @@ export function createCliProgram(): Command {
         servingReflectionMs?: string;
         falseRemovals?: string;
         unplannedInterventions?: string;
+        acceptVacuousDetection?: boolean;
         out?: string;
         json?: boolean;
       }) => {

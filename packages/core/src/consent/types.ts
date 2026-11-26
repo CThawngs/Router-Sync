@@ -116,6 +116,10 @@ export interface ApplyHistoryReceipt {
   snapshotOrBackupRef: string;
   preDigest?: string | undefined;
   postDigest?: string | undefined;
+  rollbackVerified?: boolean | undefined;
+  rollbackBeforeDigest?: string | undefined;
+  rollbackAfterDigest?: string | undefined;
+  removedModels?: Array<{ provider: string; modelId: string; inProviderCatalog: boolean | null }> | undefined;
 }
 
 export interface ApplyHistoryFile {

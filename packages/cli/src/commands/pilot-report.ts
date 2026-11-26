@@ -50,6 +50,7 @@ export interface PilotReportCommandOptions {
   servingReflectionMs?: number | string | undefined;
   falseRemovals?: number | string | undefined;
   unplannedInterventions?: number | string | undefined;
+  acceptVacuousDetection?: boolean | undefined;
   out?: string | undefined;
   json?: boolean | undefined;
   /** Programmatic seams for hermetic unit/rehearsal tests */
@@ -61,8 +62,10 @@ export interface PilotReportCommandOptions {
 export interface PilotReportS9Criteria {
   falseRemovals: {
     passed: boolean;
-    count: number;
-    manualReportedCount: number;
+    count: number | null;
+    manualReportedCount: number | null;
+    source: 'derived' | 'owner-attested' | 'missing';
+    removedModelCount: number;
     autoRollbackIncidentCount: number;
     failedAutoSafeReceiptCount: number;
     detail: string;
@@ -78,6 +81,8 @@ export interface PilotReportS9Criteria {
   detectionLatencyMs: {
     passed: boolean;
     maxMs: number | null;
+    measuredCount: number;
+    acceptedVacuous: boolean;
     thresholdMs: number;
     source: 'tick-plan.json' | 'status.json' | 'tick-plan.json+status.json' | 'missing';
     detail: string;
@@ -94,8 +99,9 @@ export interface PilotReportS9Criteria {
   };
   unplannedManualInterventions: {
     passed: boolean;
-    count: number;
-    manualReportedCount: number;
+    count: number | null;
+    manualReportedCount: number | null;
+    source: 'derived' | 'owner-attested' | 'missing';
     stateCorruptionCount: number;
     emergencyFreezeActive: boolean;
     detail: string;
@@ -105,7 +111,7 @@ export interface PilotReportS9Criteria {
 export interface PilotReportResult {
   schemaVersion: 1;
   generatedAt: string;
-  status: 'PASS' | 'FAIL';
+  status: 'PASS' | 'INCOMPLETE' | 'FAIL';
   passed: boolean;
   stateDir: string;
   pilotTargets: {
@@ -117,6 +123,8 @@ export interface PilotReportResult {
    * Reported strictly separately and NEVER added into `criteria.detectionLatencyMs.maxMs`.
    */
   servingReflectionMs: number | null;
+  tickCount: number;
+  warnings: string[];
   criteria: PilotReportS9Criteria;
   blockingReasons: string[];
 }
@@ -352,7 +360,7 @@ function extractFiniteLatencyFromRecord(
         );
       }
       assertCompletedSteadyStateTickRecord(rec, fileLabel);
-      candidates.push(0);
+      return null;
     } else if (maxMs !== undefined && maxMs !== null) {
       if (typeof maxMs !== 'number' || !Number.isFinite(maxMs)) {
         throw new Error(`${fileLabel}.detectionLatency.maxMs must be a finite number.`);
@@ -377,14 +385,6 @@ function extractFiniteLatencyFromRecord(
     candidates.push(direct);
   }
 
-  const dur = rec['durationMs'];
-  if (dur !== undefined && dur !== null) {
-    if (typeof dur !== 'number' || !Number.isFinite(dur)) {
-      throw new Error(`${fileLabel}.durationMs must be a finite number.`);
-    }
-    candidates.push(dur);
-  }
-
   if (candidates.length === 0) {
     return null;
   }
@@ -396,10 +396,10 @@ function extractFiniteLatencyFromRecord(
 
 function formatMarkdownSignOffReport(report: PilotReportResult): string {
   const c = report.criteria;
-  const badge = (ok: boolean) => (ok ? 'PASS' : 'FAIL');
+  const badge = (ok: boolean, incomplete = false) => ok ? 'PASS' : incomplete ? 'INCOMPLETE' : 'FAIL';
   const latencyText =
     c.detectionLatencyMs.maxMs === null
-      ? 'chưa đo (missing)'
+      ? 'VACUOUS'
       : `${c.detectionLatencyMs.maxMs} ms (<= ${c.detectionLatencyMs.thresholdMs} ms)`;
   const costText = `tier0Tokens=${c.cost.tier0Tokens}, tier0LlmCalls=${c.cost.tier0LlmCalls}, tier0PaidRequests=${c.cost.tier0PaidRequests}, weeklySessions=${c.cost.weeklySessionsUsed}/${c.cost.maxWeeklyResearchSessions}`;
 
@@ -411,6 +411,8 @@ function formatMarkdownSignOffReport(report: PilotReportResult): string {
     `- **Thư mục trạng thái (chỉ đọc):** \`${report.stateDir}\``,
     `- **Mục tiêu Router:** \`${report.pilotTargets.routerTarget ?? '(tất cả trong apply-history)'}\``,
     `- **Mục tiêu Harness:** \`${report.pilotTargets.harnessTarget ?? '(tất cả trong apply-history)'}\``,
+    `- **Tick:** ${report.tickCount} | **Model đã loại:** ${c.falseRemovals.removedModelCount} | **Mẫu đo:** ${c.detectionLatencyMs.measuredCount} | **Hoàn tác xác minh:** ${c.rollbackByteExactMatch.verifiedReceiptsCount}`,
+    ...report.warnings.map((warning) => `- **Cảnh báo:** ${warning}`),
   ];
 
   if (report.servingReflectionMs !== null) {
@@ -423,11 +425,11 @@ function formatMarkdownSignOffReport(report: PilotReportResult): string {
     '',
     '| # | Tiêu chí S9 | Giá trị Đo được | Ngưỡng Đạt Cứng | Kết quả |',
     '|---:|---|---|---|---|',
-    `| 1 | \`falseRemovals\` | \`${c.falseRemovals.count}\` | \`=== 0\` | **${badge(c.falseRemovals.passed)}** |`,
-    `| 2 | \`rollbackByteExactMatch\` | \`${c.rollbackByteExactMatch.matched}\` (\`${c.rollbackByteExactMatch.verifiedReceiptsCount}\` biên nhận xác minh) | \`true\` (\`100%\` khớp SHA-256) | **${badge(c.rollbackByteExactMatch.passed)}** |`,
-    `| 3 | \`detectionLatencyMs\` | \`${latencyText}\` | \`<= 60000 ms\` | **${badge(c.detectionLatencyMs.passed)}** |`,
+    `| 1 | \`falseRemovals\` | \`${c.falseRemovals.count ?? '?'}\` (${c.falseRemovals.source}) | \`=== 0\` | **${badge(c.falseRemovals.passed, c.falseRemovals.source === 'missing')}** |`,
+    `| 2 | \`rollbackByteExactMatch\` | \`${c.rollbackByteExactMatch.matched}\` (\`${c.rollbackByteExactMatch.verifiedReceiptsCount}\` biên nhận xác minh) | Đối chiếu SHA-256 của harness và hàng combo của router | **${badge(c.rollbackByteExactMatch.passed, c.rollbackByteExactMatch.failedReceiptsCount === 0)}** |`,
+    `| 3 | \`detectionLatencyMs\` | \`${latencyText}\` | \`<= 60000 ms\` | **${badge(c.detectionLatencyMs.passed, c.detectionLatencyMs.maxMs === null)}** |`,
     `| 4 | \`tier0Tokens\` & Ngân sách tuần | \`${costText}\` | \`0\` token/LLM/paid & \`<= ${c.cost.maxWeeklyResearchSessions}\` phiên/tuần | **${badge(c.cost.passed)}** |`,
-    `| 5 | \`unplannedManualInterventions\` | \`${c.unplannedManualInterventions.count}\` | \`=== 0\` | **${badge(c.unplannedManualInterventions.passed)}** |`
+    `| 5 | \`unplannedManualInterventions\` | \`${c.unplannedManualInterventions.count ?? '?'}\` (${c.unplannedManualInterventions.source}) | \`=== 0\` | **${badge(c.unplannedManualInterventions.passed, c.unplannedManualInterventions.source === 'missing')}** |`
   );
 
   if (report.blockingReasons.length > 0) {
@@ -457,15 +459,15 @@ export async function runPilotReportCommand(
     '--serving-reflection-ms'
   );
   const manualFalseRemovals =
-    parseOptionalNonNegativeSafeInt(options.falseRemovals, '--false-removals') ?? 0;
+    parseOptionalNonNegativeSafeInt(options.falseRemovals, '--false-removals');
   const manualInterventions =
-    parseOptionalNonNegativeSafeInt(options.unplannedInterventions, '--unplanned-interventions') ??
-    0;
+    parseOptionalNonNegativeSafeInt(options.unplannedInterventions, '--unplanned-interventions');
 
   const resolvedOutPath =
     options.out !== undefined ? assertOutPathOutsideStateDir(options.out, stateDir) : null;
 
   const blockingReasons: string[] = [];
+  const incompleteReasons: string[] = [];
   let stateCorruptionCount = 0;
 
   if (hasEmptyStateDirFlag) {
@@ -617,7 +619,7 @@ export async function runPilotReportCommand(
       `${applyHistory.errorCode ?? 'CONSENT_HMAC_INVALID'}: <stateDir>/apply-history.json failed integrity verification.`
     );
   } else if (stateDirExists && !applyHistory.present) {
-    blockingReasons.push(
+    incompleteReasons.push(
       'APPLY_HISTORY_MISSING: <stateDir>/apply-history.json does not exist; pilot apply/rollback receipts cannot be verified.'
     );
   }
@@ -684,6 +686,9 @@ export async function runPilotReportCommand(
   // -------------------------------------------------------------------------
   let statusLatencyMs: number | null = null;
   let tickPlanLatencyMs: number | null = null;
+  let measuredCount = 0;
+  const countMeasurements = (rec: Record<string, unknown>, latency: number | null): number =>
+    latency === null ? 0 : ((rec['detectionLatency'] as { measuredCount?: number } | undefined)?.measuredCount ?? 1);
   let statusTokens = 0;
   let statusLlmCalls = 0;
   let statusPaidRequests = 0;
@@ -698,6 +703,7 @@ export async function runPilotReportCommand(
         }
         const rec = rawStatus as Record<string, unknown>;
         statusLatencyMs = extractFiniteLatencyFromRecord(rec, 'status.json');
+        measuredCount = Math.max(measuredCount, countMeasurements(rec, statusLatencyMs));
         statusTokens = Math.max(
           statusTokens,
           readOptionalNonNegativeAccountingNumber(rec, 'tokens', 'status.json')
@@ -727,6 +733,7 @@ export async function runPilotReportCommand(
         }
         const rec = rawPlan as Record<string, unknown>;
         tickPlanLatencyMs = extractFiniteLatencyFromRecord(rec, 'plans/tick-plan.json');
+        measuredCount = Math.max(measuredCount, countMeasurements(rec, tickPlanLatencyMs));
         const acc = rec['accounting'];
         if (acc !== undefined) {
           if (!acc || typeof acc !== 'object' || Array.isArray(acc)) {
@@ -785,6 +792,7 @@ export async function runPilotReportCommand(
   // -------------------------------------------------------------------------
   let costLedgerCorrupt = false;
   let ledgerTokens = 0;
+  let tickCount = 0;
   let ledgerLlmCalls = 0;
   let ledgerPaidRequests = 0;
   let explicitBudgetExceeded = false;
@@ -828,6 +836,7 @@ export async function runPilotReportCommand(
           if (!Array.isArray(rec['ticks'])) {
             throw new Error('cost-ledger.json.ticks must be an array.');
           }
+          tickCount = rec['ticks'].length;
           for (const entry of rec['ticks'] as unknown[]) {
             if (!entry || typeof entry !== 'object' || Array.isArray(entry)) {
               throw new Error('cost-ledger.json.ticks entries must be plain objects.');
@@ -925,19 +934,30 @@ export async function runPilotReportCommand(
   const failedAutoSafeReceiptCount = receipts.filter(
     (r) => r.appliedAtLevel === 'auto-safe' && (!r.success || !r.readBackVerified)
   ).length;
+  const removals = relevantReceipts.flatMap((receipt) => receipt.removedModels ?? []);
+  const catalogFalseRemovals = removals.filter((model) => model.inProviderCatalog === true).length;
+  const completeCatalogEvidence = removals.length > 0 &&
+    removals.every((model) => model.inProviderCatalog !== null);
   const totalFalseRemovals =
-    manualFalseRemovals + autoRollbackIncidentCount + failedAutoSafeReceiptCount;
-  const c1Passed = stateDirExists && totalFalseRemovals === 0;
-  if (!c1Passed) {
+    Math.max(manualFalseRemovals ?? 0, catalogFalseRemovals) +
+    autoRollbackIncidentCount + failedAutoSafeReceiptCount;
+  const removalSource = (completeCatalogEvidence || totalFalseRemovals > 0) &&
+    (manualFalseRemovals ?? 0) <= catalogFalseRemovals
+    ? 'derived' : manualFalseRemovals === null ? 'missing' : 'owner-attested';
+  const c1Passed = stateDirExists && removalSource !== 'missing' && totalFalseRemovals === 0;
+  const missingRemovalEvidence = 'S9_CRITERION_1_INCOMPLETE: provide --false-removals or complete provider catalog evidence.';
+  if (!stateDirExists || totalFalseRemovals > 0) {
     blockingReasons.push(
       `S9_CRITERION_1_FAILED: falseRemovals=${totalFalseRemovals} (expected 0; manual=${manualFalseRemovals}, autoRollbackIncidents=${autoRollbackIncidentCount}, failedAutoSafeReceipts=${failedAutoSafeReceiptCount}).`
     );
+  } else if (removalSource === 'missing') {
+    incompleteReasons.push(missingRemovalEvidence);
   }
 
   const failedReceiptsCount = relevantReceipts.filter(
-    (r) => !r.success || !r.readBackVerified
+    (r) => !r.success || !r.readBackVerified || r.rollbackVerified === false
   ).length;
-  const verifiedReceipts = relevantReceipts.filter((r) => r.success && r.readBackVerified);
+  const verifiedReceipts = relevantReceipts.filter((r) => r.rolledBack && r.rollbackVerified === true);
   const rolledBackReceiptsCount = relevantReceipts.filter((r) => r.rolledBack).length;
 
   const hasRouterVerified = routerTargetProvided
@@ -947,30 +967,41 @@ export async function runPilotReportCommand(
     ? normalizedHarnessTarget !== null &&
       verifiedReceipts.some((r) => r.target === normalizedHarnessTarget)
     : true;
-  const hasAtLeastOneVerified = verifiedReceipts.length >= 1;
+  const verifiedTargets = new Set(verifiedReceipts.map((r) => r.target));
+  const coversAllTargets = routerTargetProvided || harnessTargetProvided ||
+    relevantReceipts.every((receipt) => verifiedTargets.has(receipt.target));
 
   const c2Passed =
     stateDirExists &&
     applyHistory.present &&
     applyHistory.valid &&
     failedReceiptsCount === 0 &&
-    hasAtLeastOneVerified &&
+    verifiedReceipts.length > 0 &&
+    coversAllTargets &&
     hasRouterVerified &&
     hasHarnessVerified;
   if (!c2Passed) {
-    blockingReasons.push(
-      `S9_CRITERION_2_FAILED: rollbackByteExactMatch=false (verifiedReceipts=${verifiedReceipts.length}, failedReceipts=${failedReceiptsCount}, routerVerified=${hasRouterVerified}, harnessVerified=${hasHarnessVerified}).`
+    const reasons = failedReceiptsCount > 0 ? blockingReasons : incompleteReasons;
+    reasons.push(
+      `S9_CRITERION_2_${failedReceiptsCount > 0 ? 'FAILED' : 'INCOMPLETE'}: rollbackByteExactMatch=false (verifiedRollbacks=${verifiedReceipts.length}, failedReceipts=${failedReceiptsCount}, routerVerified=${hasRouterVerified}, harnessVerified=${hasHarnessVerified}).`
     );
   }
 
-  const c3Passed =
-    stateDirExists &&
+  const acceptedVacuous = stateDirExists && measuredCount === 0 &&
+    options.acceptVacuousDetection === true && stateCorruptionCount === 0;
+  const warnings = acceptedVacuous
+    ? ['VACUOUS: --accept-vacuous-detection was supplied. No detection latency was measured.']
+    : [];
+  const c3Passed = acceptedVacuous || (stateDirExists &&
     measuredLatencyMs !== null &&
     measuredLatencyMs >= 0 &&
-    measuredLatencyMs <= HARD_PASS_MAX_DETECTION_LATENCY_MS;
+    measuredLatencyMs <= HARD_PASS_MAX_DETECTION_LATENCY_MS);
   if (!c3Passed) {
-    blockingReasons.push(
-      `S9_CRITERION_3_FAILED: detectionLatencyMs=${measuredLatencyMs ?? 'missing'} (expected finite measurement in 0..${HARD_PASS_MAX_DETECTION_LATENCY_MS} ms).`
+    const reasons = measuredLatencyMs === null ? incompleteReasons : blockingReasons;
+    reasons.push(
+      measuredLatencyMs === null
+        ? 'S9_CRITERION_3_INCOMPLETE: VACUOUS (0 measured detections).'
+        : `S9_CRITERION_3_FAILED: detectionLatencyMs=${measuredLatencyMs} (expected finite measurement in 0..${HARD_PASS_MAX_DETECTION_LATENCY_MS} ms).`
     );
   }
 
@@ -989,42 +1020,48 @@ export async function runPilotReportCommand(
 
   const emergencyFreezeActive = Boolean(stateDirExists && freezeState.frozen && !isFreezeCorrupt);
   const totalUnplannedInterventions =
-    manualInterventions + stateCorruptionCount + (emergencyFreezeActive ? 1 : 0);
-  const c5Passed = stateDirExists && totalUnplannedInterventions === 0;
-  if (!c5Passed) {
+    (manualInterventions ?? 0) + stateCorruptionCount + (emergencyFreezeActive ? 1 : 0);
+  const interventionSource = (manualInterventions ?? 0) === 0 && totalUnplannedInterventions > 0
+    ? 'derived' : manualInterventions === null ? 'missing' : 'owner-attested';
+  const c5Passed = stateDirExists && interventionSource !== 'missing' && totalUnplannedInterventions === 0;
+  const missingInterventionEvidence = 'S9_CRITERION_5_INCOMPLETE: provide --unplanned-interventions.';
+  if (!stateDirExists || totalUnplannedInterventions > 0) {
     blockingReasons.push(
       `S9_CRITERION_5_FAILED: unplannedManualInterventions=${totalUnplannedInterventions} (expected 0; manual=${manualInterventions}, stateCorruption=${stateCorruptionCount}, emergencyFreezeActive=${emergencyFreezeActive}).`
     );
+  } else if (interventionSource === 'missing') {
+    incompleteReasons.push(missingInterventionEvidence);
   }
 
-  const allPassed =
-    c1Passed &&
-    c2Passed &&
-    c3Passed &&
-    c4Passed &&
-    c5Passed &&
-    blockingReasons.length === 0;
+  const status = blockingReasons.length > 0 ? 'FAIL'
+    : incompleteReasons.length > 0 ? 'INCOMPLETE' : 'PASS';
 
   const report: PilotReportResult = {
     schemaVersion: 1,
     generatedAt,
-    status: allPassed ? 'PASS' : 'FAIL',
-    passed: allPassed,
+    status,
+    passed: status === 'PASS',
     stateDir,
     pilotTargets: {
       routerTarget: normalizedRouterTarget,
       harnessTarget: normalizedHarnessTarget,
     },
     servingReflectionMs,
+    tickCount,
+    warnings,
     criteria: {
       falseRemovals: {
         passed: c1Passed,
-        count: totalFalseRemovals,
+        count: removalSource === 'missing' ? null : totalFalseRemovals,
+        source: removalSource,
+        removedModelCount: removals.length,
         manualReportedCount: manualFalseRemovals,
         autoRollbackIncidentCount,
         failedAutoSafeReceiptCount,
         detail: c1Passed
-          ? '0 healthy models falsely removed; 0 auto-rollback or invariant-violation incidents.'
+          ? '0 false removals or incidents in the available evidence.'
+          : !stateDirExists ? 'State directory unavailable.'
+          : removalSource === 'missing' ? missingRemovalEvidence
           : `Detected ${totalFalseRemovals} false-removal / auto-rollback incident(s).`,
       },
       rollbackByteExactMatch: {
@@ -1034,15 +1071,19 @@ export async function runPilotReportCommand(
         rolledBackReceiptsCount,
         failedReceiptsCount,
         detail: c2Passed
-          ? `All ${verifiedReceipts.length} receipt(s) verified with readBackVerified=true (${rolledBackReceiptsCount} cleanly rolled back).`
-          : 'Missing verified apply/rollback receipts or read-back verification failed.',
+          ? `${verifiedReceipts.length} verified rollback receipt(s) cover the pilot targets.`
+          : 'Rollback evidence is missing or a recorded verification failed.',
       },
       detectionLatencyMs: {
         passed: c3Passed,
         maxMs: measuredLatencyMs,
+        measuredCount,
+        acceptedVacuous,
         thresholdMs: HARD_PASS_MAX_DETECTION_LATENCY_MS,
         source: latencySource,
-        detail: c3Passed
+        detail: measuredLatencyMs === null
+          ? 'VACUOUS: no detection sample.'
+          : c3Passed
           ? `Deterministic tick detection latency ${measuredLatencyMs} ms <= ${HARD_PASS_MAX_DETECTION_LATENCY_MS} ms (${latencySource}).`
           : `Detection latency ${measuredLatencyMs ?? 'missing'} failed <= ${HARD_PASS_MAX_DETECTION_LATENCY_MS} ms threshold.`,
       },
@@ -1060,16 +1101,19 @@ export async function runPilotReportCommand(
       },
       unplannedManualInterventions: {
         passed: c5Passed,
-        count: totalUnplannedInterventions,
+        count: interventionSource === 'missing' ? null : totalUnplannedInterventions,
+        source: interventionSource,
         manualReportedCount: manualInterventions,
         stateCorruptionCount,
         emergencyFreezeActive,
         detail: c5Passed
           ? '0 unplanned manual interventions, 0 corrupt state files, freeze clear.'
+          : !stateDirExists ? 'State directory unavailable.'
+          : interventionSource === 'missing' ? missingInterventionEvidence
           : `Detected ${totalUnplannedInterventions} unplanned intervention / state corruption / active freeze issue(s).`,
       },
     },
-    blockingReasons,
+    blockingReasons: [...blockingReasons, ...incompleteReasons],
   };
 
   if (!report.passed) {

@@ -12,6 +12,7 @@
  */
 
 import * as crypto from 'node:crypto';
+import { spawnSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
@@ -509,6 +510,56 @@ describe('C46-F2: live_gate_hint & Unified Sandbox Write Guard (3-Case Suite)', 
     }
     expect(fs.existsSync(outsideDir)).toBe(false);
   });
+
+  it('C47: a flagged CLI child still refuses noninteractive propose, missing consent and protected files', () => {
+    ensureRepoOutsideTmpDir();
+    const root = fs.mkdtempSync(path.join(REPO_ROOT, '.tmp-c47-approval-'));
+    cleanupDirs.push(root);
+    expect(
+      isPathInsideDir(resolveDeepCanonicalPath(root), resolveDeepCanonicalPath(os.tmpdir()))
+    ).toBe(false);
+
+    const previousRestriction = getDefaultRestrictDir();
+    setDefaultRestrictDir(root);
+    try {
+      const fixture = createSyntheticPilotAt(root);
+      upsertStandingConsentTarget(fixture.stateDir, { target: 'harness:hermes', level: 'propose' });
+      const harnessBytes = fs.readFileSync(fixture.harnessConfigPath);
+      const catalog = fixture.catalogPath;
+      const noConsentState = path.join(root, 'no-consent');
+      fs.mkdirSync(noConsentState);
+      const run = (config: string, stateDir: string, expected: RegExp) => {
+        const result = spawnSync(process.execPath, [
+          path.join(REPO_ROOT, 'packages', 'cli', 'dist', 'index.js'),
+          'apps', 'apply', '--app', 'hermes', '--config', config, '--home', fixture.fakeHome,
+          '--catalog', catalog, '--state-dir', stateDir, '--write', '--json',
+        ], {
+          cwd: root,
+          env: { ...process.env, ROUTERSYNC_ALLOW_LIVE_HOME_WRITE: '1' },
+          input: '',
+          encoding: 'utf8',
+          timeout: 10_000,
+        });
+        expect(result.error).toBeUndefined();
+        expect(result.status).toBe(1);
+        expect(`${result.stdout}\n${result.stderr}`).toMatch(expected);
+        expect(fs.existsSync(`${config}.routersync.bak`)).toBe(false);
+      };
+
+      run(fixture.harnessConfigPath, fixture.stateDir, /TTY_REQUIRED/);
+      run(fixture.harnessConfigPath, noConsentState, /CONSENT_REQUIRED/);
+      expect(fs.readFileSync(fixture.harnessConfigPath)).toEqual(harnessBytes);
+
+      for (const name of ['bots.json', 'routines.json']) {
+        const protectedFixture = path.join(path.dirname(fixture.harnessConfigPath), name);
+        fs.writeFileSync(protectedFixture, '{}\n');
+        run(protectedFixture, fixture.stateDir, /OpenMausBot safety guard/);
+        expect(fs.readFileSync(protectedFixture, 'utf8')).toBe('{}\n');
+      }
+    } finally {
+      setDefaultRestrictDir(previousRestriction);
+    }
+  }, 60_000);
 
   it('Case 3 (Inside os.tmpdir(), flags unset): live_gate_hint reports inside os.tmpdir() & controlled write + rollback succeed without flags', async () => {
     delete process.env['ROUTERSYNC_ALLOW_LIVE_ROUTER_WRITE'];
