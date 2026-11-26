@@ -308,6 +308,37 @@ describe('C46-F6: routersync pilot-report Read-Only Sign-Off Aggregator', () => 
     }
   });
 
+  it('C47: omitted owner counts are incomplete while explicit zero is attested', async () => {
+    const stateDir = fs.mkdtempSync(path.join(os.tmpdir(), 'rs-c47-report-'));
+    try {
+      seedPassingPilotState(stateDir);
+      const omitted = await runPilotReportCommand({ stateDir, silent: true });
+      expect(omitted.status).toBe('INCOMPLETE');
+      expect(omitted.criteria.falseRemovals).toMatchObject({
+        passed: false, count: null, source: 'missing', manualReportedCount: null,
+      });
+      expect(omitted.criteria.unplannedManualInterventions).toMatchObject({
+        passed: false, count: null, source: 'missing', manualReportedCount: null,
+      });
+      expect(process.exitCode).toBe(1);
+
+      process.exitCode = 0;
+      const attested = await runPilotReportCommand({
+        stateDir, silent: true, falseRemovals: 0, unplannedInterventions: 0,
+      });
+      expect(attested.status).toBe('PASS');
+      expect(attested.criteria.falseRemovals).toMatchObject({
+        passed: true, source: 'owner-attested', manualReportedCount: 0,
+      });
+      expect(attested.criteria.unplannedManualInterventions).toMatchObject({
+        passed: true, source: 'owner-attested', manualReportedCount: 0,
+      });
+    } finally {
+      process.exitCode = 0;
+      fs.rmSync(stateDir, { recursive: true, force: true });
+    }
+  });
+
   it('C47: a completed unchanged tick has no latency sample', async () => {
     const stateDir = fs.mkdtempSync(path.join(os.tmpdir(), 'rs-c47-report-'));
     try {
@@ -328,7 +359,7 @@ describe('C46-F6: routersync pilot-report Read-Only Sign-Off Aggregator', () => 
       expect(report.status).toBe('INCOMPLETE');
       expect(report.criteria.detectionLatencyMs.maxMs).toBeNull();
       expect(report.criteria.detectionLatencyMs.detail).toContain('VACUOUS');
-      const waived = await runPilotReportCommand({ stateDir, silent: true, acceptVacuousDetection: true });
+      const waived = await runPilotReportCommand({ falseRemovals: 0, unplannedInterventions: 0, stateDir, silent: true, acceptVacuousDetection: true });
       expect(waived.status).toBe('PASS');
       expect(waived.criteria.detectionLatencyMs).toMatchObject({
         maxMs: null, measuredCount: 0, acceptedVacuous: true,
@@ -363,7 +394,7 @@ describe('C46-F6: routersync pilot-report Read-Only Sign-Off Aggregator', () => 
       expect(report.criteria.falseRemovals).toMatchObject({
         source: 'derived', count: 1, removedModelCount: 1,
       });
-      expect(report.criteria.unplannedManualInterventions.source).toBe('owner-attested');
+      expect(report.criteria.unplannedManualInterventions.source).toBe('missing');
     } finally {
       process.exitCode = 0;
       fs.rmSync(stateDir, { recursive: true, force: true });
@@ -412,6 +443,8 @@ describe('C46-F6: routersync pilot-report Read-Only Sign-Off Aggregator', () => 
     const lines: string[] = [];
     process.exitCode = 0;
     const report = await runPilotReportCommand({
+      falseRemovals: 0,
+      unplannedInterventions: 0,
       stateDir,
       routerTarget: 'router:omniroute/rs-pilot',
       harnessTarget: 'harness:hermes',
@@ -499,6 +532,8 @@ describe('C46-F6: routersync pilot-report Read-Only Sign-Off Aggregator', () => 
 
       process.exitCode = 0;
       const report = await runPilotReportCommand({
+        falseRemovals: 0,
+        unplannedInterventions: 0,
         stateDir,
         routerTarget: 'router:omniroute/rs-pilot',
         harnessTarget: 'harness:hermes',
@@ -927,7 +962,7 @@ describe('C46-F6: routersync pilot-report Read-Only Sign-Off Aggregator', () => 
       fs.writeFileSync(path.join(stateDir, 'standing-consent.json'), scRaw, 'utf8');
       fs.writeFileSync(path.join(stateDir, 'consent.json'), scRaw, 'utf8');
       process.exitCode = 0;
-      const validAlias = await runPilotReportCommand({ stateDir, silent: true });
+      const validAlias = await runPilotReportCommand({ falseRemovals: 0, unplannedInterventions: 0, stateDir, silent: true });
       expect(validAlias.status).toBe('PASS');
       expect(process.exitCode).toBe(0);
 
@@ -1080,7 +1115,7 @@ describe('C46-F6: routersync pilot-report Read-Only Sign-Off Aggregator', () => 
       const stateDir = path.join(makeTmpDir('rs-c46-f6-c1-manual-'), 'state');
       seedPassingPilotState(stateDir);
       process.exitCode = 0;
-      const rep = await runPilotReportCommand({ stateDir, falseRemovals: 1, silent: true });
+      const rep = await runPilotReportCommand({ unplannedInterventions: 0, stateDir, falseRemovals: 1, silent: true });
       expect(rep.status).toBe('FAIL');
       expect(rep.criteria.falseRemovals.passed).toBe(false);
       expect(rep.criteria.falseRemovals.count).toBe(1);
@@ -1163,6 +1198,8 @@ describe('C46-F6: routersync pilot-report Read-Only Sign-Off Aggregator', () => 
       });
       process.exitCode = 0;
       const rep = await runPilotReportCommand({
+        falseRemovals: 0,
+        unplannedInterventions: 0,
         stateDir,
         routerTarget: 'router:omniroute/rs-pilot',
         harnessTarget: 'harness:hermes',
@@ -1231,6 +1268,8 @@ describe('C46-F6: routersync pilot-report Read-Only Sign-Off Aggregator', () => 
       });
       process.exitCode = 0;
       const rep = await runPilotReportCommand({
+        falseRemovals: 0,
+        unplannedInterventions: 0,
         stateDir,
         routerTarget: 'router:omniroute/rs-pilot',
         harnessTarget: 'harness:hermes',
@@ -1267,7 +1306,7 @@ describe('C46-F6: routersync pilot-report Read-Only Sign-Off Aggregator', () => 
         'utf8'
       );
       process.exitCode = 0;
-      const rep = await runPilotReportCommand({ stateDir, silent: true });
+      const rep = await runPilotReportCommand({ falseRemovals: 0, unplannedInterventions: 0, stateDir, silent: true });
       expect(rep.status).toBe(badLatency === null ? 'INCOMPLETE' : 'FAIL');
       expect(rep.criteria.falseRemovals.passed).toBe(true);
       expect(rep.criteria.rollbackByteExactMatch.passed).toBe(true);
@@ -1455,6 +1494,8 @@ describe('C46-F6: routersync pilot-report Read-Only Sign-Off Aggregator', () => 
       );
       process.exitCode = 0;
       const rep = await runPilotReportCommand({
+        falseRemovals: 0,
+        unplannedInterventions: 0,
         stateDir,
         nowMs: Date.parse('2026-11-25T10:01:00.000Z'),
         silent: true,
@@ -1557,6 +1598,8 @@ describe('C46-F6: routersync pilot-report Read-Only Sign-Off Aggregator', () => 
       );
       process.exitCode = 0;
       const passAt5 = await runPilotReportCommand({
+        falseRemovals: 0,
+        unplannedInterventions: 0,
         stateDir,
         nowMs: Date.parse('2026-11-25T10:01:00.000Z'),
         silent: true,
@@ -1696,6 +1739,7 @@ describe('C46-F6: routersync pilot-report Read-Only Sign-Off Aggregator', () => 
       seedPassingPilotState(stateDir);
       process.exitCode = 0;
       const rep = await runPilotReportCommand({
+        falseRemovals: 0,
         stateDir,
         unplannedInterventions: 1,
         silent: true,
@@ -2071,6 +2115,8 @@ describe('C46-F6: routersync pilot-report Read-Only Sign-Off Aggregator', () => 
     const markdownLines: string[] = [];
     process.exitCode = 0;
     const postRollbackReport = await runPilotReportCommand({
+      falseRemovals: 0,
+      unplannedInterventions: 0,
       stateDir,
       config: configPath,
       routerTarget: 'router:nine/rs-pilot',
@@ -2454,6 +2500,8 @@ describe('C46-F6: routersync pilot-report Read-Only Sign-Off Aggregator', () => 
     const beforeSnap = snapshotDirRecursive(stateDir);
     process.exitCode = 0;
     const steadyReport = await runPilotReportCommand({
+      falseRemovals: scenario === 'steady' ? 0 : undefined,
+      unplannedInterventions: 0,
       stateDir,
       config: configPath,
       routerTarget: 'router:nine/rs-pilot',
@@ -2476,7 +2524,7 @@ describe('C46-F6: routersync pilot-report Read-Only Sign-Off Aggregator', () => 
     expect(steadyReport.criteria.detectionLatencyMs.acceptedVacuous).toBe(false);
     if (scenario !== 'steady') {
       expect(steadyReport.criteria.falseRemovals).toMatchObject({
-        count: 0, removedModelCount: 1, source: 'derived',
+        count: 0, removedModelCount: 1, source: 'derived', manualReportedCount: null,
       });
       expect(steadyReport.criteria.detectionLatencyMs).toMatchObject({
         measuredCount: 1, maxMs: scenario === 'official-notice' ? 50 : 24 * 60 * 60_000,

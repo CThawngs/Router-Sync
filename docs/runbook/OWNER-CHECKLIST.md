@@ -115,6 +115,6 @@
     **Kết quả đúng:** Hai biến môi trường ghi thật bị xóa hoàn toàn khỏi phiên shell.
 22. Tổng hợp báo cáo nghiệm thu chỉ đọc 5 tiêu chí `S9`:
     ```sh
-    routersync pilot-report -c "<DUONG_DAN_ROUTERSYNC_YAML>" --state-dir "<STATE_DIR>" --router-target "router:<ID_ROUTER>/rs-pilot" --harness-target harness:hermes --json
+    routersync pilot-report -c "<DUONG_DAN_ROUTERSYNC_YAML>" --state-dir "<STATE_DIR>" --router-target "router:<ID_ROUTER>/rs-pilot" --harness-target harness:hermes --false-removals "<SO_LOAI_NHAM>" --unplanned-interventions "<SO_CAN_THIEP_NGOAI_KE_HOACH>" --json
     ```
     **Kết quả đúng:** `PASS` (mã thoát 0) khi đủ bằng chứng và cả 5 tiêu chí đạt. `INCOMPLETE` khi thiếu phép đo hoặc bằng chứng hoàn tác. `FAIL` khi có vi phạm hoặc bằng chứng hỏng.

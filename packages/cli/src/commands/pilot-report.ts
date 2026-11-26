@@ -62,9 +62,9 @@ export interface PilotReportCommandOptions {
 export interface PilotReportS9Criteria {
   falseRemovals: {
     passed: boolean;
-    count: number;
-    manualReportedCount: number;
-    source: 'derived' | 'owner-attested';
+    count: number | null;
+    manualReportedCount: number | null;
+    source: 'derived' | 'owner-attested' | 'missing';
     removedModelCount: number;
     autoRollbackIncidentCount: number;
     failedAutoSafeReceiptCount: number;
@@ -99,9 +99,9 @@ export interface PilotReportS9Criteria {
   };
   unplannedManualInterventions: {
     passed: boolean;
-    count: number;
-    manualReportedCount: number;
-    source: 'derived' | 'owner-attested';
+    count: number | null;
+    manualReportedCount: number | null;
+    source: 'derived' | 'owner-attested' | 'missing';
     stateCorruptionCount: number;
     emergencyFreezeActive: boolean;
     detail: string;
@@ -425,11 +425,11 @@ function formatMarkdownSignOffReport(report: PilotReportResult): string {
     '',
     '| # | Tiêu chí S9 | Giá trị Đo được | Ngưỡng Đạt Cứng | Kết quả |',
     '|---:|---|---|---|---|',
-    `| 1 | \`falseRemovals\` | \`${c.falseRemovals.count}\` (${c.falseRemovals.source}) | \`=== 0\` | **${badge(c.falseRemovals.passed)}** |`,
+    `| 1 | \`falseRemovals\` | \`${c.falseRemovals.count ?? '?'}\` (${c.falseRemovals.source}) | \`=== 0\` | **${badge(c.falseRemovals.passed, c.falseRemovals.source === 'missing')}** |`,
     `| 2 | \`rollbackByteExactMatch\` | \`${c.rollbackByteExactMatch.matched}\` (\`${c.rollbackByteExactMatch.verifiedReceiptsCount}\` biên nhận xác minh) | Đối chiếu SHA-256 của harness và hàng combo của router | **${badge(c.rollbackByteExactMatch.passed, c.rollbackByteExactMatch.failedReceiptsCount === 0)}** |`,
     `| 3 | \`detectionLatencyMs\` | \`${latencyText}\` | \`<= 60000 ms\` | **${badge(c.detectionLatencyMs.passed, c.detectionLatencyMs.maxMs === null)}** |`,
     `| 4 | \`tier0Tokens\` & Ngân sách tuần | \`${costText}\` | \`0\` token/LLM/paid & \`<= ${c.cost.maxWeeklyResearchSessions}\` phiên/tuần | **${badge(c.cost.passed)}** |`,
-    `| 5 | \`unplannedManualInterventions\` | \`${c.unplannedManualInterventions.count}\` (${c.unplannedManualInterventions.source}) | \`=== 0\` | **${badge(c.unplannedManualInterventions.passed)}** |`
+    `| 5 | \`unplannedManualInterventions\` | \`${c.unplannedManualInterventions.count ?? '?'}\` (${c.unplannedManualInterventions.source}) | \`=== 0\` | **${badge(c.unplannedManualInterventions.passed, c.unplannedManualInterventions.source === 'missing')}** |`
   );
 
   if (report.blockingReasons.length > 0) {
@@ -459,10 +459,9 @@ export async function runPilotReportCommand(
     '--serving-reflection-ms'
   );
   const manualFalseRemovals =
-    parseOptionalNonNegativeSafeInt(options.falseRemovals, '--false-removals') ?? 0;
+    parseOptionalNonNegativeSafeInt(options.falseRemovals, '--false-removals');
   const manualInterventions =
-    parseOptionalNonNegativeSafeInt(options.unplannedInterventions, '--unplanned-interventions') ??
-    0;
+    parseOptionalNonNegativeSafeInt(options.unplannedInterventions, '--unplanned-interventions');
 
   const resolvedOutPath =
     options.out !== undefined ? assertOutPathOutsideStateDir(options.out, stateDir) : null;
@@ -937,16 +936,22 @@ export async function runPilotReportCommand(
   ).length;
   const removals = relevantReceipts.flatMap((receipt) => receipt.removedModels ?? []);
   const catalogFalseRemovals = removals.filter((model) => model.inProviderCatalog === true).length;
-  const removalSource = removals.length > 0 && manualFalseRemovals <= catalogFalseRemovals &&
-    removals.every((model) => model.inProviderCatalog !== null)
-    ? 'derived' : 'owner-attested';
+  const completeCatalogEvidence = removals.length > 0 &&
+    removals.every((model) => model.inProviderCatalog !== null);
   const totalFalseRemovals =
-    Math.max(manualFalseRemovals, catalogFalseRemovals) + autoRollbackIncidentCount + failedAutoSafeReceiptCount;
-  const c1Passed = stateDirExists && totalFalseRemovals === 0;
-  if (!c1Passed) {
+    Math.max(manualFalseRemovals ?? 0, catalogFalseRemovals) +
+    autoRollbackIncidentCount + failedAutoSafeReceiptCount;
+  const removalSource = (completeCatalogEvidence || totalFalseRemovals > 0) &&
+    (manualFalseRemovals ?? 0) <= catalogFalseRemovals
+    ? 'derived' : manualFalseRemovals === null ? 'missing' : 'owner-attested';
+  const c1Passed = stateDirExists && removalSource !== 'missing' && totalFalseRemovals === 0;
+  const missingRemovalEvidence = 'S9_CRITERION_1_INCOMPLETE: provide --false-removals or complete provider catalog evidence.';
+  if (!stateDirExists || totalFalseRemovals > 0) {
     blockingReasons.push(
       `S9_CRITERION_1_FAILED: falseRemovals=${totalFalseRemovals} (expected 0; manual=${manualFalseRemovals}, autoRollbackIncidents=${autoRollbackIncidentCount}, failedAutoSafeReceipts=${failedAutoSafeReceiptCount}).`
     );
+  } else if (removalSource === 'missing') {
+    incompleteReasons.push(missingRemovalEvidence);
   }
 
   const failedReceiptsCount = relevantReceipts.filter(
@@ -1015,12 +1020,17 @@ export async function runPilotReportCommand(
 
   const emergencyFreezeActive = Boolean(stateDirExists && freezeState.frozen && !isFreezeCorrupt);
   const totalUnplannedInterventions =
-    manualInterventions + stateCorruptionCount + (emergencyFreezeActive ? 1 : 0);
-  const c5Passed = stateDirExists && totalUnplannedInterventions === 0;
-  if (!c5Passed) {
+    (manualInterventions ?? 0) + stateCorruptionCount + (emergencyFreezeActive ? 1 : 0);
+  const interventionSource = (manualInterventions ?? 0) === 0 && totalUnplannedInterventions > 0
+    ? 'derived' : manualInterventions === null ? 'missing' : 'owner-attested';
+  const c5Passed = stateDirExists && interventionSource !== 'missing' && totalUnplannedInterventions === 0;
+  const missingInterventionEvidence = 'S9_CRITERION_5_INCOMPLETE: provide --unplanned-interventions.';
+  if (!stateDirExists || totalUnplannedInterventions > 0) {
     blockingReasons.push(
       `S9_CRITERION_5_FAILED: unplannedManualInterventions=${totalUnplannedInterventions} (expected 0; manual=${manualInterventions}, stateCorruption=${stateCorruptionCount}, emergencyFreezeActive=${emergencyFreezeActive}).`
     );
+  } else if (interventionSource === 'missing') {
+    incompleteReasons.push(missingInterventionEvidence);
   }
 
   const status = blockingReasons.length > 0 ? 'FAIL'
@@ -1042,7 +1052,7 @@ export async function runPilotReportCommand(
     criteria: {
       falseRemovals: {
         passed: c1Passed,
-        count: totalFalseRemovals,
+        count: removalSource === 'missing' ? null : totalFalseRemovals,
         source: removalSource,
         removedModelCount: removals.length,
         manualReportedCount: manualFalseRemovals,
@@ -1050,6 +1060,8 @@ export async function runPilotReportCommand(
         failedAutoSafeReceiptCount,
         detail: c1Passed
           ? '0 false removals or incidents in the available evidence.'
+          : !stateDirExists ? 'State directory unavailable.'
+          : removalSource === 'missing' ? missingRemovalEvidence
           : `Detected ${totalFalseRemovals} false-removal / auto-rollback incident(s).`,
       },
       rollbackByteExactMatch: {
@@ -1089,14 +1101,15 @@ export async function runPilotReportCommand(
       },
       unplannedManualInterventions: {
         passed: c5Passed,
-        count: totalUnplannedInterventions,
-        source: manualInterventions === 0 && (stateCorruptionCount > 0 || emergencyFreezeActive)
-          ? 'derived' : 'owner-attested',
+        count: interventionSource === 'missing' ? null : totalUnplannedInterventions,
+        source: interventionSource,
         manualReportedCount: manualInterventions,
         stateCorruptionCount,
         emergencyFreezeActive,
         detail: c5Passed
           ? '0 unplanned manual interventions, 0 corrupt state files, freeze clear.'
+          : !stateDirExists ? 'State directory unavailable.'
+          : interventionSource === 'missing' ? missingInterventionEvidence
           : `Detected ${totalUnplannedInterventions} unplanned intervention / state corruption / active freeze issue(s).`,
       },
     },
