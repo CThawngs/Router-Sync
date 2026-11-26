@@ -48,7 +48,18 @@ function isValidReceiptShape(item: unknown): item is ApplyHistoryReceipt {
     typeof r['readBackVerified'] === 'boolean' &&
     typeof r['readBackLevel'] === 'string' &&
     typeof r['rolledBack'] === 'boolean' &&
-    typeof r['snapshotOrBackupRef'] === 'string'
+    typeof r['snapshotOrBackupRef'] === 'string' &&
+    (r['removedModels'] === undefined ||
+      (Array.isArray(r['removedModels']) && r['removedModels'].every((model) =>
+        model && typeof model.provider === 'string' && typeof model.modelId === 'string' &&
+        (model.inProviderCatalog === null || typeof model.inProviderCatalog === 'boolean')))) &&
+    (r['rollbackVerified'] === undefined ||
+      (typeof r['rollbackVerified'] === 'boolean' &&
+        typeof r['rollbackBeforeDigest'] === 'string' &&
+        typeof r['rollbackAfterDigest'] === 'string' &&
+        /^[0-9a-f]{64}$/i.test(r['rollbackBeforeDigest']) &&
+        /^[0-9a-f]{64}$/i.test(r['rollbackAfterDigest']) &&
+        r['rollbackVerified'] === (r['rollbackBeforeDigest'] === r['rollbackAfterDigest'])))
   );
 }
 
@@ -171,6 +182,7 @@ export function appendApplyReceipt(
     snapshotOrBackupRef: input.snapshotOrBackupRef,
     ...(input.preDigest !== undefined ? { preDigest: input.preDigest } : {}),
     ...(input.postDigest !== undefined ? { postDigest: input.postDigest } : {}),
+    ...(input.removedModels !== undefined ? { removedModels: input.removedModels } : {}),
   };
 
   const receipts = [...baseReceipts, receipt].slice(-MAX_APPLY_HISTORY_RECEIPTS);
@@ -212,6 +224,8 @@ export function markApplyReceiptRolledBack(
     targetPrefix?: string | undefined;
     snapshotOrBackupRef?: string | undefined;
     appliedAtOrAfter?: string | undefined;
+    verifyRollback?: ((receipt: ApplyHistoryReceipt) =>
+      { beforeDigest: string; afterDigest: string } | undefined) | undefined;
   }
 ): number {
   const stateDir = resolveControlStateDir(explicitStateDir);
@@ -242,6 +256,19 @@ export function markApplyReceiptRolledBack(
     (normalizedTarget ? r.target === normalizedTarget : true) &&
     (normalizedPrefix ? r.target.startsWith(normalizedPrefix) : true);
 
+  const markRestored = (receipt: ApplyHistoryReceipt): ApplyHistoryReceipt => {
+    const verification = criteria.verifyRollback?.(receipt);
+    if (!verification) return { ...receipt, rolledBack: true };
+    const { beforeDigest, afterDigest } = verification;
+    return {
+      ...receipt,
+      rolledBack: true,
+      rollbackVerified: beforeDigest === afterDigest,
+      rollbackBeforeDigest: beforeDigest,
+      rollbackAfterDigest: afterDigest,
+    };
+  };
+
   const normRef = normalizedRef ? normPathOrRef(normalizedRef) : undefined;
   const firstScopedExactIdx = normRef
     ? existing.receipts.findIndex(
@@ -264,7 +291,7 @@ export function markApplyReceiptRolledBack(
         const afterCutoff = hasCutoff && Number.isFinite(appliedMs) && appliedMs > cutoffMs;
         if (idx >= pivotIdx || afterCutoff) {
           updatedCount += 1;
-          return { ...r, rolledBack: true };
+          return markRestored(r);
         }
         return r;
       });
@@ -274,7 +301,7 @@ export function markApplyReceiptRolledBack(
         const appliedMs = Date.parse(r.appliedAt);
         if (Number.isFinite(appliedMs) && appliedMs >= cutoffMs) {
           updatedCount += 1;
-          return { ...r, rolledBack: true };
+          return markRestored(r);
         }
         return r;
       });
@@ -285,7 +312,7 @@ export function markApplyReceiptRolledBack(
       const appliedMs = Date.parse(r.appliedAt);
       if (!hasCutoff || (Number.isFinite(appliedMs) && appliedMs >= cutoffMs)) {
         updatedCount += 1;
-        return { ...r, rolledBack: true };
+        return markRestored(r);
       }
       return r;
     });
@@ -297,7 +324,7 @@ export function markApplyReceiptRolledBack(
     finalReceipts = existing.receipts.map((r) => {
       if (!r.rolledBack && r.target === normalizedTarget) {
         updatedCount += 1;
-        return { ...r, rolledBack: true };
+        return markRestored(r);
       }
       return r;
     });

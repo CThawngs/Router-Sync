@@ -77,7 +77,7 @@ import {
   type HarnessTickTarget,
   type TickPlanFile,
 } from '../src/commands/tick.js';
-import { computeDetectionLatencyMs } from '../src/verify/index.js';
+import { computeDetectionLatencyMs, enforceTargetShrinkCap } from '../src/verify/index.js';
 
 function sha256File(filePath: string): string {
   return crypto.createHash('sha256').update(fs.readFileSync(filePath)).digest('hex');
@@ -598,6 +598,69 @@ describe('C45-WP3 Part 3 & 4: Tier 0 <-> Tier 1 Real-Time Research Loop', () => 
     const inbox = JSON.parse(fs.readFileSync(path.join(tmpDir, 'inbox.json'), 'utf8'));
     const inboxItems: Array<{ title: string }> = inbox.items ?? [];
     expect(inboxItems.some((item) => item.title.includes('[SHRINK-GUARD]'))).toBe(true);
+  });
+
+  it('C47: measures the absence-only gate before planning a removal', async () => {
+    expect(enforceTargetShrinkCap('router', 9, 1).allowed).toBe(false);
+    expect(enforceTargetShrinkCap('router', 10, 1).allowed).toBe(true);
+    const healthy = Array.from({ length: 9 }, (_, index) => `claude-c47-fixture-${index + 1}`);
+    const absent = 'claude-c47-fixture-retired';
+    const initial = [...healthy, absent];
+    hoisted.mockComboData = [
+      { id: 'pilot', name: 'rs-pilot', models: initial.map((id) => `anthropic/${id}`) },
+    ];
+    hoisted.mockTargets = [
+      {
+        id: 'anthropic',
+        label: 'Anthropic fixture',
+        prefix: 'anthropic',
+        baseUrl: 'https://api.anthropic.com/v1',
+        apiKey: 'fixture-only',
+        keySource: '9router-key',
+      },
+    ];
+
+    const hourMs = 60 * 60 * 1000;
+    const firstAbsentAt = baseNowMs + hourMs;
+    let providerModels = initial;
+    const fetchFixture: typeof fetch = async (input) => {
+      const url = new URL(String(input));
+      if (url.hostname === 'api.anthropic.com' && url.pathname === '/v1/models') {
+        return Response.json({ data: providerModels.map((id) => ({ id })) });
+      }
+      if (url.hostname === 'api.anthropic.com') return new Response(null, { status: 404 });
+      return Response.json({ data: [] });
+    };
+
+    const runCycle = async (nowMs: number) => {
+      await runTickCommand({
+        stateDir: tmpDir,
+        plansDir,
+        nowMs,
+        mode: 'auto-safe',
+        fetchFn: fetchFixture,
+        harnessTargets: [],
+      });
+      const plan = JSON.parse(fs.readFileSync(path.join(plansDir, 'tick-plan.json'), 'utf8')) as TickPlanFile;
+      const catalog = JSON.parse(fs.readFileSync(path.join(tmpDir, 'tick-catalog.json'), 'utf8'));
+      return {
+        absenceCount: catalog.providers.anthropic.absenceCounts[absent] ?? 0,
+        removals: plan.routerActions.filter((action) => action.action === 'REMOVE_MODEL'),
+        latency: plan.detectionLatency,
+      };
+    };
+
+    await runCycle(baseNowMs);
+    providerModels = healthy;
+    const first = await runCycle(firstAbsentAt);
+    const second = await runCycle(firstAbsentAt + hourMs);
+    expect(first).toMatchObject({ absenceCount: 1, removals: [], latency: { measuredCount: 0 } });
+    expect(second).toMatchObject({ absenceCount: 2, removals: [], latency: { measuredCount: 0 } });
+
+    const third = await runCycle(firstAbsentAt + 24 * hourMs);
+    expect(third.absenceCount).toBe(3);
+    expect(third.removals).toEqual([expect.objectContaining({ modelId: absent })]);
+    expect(third.latency).toMatchObject({ measuredCount: 1, maxMs: 24 * hourMs });
   });
 
   it('enforces UNVERIFIABLE != ABSENT across 5 consecutive ticks (> 48h): absenceCount stays 0 and zero REMOVE_MODEL actions', async () => {

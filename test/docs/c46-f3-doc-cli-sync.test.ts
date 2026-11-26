@@ -362,12 +362,12 @@ describe('C46-F3: docs/runbook/LIVE-E2E-v2.md Doc-CLI Sync & Complete Workflow C
 describe('C46-F6: docs/runbook/OWNER-CHECKLIST.md 1-Page Checklist & Doc-CLI Sync Contract', () => {
   const checklistPath = path.join(REPO_ROOT, 'docs', 'runbook', 'OWNER-CHECKLIST.md');
 
-  it('exists, stays <= 120 lines, includes S9 header, boundary note, and pre-flight rules box', () => {
+  it('stays within 130 lines and documents the owner-only S9 pilot', () => {
     expect(fs.existsSync(checklistPath), 'docs/runbook/OWNER-CHECKLIST.md must exist').toBe(true);
     const markdown = fs.readFileSync(checklistPath, 'utf8');
     const lines = markdown.split(/\r?\n/);
 
-    expect(lines.length).toBeLessThanOrEqual(120);
+    expect(lines.length).toBeLessThanOrEqual(130);
     expect(markdown).toContain('- **Phục vụ: S9**');
     expect(markdown).toContain('READY_FOR_OWNER_LIVE_PILOT');
 
@@ -393,14 +393,18 @@ describe('C46-F6: docs/runbook/OWNER-CHECKLIST.md 1-Page Checklist & Doc-CLI Syn
     expect(markdown).not.toContain('router:omniroute/rs-pilot');
     expect(markdown).toContain('router:<ID_ROUTER>/rs-pilot');
     expect(markdown).toContain('measuredCount');
+    expect(preflightSection).toMatch(/^0\. .*rs-pilot.*10 model/m);
+    expect(markdown).toContain('ít nhất 15 phút');
+    expect(markdown).toContain('ít nhất 24 giờ');
+    expect(markdown).toContain('`INCOMPLETE`');
   });
 
-  it('enforces strictly 1 copy-pasteable command + 1 "Kết quả đúng:" line per numbered step and 0 CLI sync issues', () => {
+  it('provides shared commands or paired shell commands and checks each step result', () => {
     const markdown = fs.readFileSync(checklistPath, 'utf8');
     const syncRes = verifyDocCliSync(markdown);
     expect(syncRes.issues).toEqual([]);
 
-    const stepHeadingMatches = [...markdown.matchAll(/^(\d+)\.\s+.+$/gm)];
+    const stepHeadingMatches = [...markdown.matchAll(/^([1-9]\d*)\.\s+.+$/gm)];
     expect(stepHeadingMatches.length).toBeGreaterThanOrEqual(12);
 
     for (let i = 0; i < stepHeadingMatches.length; i += 1) {
@@ -413,16 +417,22 @@ describe('C46-F6: docs/runbook/OWNER-CHECKLIST.md 1-Page Checklist & Doc-CLI Syn
       expect(stepNum).toBe(i + 1);
 
       const blocks = extractFencedShellBlocks(stepChunk);
+      const powerShell = [...stepChunk.matchAll(/^\s*PowerShell `([^`]+)`\s*$/gm)];
+      const bash = [...stepChunk.matchAll(/^\s*Bash `([^`]+)`\s*$/gm)];
       expect(
-        blocks.length,
-        `Step ${stepNum} must contain exactly 1 fenced shell/powershell block`
-      ).toBe(1);
-
-      const logicalCommands = joinContinuedLines(blocks[0]!);
-      expect(
-        logicalCommands.length,
-        `Step ${stepNum} must contain strictly 1 copy-pasteable command line (got ${logicalCommands.length})`
-      ).toBe(1);
+        powerShell.length,
+        `Step ${stepNum} must provide the same command coverage in both shells`
+      ).toBe(bash.length);
+      if (powerShell.length > 0) {
+        expect(powerShell).toHaveLength(1);
+        expect(powerShell[0]![1]).not.toMatch(/&&|sha256sum/);
+      }
+      if (blocks.length > 0) {
+        expect(blocks).toHaveLength(1);
+        expect(joinContinuedLines(blocks[0]!)).toHaveLength(1);
+      } else {
+        expect(powerShell).toHaveLength(1);
+      }
 
       const expectedLines = stepChunk
         .split(/\r?\n/)

@@ -2221,6 +2221,16 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
     atomicWriteFileSync(tickPlanPath, JSON.stringify(tickPlan, null, 2));
 
     const autoSafeWebhookAlerts: ActionableWebhookAlert[] = [];
+    const removalEvidence = (provider: string, modelId: string) => {
+      // Use the same provider catalog persisted for this tick, before a later scan
+      // can overwrite the evidence used for this removal.
+      const entry = catalogState.providers[provider];
+      const inProviderCatalog = entry?.lastStatus === 200 &&
+        !isUnverifiableScanState(entry.lastLabel) && Array.isArray(entry.ids)
+        ? entry.ids.includes(modelId) && (entry.absenceCounts[modelId] ?? 0) === 0
+        : null;
+      return { provider, modelId, inProviderCatalog };
+    };
 
     // C45-WP4 §3.1: Controlled auto-safe execution phase (strictly gated per target)
     if (effectiveMode === 'auto-safe') {
@@ -2519,6 +2529,12 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
             readBackLevel: applyRes.readBackLevel ?? 'db-only',
             rolledBack: Boolean(applyRes.rollbackExecuted || !finalSuccess),
             snapshotOrBackupRef: snapshot.id,
+            removedModels: finalSuccess && !applyRes.rollbackExecuted
+              ? group.actions
+                .filter((action) => action.action === 'REMOVE_MODEL' &&
+                  liveCombo.models.includes(action.fullStep) && !nextModels.includes(action.fullStep))
+                .map((action) => removalEvidence(action.provider, action.modelId))
+              : [],
           });
 
           if (finalSuccess) {
@@ -2587,10 +2603,13 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
           try {
             const explicitTickHome =
               options.homeDir ?? (options.env ?? process.env)['ROUTERSYNC_HOME'];
+            const homeDir = resolveEffectiveHarnessHomeDir(cfgFile, explicitTickHome);
+            const harnessPlan = await writeAdapter.plan({ configPath: cfgFile, homeDir, catalog: harnessCatalog });
             const hRes = await writeAdapter.apply({
               configPath: cfgFile,
-              homeDir: resolveEffectiveHarnessHomeDir(cfgFile, explicitTickHome),
+              homeDir,
               catalog: harnessCatalog,
+              expectedPlanHash: harnessPlan.planHash,
             });
             appendApplyReceipt(sDir, {
               target: targetScope,
@@ -2605,6 +2624,9 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
               snapshotOrBackupRef: hRes.backupPath,
               preDigest: hRes.preSha256,
               postDigest: hRes.postSha256,
+              removedModels: hRes.applied && hRes.readBackVerified && !hRes.rolledBack
+                ? harnessPlan.removals.map((removal) => removalEvidence(removal.provider, removal.model))
+                : [],
             });
             if (hRes.applied && !hRes.rolledBack) {
               newInboxCandidates.push({
