@@ -31,6 +31,7 @@ import { runLiveCheckCommand } from '../src/commands/live-check.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, '..', '..', '..');
+const OWN_TMPDIR_DETAIL_RE = /\bos\.tmpdir\(\)\/(rs-livecheck-[A-Za-z0-9_-]+)/;
 
 interface FileSnapshot {
   relPath: string;
@@ -71,15 +72,10 @@ function snapshotDirectoryTree(rootDir: string): FileSnapshot[] {
   return results;
 }
 
-function listRsLiveCheckTmpDirs(): string[] {
-  try {
-    return fs
-      .readdirSync(os.tmpdir())
-      .filter((name) => name.startsWith('rs-livecheck-'))
-      .sort();
-  } catch {
-    return [];
-  }
+function extractOwnRehearsalTmpDirName(detail: string): string {
+  expect(detail).toMatch(OWN_TMPDIR_DETAIL_RE);
+  const match = OWN_TMPDIR_DETAIL_RE.exec(detail);
+  return match?.[1] ?? '';
 }
 
 interface PilotFixture {
@@ -258,7 +254,7 @@ describe('C45-WP9: routersync live-check zero-mutation pre-flight & failure mode
     process.exitCode = 0;
     while (tempRoots.length > 0) {
       const dir = tempRoots.pop()!;
-      fs.rmSync(dir, { recursive: true, force: true });
+      fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
     }
   });
 
@@ -269,7 +265,6 @@ describe('C45-WP9: routersync live-check zero-mutation pre-flight & failure mode
     const routerSnapBefore = snapshotDirectoryTree(fx.routerDir);
     const harnessSnapBefore = snapshotDirectoryTree(fx.harnessDir);
     const stateSnapBefore = snapshotDirectoryTree(fx.stateDir);
-    const tmpBeforeSet = new Set(listRsLiveCheckTmpDirs());
 
     const report = await runLiveCheckCommand({
       routerTarget: 'router:omniroute/coding-main',
@@ -303,7 +298,7 @@ describe('C45-WP9: routersync live-check zero-mutation pre-flight & failure mode
     ]);
     expect(report.checks.every((c) => c.passed)).toBe(true);
     const rehearsalCheck = report.checks.find((c) => c.id === 'tmpdir_backup_rollback_rehearsal')!;
-    expect(rehearsalCheck.detail).toContain('rs-livecheck-');
+    const ownTmpDirName = extractOwnRehearsalTmpDirName(rehearsalCheck.detail);
     expect(report.ownerNextCommands.some((cmd) => cmd.includes('routersync consent grant'))).toBe(
       true
     );
@@ -313,9 +308,118 @@ describe('C45-WP9: routersync live-check zero-mutation pre-flight & failure mode
     expect(snapshotDirectoryTree(fx.harnessDir)).toEqual(harnessSnapBefore);
     expect(snapshotDirectoryTree(fx.stateDir)).toEqual(stateSnapBefore);
 
-    // Unconditional cleanup of os.tmpdir()/rs-livecheck-* (before/after set difference safe under parallel workers)
-    const leakedTmpDirs = listRsLiveCheckTmpDirs().filter((name) => !tmpBeforeSet.has(name));
-    expect(leakedTmpDirs).toEqual([]);
+    // Per-invocation cleanup of exact os.tmpdir()/rs-livecheck-* directory (immune to parallel Vitest workers)
+    expect(fs.existsSync(path.join(os.tmpdir(), ownTmpDirName))).toBe(false);
+  });
+
+  it('isolates concurrent live-check invocations from mid-flight sibling os.tmpdir()/rs-livecheck-* worker directories', async () => {
+    const fx = createHermeticPilotFixture();
+    tempRoots.push(fx.rootDir);
+
+    const preExistingSiblingDir = fs.mkdtempSync(path.join(os.tmpdir(), 'rs-livecheck-'));
+    tempRoots.push(preExistingSiblingDir);
+    fs.writeFileSync(
+      path.join(preExistingSiblingDir, 'sibling-worker.lock'),
+      'active-before',
+      'utf8'
+    );
+
+    let midFlightSiblingDir = '';
+    const [reports] = await Promise.all([
+      Promise.all(
+        Array.from({ length: 4 }, () =>
+          runLiveCheckCommand({
+            routerTarget: 'router:omniroute/coding-main',
+            harnessTarget: 'harness:hermes',
+            harnessConfigPath: fx.harnessConfigPath,
+            configPath: fx.configPath,
+            stateDir: fx.stateDir,
+            homeDir: fx.fakeHome,
+            repoRoot: REPO_ROOT,
+            nowMs: fx.nowMs,
+            silent: true,
+          })
+        )
+      ),
+      (async () => {
+        await Promise.resolve();
+        midFlightSiblingDir = fs.mkdtempSync(path.join(os.tmpdir(), 'rs-livecheck-'));
+        tempRoots.push(midFlightSiblingDir);
+        fs.writeFileSync(
+          path.join(midFlightSiblingDir, 'sibling-worker.lock'),
+          'active-mid-flight',
+          'utf8'
+        );
+      })(),
+    ]);
+
+    const ownTmpDirNames: string[] = [];
+    for (const report of reports) {
+      expect(report.status).toBe('READY_FOR_OWNER_LIVE_PILOT');
+      const rehearsalCheck = report.checks.find(
+        (c) => c.id === 'tmpdir_backup_rollback_rehearsal'
+      )!;
+      expect(rehearsalCheck.passed).toBe(true);
+      const ownTmpDirName = extractOwnRehearsalTmpDirName(rehearsalCheck.detail);
+      ownTmpDirNames.push(ownTmpDirName);
+      expect(fs.existsSync(path.join(os.tmpdir(), ownTmpDirName))).toBe(false);
+    }
+
+    expect(new Set(ownTmpDirNames).size).toBe(4);
+    expect(ownTmpDirNames).not.toContain(path.basename(preExistingSiblingDir));
+    expect(ownTmpDirNames).not.toContain(path.basename(midFlightSiblingDir));
+
+    // Sibling worker directories must remain completely untouched
+    expect(fs.existsSync(preExistingSiblingDir)).toBe(true);
+    expect(fs.readFileSync(path.join(preExistingSiblingDir, 'sibling-worker.lock'), 'utf8')).toBe(
+      'active-before'
+    );
+    expect(fs.existsSync(midFlightSiblingDir)).toBe(true);
+    expect(fs.readFileSync(path.join(midFlightSiblingDir, 'sibling-worker.lock'), 'utf8')).toBe(
+      'active-mid-flight'
+    );
+  });
+
+  it('reports os.tmpdir()/rs-livecheck-* basename and deletes ownTmpDirName when Check 4 rehearsal fails', async () => {
+    const fx = createHermeticPilotFixture();
+    tempRoots.push(fx.rootDir);
+
+    // Corrupt non-SQLite, non-JSON router DB bytes so Check 3 passes readability and Check 4 enters catch
+    fs.writeFileSync(fx.routerDbPath, Buffer.from('CORRUPT-ROUTER-DB-\u0000\u00ff-NOT-JSON'));
+    const fixedDate = new Date(fx.nowMs - 120_000);
+    fs.utimesSync(fx.routerDbPath, fixedDate, fixedDate);
+
+    const routerSnapBefore = snapshotDirectoryTree(fx.routerDir);
+    const harnessSnapBefore = snapshotDirectoryTree(fx.harnessDir);
+    const stateSnapBefore = snapshotDirectoryTree(fx.stateDir);
+
+    const report = await runLiveCheckCommand({
+      routerTarget: 'router:omniroute/coding-main',
+      harnessTarget: 'harness:hermes',
+      harnessConfigPath: fx.harnessConfigPath,
+      configPath: fx.configPath,
+      stateDir: fx.stateDir,
+      homeDir: fx.fakeHome,
+      repoRoot: REPO_ROOT,
+      nowMs: fx.nowMs,
+      silent: true,
+    });
+
+    expect(report.status).toBe('BLOCKED');
+    const targetsCheck = report.checks.find((c) => c.id === 'pilot_targets_readable')!;
+    expect(targetsCheck.passed).toBe(true);
+
+    const rehearsalCheck = report.checks.find((c) => c.id === 'tmpdir_backup_rollback_rehearsal')!;
+    expect(rehearsalCheck.passed).toBe(false);
+    expect(rehearsalCheck.detail).toContain('Ephemeral tmpdir rehearsal failed in os.tmpdir()/');
+
+    const ownTmpDirName = extractOwnRehearsalTmpDirName(rehearsalCheck.detail);
+    expect(fs.existsSync(path.join(os.tmpdir(), ownTmpDirName))).toBe(false);
+
+    // Source directories must remain 100% untouched even on Check 4 rehearsal failure
+    expect(snapshotDirectoryTree(fx.routerDir)).toEqual(routerSnapBefore);
+    expect(snapshotDirectoryTree(fx.harnessDir)).toEqual(harnessSnapBefore);
+    expect(snapshotDirectoryTree(fx.stateDir)).toEqual(stateSnapBefore);
   });
 
   it('tracks consent & promotion lifecycle across READY_FOR_PROPOSE_STEP -> READY_FOR_AUTO_SAFE_PROMOTION -> AUTO_SAFE_ACTIVE', async () => {
