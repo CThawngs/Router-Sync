@@ -11,9 +11,61 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { atomicWriteFileSync } from '../paths/atomic.js';
-import { type FreezeStateFile, resolveControlStateDir } from './types.js';
+import {
+  type FreezeHistoryEvent,
+  type FreezeStateFile,
+  resolveControlStateDir,
+} from './types.js';
 
 export const FREEZE_STATE_FILENAME = 'freeze.json';
+const MAX_FREEZE_HISTORY_EVENTS = 100;
+
+function parseFreezeHistory(rawHistory: unknown): FreezeHistoryEvent[] {
+  if (!Array.isArray(rawHistory)) return [];
+  const valid: FreezeHistoryEvent[] = [];
+  for (const item of rawHistory) {
+    if (!item || typeof item !== 'object') continue;
+    const rec = item as Record<string, unknown>;
+    const action = rec['action'];
+    const timestamp = rec['timestamp'];
+    const reason = rec['reason'];
+    if (
+      (action === 'freeze' || action === 'unfreeze') &&
+      typeof timestamp === 'string' &&
+      timestamp.trim().length > 0
+    ) {
+      valid.push({
+        action,
+        timestamp,
+        reason: typeof reason === 'string' ? reason : null,
+      });
+    }
+  }
+  return valid.slice(-MAX_FREEZE_HISTORY_EVENTS);
+}
+
+function readExistingFreezeHistory(freezePath: string): FreezeHistoryEvent[] {
+  if (!fs.existsSync(freezePath)) return [];
+  try {
+    const parsed = JSON.parse(fs.readFileSync(freezePath, 'utf8')) as Record<string, unknown>;
+    if (!parsed || typeof parsed !== 'object') return [];
+    const existing = parseFreezeHistory(parsed['history']);
+    if (existing.length > 0) return existing;
+    // Synthesize single legacy entry if prior freeze.json had no history array
+    if (parsed['frozen'] === true && typeof parsed['frozenAt'] === 'string') {
+      return [
+        {
+          action: 'freeze',
+          timestamp: parsed['frozenAt'],
+          reason: typeof parsed['reason'] === 'string' ? parsed['reason'] : 'frozen',
+        },
+      ];
+    }
+    return [];
+  } catch {
+    return [];
+  }
+}
 
 /**
  * Strictly read-only check of `<stateDir>/freeze.json`.
@@ -41,6 +93,7 @@ export function readFreezeState(explicitStateDir?: string | undefined): FreezeSt
         reason: 'corrupt-freeze-file-fail-closed',
       };
     }
+    const history = parseFreezeHistory(parsed['history']);
     if (parsed['frozen'] === true) {
       return {
         version: 1,
@@ -48,6 +101,7 @@ export function readFreezeState(explicitStateDir?: string | undefined): FreezeSt
         frozenAt: typeof parsed['frozenAt'] === 'string' ? parsed['frozenAt'] : null,
         unfrozenAt: null,
         reason: typeof parsed['reason'] === 'string' ? parsed['reason'] : 'frozen',
+        ...(history.length > 0 ? { history } : {}),
       };
     }
     return {
@@ -56,6 +110,7 @@ export function readFreezeState(explicitStateDir?: string | undefined): FreezeSt
       frozenAt: null,
       unfrozenAt: typeof parsed['unfrozenAt'] === 'string' ? parsed['unfrozenAt'] : null,
       reason: null,
+      ...(history.length > 0 ? { history } : {}),
     };
   } catch {
     return {
@@ -77,12 +132,21 @@ export function activateFreeze(
 ): FreezeStateFile {
   const stateDir = resolveControlStateDir(explicitStateDir);
   const freezePath = path.join(stateDir, FREEZE_STATE_FILENAME);
+  const tsIso = new Date(nowMs).toISOString();
+  const cleanReason =
+    typeof reason === 'string' && reason.trim().length > 0 ? reason.trim() : 'emergency-freeze';
+  const prevHistory = readExistingFreezeHistory(freezePath);
+  const history = [
+    ...prevHistory,
+    { action: 'freeze' as const, timestamp: tsIso, reason: cleanReason },
+  ].slice(-MAX_FREEZE_HISTORY_EVENTS);
   const state: FreezeStateFile = {
     version: 1,
     frozen: true,
-    frozenAt: new Date(nowMs).toISOString(),
+    frozenAt: tsIso,
     unfrozenAt: null,
-    reason: typeof reason === 'string' && reason.trim().length > 0 ? reason.trim() : 'emergency-freeze',
+    reason: cleanReason,
+    history,
   };
   atomicWriteFileSync(freezePath, `${JSON.stringify(state, null, 2)}\n`);
   return state;
@@ -97,12 +161,19 @@ export function deactivateFreeze(
 ): FreezeStateFile {
   const stateDir = resolveControlStateDir(explicitStateDir);
   const freezePath = path.join(stateDir, FREEZE_STATE_FILENAME);
+  const tsIso = new Date(nowMs).toISOString();
+  const prevHistory = readExistingFreezeHistory(freezePath);
+  const history = [
+    ...prevHistory,
+    { action: 'unfreeze' as const, timestamp: tsIso, reason: null },
+  ].slice(-MAX_FREEZE_HISTORY_EVENTS);
   const state: FreezeStateFile = {
     version: 1,
     frozen: false,
     frozenAt: null,
-    unfrozenAt: new Date(nowMs).toISOString(),
+    unfrozenAt: tsIso,
     reason: null,
+    history,
   };
   atomicWriteFileSync(freezePath, `${JSON.stringify(state, null, 2)}\n`);
   return state;

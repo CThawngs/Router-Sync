@@ -24,6 +24,7 @@ export const COMMAND_CLASSES: Record<string, CommandClass> = {
   unfreeze: 'interactive',
   'live-check': 'short',
   'pilot-report': 'short',
+  'field-report': 'short',
   doctor: 'short',
   mcp: 'long-running',
   'mcp install': 'short',

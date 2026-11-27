@@ -149,7 +149,8 @@ export function createCliProgram(): Command {
     const isAppsConfig = actionCommand.parent?.name() === 'apps' && actionCommand.name() !== 'drift';
     const isLiteLLM = actionCommand.name() === 'litellm' || actionCommand.parent?.name() === 'litellm';
     const isPilotReport = actionCommand.name() === 'pilot-report';
-    const cfg = actionCommand.name() === 'rank' || isAgents || isAppsConfig || isLiteLLM || isPilotReport
+    const isFieldReport = actionCommand.name() === 'field-report';
+    const cfg = actionCommand.name() === 'rank' || isAgents || isAppsConfig || isLiteLLM || isPilotReport || isFieldReport
       ? undefined // rank's -c is ranking.yaml, agents'/apps'/litellm's -c is target config, not routersync.yaml
       : (opts.configPath ?? opts.config);
     installConfiguredRouterDbPaths(cfg);
@@ -374,6 +375,38 @@ export function createCliProgram(): Command {
       }) => {
         const { runPilotReportCommand } = await import('./commands/pilot-report.js');
         await runPilotReportCommand(opts);
+      }
+    );
+
+  // field-report command (C49-T1: 100% read-only sanitized field bundle exporter - lazy loaded)
+  program
+    .command('field-report')
+    .allowUnknownOption(false)
+    .allowExcessArguments(false)
+    .description('Export sanitized read-only field testing bundle (<= 8 files) outside <stateDir>')
+    .requiredOption('--out <dir>', 'Destination directory outside <stateDir> for the <= 8 report files')
+    .option('--state-dir <dir>', 'Path to RouterSync control-plane state directory')
+    .option('-c, --config <path>', 'Optional path to routersync.yaml configuration')
+    .option('--error-rate-threshold <ratio>', 'Provider scan error/unverifiable rate threshold in [0..1] (default 0.2)')
+    .option('--expected-interval-ms <ms>', 'Expected scheduled tick interval in ms')
+    .option('--slow-tick-ms <ms>', 'Slow tick wall-clock duration threshold in ms (default 30000)')
+    .option('--since <iso-8601>', 'Optional lower window timestamp bound (ISO-8601)')
+    .option('--until <iso-8601>', 'Optional upper window timestamp bound (ISO-8601)')
+    .option('--json', 'Emit deterministic machine-readable FieldReportRunResult summary JSON')
+    .action(
+      async (opts: {
+        out: string;
+        stateDir?: string;
+        config?: string;
+        errorRateThreshold?: string;
+        expectedIntervalMs?: string;
+        slowTickMs?: string;
+        since?: string;
+        until?: string;
+        json?: boolean;
+      }) => {
+        const { runFieldReportCommand } = await import('./commands/field-report.js');
+        await runFieldReportCommand(opts);
       }
     );
 
