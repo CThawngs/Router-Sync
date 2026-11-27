@@ -1,0 +1,1505 @@
+
+> routersync@0.1.0 test:file <private-provider-2>
+> vitest run "packages/cli/test/c49-t5-rehearsal-and-secrets.test.ts" "test/docs/c49-field-runbooks.test.ts" "test/docs/c46-f3-doc-cli-sync.test.ts" "test/docs/agent-docs.test.ts"
+
+
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.12 [39m[90m<HOME>/.openmausbot/task-workspaces/a752da46-5147-4b20-9a6a-ff5045a56bb7/4dc962a8-2796-439b-98af-1f105a778d88/router-sync-c49[39m
+
+[90mstdout[2m | packages/cli/test/c49-t5-rehearsal-and-secrets.test.ts[2m > [22m[2mC49-T5: 7-Day Simulated Field Rehearsal in os.tmpdir() + 10-Secret Suite[2m > [22m[2msimulates 7 days of scheduled ticks, catches all 5 planted anomalies on Days 2–6, and emits 0 anomalies on normal Days 1 & 7
+[22m[39m{
+  "timestamp": "2026-11-01T00:00:00.000Z",
+  "startedAt": "2026-11-01T00:00:00.000Z",
+  "endedAt": "2026-11-01T00:00:00.960Z",
+  "durationMs": 960,
+  "resources": {
+    "rssBytes": 128204800,
+    "heapUsedBytes": 46322344,
+    "cpuUserMs": 156,
+    "cpuSystemMs": 63
+  },
+  "mode": "observe",
+  "effectiveMode": "observe",
+  "requests": 8,
+  "paidRequests": 0,
+  "tokens": 0,
+  "llmCalls": 0,
+  "changedProviders": 1,
+  "unchangedProviders": 0,
+  "backoffSkipped": 0,
+  "inboxAdded": 0,
+  "researchQueueCount": 0,
+  "detectionLatency": {
+    "measuredCount": 0,
+    "minMs": null,
+    "maxMs": null,
+    "p50Ms": null
+  },
+  "providers": [
+    {
+      "prefix": "openai",
+      "label": "OK",
+      "status": 200,
+      "models": 10,
+      "changed": true,
+      "added": [],
+      "graceAbsent": [],
+      "deadConfirmed": [],
+      "backoffSec": 0
+    }
+  ],
+  "shrinkBlockReasons": {},
+  "absentNotInCombo": {},
+  "webhookDelivery": {
+    "status": "skipped",
+    "ok": true,
+    "reason": "no_actionable_alerts",
+    "durationMs": 0
+  }
+}
+
+[90mstdout[2m | packages/cli/test/c49-t5-rehearsal-and-secrets.test.ts[2m > [22m[2mC49-T5: 7-Day Simulated Field Rehearsal in os.tmpdir() + 10-Secret Suite[2m > [22m[2msimulates 7 days of scheduled ticks, catches all 5 planted anomalies on Days 2–6, and emits 0 anomalies on normal Days 1 & 7
+[22m[39m{
+  "timestamp": "2026-11-01T06:00:00.000Z",
+  "startedAt": "2026-11-01T06:00:00.000Z",
+  "endedAt": "2026-11-01T06:00:00.360Z",
+  "durationMs": 360,
+  "resources": {
+    "rssBytes": 135131136,
+    "heapUsedBytes": 47948560,
+    "cpuUserMs": 16,
+    "cpuSystemMs": 63
+  },
+  "mode": "observe",
+  "effectiveMode": "observe",
+  "requests": 3,
+  "paidRequests": 0,
+  "tokens": 0,
+  "llmCalls": 0,
+  "changedProviders": 0,
+  "unchangedProviders": 1,
+  "backoffSkipped": 0,
+  "inboxAdded": 0,
+  "researchQueueCount": 0,
+  "detectionLatency": {
+    "measuredCount": 0,
+    "minMs": null,
+    "maxMs": null,
+    "p50Ms": null
+  },
+  "providers": [
+    {
+      "prefix": "openai",
+      "label": "UNCHANGED",
+      "status": 200,
+      "models": 10,
+      "changed": false,
+      "added": [],
+      "graceAbsent": [],
+      "deadConfirmed": [],
+      "backoffSec": 0
+    }
+  ],
+  "shrinkBlockReasons": {},
+  "absentNotInCombo": {},
+  "webhookDelivery": {
+    "status": "skipped",
+    "ok": true,
+    "reason": "no_actionable_alerts",
+    "durationMs": 0
+  }
+}
+
+[90mstdout[2m | packages/cli/test/c49-t5-rehearsal-and-secrets.test.ts[2m > [22m[2mC49-T5: 7-Day Simulated Field Rehearsal in os.tmpdir() + 10-Secret Suite[2m > [22m[2msimulates 7 days of scheduled ticks, catches all 5 planted anomalies on Days 2–6, and emits 0 anomalies on normal Days 1 & 7
+[22m[39m{
+  "timestamp": "2026-11-01T12:00:00.000Z",
+  "startedAt": "2026-11-01T12:00:00.000Z",
+  "endedAt": "2026-11-01T12:00:00.360Z",
+  "durationMs": 360,
+  "resources": {
+    "rssBytes": 141307904,
+    "heapUsedBytes": 58950968,
+    "cpuUserMs": 31,
+    "cpuSystemMs": 46
+  },
+  "mode": "observe",
+  "effectiveMode": "observe",
+  "requests": 3,
+  "paidRequests": 0,
+  "tokens": 0,
+  "llmCalls": 0,
+  "changedProviders": 0,
+  "unchangedProviders": 1,
+  "backoffSkipped": 0,
+  "inboxAdded": 0,
+  "researchQueueCount": 0,
+  "detectionLatency": {
+    "measuredCount": 0,
+    "minMs": null,
+    "maxMs": null,
+    "p50Ms": null
+  },
+  "providers": [
+    {
+      "prefix": "openai",
+      "label": "UNCHANGED",
+      "status": 200,
+      "models": 10,
+      "changed": false,
+      "added": [],
+      "graceAbsent": [],
+      "deadConfirmed": [],
+      "backoffSec": 0
+    }
+  ],
+  "shrinkBlockReasons": {},
+  "absentNotInCombo": {},
+  "webhookDelivery": {
+    "status": "skipped",
+    "ok": true,
+    "reason": "no_actionable_alerts",
+    "durationMs": 0
+  }
+}
+
+[90mstdout[2m | packages/cli/test/c49-t5-rehearsal-and-secrets.test.ts[2m > [22m[2mC49-T5: 7-Day Simulated Field Rehearsal in os.tmpdir() + 10-Secret Suite[2m > [22m[2msimulates 7 days of scheduled ticks, catches all 5 planted anomalies on Days 2–6, and emits 0 anomalies on normal Days 1 & 7
+[22m[39m{
+  "timestamp": "2026-11-01T18:00:00.000Z",
+  "startedAt": "2026-11-01T18:00:00.000Z",
+  "endedAt": "2026-11-01T18:00:00.360Z",
+  "durationMs": 360,
+  "resources": {
+    "rssBytes": 152727552,
+    "heapUsedBytes": 70046696,
+    "cpuUserMs": 16,
+    "cpuSystemMs": 63
+  },
+  "mode": "observe",
+  "effectiveMode": "observe",
+  "requests": 3,
+  "paidRequests": 0,
+  "tokens": 0,
+  "llmCalls": 0,
+  "changedProviders": 0,
+  "unchangedProviders": 1,
+  "backoffSkipped": 0,
+  "inboxAdded": 0,
+  "researchQueueCount": 0,
+  "detectionLatency": {
+    "measuredCount": 0,
+    "minMs": null,
+    "maxMs": null,
+    "p50Ms": null
+  },
+  "providers": [
+    {
+      "prefix": "openai",
+      "label": "UNCHANGED",
+      "status": 200,
+      "models": 10,
+      "changed": false,
+      "added": [],
+      "graceAbsent": [],
+      "deadConfirmed": [],
+      "backoffSec": 0
+    }
+  ],
+  "shrinkBlockReasons": {},
+  "absentNotInCombo": {},
+  "webhookDelivery": {
+    "status": "skipped",
+    "ok": true,
+    "reason": "no_actionable_alerts",
+    "durationMs": 0
+  }
+}
+
+[90mstdout[2m | packages/cli/test/c49-t5-rehearsal-and-secrets.test.ts[2m > [22m[2mC49-T5: 7-Day Simulated Field Rehearsal in os.tmpdir() + 10-Secret Suite[2m > [22m[2msimulates 7 days of scheduled ticks, catches all 5 planted anomalies on Days 2–6, and emits 0 anomalies on normal Days 1 & 7
+[22m[39m{
+  "timestamp": "2026-11-02T00:00:00.000Z",
+  "startedAt": "2026-11-02T00:00:00.000Z",
+  "endedAt": "2026-11-02T00:00:01.120Z",
+  "durationMs": 1120,
+  "resources": {
+    "rssBytes": 176590848,
+    "heapUsedBytes": 53263368,
+    "cpuUserMs": 31,
+    "cpuSystemMs": 16
+  },
+  "mode": "observe",
+  "effectiveMode": "observe",
+  "requests": 8,
+  "paidRequests": 0,
+  "tokens": 0,
+  "llmCalls": 0,
+  "changedProviders": 0,
+  "unchangedProviders": 1,
+  "backoffSkipped": 0,
+  "inboxAdded": 0,
+  "researchQueueCount": 0,
+  "detectionLatency": {
+    "measuredCount": 0,
+    "minMs": null,
+    "maxMs": null,
+    "p50Ms": null
+  },
+  "providers": [
+    {
+      "prefix": "openai",
+      "label": "UNCHANGED",
+      "status": 200,
+      "models": 10,
+      "changed": false,
+      "added": [],
+      "graceAbsent": [],
+      "deadConfirmed": [],
+      "backoffSec": 0
+    }
+  ],
+  "shrinkBlockReasons": {},
+  "absentNotInCombo": {},
+  "webhookDelivery": {
+    "status": "skipped",
+    "ok": true,
+    "reason": "no_actionable_alerts",
+    "durationMs": 0
+  }
+}
+
+[90mstdout[2m | packages/cli/test/c49-t5-rehearsal-and-secrets.test.ts[2m > [22m[2mC49-T5: 7-Day Simulated Field Rehearsal in os.tmpdir() + 10-Secret Suite[2m > [22m[2msimulates 7 days of scheduled ticks, catches all 5 planted anomalies on Days 2–6, and emits 0 anomalies on normal Days 1 & 7
+[22m[39m{
+  "timestamp": "2026-11-02T06:00:00.000Z",
+  "startedAt": "2026-11-02T06:00:00.000Z",
+  "endedAt": "2026-11-02T06:00:00.420Z",
+  "durationMs": 420,
+  "resources": {
+    "rssBytes": 176766976,
+    "heapUsedBytes": 64249720,
+    "cpuUserMs": 47,
+    "cpuSystemMs": 16
+  },
+  "mode": "observe",
+  "effectiveMode": "observe",
+  "requests": 3,
+  "paidRequests": 0,
+  "tokens": 0,
+  "llmCalls": 0,
+  "changedProviders": 1,
+  "unchangedProviders": 0,
+  "backoffSkipped": 0,
+  "inboxAdded": 0,
+  "researchQueueCount": 0,
+  "detectionLatency": {
+    "measuredCount": 0,
+    "minMs": null,
+    "maxMs": null,
+    "p50Ms": null
+  },
+  "providers": [
+    {
+      "prefix": "openai",
+      "label": "OK",
+      "status": 200,
+      "models": 10,
+      "changed": true,
+      "added": [],
+      "graceAbsent": [
+        "model-10"
+      ],
+      "deadConfirmed": [],
+      "backoffSec": 0
+    }
+  ],
+  "shrinkBlockReasons": {},
+  "absentNotInCombo": {},
+  "webhookDelivery": {
+    "status": "skipped",
+    "ok": true,
+    "reason": "no_actionable_alerts",
+    "durationMs": 0
+  }
+}
+
+[90mstdout[2m | packages/cli/test/c49-t5-rehearsal-and-secrets.test.ts[2m > [22m[2mC49-T5: 7-Day Simulated Field Rehearsal in os.tmpdir() + 10-Secret Suite[2m > [22m[2msimulates 7 days of scheduled ticks, catches all 5 planted anomalies on Days 2–6, and emits 0 anomalies on normal Days 1 & 7
+[22m[39m{
+  "timestamp": "2026-11-02T12:00:00.000Z",
+  "startedAt": "2026-11-02T12:00:00.000Z",
+  "endedAt": "2026-11-02T12:00:00.420Z",
+  "durationMs": 420,
+  "resources": {
+    "rssBytes": 177573888,
+    "heapUsedBytes": 74784952,
+    "cpuUserMs": 16,
+    "cpuSystemMs": 15
+  },
+  "mode": "observe",
+  "effectiveMode": "observe",
+  "requests": 3,
+  "paidRequests": 0,
+  "tokens": 0,
+  "llmCalls": 0,
+  "changedProviders": 1,
+  "unchangedProviders": 0,
+  "backoffSkipped": 0,
+  "inboxAdded": 0,
+  "researchQueueCount": 0,
+  "detectionLatency": {
+    "measuredCount": 0,
+    "minMs": null,
+    "maxMs": null,
+    "p50Ms": null
+  },
+  "providers": [
+    {
+      "prefix": "openai",
+      "label": "OK",
+      "status": 200,
+      "models": 10,
+      "changed": true,
+      "added": [],
+      "graceAbsent": [],
+      "deadConfirmed": [],
+      "backoffSec": 0
+    }
+  ],
+  "shrinkBlockReasons": {},
+  "absentNotInCombo": {},
+  "webhookDelivery": {
+    "status": "skipped",
+    "ok": true,
+    "reason": "no_actionable_alerts",
+    "durationMs": 0
+  }
+}
+
+[90mstdout[2m | packages/cli/test/c49-t5-rehearsal-and-secrets.test.ts[2m > [22m[2mC49-T5: 7-Day Simulated Field Rehearsal in os.tmpdir() + 10-Secret Suite[2m > [22m[2msimulates 7 days of scheduled ticks, catches all 5 planted anomalies on Days 2–6, and emits 0 anomalies on normal Days 1 & 7
+[22m[39m{
+  "timestamp": "2026-11-02T18:00:00.000Z",
+  "startedAt": "2026-11-02T18:00:00.000Z",
+  "endedAt": "2026-11-02T18:00:00.420Z",
+  "durationMs": 420,
+  "resources": {
+    "rssBytes": 176099328,
+    "heapUsedBytes": 51726312,
+    "cpuUserMs": 78,
+    "cpuSystemMs": 16
+  },
+  "mode": "observe",
+  "effectiveMode": "observe",
+  "requests": 3,
+  "paidRequests": 0,
+  "tokens": 0,
+  "llmCalls": 0,
+  "changedProviders": 0,
+  "unchangedProviders": 1,
+  "backoffSkipped": 0,
+  "inboxAdded": 0,
+  "researchQueueCount": 0,
+  "detectionLatency": {
+    "measuredCount": 0,
+    "minMs": null,
+    "maxMs": null,
+    "p50Ms": null
+  },
+  "providers": [
+    {
+      "prefix": "openai",
+      "label": "UNCHANGED",
+      "status": 200,
+      "models": 10,
+      "changed": false,
+      "added": [],
+      "graceAbsent": [],
+      "deadConfirmed": [],
+      "backoffSec": 0
+    }
+  ],
+  "shrinkBlockReasons": {},
+  "absentNotInCombo": {},
+  "webhookDelivery": {
+    "status": "skipped",
+    "ok": true,
+    "reason": "no_actionable_alerts",
+    "durationMs": 0
+  }
+}
+
+[90mstdout[2m | packages/cli/test/c49-t5-rehearsal-and-secrets.test.ts[2m > [22m[2mC49-T5: 7-Day Simulated Field Rehearsal in os.tmpdir() + 10-Secret Suite[2m > [22m[2msimulates 7 days of scheduled ticks, catches all 5 planted anomalies on Days 2–6, and emits 0 anomalies on normal Days 1 & 7
+[22m[39m{
+  "timestamp": "2026-11-03T00:00:00.000Z",
+  "startedAt": "2026-11-03T00:00:00.000Z",
+  "endedAt": "2026-11-03T00:00:00.960Z",
+  "durationMs": 960,
+  "resources": {
+    "rssBytes": 179965952,
+    "heapUsedBytes": 59055688,
+    "cpuUserMs": 15,
+    "cpuSystemMs": 47
+  },
+  "mode": "observe",
+  "effectiveMode": "observe",
+  "requests": 8,
+  "paidRequests": 0,
+  "tokens": 0,
+  "llmCalls": 0,
+  "changedProviders": 0,
+  "unchangedProviders": 1,
+  "backoffSkipped": 0,
+  "inboxAdded": 0,
+  "researchQueueCount": 0,
+  "detectionLatency": {
+    "measuredCount": 0,
+    "minMs": null,
+    "maxMs": null,
+    "p50Ms": null
+  },
+  "providers": [
+    {
+      "prefix": "openai",
+      "label": "UNCHANGED",
+      "status": 200,
+      "models": 10,
+      "changed": false,
+      "added": [],
+      "graceAbsent": [],
+      "deadConfirmed": [],
+      "backoffSec": 0
+    }
+  ],
+  "shrinkBlockReasons": {},
+  "absentNotInCombo": {},
+  "webhookDelivery": {
+    "status": "skipped",
+    "ok": true,
+    "reason": "no_actionable_alerts",
+    "durationMs": 0
+  }
+}
+
+[90mstdout[2m | packages/cli/test/c49-t5-rehearsal-and-secrets.test.ts[2m > [22m[2mC49-T5: 7-Day Simulated Field Rehearsal in os.tmpdir() + 10-Secret Suite[2m > [22m[2msimulates 7 days of scheduled ticks, catches all 5 planted anomalies on Days 2–6, and emits 0 anomalies on normal Days 1 & 7
+[22m[39m{
+  "timestamp": "2026-11-03T06:00:00.000Z",
+  "startedAt": "2026-11-03T06:00:00.000Z",
+  "endedAt": "2026-11-03T06:00:00.540Z",
+  "durationMs": 540,
+  "resources": {
+    "rssBytes": 180371456,
+    "heapUsedBytes": 69488032,
+    "cpuUserMs": 63,
+    "cpuSystemMs": 15
+  },
+  "mode": "observe",
+  "effectiveMode": "observe",
+  "requests": 3,
+  "paidRequests": 0,
+  "tokens": 0,
+  "llmCalls": 0,
+  "changedProviders": 0,
+  "unchangedProviders": 0,
+  "backoffSkipped": 0,
+  "inboxAdded": 0,
+  "researchQueueCount": 0,
+  "detectionLatency": {
+    "measuredCount": 0,
+    "minMs": null,
+    "maxMs": null,
+    "p50Ms": null
+  },
+  "providers": [
+    {
+      "prefix": "openai",
+      "label": "QUOTA",
+      "status": 429,
+      "models": 10,
+      "changed": false,
+      "skipReason": "QUOTA",
+      "added": [],
+      "graceAbsent": [],
+      "deadConfirmed": [],
+      "backoffSec": 120
+    }
+  ],
+  "shrinkBlockReasons": {},
+  "absentNotInCombo": {},
+  "webhookDelivery": {
+    "status": "skipped",
+    "ok": true,
+    "reason": "no_actionable_alerts",
+    "durationMs": 0
+  }
+}
+
+[90mstdout[2m | packages/cli/test/c49-t5-rehearsal-and-secrets.test.ts[2m > [22m[2mC49-T5: 7-Day Simulated Field Rehearsal in os.tmpdir() + 10-Secret Suite[2m > [22m[2msimulates 7 days of scheduled ticks, catches all 5 planted anomalies on Days 2–6, and emits 0 anomalies on normal Days 1 & 7
+[22m[39m{
+  "timestamp": "2026-11-03T12:00:00.000Z",
+  "startedAt": "2026-11-03T12:00:00.000Z",
+  "endedAt": "2026-11-03T12:00:00.540Z",
+  "durationMs": 540,
+  "resources": {
+    "rssBytes": 180191232,
+    "heapUsedBytes": 46371776,
+    "cpuUserMs": 47,
+    "cpuSystemMs": 32
+  },
+  "mode": "observe",
+  "effectiveMode": "observe",
+  "requests": 3,
+  "paidRequests": 0,
+  "tokens": 0,
+  "llmCalls": 0,
+  "changedProviders": 0,
+  "unchangedProviders": 0,
+  "backoffSkipped": 0,
+  "inboxAdded": 0,
+  "researchQueueCount": 0,
+  "detectionLatency": {
+    "measuredCount": 0,
+    "minMs": null,
+    "maxMs": null,
+    "p50Ms": null
+  },
+  "providers": [
+    {
+      "prefix": "openai",
+      "label": "QUOTA",
+      "status": 429,
+      "models": 10,
+      "changed": false,
+      "skipReason": "QUOTA",
+      "added": [],
+      "graceAbsent": [],
+      "deadConfirmed": [],
+      "backoffSec": 240
+    }
+  ],
+  "shrinkBlockReasons": {},
+  "absentNotInCombo": {},
+  "webhookDelivery": {
+    "status": "skipped",
+    "ok": true,
+    "reason": "no_actionable_alerts",
+    "durationMs": 0
+  }
+}
+
+[90mstdout[2m | packages/cli/test/c49-t5-rehearsal-and-secrets.test.ts[2m > [22m[2mC49-T5: 7-Day Simulated Field Rehearsal in os.tmpdir() + 10-Secret Suite[2m > [22m[2msimulates 7 days of scheduled ticks, catches all 5 planted anomalies on Days 2–6, and emits 0 anomalies on normal Days 1 & 7
+[22m[39m{
+  "timestamp": "2026-11-03T18:00:00.000Z",
+  "startedAt": "2026-11-03T18:00:00.000Z",
+  "endedAt": "2026-11-03T18:00:00.360Z",
+  "durationMs": 360,
+  "resources": {
+    "rssBytes": 180719616,
+    "heapUsedBytes": 56728088,
+    "cpuUserMs": 31,
+    "cpuSystemMs": 15
+  },
+  "mode": "observe",
+  "effectiveMode": "observe",
+  "requests": 3,
+  "paidRequests": 0,
+  "tokens": 0,
+  "llmCalls": 0,
+  "changedProviders": 0,
+  "unchangedProviders": 1,
+  "backoffSkipped": 0,
+  "inboxAdded": 0,
+  "researchQueueCount": 0,
+  "detectionLatency": {
+    "measuredCount": 0,
+    "minMs": null,
+    "maxMs": null,
+    "p50Ms": null
+  },
+  "providers": [
+    {
+      "prefix": "openai",
+      "label": "UNCHANGED",
+      "status": 200,
+      "models": 10,
+      "changed": false,
+      "added": [],
+      "graceAbsent": [],
+      "deadConfirmed": [],
+      "backoffSec": 0
+    }
+  ],
+  "shrinkBlockReasons": {},
+  "absentNotInCombo": {},
+  "webhookDelivery": {
+    "status": "skipped",
+    "ok": true,
+    "reason": "no_actionable_alerts",
+    "durationMs": 0
+  }
+}
+
+[90mstdout[2m | packages/cli/test/c49-t5-rehearsal-and-secrets.test.ts[2m > [22m[2mC49-T5: 7-Day Simulated Field Rehearsal in os.tmpdir() + 10-Secret Suite[2m > [22m[2msimulates 7 days of scheduled ticks, catches all 5 planted anomalies on Days 2–6, and emits 0 anomalies on normal Days 1 & 7
+[22m[39m{
+  "timestamp": "2026-11-04T00:00:00.000Z",
+  "startedAt": "2026-11-04T00:00:00.000Z",
+  "endedAt": "2026-11-04T00:00:01.200Z",
+  "durationMs": 1200,
+  "resources": {
+    "rssBytes": 183599104,
+    "heapUsedBytes": 64605848,
+    "cpuUserMs": 16,
+    "cpuSystemMs": 32
+  },
+  "mode": "observe",
+  "effectiveMode": "observe",
+  "requests": 8,
+  "paidRequests": 0,
+  "tokens": 0,
+  "llmCalls": 0,
+  "changedProviders": 0,
+  "unchangedProviders": 0,
+  "backoffSkipped": 0,
+  "inboxAdded": 0,
+  "researchQueueCount": 0,
+  "detectionLatency": {
+    "measuredCount": 0,
+    "minMs": null,
+    "maxMs": null,
+    "p50Ms": null
+  },
+  "providers": [
+    {
+      "prefix": "openai",
+      "label": "TRANSIENT",
+      "status": 405,
+      "models": 10,
+      "changed": false,
+      "skipReason": "TRANSIENT",
+      "added": [],
+      "graceAbsent": [],
+      "deadConfirmed": [],
+      "backoffSec": 120
+    }
+  ],
+  "shrinkBlockReasons": {},
+  "absentNotInCombo": {},
+  "webhookDelivery": {
+    "status": "skipped",
+    "ok": true,
+    "reason": "no_actionable_alerts",
+    "durationMs": 0
+  }
+}
+
+[90mstdout[2m | packages/cli/test/c49-t5-rehearsal-and-secrets.test.ts[2m > [22m[2mC49-T5: 7-Day Simulated Field Rehearsal in os.tmpdir() + 10-Secret Suite[2m > [22m[2msimulates 7 days of scheduled ticks, catches all 5 planted anomalies on Days 2–6, and emits 0 anomalies on normal Days 1 & 7
+[22m[39m{
+  "timestamp": "2026-11-04T06:00:00.000Z",
+  "startedAt": "2026-11-04T06:00:00.000Z",
+  "endedAt": "2026-11-04T06:00:00.450Z",
+  "durationMs": 450,
+  "resources": {
+    "rssBytes": 183975936,
+    "heapUsedBytes": 75042984,
+    "cpuUserMs": 94,
+    "cpuSystemMs": 31
+  },
+  "mode": "observe",
+  "effectiveMode": "observe",
+  "requests": 3,
+  "paidRequests": 0,
+  "tokens": 0,
+  "llmCalls": 0,
+  "changedProviders": 0,
+  "unchangedProviders": 0,
+  "backoffSkipped": 0,
+  "inboxAdded": 0,
+  "researchQueueCount": 0,
+  "detectionLatency": {
+    "measuredCount": 0,
+    "minMs": null,
+    "maxMs": null,
+    "p50Ms": null
+  },
+  "providers": [
+    {
+      "prefix": "openai",
+      "label": "TRANSIENT",
+      "status": 405,
+      "models": 10,
+      "changed": false,
+      "skipReason": "TRANSIENT",
+      "added": [],
+      "graceAbsent": [],
+      "deadConfirmed": [],
+      "backoffSec": 240
+    }
+  ],
+  "shrinkBlockReasons": {},
+  "absentNotInCombo": {},
+  "webhookDelivery": {
+    "status": "skipped",
+    "ok": true,
+    "reason": "no_actionable_alerts",
+    "durationMs": 0
+  }
+}
+
+[90mstdout[2m | packages/cli/test/c49-t5-rehearsal-and-secrets.test.ts[2m > [22m[2mC49-T5: 7-Day Simulated Field Rehearsal in os.tmpdir() + 10-Secret Suite[2m > [22m[2msimulates 7 days of scheduled ticks, catches all 5 planted anomalies on Days 2–6, and emits 0 anomalies on normal Days 1 & 7
+[22m[39m{
+  "timestamp": "2026-11-04T12:00:00.000Z",
+  "startedAt": "2026-11-04T12:00:00.000Z",
+  "endedAt": "2026-11-04T12:00:00.450Z",
+  "durationMs": 450,
+  "resources": {
+    "rssBytes": 184102912,
+    "heapUsedBytes": 52299752,
+    "cpuUserMs": 63,
+    "cpuSystemMs": 0
+  },
+  "mode": "observe",
+  "effectiveMode": "observe",
+  "requests": 3,
+  "paidRequests": 0,
+  "tokens": 0,
+  "llmCalls": 0,
+  "changedProviders": 0,
+  "unchangedProviders": 0,
+  "backoffSkipped": 0,
+  "inboxAdded": 0,
+  "researchQueueCount": 0,
+  "detectionLatency": {
+    "measuredCount": 0,
+    "minMs": null,
+    "maxMs": null,
+    "p50Ms": null
+  },
+  "providers": [
+    {
+      "prefix": "openai",
+      "label": "TRANSIENT",
+      "status": 405,
+      "models": 10,
+      "changed": false,
+      "skipReason": "TRANSIENT",
+      "added": [],
+      "graceAbsent": [],
+      "deadConfirmed": [],
+      "backoffSec": 480
+    }
+  ],
+  "shrinkBlockReasons": {},
+  "absentNotInCombo": {},
+  "webhookDelivery": {
+    "status": "skipped",
+    "ok": true,
+    "reason": "no_actionable_alerts",
+    "durationMs": 0
+  }
+}
+
+[90mstdout[2m | packages/cli/test/c49-t5-rehearsal-and-secrets.test.ts[2m > [22m[2mC49-T5: 7-Day Simulated Field Rehearsal in os.tmpdir() + 10-Secret Suite[2m > [22m[2msimulates 7 days of scheduled ticks, catches all 5 planted anomalies on Days 2–6, and emits 0 anomalies on normal Days 1 & 7
+[22m[39m{
+  "timestamp": "2026-11-04T18:00:00.000Z",
+  "startedAt": "2026-11-04T18:00:00.000Z",
+  "endedAt": "2026-11-04T18:00:00.450Z",
+  "durationMs": 450,
+  "resources": {
+    "rssBytes": 184549376,
+    "heapUsedBytes": 62642176,
+    "cpuUserMs": 47,
+    "cpuSystemMs": 0
+  },
+  "mode": "observe",
+  "effectiveMode": "observe",
+  "requests": 3,
+  "paidRequests": 0,
+  "tokens": 0,
+  "llmCalls": 0,
+  "changedProviders": 0,
+  "unchangedProviders": 0,
+  "backoffSkipped": 0,
+  "inboxAdded": 0,
+  "researchQueueCount": 0,
+  "detectionLatency": {
+    "measuredCount": 0,
+    "minMs": null,
+    "maxMs": null,
+    "p50Ms": null
+  },
+  "providers": [
+    {
+      "prefix": "openai",
+      "label": "TRANSIENT",
+      "status": 405,
+      "models": 10,
+      "changed": false,
+      "skipReason": "TRANSIENT",
+      "added": [],
+      "graceAbsent": [],
+      "deadConfirmed": [],
+      "backoffSec": 960
+    }
+  ],
+  "shrinkBlockReasons": {},
+  "absentNotInCombo": {},
+  "webhookDelivery": {
+    "status": "skipped",
+    "ok": true,
+    "reason": "no_actionable_alerts",
+    "durationMs": 0
+  }
+}
+
+[90mstdout[2m | packages/cli/test/c49-t5-rehearsal-and-secrets.test.ts[2m > [22m[2mC49-T5: 7-Day Simulated Field Rehearsal in os.tmpdir() + 10-Secret Suite[2m > [22m[2msimulates 7 days of scheduled ticks, catches all 5 planted anomalies on Days 2–6, and emits 0 anomalies on normal Days 1 & 7
+[22m[39m{
+  "timestamp": "2026-11-05T00:00:00.000Z",
+  "startedAt": "2026-11-05T00:00:00.000Z",
+  "endedAt": "2026-11-05T00:00:01.040Z",
+  "durationMs": 1040,
+  "resources": {
+    "rssBytes": 186990592,
+    "heapUsedBytes": 71058312,
+    "cpuUserMs": 78,
+    "cpuSystemMs": 0
+  },
+  "mode": "observe",
+  "effectiveMode": "observe",
+  "requests": 8,
+  "paidRequests": 0,
+  "tokens": 0,
+  "llmCalls": 0,
+  "changedProviders": 0,
+  "unchangedProviders": 1,
+  "backoffSkipped": 0,
+  "inboxAdded": 0,
+  "researchQueueCount": 0,
+  "detectionLatency": {
+    "measuredCount": 0,
+    "minMs": null,
+    "maxMs": null,
+    "p50Ms": null
+  },
+  "providers": [
+    {
+      "prefix": "openai",
+      "label": "UNCHANGED",
+      "status": 200,
+      "models": 10,
+      "changed": false,
+      "added": [],
+      "graceAbsent": [],
+      "deadConfirmed": [],
+      "backoffSec": 0
+    }
+  ],
+  "shrinkBlockReasons": {},
+  "absentNotInCombo": {},
+  "webhookDelivery": {
+    "status": "skipped",
+    "ok": true,
+    "reason": "no_actionable_alerts",
+    "durationMs": 0
+  }
+}
+
+[90mstdout[2m | packages/cli/test/c49-t5-rehearsal-and-secrets.test.ts[2m > [22m[2mC49-T5: 7-Day Simulated Field Rehearsal in os.tmpdir() + 10-Secret Suite[2m > [22m[2msimulates 7 days of scheduled ticks, catches all 5 planted anomalies on Days 2–6, and emits 0 anomalies on normal Days 1 & 7
+[22m[39m{
+  "timestamp": "2026-11-05T06:00:00.000Z",
+  "startedAt": "2026-11-05T06:00:00.000Z",
+  "endedAt": "2026-11-05T06:00:00.390Z",
+  "durationMs": 390,
+  "resources": {
+    "rssBytes": 187260928,
+    "heapUsedBytes": 81352704,
+    "cpuUserMs": 31,
+    "cpuSystemMs": 31
+  },
+  "mode": "observe",
+  "effectiveMode": "observe",
+  "requests": 3,
+  "paidRequests": 0,
+  "tokens": 0,
+  "llmCalls": 0,
+  "changedProviders": 0,
+  "unchangedProviders": 1,
+  "backoffSkipped": 0,
+  "inboxAdded": 0,
+  "researchQueueCount": 0,
+  "detectionLatency": {
+    "measuredCount": 0,
+    "minMs": null,
+    "maxMs": null,
+    "p50Ms": null
+  },
+  "providers": [
+    {
+      "prefix": "openai",
+      "label": "UNCHANGED",
+      "status": 200,
+      "models": 10,
+      "changed": false,
+      "added": [],
+      "graceAbsent": [],
+      "deadConfirmed": [],
+      "backoffSec": 0
+    }
+  ],
+  "shrinkBlockReasons": {},
+  "absentNotInCombo": {},
+  "webhookDelivery": {
+    "status": "skipped",
+    "ok": true,
+    "reason": "no_actionable_alerts",
+    "durationMs": 0
+  }
+}
+
+[90mstdout[2m | packages/cli/test/c49-t5-rehearsal-and-secrets.test.ts[2m > [22m[2mC49-T5: 7-Day Simulated Field Rehearsal in os.tmpdir() + 10-Secret Suite[2m > [22m[2msimulates 7 days of scheduled ticks, catches all 5 planted anomalies on Days 2–6, and emits 0 anomalies on normal Days 1 & 7
+[22m[39m{
+  "timestamp": "2026-11-05T12:00:00.000Z",
+  "startedAt": "2026-11-05T12:00:00.000Z",
+  "endedAt": "2026-11-05T12:02:15.000Z",
+  "durationMs": 135000,
+  "resources": {
+    "rssBytes": 187023360,
+    "heapUsedBytes": 58425976,
+    "cpuUserMs": 31,
+    "cpuSystemMs": 15
+  },
+  "mode": "observe",
+  "effectiveMode": "observe",
+  "requests": 3,
+  "paidRequests": 0,
+  "tokens": 0,
+  "llmCalls": 0,
+  "changedProviders": 0,
+  "unchangedProviders": 1,
+  "backoffSkipped": 0,
+  "inboxAdded": 0,
+  "researchQueueCount": 0,
+  "detectionLatency": {
+    "measuredCount": 0,
+    "minMs": null,
+    "maxMs": null,
+    "p50Ms": null
+  },
+  "providers": [
+    {
+      "prefix": "openai",
+      "label": "UNCHANGED",
+      "status": 200,
+      "models": 10,
+      "changed": false,
+      "added": [],
+      "graceAbsent": [],
+      "deadConfirmed": [],
+      "backoffSec": 0
+    }
+  ],
+  "shrinkBlockReasons": {},
+  "absentNotInCombo": {},
+  "webhookDelivery": {
+    "status": "skipped",
+    "ok": true,
+    "reason": "no_actionable_alerts",
+    "durationMs": 0
+  }
+}
+
+[90mstdout[2m | packages/cli/test/c49-t5-rehearsal-and-secrets.test.ts[2m > [22m[2mC49-T5: 7-Day Simulated Field Rehearsal in os.tmpdir() + 10-Secret Suite[2m > [22m[2msimulates 7 days of scheduled ticks, catches all 5 planted anomalies on Days 2–6, and emits 0 anomalies on normal Days 1 & 7
+[22m[39m{
+  "timestamp": "2026-11-05T18:00:00.000Z",
+  "startedAt": "2026-11-05T18:00:00.000Z",
+  "endedAt": "2026-11-05T18:00:00.390Z",
+  "durationMs": 390,
+  "resources": {
+    "rssBytes": 187875328,
+    "heapUsedBytes": 68692640,
+    "cpuUserMs": 62,
+    "cpuSystemMs": 16
+  },
+  "mode": "observe",
+  "effectiveMode": "observe",
+  "requests": 3,
+  "paidRequests": 0,
+  "tokens": 0,
+  "llmCalls": 0,
+  "changedProviders": 0,
+  "unchangedProviders": 1,
+  "backoffSkipped": 0,
+  "inboxAdded": 0,
+  "researchQueueCount": 0,
+  "detectionLatency": {
+    "measuredCount": 0,
+    "minMs": null,
+    "maxMs": null,
+    "p50Ms": null
+  },
+  "providers": [
+    {
+      "prefix": "openai",
+      "label": "UNCHANGED",
+      "status": 200,
+      "models": 10,
+      "changed": false,
+      "added": [],
+      "graceAbsent": [],
+      "deadConfirmed": [],
+      "backoffSec": 0
+    }
+  ],
+  "shrinkBlockReasons": {},
+  "absentNotInCombo": {},
+  "webhookDelivery": {
+    "status": "skipped",
+    "ok": true,
+    "reason": "no_actionable_alerts",
+    "durationMs": 0
+  }
+}
+
+[90mstdout[2m | packages/cli/test/c49-t5-rehearsal-and-secrets.test.ts[2m > [22m[2mC49-T5: 7-Day Simulated Field Rehearsal in os.tmpdir() + 10-Secret Suite[2m > [22m[2msimulates 7 days of scheduled ticks, catches all 5 planted anomalies on Days 2–6, and emits 0 anomalies on normal Days 1 & 7
+[22m[39m{
+  "timestamp": "2026-11-06T00:00:00.000Z",
+  "startedAt": "2026-11-06T00:00:00.000Z",
+  "endedAt": "2026-11-06T00:00:01.200Z",
+  "durationMs": 1200,
+  "resources": {
+    "rssBytes": 186814464,
+    "heapUsedBytes": 61152328,
+    "cpuUserMs": 47,
+    "cpuSystemMs": 16
+  },
+  "mode": "propose",
+  "effectiveMode": "propose",
+  "requests": 8,
+  "paidRequests": 0,
+  "tokens": 0,
+  "llmCalls": 0,
+  "changedProviders": 0,
+  "unchangedProviders": 1,
+  "backoffSkipped": 0,
+  "inboxAdded": 3,
+  "researchQueueCount": 0,
+  "detectionLatency": {
+    "measuredCount": 0,
+    "minMs": null,
+    "maxMs": null,
+    "p50Ms": null
+  },
+  "providers": [
+    {
+      "prefix": "openai",
+      "label": "UNCHANGED",
+      "status": 200,
+      "models": 10,
+      "changed": false,
+      "added": [],
+      "graceAbsent": [],
+      "deadConfirmed": [],
+      "backoffSec": 0
+    }
+  ],
+  "shrinkBlockReasons": {
+    "openai": [
+      "model-09: Hạn mức co rút (shrinkRatio=20.0% > 10%)",
+      "model-10: Hạn mức co rút (shrinkRatio=20.0% > 10%)"
+    ]
+  },
+  "absentNotInCombo": {},
+  "webhookDelivery": {
+    "status": "skipped",
+    "ok": true,
+    "reason": "unconfigured",
+    "durationMs": 0
+  }
+}
+
+[90mstdout[2m | packages/cli/test/c49-t5-rehearsal-and-secrets.test.ts[2m > [22m[2mC49-T5: 7-Day Simulated Field Rehearsal in os.tmpdir() + 10-Secret Suite[2m > [22m[2msimulates 7 days of scheduled ticks, catches all 5 planted anomalies on Days 2–6, and emits 0 anomalies on normal Days 1 & 7
+[22m[39m{
+  "timestamp": "2026-11-06T06:00:00.000Z",
+  "startedAt": "2026-11-06T06:00:00.000Z",
+  "endedAt": "2026-11-06T06:00:00.450Z",
+  "durationMs": 450,
+  "resources": {
+    "rssBytes": 187256832,
+    "heapUsedBytes": 72022160,
+    "cpuUserMs": 46,
+    "cpuSystemMs": 31
+  },
+  "mode": "propose",
+  "effectiveMode": "propose",
+  "requests": 3,
+  "paidRequests": 0,
+  "tokens": 0,
+  "llmCalls": 0,
+  "changedProviders": 0,
+  "unchangedProviders": 1,
+  "backoffSkipped": 0,
+  "inboxAdded": 0,
+  "researchQueueCount": 0,
+  "detectionLatency": {
+    "measuredCount": 0,
+    "minMs": null,
+    "maxMs": null,
+    "p50Ms": null
+  },
+  "providers": [
+    {
+      "prefix": "openai",
+      "label": "UNCHANGED",
+      "status": 200,
+      "models": 10,
+      "changed": false,
+      "added": [],
+      "graceAbsent": [],
+      "deadConfirmed": [],
+      "backoffSec": 0
+    }
+  ],
+  "shrinkBlockReasons": {
+    "openai": [
+      "model-09: Hạn mức co rút (shrinkRatio=20.0% > 10%)",
+      "model-10: Hạn mức co rút (shrinkRatio=20.0% > 10%)"
+    ]
+  },
+  "absentNotInCombo": {},
+  "webhookDelivery": {
+    "status": "skipped",
+    "ok": true,
+    "reason": "no_actionable_alerts",
+    "durationMs": 0
+  }
+}
+
+[90mstdout[2m | packages/cli/test/c49-t5-rehearsal-and-secrets.test.ts[2m > [22m[2mC49-T5: 7-Day Simulated Field Rehearsal in os.tmpdir() + 10-Secret Suite[2m > [22m[2msimulates 7 days of scheduled ticks, catches all 5 planted anomalies on Days 2–6, and emits 0 anomalies on normal Days 1 & 7
+[22m[39m{
+  "timestamp": "2026-11-06T12:00:00.000Z",
+  "startedAt": "2026-11-06T12:00:00.000Z",
+  "endedAt": "2026-11-06T12:00:00.450Z",
+  "durationMs": 450,
+  "resources": {
+    "rssBytes": 187293696,
+    "heapUsedBytes": 49585088,
+    "cpuUserMs": 16,
+    "cpuSystemMs": 32
+  },
+  "mode": "propose",
+  "effectiveMode": "propose",
+  "requests": 3,
+  "paidRequests": 0,
+  "tokens": 0,
+  "llmCalls": 0,
+  "changedProviders": 0,
+  "unchangedProviders": 1,
+  "backoffSkipped": 0,
+  "inboxAdded": 0,
+  "researchQueueCount": 0,
+  "detectionLatency": {
+    "measuredCount": 0,
+    "minMs": null,
+    "maxMs": null,
+    "p50Ms": null
+  },
+  "providers": [
+    {
+      "prefix": "openai",
+      "label": "UNCHANGED",
+      "status": 200,
+      "models": 10,
+      "changed": false,
+      "added": [],
+      "graceAbsent": [],
+      "deadConfirmed": [],
+      "backoffSec": 0
+    }
+  ],
+  "shrinkBlockReasons": {
+    "openai": [
+      "model-09: Hạn mức co rút (shrinkRatio=20.0% > 10%)",
+      "model-10: Hạn mức co rút (shrinkRatio=20.0% > 10%)"
+    ]
+  },
+  "absentNotInCombo": {},
+  "webhookDelivery": {
+    "status": "skipped",
+    "ok": true,
+    "reason": "no_actionable_alerts",
+    "durationMs": 0
+  }
+}
+
+[90mstdout[2m | packages/cli/test/c49-t5-rehearsal-and-secrets.test.ts[2m > [22m[2mC49-T5: 7-Day Simulated Field Rehearsal in os.tmpdir() + 10-Secret Suite[2m > [22m[2msimulates 7 days of scheduled ticks, catches all 5 planted anomalies on Days 2–6, and emits 0 anomalies on normal Days 1 & 7
+[22m[39m{
+  "timestamp": "2026-11-06T18:00:00.000Z",
+  "startedAt": "2026-11-06T18:00:00.000Z",
+  "endedAt": "2026-11-06T18:00:00.450Z",
+  "durationMs": 450,
+  "resources": {
+    "rssBytes": 187437056,
+    "heapUsedBytes": 60386272,
+    "cpuUserMs": 47,
+    "cpuSystemMs": 15
+  },
+  "mode": "propose",
+  "effectiveMode": "propose",
+  "requests": 3,
+  "paidRequests": 0,
+  "tokens": 0,
+  "llmCalls": 0,
+  "changedProviders": 0,
+  "unchangedProviders": 1,
+  "backoffSkipped": 0,
+  "inboxAdded": 0,
+  "researchQueueCount": 0,
+  "detectionLatency": {
+    "measuredCount": 0,
+    "minMs": null,
+    "maxMs": null,
+    "p50Ms": null
+  },
+  "providers": [
+    {
+      "prefix": "openai",
+      "label": "UNCHANGED",
+      "status": 200,
+      "models": 10,
+      "changed": false,
+      "added": [],
+      "graceAbsent": [],
+      "deadConfirmed": [],
+      "backoffSec": 0
+    }
+  ],
+  "shrinkBlockReasons": {
+    "openai": [
+      "model-09: Hạn mức co rút (shrinkRatio=20.0% > 10%)",
+      "model-10: Hạn mức co rút (shrinkRatio=20.0% > 10%)"
+    ]
+  },
+  "absentNotInCombo": {},
+  "webhookDelivery": {
+    "status": "skipped",
+    "ok": true,
+    "reason": "no_actionable_alerts",
+    "durationMs": 0
+  }
+}
+
+[90mstdout[2m | packages/cli/test/c49-t5-rehearsal-and-secrets.test.ts[2m > [22m[2mC49-T5: 7-Day Simulated Field Rehearsal in os.tmpdir() + 10-Secret Suite[2m > [22m[2msimulates 7 days of scheduled ticks, catches all 5 planted anomalies on Days 2–6, and emits 0 anomalies on normal Days 1 & 7
+[22m[39m{
+  "timestamp": "2026-11-07T00:00:00.000Z",
+  "startedAt": "2026-11-07T00:00:00.000Z",
+  "endedAt": "2026-11-07T00:00:00.960Z",
+  "durationMs": 960,
+  "resources": {
+    "rssBytes": 191217664,
+    "heapUsedBytes": 72322464,
+    "cpuUserMs": 31,
+    "cpuSystemMs": 15
+  },
+  "mode": "observe",
+  "effectiveMode": "observe",
+  "requests": 8,
+  "paidRequests": 0,
+  "tokens": 0,
+  "llmCalls": 0,
+  "changedProviders": 0,
+  "unchangedProviders": 1,
+  "backoffSkipped": 0,
+  "inboxAdded": 0,
+  "researchQueueCount": 0,
+  "detectionLatency": {
+    "measuredCount": 0,
+    "minMs": null,
+    "maxMs": null,
+    "p50Ms": null
+  },
+  "providers": [
+    {
+      "prefix": "openai",
+      "label": "UNCHANGED",
+      "status": 200,
+      "models": 10,
+      "changed": false,
+      "added": [],
+      "graceAbsent": [],
+      "deadConfirmed": [],
+      "backoffSec": 0
+    }
+  ],
+  "shrinkBlockReasons": {},
+  "absentNotInCombo": {},
+  "webhookDelivery": {
+    "status": "skipped",
+    "ok": true,
+    "reason": "no_actionable_alerts",
+    "durationMs": 0
+  }
+}
+
+[90mstdout[2m | packages/cli/test/c49-t5-rehearsal-and-secrets.test.ts[2m > [22m[2mC49-T5: 7-Day Simulated Field Rehearsal in os.tmpdir() + 10-Secret Suite[2m > [22m[2msimulates 7 days of scheduled ticks, catches all 5 planted anomalies on Days 2–6, and emits 0 anomalies on normal Days 1 & 7
+[22m[39m{
+  "timestamp": "2026-11-07T06:00:00.000Z",
+  "startedAt": "2026-11-07T06:00:00.000Z",
+  "endedAt": "2026-11-07T06:00:00.360Z",
+  "durationMs": 360,
+  "resources": {
+    "rssBytes": 189775872,
+    "heapUsedBytes": 49398920,
+    "cpuUserMs": 32,
+    "cpuSystemMs": 16
+  },
+  "mode": "observe",
+  "effectiveMode": "observe",
+  "requests": 3,
+  "paidRequests": 0,
+  "tokens": 0,
+  "llmCalls": 0,
+  "changedProviders": 0,
+  "unchangedProviders": 1,
+  "backoffSkipped": 0,
+  "inboxAdded": 0,
+  "researchQueueCount": 0,
+  "detectionLatency": {
+    "measuredCount": 0,
+    "minMs": null,
+    "maxMs": null,
+    "p50Ms": null
+  },
+  "providers": [
+    {
+      "prefix": "openai",
+      "label": "UNCHANGED",
+      "status": 200,
+      "models": 10,
+      "changed": false,
+      "added": [],
+      "graceAbsent": [],
+      "deadConfirmed": [],
+      "backoffSec": 0
+    }
+  ],
+  "shrinkBlockReasons": {},
+  "absentNotInCombo": {},
+  "webhookDelivery": {
+    "status": "skipped",
+    "ok": true,
+    "reason": "no_actionable_alerts",
+    "durationMs": 0
+  }
+}
+
+[90mstdout[2m | packages/cli/test/c49-t5-rehearsal-and-secrets.test.ts[2m > [22m[2mC49-T5: 7-Day Simulated Field Rehearsal in os.tmpdir() + 10-Secret Suite[2m > [22m[2msimulates 7 days of scheduled ticks, catches all 5 planted anomalies on Days 2–6, and emits 0 anomalies on normal Days 1 & 7
+[22m[39m{
+  "timestamp": "2026-11-07T12:00:00.000Z",
+  "startedAt": "2026-11-07T12:00:00.000Z",
+  "endedAt": "2026-11-07T12:00:00.360Z",
+  "durationMs": 360,
+  "resources": {
+    "rssBytes": 190464000,
+    "heapUsedBytes": 60070480,
+    "cpuUserMs": 47,
+    "cpuSystemMs": 16
+  },
+  "mode": "observe",
+  "effectiveMode": "observe",
+  "requests": 3,
+  "paidRequests": 0,
+  "tokens": 0,
+  "llmCalls": 0,
+  "changedProviders": 0,
+  "unchangedProviders": 1,
+  "backoffSkipped": 0,
+  "inboxAdded": 0,
+  "researchQueueCount": 0,
+  "detectionLatency": {
+    "measuredCount": 0,
+    "minMs": null,
+    "maxMs": null,
+    "p50Ms": null
+  },
+  "providers": [
+    {
+      "prefix": "openai",
+      "label": "UNCHANGED",
+      "status": 200,
+      "models": 10,
+      "changed": false,
+      "added": [],
+      "graceAbsent": [],
+      "deadConfirmed": [],
+      "backoffSec": 0
+    }
+  ],
+  "shrinkBlockReasons": {},
+  "absentNotInCombo": {},
+  "webhookDelivery": {
+    "status": "skipped",
+    "ok": true,
+    "reason": "no_actionable_alerts",
+    "durationMs": 0
+  }
+}
+
+[90mstdout[2m | packages/cli/test/c49-t5-rehearsal-and-secrets.test.ts[2m > [22m[2mC49-T5: 7-Day Simulated Field Rehearsal in os.tmpdir() + 10-Secret Suite[2m > [22m[2msimulates 7 days of scheduled ticks, catches all 5 planted anomalies on Days 2–6, and emits 0 anomalies on normal Days 1 & 7
+[22m[39m{
+  "timestamp": "2026-11-07T18:00:00.000Z",
+  "startedAt": "2026-11-07T18:00:00.000Z",
+  "endedAt": "2026-11-07T18:00:00.360Z",
+  "durationMs": 360,
+  "resources": {
+    "rssBytes": 190722048,
+    "heapUsedBytes": 70741848,
+    "cpuUserMs": 47,
+    "cpuSystemMs": 15
+  },
+  "mode": "observe",
+  "effectiveMode": "observe",
+  "requests": 3,
+  "paidRequests": 0,
+  "tokens": 0,
+  "llmCalls": 0,
+  "changedProviders": 0,
+  "unchangedProviders": 1,
+  "backoffSkipped": 0,
+  "inboxAdded": 0,
+  "researchQueueCount": 0,
+  "detectionLatency": {
+    "measuredCount": 0,
+    "minMs": null,
+    "maxMs": null,
+    "p50Ms": null
+  },
+  "providers": [
+    {
+      "prefix": "openai",
+      "label": "UNCHANGED",
+      "status": 200,
+      "models": 10,
+      "changed": false,
+      "added": [],
+      "graceAbsent": [],
+      "deadConfirmed": [],
+      "backoffSec": 0
+    }
+  ],
+  "shrinkBlockReasons": {},
+  "absentNotInCombo": {},
+  "webhookDelivery": {
+    "status": "skipped",
+    "ok": true,
+    "reason": "no_actionable_alerts",
+    "durationMs": 0
+  }
+}
+
+ [32m✓[39m [30m[45m packages [49m[39m packages/cli/test/c49-t5-rehearsal-and-secrets.test.ts [2m([22m[2m2 tests[22m[2m)[22m[33m 23413[2mms[22m[39m
+     [33m[2m✓[22m[39m simulates 7 days of scheduled ticks, catches all 5 planted anomalies on Days 2–6, and emits 0 anomalies on normal Days 1 & 7 [33m 23137[2mms[22m[39m
+ [32m✓[39m [30m[45m root-tools [49m[39m test/docs/c46-f3-doc-cli-sync.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 33[2mms[22m[39m
+ [32m✓[39m [30m[45m root-tools [49m[39m test/docs/c49-field-runbooks.test.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 40[2mms[22m[39m
+ [32m✓[39m [30m[45m root-tools [49m[39m test/docs/agent-docs.test.ts [2m([22m[2m19 tests[22m[2m)[22m[33m 32516[2mms[22m[39m
+     [33m[2m✓[22m[39m runs --help, doctor, combos stale (9router & omniroute), and verify against os.tmpdir() fixture with 0 router writes [33m 10463[2mms[22m[39m
+     [33m[2m✓[22m[39m passes node --test test/agent/security-audit.node.test.mjs [33m 21316[2mms[22m[39m
+     [33m[2m✓[22m[39m no publishable tracked or doc files contain dangerous git publish strings [33m 639[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m4 passed[39m[22m[90m (4)[39m
+[2m      Tests [22m [1m[32m34 passed[39m[22m[90m (34)[39m
+[2m   Start at [22m 19:30:32
+[2m   Duration [22m 36.47s[2m (transform 4.37s, setup 3.27s, import 4.96s, tests 56.00s, environment 0ms)[22m
+

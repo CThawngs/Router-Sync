@@ -1,0 +1,21 @@
+
+> routersync@0.1.0 test:file <private-provider-2>
+> vitest run "packages/cli/test/c49-t1-t2-field-report.test.ts" "packages/cli/test/wp9-live-check.test.ts"
+
+
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.12 [39m[90m<HOME>/.openmausbot/task-workspaces/a752da46-5147-4b20-9a6a-ff5045a56bb7/4dc962a8-2796-439b-98af-1f105a778d88/router-sync-c49[39m
+
+ [32m✓[39m [30m[45m packages [49m[39m packages/cli/test/c49-t1-t2-field-report.test.ts [2m([22m[2m6 tests[22m[2m)[22m[33m 858[2mms[22m[39m
+     [33m[2m✓[22m[39m exports <= 8 files with zero network calls and preserves <stateDir> + config byte & mtime identity [33m 404[2mms[22m[39m
+ [32m✓[39m [30m[45m packages [49m[39m packages/cli/test/wp9-live-check.test.ts [2m([22m[2m12 tests[22m[2m)[22m[33m 17955[2mms[22m[39m
+     [33m[2m✓[22m[39m returns READY_FOR_OWNER_LIVE_PILOT with 100% zero mutation on routerDir, harnessDir, stateDir, and cleans up os.tmpdir() (M2) [33m 322[2mms[22m[39m
+     [33m[2m✓[22m[39m isolates concurrent live-check invocations from mid-flight sibling os.tmpdir()/rs-livecheck-* worker directories [33m 420[2mms[22m[39m
+     [33m[2m✓[22m[39m tracks consent & promotion lifecycle across READY_FOR_PROPOSE_STEP -> READY_FOR_AUTO_SAFE_PROMOTION -> AUTO_SAFE_ACTIVE [33m 360[2mms[22m[39m
+     [33m[2m✓[22m[39m executes compiled CLI live-check --json with exit code 0 when ready and 1 when blocked [33m 7543[2mms[22m[39m
+     [33m[2m✓[22m[39m succeeds when repoRoot itself lives inside an os.tmpdir() clean clone and never reads real os.homedir() [33m 8227[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m2 passed[39m[22m[90m (2)[39m
+[2m      Tests [22m [1m[32m18 passed[39m[22m[90m (18)[39m
+[2m   Start at [22m 19:29:44
+[2m   Duration [22m 28.78s[2m (transform 6.93s, setup 13.27s, import 4.86s, tests 18.81s, environment 0ms)[22m
+
