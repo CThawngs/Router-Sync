@@ -159,12 +159,19 @@ export interface ReadApplyHistoryResult {
   receipts: ApplyHistoryReceipt[];
 }
 
+export interface FreezeHistoryEvent {
+  action: 'freeze' | 'unfreeze';
+  timestamp: string;
+  reason: string | null;
+}
+
 export interface FreezeStateFile {
   version: 1;
   frozen: boolean;
   frozenAt: string | null;
   unfrozenAt?: string | null | undefined;
   reason: string | null;
+  history?: FreezeHistoryEvent[] | undefined;
 }
 
 export interface PersistentApprovalTokenEntry {

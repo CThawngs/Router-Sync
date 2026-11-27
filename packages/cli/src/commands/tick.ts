@@ -383,8 +383,43 @@ export interface TickCommandOptions {
   env?: NodeJS.ProcessEnv | undefined;
 }
 
+export interface TickFieldProviderTelemetry {
+  providerId: string;
+  router: string;
+  scanned: boolean;
+  ok: boolean;
+  status: number;
+  label: ProviderHealthLabel;
+  errorCode: string | null;
+  latencyMs: number | null;
+  unverifiable: boolean;
+  scannedModels: string[] | null;
+  routerModels: string[] | null;
+}
+
+export interface TickFieldResources {
+  rssBytes: number;
+  heapUsedBytes: number;
+  cpuUserMs: number;
+  cpuSystemMs: number;
+}
+
+export interface TickFieldTelemetry {
+  startedAt: string;
+  endedAt: string;
+  durationMs: number;
+  resources: TickFieldResources;
+  providers: TickFieldProviderTelemetry[];
+  combos: Array<{ router: string; name: string; models: string[] }>;
+  blockedRemovals: BlockedRemovalRecord[];
+}
+
 export interface TickRunSummary {
   timestamp: string;
+  startedAt?: string | undefined;
+  endedAt?: string | undefined;
+  durationMs?: number | undefined;
+  resources?: TickFieldResources | undefined;
   detectionHistoryError?: 'DETECTION_HISTORY_CAP_EXCEEDED' | undefined;
   mode: AutonomyMode;
   effectiveMode: EffectiveTickMode;
@@ -741,6 +776,8 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
   const effectiveMode: EffectiveTickMode = freezeState.frozen ? 'FROZEN' : requestedMode;
   if (!fs.existsSync(sDir)) fs.mkdirSync(sDir, { recursive: true });
 
+  const tickHrStart = process.hrtime.bigint();
+  const tickCpuStart = process.cpuUsage();
   const hasInjectedClock = typeof options.clock === 'function';
   const readClock = options.clock ?? (() => Date.now());
   const nowMs = hasInjectedClock ? readClock() : (options.nowMs ?? Date.now());
@@ -913,6 +950,48 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
       }
       return routerStateByRouter.get(norm);
     }
+
+    const directRouterStateByAdapter = new Map<string, RouterModelState>();
+    function readDirectRouterModelsFor(routerName: string, prefix: string): string[] | null {
+      const matchedCfg = config.routers.find(
+        (r) =>
+          r.id.toLowerCase() === routerName.toLowerCase() ||
+          r.adapter.toLowerCase() === routerName.toLowerCase()
+      );
+      const adapterNorm = (matchedCfg?.adapter ?? routerName).toLowerCase();
+      if (!directRouterStateByAdapter.has(adapterNorm)) {
+        try {
+          directRouterStateByAdapter.set(
+            adapterNorm,
+            readRouterModelState(adapterNorm, {
+              availabilitySource: 'direct',
+              excludeComboModelsFromAvailability: true,
+              env: options.env,
+            })
+          );
+        } catch {
+          return null;
+        }
+      }
+      const dState = directRouterStateByAdapter.get(adapterNorm);
+      if (!dState) return null;
+      const aliases = getProviderAliases(prefix);
+      const hasEvidence = aliases.some((a) => dState.availabilityProviders.has(a));
+      if (!hasEvidence) return null;
+      const found = new Set<string>();
+      for (const full of dState.availableModels) {
+        const slash = full.indexOf('/');
+        if (slash <= 0) continue;
+        const p = full.slice(0, slash).toLowerCase();
+        const m = full.slice(slash + 1);
+        if (aliases.includes(p) && m.length > 0) {
+          found.add(m);
+        }
+      }
+      return [...found].sort();
+    }
+
+    const fieldProviderTelemetry: TickFieldProviderTelemetry[] = [];
 
     const views = await buildViews(config, 'all');
     const targets: Array<ProviderTarget & { router: string }> = [];
@@ -1211,10 +1290,24 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
           skipReason: t.skipReason ?? (t.baseUrl ? undefined : 'missing-base-url'),
           updatedAt: prev?.updatedAt ?? nowIso,
         };
+        const skippedReason = t.skipReason ?? (t.baseUrl ? undefined : 'missing-base-url');
+        fieldProviderTelemetry.push({
+          providerId: t.prefix,
+          router: t.router,
+          scanned: false,
+          ok: false,
+          status: 0,
+          label: 'SKIPPED',
+          errorCode: skippedReason ?? 'SKIPPED',
+          latencyMs: null,
+          unverifiable: true,
+          scannedModels: null,
+          routerModels: readDirectRouterModelsFor(t.router, t.prefix),
+        });
         providerSummaries.push({
           prefix: t.prefix,
           label: 'SKIPPED',
-          skipReason: t.skipReason ?? (t.baseUrl ? undefined : 'missing-base-url'),
+          skipReason: skippedReason,
           status: 0,
           models: prev?.ids.length ?? 0,
           changed: false,
@@ -1229,6 +1322,19 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
       if (prev && prev.backoffUntilMs > nowMs) {
         backoffSkipped++;
         const remSec = Math.ceil((prev.backoffUntilMs - nowMs) / 1000);
+        fieldProviderTelemetry.push({
+          providerId: t.prefix,
+          router: t.router,
+          scanned: false,
+          ok: false,
+          status: prev.lastStatus,
+          label: 'BACKOFF',
+          errorCode: prev.lastStatus >= 400 ? String(prev.lastStatus) : null,
+          latencyMs: null,
+          unverifiable: true,
+          scannedModels: null,
+          routerModels: readDirectRouterModelsFor(t.router, t.prefix),
+        });
         providerSummaries.push({
           prefix: t.prefix,
           label: 'BACKOFF',
@@ -1255,6 +1361,19 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
         nowMs - prevUpdatedMs < minScanIntervalMs
       ) {
         unchangedProviders++;
+        fieldProviderTelemetry.push({
+          providerId: t.prefix,
+          router: t.router,
+          scanned: false,
+          ok: true,
+          status: prev.lastStatus,
+          label: 'UNCHANGED',
+          errorCode: null,
+          latencyMs: null,
+          unverifiable: false,
+          scannedModels: null,
+          routerModels: readDirectRouterModelsFor(t.router, t.prefix),
+        });
         providerSummaries.push({
           prefix: t.prefix,
           label: 'UNCHANGED',
@@ -1274,12 +1393,21 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
       const tickTimeoutMs = isLowResource() ? 8_000 : 12_000;
       const scanStartedAtMs = readPhaseClock();
       const scanStartedAtIso = new Date(scanStartedAtMs).toISOString();
+      const fetchHrStart = process.hrtime.bigint();
       const outcome = await fetchModelList(t, {
         fetchFn: l1AccountingFetch,
         timeoutMs: tickTimeoutMs,
         retryDelaysMs: [],
         serverEtag: prev?.serverEtag ?? null,
       });
+      const fetchWallMs = Math.max(
+        0,
+        Math.round(Number(process.hrtime.bigint() - fetchHrStart) / 1_000_000)
+      );
+      const scanEndedAtMs = readPhaseClock();
+      const scanLatencyMs = hasInjectedClock
+        ? Math.max(0, scanEndedAtMs - scanStartedAtMs)
+        : fetchWallMs;
 
       if (!outcome.ok || outcome.incomplete || outcome.truncated) {
         const isRedirectBlocked = Boolean(
@@ -1340,6 +1468,19 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
           skipReason,
           updatedAt: scanStartedAtIso,
         };
+        fieldProviderTelemetry.push({
+          providerId: t.prefix,
+          router: t.router,
+          scanned: true,
+          ok: false,
+          status: outcome.status,
+          label: failLabel,
+          errorCode: outcome.status > 0 ? String(outcome.status) : (outcome.error ?? skipReason),
+          latencyMs: scanLatencyMs,
+          unverifiable: true,
+          scannedModels: null,
+          routerModels: readDirectRouterModelsFor(t.router, t.prefix),
+        });
         providerSummaries.push({
           prefix: t.prefix,
           label: failLabel,
@@ -1374,6 +1515,19 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
           lastLabel: 'UNCHANGED',
           updatedAt: scanStartedAtIso,
         };
+        fieldProviderTelemetry.push({
+          providerId: t.prefix,
+          router: t.router,
+          scanned: true,
+          ok: true,
+          status: 304,
+          label: 'UNCHANGED',
+          errorCode: null,
+          latencyMs: scanLatencyMs,
+          unverifiable: false,
+          scannedModels: (prev!.ids ?? []).filter((id) => (prev!.absenceCounts?.[id] ?? 0) === 0),
+          routerModels: readDirectRouterModelsFor(t.router, t.prefix),
+        });
         providerSummaries.push({
           prefix: t.prefix,
           label: 'UNCHANGED',
@@ -1430,6 +1584,19 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
           lastLabel: 'UNCHANGED',
           updatedAt: scanStartedAtIso,
         };
+        fieldProviderTelemetry.push({
+          providerId: t.prefix,
+          router: t.router,
+          scanned: true,
+          ok: true,
+          status: outcome.status,
+          label: 'UNCHANGED',
+          errorCode: null,
+          latencyMs: scanLatencyMs,
+          unverifiable: false,
+          scannedModels: fetchedIds,
+          routerModels: readDirectRouterModelsFor(t.router, t.prefix),
+        });
         providerSummaries.push({
           prefix: t.prefix,
           label: 'UNCHANGED',
@@ -1478,6 +1645,19 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
             lastLabel: 'SHRINK-GUARD-BLOCKED',
             updatedAt: scanStartedAtIso,
           };
+          fieldProviderTelemetry.push({
+            providerId: t.prefix,
+            router: t.router,
+            scanned: true,
+            ok: false,
+            status: outcome.status,
+            label: 'SHRINK-GUARD-BLOCKED',
+            errorCode: 'SHRINK-GUARD-BLOCKED',
+            latencyMs: scanLatencyMs,
+            unverifiable: true,
+            scannedModels: null,
+            routerModels: readDirectRouterModelsFor(t.router, t.prefix),
+          });
           providerSummaries.push({
             prefix: t.prefix,
             label: 'SHRINK-GUARD-BLOCKED',
@@ -1807,6 +1987,19 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
         }
       }
 
+      fieldProviderTelemetry.push({
+        providerId: t.prefix,
+        router: t.router,
+        scanned: true,
+        ok: true,
+        status: outcome.status,
+        label: didChange ? 'OK' : 'UNCHANGED',
+        errorCode: null,
+        latencyMs: scanLatencyMs,
+        unverifiable: false,
+        scannedModels: fetchedIds,
+        routerModels: readDirectRouterModelsFor(t.router, t.prefix),
+      });
       providerSummaries.push({
         prefix: t.prefix,
         label: didChange ? 'OK' : 'UNCHANGED',
@@ -3598,8 +3791,39 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
       fetchImpl: options.fetchFn,
     });
 
+    const tickWallDurationMs = Math.max(
+      0,
+      Math.round(Number(process.hrtime.bigint() - tickHrStart) / 1_000_000)
+    );
+    const tickClockEndMs = readPhaseClock();
+    const tickDurationMs = hasInjectedClock
+      ? Math.max(0, tickClockEndMs - nowMs)
+      : tickWallDurationMs;
+    const tickEndedAtIso = new Date(nowMs + tickDurationMs).toISOString();
+    const memUsage = process.memoryUsage();
+    const cpuDelta = process.cpuUsage(tickCpuStart);
+    const tickResources: TickFieldResources = {
+      rssBytes: memUsage.rss,
+      heapUsedBytes: memUsage.heapUsed,
+      cpuUserMs: Math.round((cpuDelta.user / 1000) * 100) / 100,
+      cpuSystemMs: Math.round((cpuDelta.system / 1000) * 100) / 100,
+    };
+    const fieldTelemetry: TickFieldTelemetry = {
+      startedAt: nowIso,
+      endedAt: tickEndedAtIso,
+      durationMs: tickDurationMs,
+      resources: tickResources,
+      providers: fieldProviderTelemetry,
+      combos: allCombos.map((c) => ({ router: c.router, name: c.name, models: [...c.models] })),
+      blockedRemovals,
+    };
+
     const summary: TickRunSummary = {
       timestamp: nowIso,
+      startedAt: nowIso,
+      endedAt: tickEndedAtIso,
+      durationMs: tickDurationMs,
+      resources: tickResources,
       detectionHistoryError: catalogState.detectionHistoryError,
       mode: requestedMode,
       effectiveMode,
@@ -3632,7 +3856,7 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
 
     const latencyLogToken =
       detectionLatency.maxMs !== null ? String(detectionLatency.maxMs) : 'na';
-    const logLine = `${nowIso} mode=${effectiveMode} requests=${totalRequests} changed=${changedProviders} unchanged=${unchangedProviders} backoff=${backoffSkipped} inbox_added=${inboxAdded} paid-requests=0 tokens=0 llm-calls=0 shrink_blocks=${JSON.stringify(Object.fromEntries(shrinkBlockReasons))} research_queue=${researchQueueCount} detection_latency_ms=${latencyLogToken}\n`;
+    const logLine = `${nowIso} mode=${effectiveMode} requests=${totalRequests} changed=${changedProviders} unchanged=${unchangedProviders} backoff=${backoffSkipped} inbox_added=${inboxAdded} paid-requests=0 tokens=0 llm-calls=0 shrink_blocks=${JSON.stringify(Object.fromEntries(shrinkBlockReasons))} research_queue=${researchQueueCount} detection_latency_ms=${latencyLogToken} field_telemetry=${JSON.stringify(fieldTelemetry)}\n`;
     fs.appendFileSync(tickLogPath, logLine, 'utf8');
 
     if (options.json) {
