@@ -940,7 +940,7 @@ export async function runLiveCheckCommand(
         detail: `Isolated backup + parser + byte-exact SHA-256 rollback rehearsal passed in os.tmpdir()/${tmpDirLabel} (0 live mutations).`,
       });
     } catch (err) {
-      const detail = `Ephemeral tmpdir rehearsal failed: ${err instanceof Error ? err.message : String(err)}`;
+      const detail = `Ephemeral tmpdir rehearsal failed in os.tmpdir()/${tmpDirLabel}: ${err instanceof Error ? err.message : String(err)}`;
       checks.push({
         id: 'tmpdir_backup_rollback_rehearsal',
         passed: false,
@@ -949,7 +949,7 @@ export async function runLiveCheckCommand(
       });
       blockingReasons.push(detail);
     } finally {
-      fs.rmSync(tmpRehearsalDir, { recursive: true, force: true });
+      fs.rmSync(tmpRehearsalDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
     }
   }
 
