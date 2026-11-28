@@ -30,6 +30,9 @@ import {
   appendTickCostEntry,
   assertAllowedOutboundUrl,
   createAccountingFetch,
+  LOCK_HANDOFF_NONCE_ENV,
+  LOCK_HANDOFF_PARENT_PID_ENV,
+  isValidHandoffNonce,
   releaseTickLock,
   tryAcquireTickLock,
   applyPlanSafe,
@@ -782,7 +785,8 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
   const readClock = options.clock ?? (() => Date.now());
   const nowMs = hasInjectedClock ? readClock() : (options.nowMs ?? Date.now());
   const readPhaseClock = options.nowMs !== undefined && !hasInjectedClock ? () => nowMs : readClock;
-  const rawHandoffParentPid = (options.env ?? process.env)['ROUTERSYNC_LOCK_HANDOFF_PARENT_PID'];
+  const envSource = options.env ?? process.env;
+  const rawHandoffParentPid = envSource[LOCK_HANDOFF_PARENT_PID_ENV];
   const parsedHandoffParentPid =
     typeof rawHandoffParentPid === 'string' && /^[1-9]\d*$/.test(rawHandoffParentPid.trim())
       ? Number(rawHandoffParentPid.trim())
@@ -791,7 +795,24 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
     parsedHandoffParentPid !== undefined && Number.isSafeInteger(parsedHandoffParentPid)
       ? parsedHandoffParentPid
       : undefined;
-  const lock = tryAcquireTickLock(sDir, process.pid, nowMs, undefined, handoffParentPid);
+  const rawHandoffNonce = envSource[LOCK_HANDOFF_NONCE_ENV];
+  const handoffNonce =
+    typeof rawHandoffNonce === 'string' && isValidHandoffNonce(rawHandoffNonce.trim())
+      ? rawHandoffNonce.trim()
+      : undefined;
+  const lock = tryAcquireTickLock(
+    sDir,
+    process.pid,
+    nowMs,
+    undefined,
+    handoffParentPid !== undefined && handoffNonce !== undefined
+      ? {
+          parentPid: handoffParentPid,
+          nonce: handoffNonce,
+          childPpid: process.ppid,
+        }
+      : undefined
+  );
   if (!lock.acquired) {
     throw new Error(`Another tick instance (pid ${lock.holderPid}) already holds ${lock.lockPath}`);
   }
