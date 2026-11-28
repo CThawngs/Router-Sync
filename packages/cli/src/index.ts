@@ -420,13 +420,19 @@ export function createCliProgram(): Command {
     .option('--json', 'Output result in JSON format')
     .option('--out <file>', 'Write report text to file (UTF-8)')
     .action(async (opts: { configPath?: string; hermes?: string; dsh?: string; json?: boolean; out?: string }) => {
-      await (await import('./commands/doctor.js')).runDoctorCommand({
+      const report = await (await import('./commands/doctor.js')).runDoctorCommand({
         configPath: opts.configPath,
         hermesConfigPath: opts.hermes,
         dshConfigPath: opts.dsh,
         json: opts.json,
         out: opts.out,
       });
+      if (!report.registry.available) {
+        console.error(
+          `REGISTRY_MISSING: no public registry found (providers=0, source=${report.registry.source}).`
+        );
+        process.exitCode = 1;
+      }
     });
 
   // mcp command group (Condition C2 & AT-94)

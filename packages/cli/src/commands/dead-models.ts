@@ -4,6 +4,10 @@
  */
 import fs from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { findBundledRegistryFile } from '../registry/bundled.js';
+
+const MODULE_DIR = path.dirname(fileURLToPath(import.meta.url));
 import { readComboModels, type RouterName } from '../sync/write.js';
 import { countInnerModels } from './research.js';
 import { stepExistsLabel } from '../sync/step-exists.js';
@@ -55,6 +59,9 @@ export function loadDeadModelsConfig(cwd: string = process.cwd()): DeadModelsCon
     const parent = path.dirname(dir);
     if (parent === dir) break;
     dir = parent;
+  }
+  if (!file) {
+    file = findBundledRegistryFile(MODULE_DIR, 'dead-models.yaml') ?? '';
   }
   if (!file) return empty;
   let text: string;

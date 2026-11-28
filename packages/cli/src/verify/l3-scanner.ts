@@ -11,6 +11,7 @@ import { createHash } from 'node:crypto';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { findBundledRegistryFile } from '../registry/bundled.js';
 
 const MODULE_DIR = path.dirname(fileURLToPath(import.meta.url));
 import {
@@ -52,7 +53,11 @@ function walkUpForSourcesYaml(startDir: string): string | null {
 export function readRegistrySources(sourcesFilePath?: string): UpstreamSourceEntry[] {
   let p: string | undefined = sourcesFilePath;
   if (!p) {
-    p = (walkUpForSourcesYaml(process.cwd()) ?? walkUpForSourcesYaml(MODULE_DIR)) ?? undefined;
+    p =
+      (walkUpForSourcesYaml(process.cwd()) ??
+        walkUpForSourcesYaml(MODULE_DIR) ??
+        findBundledRegistryFile(MODULE_DIR, 'sources.yaml')) ??
+      undefined;
   }
   if (!p || !fs.existsSync(p)) return [];
   const text = fs.readFileSync(p, 'utf8');

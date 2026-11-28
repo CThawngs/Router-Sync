@@ -494,6 +494,7 @@ interface ParsedTickLogEntry {
     blockedReason: string;
   }>;
   sourceFile: string;
+  registryMissing?: boolean | undefined;
 }
 
 function parseTickLogLine(rawLine: string): ParsedTickLogEntry | null {
@@ -511,6 +512,7 @@ function parseTickLogLine(rawLine: string): ParsedTickLogEntry | null {
           combos: [],
           blockedRemovals: [],
           sourceFile: 'tick.log',
+          registryMissing: false,
         }
       : null;
   }
@@ -682,6 +684,7 @@ function parseTickLogLine(rawLine: string): ParsedTickLogEntry | null {
     combos,
     blockedRemovals,
     sourceFile: 'tick.log',
+    registryMissing: telemetryObj?.['registryMissing'] === true,
   };
 }
 
@@ -837,6 +840,7 @@ export async function runFieldReportCommand(
         combos: [],
         blockedRemovals: [],
         sourceFile: 'status.json',
+        registryMissing: false,
       });
     }
   }
@@ -899,6 +903,9 @@ export async function runFieldReportCommand(
     };
     if (t.note) {
       tickMeta['note'] = t.note;
+    }
+    if (t.registryMissing) {
+      tickMeta['registryMissing'] = true;
     }
     pendingTimeline.push({
       sortMs: Date.parse(t.startedAt),

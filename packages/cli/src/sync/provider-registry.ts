@@ -15,6 +15,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as os from 'node:os';
 import { fileURLToPath } from 'node:url';
+import { findBundledRegistryFile } from '../registry/bundled.js';
 
 const MODULE_DIR = path.dirname(fileURLToPath(import.meta.url));
 
@@ -39,9 +40,42 @@ function walkUpForProvidersYaml(startDir: string): string | null {
   return null;
 }
 
-/** Find registry/providers.yaml by walking up from `cwd`, falling back to shipped module location. */
+/**
+ * Find registry/providers.yaml. Search order: cwd tree, module tree, then the
+ * copy bundled inside the published package (C52-R1). A missing registry is
+ * reported by doctor as REGISTRY_MISSING instead of an empty table.
+ */
 export function findProviderRegistryFile(cwd: string = process.cwd()): string | null {
-  return walkUpForProvidersYaml(cwd) ?? walkUpForProvidersYaml(MODULE_DIR);
+  return (
+    walkUpForProvidersYaml(cwd) ??
+    walkUpForProvidersYaml(MODULE_DIR) ??
+    findBundledRegistryFile(MODULE_DIR, 'providers.yaml')
+  );
+}
+
+export interface PublicRegistryStatus {
+  available: boolean;
+  providerCount: number;
+  source: 'cwd' | 'module' | 'bundled' | 'none';
+}
+
+/** Decision-grade registry status for `doctor` and clean-install verification. */
+export function describePublicRegistry(cwd: string = process.cwd()): PublicRegistryStatus {
+  const file = findProviderRegistryFile(cwd);
+  if (!file) return { available: false, providerCount: 0, source: 'none' };
+  let providerCount = 0;
+  try {
+    providerCount = Object.keys(parseYamlRegistry(fs.readFileSync(file, 'utf8')).providers).length;
+  } catch {
+    return { available: false, providerCount: 0, source: 'none' };
+  }
+  const normalized = file.replace(/\\/g, '/');
+  const source: PublicRegistryStatus['source'] = normalized.includes('/dist/registry/')
+    ? 'bundled'
+    : normalized.includes('/dist/') || normalized.includes('/src/')
+      ? 'module'
+      : 'cwd';
+  return { available: providerCount > 0, providerCount, source };
 }
 
 /**

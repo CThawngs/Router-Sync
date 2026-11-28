@@ -11,6 +11,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { findBundledRegistryFile } from '../registry/bundled.js';
 
 const MODULE_DIR = path.dirname(fileURLToPath(import.meta.url));
 
@@ -35,7 +36,11 @@ function walkUpForGatewaysYaml(startDir: string): string | null {
 
 /** Find registry/gateways.yaml by walking up from `cwd`, falling back to shipped module location. */
 export function findGatewaysFile(cwd: string = process.cwd()): string | null {
-  return walkUpForGatewaysYaml(cwd) ?? walkUpForGatewaysYaml(MODULE_DIR);
+  return (
+    walkUpForGatewaysYaml(cwd) ??
+    walkUpForGatewaysYaml(MODULE_DIR) ??
+    findBundledRegistryFile(MODULE_DIR, 'gateways.yaml')
+  );
 }
 
 /** Parse the flat gateway list from registry/gateways.yaml. */
