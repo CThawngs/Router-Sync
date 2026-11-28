@@ -1,0 +1,19 @@
+
+> routersync@0.1.0 test:file <private-provider-2>
+> vitest run "test/docs/c49-field-runbooks.test.ts" "test/docs/c46-f3-doc-cli-sync.test.ts" "test/docs/agent-docs.test.ts"
+
+
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.12 [39m[90m<HOME>/.openmausbot/task-workspaces/a752da46-5147-4b20-9a6a-ff5045a56bb7/47b41207-2b08-43dc-b234-d27bdcf3ba4e/Router-Sync-e6[39m
+
+ [32m✓[39m [30m[45m root-tools [49m[39m test/docs/c46-f3-doc-cli-sync.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 50[2mms[22m[39m
+ [32m✓[39m [30m[45m root-tools [49m[39m test/docs/c49-field-runbooks.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 78[2mms[22m[39m
+ [32m✓[39m [30m[45m root-tools [49m[39m test/docs/agent-docs.test.ts [2m([22m[2m19 tests[22m[2m)[22m[33m 28027[2mms[22m[39m
+     [33m[2m✓[22m[39m runs --help, doctor, combos stale (9router & omniroute), and verify against os.tmpdir() fixture with 0 router writes [33m 8328[2mms[22m[39m
+     [33m[2m✓[22m[39m passes node --test test/agent/security-audit.node.test.mjs [33m 18949[2mms[22m[39m
+     [33m[2m✓[22m[39m no publishable tracked or doc files contain dangerous git publish strings [33m 654[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m3 passed[39m[22m[90m (3)[39m
+[2m      Tests [22m [1m[32m33 passed[39m[22m[90m (33)[39m
+[2m   Start at [22m 09:08:21
+[2m   Duration [22m 31.42s[2m (transform 3.90s, setup 2.49s, import 4.36s, tests 28.15s, environment 0ms)[22m
+
