@@ -13,10 +13,13 @@ import { fileURLToPath } from 'node:url';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import {
-  atomicWriteFileSync,
+  LOCK_HANDOFF_NONCE_ENV,
+  LOCK_HANDOFF_PARENT_PID_ENV,
   evaluateTickFreshness,
+  generateTickLockHandoffNonce,
   releaseTickLock,
   tryAcquireTickLock,
+  updateTickLockOwner,
 } from '@routersync/core';
 import { sanitizeObject } from './sanitize.js';
 import { resolveStatePaths } from './state.js';
@@ -67,7 +70,10 @@ export function runTickIfDue(options: RunTickIfDueOptions): TickIfDueResult {
     };
   }
 
-  const lock = tryAcquireTickLock(options.stateDir, process.pid, nowMs);
+  const handoffNonce = generateTickLockHandoffNonce();
+  const lock = tryAcquireTickLock(options.stateDir, process.pid, nowMs, undefined, {
+    issueNonce: handoffNonce,
+  });
   if (!lock.acquired) {
     return {
       triggered: false,
@@ -100,7 +106,8 @@ export function runTickIfDue(options: RunTickIfDueOptions): TickIfDueResult {
 
     const childEnv: NodeJS.ProcessEnv = {
       ...process.env,
-      ROUTERSYNC_LOCK_HANDOFF_PARENT_PID: String(process.pid),
+      [LOCK_HANDOFF_PARENT_PID_ENV]: String(process.pid),
+      [LOCK_HANDOFF_NONCE_ENV]: handoffNonce,
     };
     const child = options.spawnTickFn
       ? options.spawnTickFn({
@@ -119,10 +126,11 @@ export function runTickIfDue(options: RunTickIfDueOptions): TickIfDueResult {
 
     const childPid = typeof child.pid === 'number' && child.pid > 0 ? child.pid : null;
     if (childPid !== null) {
-      atomicWriteFileSync(
-        lock.lockPath,
-        JSON.stringify({ pid: childPid, startedAt: new Date(nowMs).toISOString() })
-      );
+      updateTickLockOwner(options.stateDir, childPid, nowMs, {
+        expectedPid: process.pid,
+        expectedNonce: handoffNonce,
+        preserveNonce: true,
+      });
     } else {
       releaseTickLock(options.stateDir, process.pid);
     }

@@ -1,16 +1,17 @@
 /**
  * packages/cli/test/c51-rs-field-02-03.test.ts
  *
- * Tickets RS-FIELD-02 & RS-FIELD-03 (C51):
+ * Tickets RS-FIELD-02, RS-FIELD-03, P2-2 & P2-3 (C51):
  *  - RS-FIELD-02: Out-of-repo `os.tmpdir()` working directory resolves shipped
  *    `registry/providers.yaml`, `registry/gateways.yaml`, and `registry/sources.yaml`
  *    via `import.meta.url` fallback while preserving explicit synthetic `cwd` precedence
  *    and Security Condition Z1 (`findLocalProviderRegistryFile` never walks up).
- *  - RS-FIELD-03: `readDirectRouterModelsFor` resolves router direct catalog models via
- *    `ProviderTarget.id` (custom-node IDs) and `canonicalPrefix(prefix)` (registry aliases),
- *    populating `routerModels`, emitting `PROVIDER_ROUTER_LIST_MISMATCH` (`warn`), and
- *    emitting `0` false `COMBO_MODEL_MISSING_FROM_CATALOGS` anomalies while genuine
- *    catalog absence still flags properly.
+ *  - RS-FIELD-03 + P2-2 + P2-3: `readDirectRouterModelsFor` resolves router direct
+ *    catalog models via `ProviderTarget.id` (custom-node IDs) and `canonicalPrefix(prefix)`
+ *    (registry aliases even when `ProviderTarget.id` is a custom node ID, killing M6),
+ *    returns `null` (never `[]`) when router availability evidence is absent (killing M8),
+ *    emits `PROVIDER_ROUTER_LIST_MISMATCH` (`warn`), and emits `0` false
+ *    `COMBO_MODEL_MISSING_FROM_CATALOGS` anomalies while genuine absence still flags.
  */
 
 import * as fs from 'node:fs';
@@ -159,7 +160,7 @@ describe('C51 RS-FIELD-02: Out-of-repo CWD shipped registry fallback & Condition
   });
 });
 
-describe('C51 RS-FIELD-03: readDirectRouterModelsFor custom-node ID & canonicalPrefix catalog resolution', () => {
+describe('C51 RS-FIELD-03, P2-2 & P2-3: readDirectRouterModelsFor alias resolution & null-on-no-evidence', () => {
   let tmpDir: string;
   const origEnv = { ...process.env };
 
@@ -173,7 +174,7 @@ describe('C51 RS-FIELD-03: readDirectRouterModelsFor custom-node ID & canonicalP
     fs.rmSync(tmpDir, { recursive: true, force: true });
   });
 
-  it('populates routerModels for custom-node IDs and canonicalPrefix aliases, emits warn mismatch, and prevents false COMBO_MODEL_MISSING_FROM_CATALOGS', async () => {
+  it('resolves custom-node IDs, exclusive canonicalPrefix(prefix) aliases (kills M6), and returns null when router evidence is absent (kills M8)', async () => {
     const stateDir = path.join(tmpDir, 'state');
     const outDir = path.join(tmpDir, 'field-out');
     const emptyHome = path.join(tmpDir, 'isolated-home');
@@ -198,6 +199,17 @@ describe('C51 RS-FIELD-03: readDirectRouterModelsFor custom-node ID & canonicalP
     const customNodeId = 'openai-compatible-chat-00000000-0000-4000-8000-000000000001';
     const customPrefix = 'synth-alias';
 
+    // M6 killer: bind prefix 'hf' to a custom provider_nodes ID so ProviderTarget.prefix === 'hf'
+    // and ProviderTarget.id === hfNodeId (NEITHER equals 'huggingface'), while syncedAvailableModels
+    // in key_value is keyed under canonical 'huggingface:conn-hf-canon'. Deleting line 994
+    // (`...getProviderAliases(canonicalPrefix(prefix))`) makes hf routerModels drop to null!
+    const hfCustomNodeId = 'openai-compatible-chat-00000000-0000-4000-8000-000000000002';
+
+    // M8 killer: provider with an upstream connection & scanned models, but ZERO rows in
+    // key_value (`syncedAvailableModels` / `customModels` / `modelAliases`) -> routerModels MUST be null (not []).
+    const noEvidenceNodeId = 'openai-compatible-chat-00000000-0000-4000-8000-000000000003';
+    const noEvidencePrefix = 'synth-no-evidence';
+
     // Empty 9Router DB for isolation
     const nineDbPath = path.join(tmpDir, 'synth-9router.sqlite');
     const nineDb = openBetterSqlite3(nineDbPath, { restrictToDir: tmpDir });
@@ -210,11 +222,6 @@ describe('C51 RS-FIELD-03: readDirectRouterModelsFor custom-node ID & canonicalP
     `);
     nineDb.close();
 
-    // Synthetic OmniRoute DB with:
-    //  1) Custom node (prefix 'synth-alias' -> provider id 'openai-compatible-chat-00000000-0000-4000-8000-000000000001')
-    //  2) Public aliased provider (prefix 'hf' -> canonical provider id 'huggingface')
-    //  3) 'synth-combo-main' referencing router-only models that ARE in syncedAvailableModels
-    //  4) 'synth-combo-missing' referencing 'synth-alias/vendor/synth-truly-missing-v1' absent from BOTH catalogs
     const omniDbPath = path.join(tmpDir, 'synth-omni.sqlite');
     const omniDb = openBetterSqlite3(omniDbPath, { restrictToDir: tmpDir });
     omniDb.exec(`
@@ -227,6 +234,12 @@ describe('C51 RS-FIELD-03: readDirectRouterModelsFor custom-node ID & canonicalP
     omniDb
       .prepare('INSERT INTO provider_nodes (id, prefix, base_url) VALUES (?, ?, ?)')
       .run(customNodeId, customPrefix, 'https://synth-node.example.test/v1');
+    omniDb
+      .prepare('INSERT INTO provider_nodes (id, prefix, base_url) VALUES (?, ?, ?)')
+      .run(hfCustomNodeId, 'hf', 'https://huggingface.co/api/v1');
+    omniDb
+      .prepare('INSERT INTO provider_nodes (id, prefix, base_url) VALUES (?, ?, ?)')
+      .run(noEvidenceNodeId, noEvidencePrefix, 'https://synth-no-evidence.example.test/v1');
 
     omniDb
       .prepare(
@@ -247,13 +260,30 @@ describe('C51 RS-FIELD-03: readDirectRouterModelsFor custom-node ID & canonicalP
         'INSERT INTO provider_connections (id, provider, name, auth_type, is_active, api_key, provider_specific_data) VALUES (?, ?, ?, ?, ?, ?, ?)'
       )
       .run(
-        'conn-hf-1',
-        'huggingface',
-        'Synthetic HF',
+        'conn-hf-node',
+        hfCustomNodeId,
+        'Synthetic HF Custom Node',
         'api_key',
         1,
         'synth-key-placeholder-hf',
-        JSON.stringify({})
+        JSON.stringify({ prefix: 'hf', baseUrl: 'https://huggingface.co/api/v1' })
+      );
+
+    omniDb
+      .prepare(
+        'INSERT INTO provider_connections (id, provider, name, auth_type, is_active, api_key, provider_specific_data) VALUES (?, ?, ?, ?, ?, ?, ?)'
+      )
+      .run(
+        'conn-no-ev-1',
+        noEvidenceNodeId,
+        'Synthetic Unsynced Node',
+        'api_key',
+        1,
+        'synth-key-placeholder-no-ev',
+        JSON.stringify({
+          prefix: noEvidencePrefix,
+          baseUrl: 'https://synth-no-evidence.example.test/v1',
+        })
       );
 
     omniDb
@@ -269,6 +299,7 @@ describe('C51 RS-FIELD-03: readDirectRouterModelsFor custom-node ID & canonicalP
             { model: 'synth-alias/vendor/synth-router-only-v1' },
             { model: 'hf/org/synth-hf-shared-v1' },
             { model: 'hf/org/synth-hf-router-only-v1' },
+            { model: `${noEvidencePrefix}/vendor/synth-upstream-only-v1` },
           ],
           strategy: 'priority',
         }),
@@ -313,12 +344,13 @@ describe('C51 RS-FIELD-03: readDirectRouterModelsFor custom-node ID & canonicalP
       .prepare('INSERT INTO key_value (namespace, key, value) VALUES (?, ?, ?)')
       .run(
         'syncedAvailableModels',
-        'huggingface:conn-hf-1',
+        'huggingface:conn-hf-canon',
         JSON.stringify([
           { id: 'org/synth-hf-shared-v1' },
           { id: 'org/synth-hf-router-only-v1' },
         ])
       );
+    // Deliberately NO key_value entry for noEvidenceNodeId / noEvidencePrefix!
 
     omniDb.close();
 
@@ -343,7 +375,7 @@ describe('C51 RS-FIELD-03: readDirectRouterModelsFor custom-node ID & canonicalP
         '  - name: synth-combo-main',
         '    role: coding',
         '    routers: [synth-omni]',
-        '    size: 4',
+        '    size: 5',
         '  - name: synth-combo-missing',
         '    role: coding',
         '    routers: [synth-omni]',
@@ -373,6 +405,12 @@ describe('C51 RS-FIELD-03: readDirectRouterModelsFor custom-node ID & canonicalP
           { status: 200, headers: { 'content-type': 'application/json' } }
         );
       }
+      if (url.includes('synth-no-evidence.example.test')) {
+        return new Response(
+          JSON.stringify({ data: [{ id: 'vendor/synth-upstream-only-v1' }] }),
+          { status: 200, headers: { 'content-type': 'application/json' } }
+        );
+      }
       throw new Error(`Unexpected fetch URL in RS-FIELD-03 test: ${url}`);
     };
 
@@ -388,10 +426,14 @@ describe('C51 RS-FIELD-03: readDirectRouterModelsFor custom-node ID & canonicalP
     });
 
     const tickLogRaw = fs.readFileSync(path.join(stateDir, 'tick.log'), 'utf8').trim();
-    const teleMatch = tickLogRaw.match(/field_telemetry=(\{.+\})$/);
+    const teleMatch = tickLogRaw.match(/field_telemetry=(\{.+?\})(?:\s|$)/) ?? tickLogRaw.match(/field_telemetry=(\{.+\})$/);
     expect(teleMatch).not.toBeNull();
     const tele = JSON.parse(teleMatch![1]!) as {
-      providers: Array<{ providerId: string; scannedModels: string[] | null; routerModels: string[] | null }>;
+      providers: Array<{
+        providerId: string;
+        scannedModels: string[] | null;
+        routerModels: string[] | null;
+      }>;
     };
 
     const synthProv = tele.providers.find((p) => p.providerId === customPrefix);
@@ -402,6 +444,7 @@ describe('C51 RS-FIELD-03: readDirectRouterModelsFor custom-node ID & canonicalP
       'vendor/synth-shared-v1',
     ]);
 
+    // P2-3 (kills M6): hf resolved ONLY via canonicalPrefix('hf') -> 'huggingface'
     const hfProv = tele.providers.find((p) => p.providerId === 'hf');
     expect(hfProv).toBeDefined();
     expect(hfProv!.scannedModels).toEqual(['org/synth-hf-shared-v1']);
@@ -409,6 +452,12 @@ describe('C51 RS-FIELD-03: readDirectRouterModelsFor custom-node ID & canonicalP
       'org/synth-hf-router-only-v1',
       'org/synth-hf-shared-v1',
     ]);
+
+    // P2-2 (kills M8): no router availability evidence MUST return null, NEVER []
+    const noEvidenceProv = tele.providers.find((p) => p.providerId === noEvidencePrefix);
+    expect(noEvidenceProv).toBeDefined();
+    expect(noEvidenceProv!.scannedModels).toEqual(['vendor/synth-upstream-only-v1']);
+    expect(noEvidenceProv!.routerModels).toBeNull();
 
     await runFieldReportCommand({
       out: outDir,
@@ -441,6 +490,11 @@ describe('C51 RS-FIELD-03: readDirectRouterModelsFor custom-node ID & canonicalP
     expect(hfMismatch).toBeDefined();
     expect(hfMismatch!.severity).toBe('warn');
     expect(hfMismatch!.metrics['onlyInRouterCount']).toBe(1);
+
+    // P2-2: Unsynced provider (routerModels === null) MUST NOT emit a false PROVIDER_ROUTER_LIST_MISMATCH
+    expect(
+      mismatches.find((a) => a.subject === `provider:${noEvidencePrefix}`)
+    ).toBeUndefined();
 
     const missingCatalogAnomalies = anomaliesDoc.anomalies.filter(
       (a) => a.code === 'COMBO_MODEL_MISSING_FROM_CATALOGS'
