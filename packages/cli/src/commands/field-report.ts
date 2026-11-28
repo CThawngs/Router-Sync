@@ -1,8 +1,8 @@
 /**
  * packages/cli/src/commands/field-report.ts
  *
- * Ticket C49-T1 (`Phục vụ: S9, S10`): Strictly Read-Only Field Testing Bundle Exporter
- * (`routersync field-report`).
+ * Tickets C49-T1 & C50-K1 (`Phục vụ: S9, S10, key không rời RAM`):
+ * Strictly Read-Only Field Testing Bundle Exporter (`routersync field-report`).
  *
  * Non-Negotiable Guarantees:
  *  - 100% Read-Only on `<stateDir>` and `routersync.yaml` (zero file/dir creation,
@@ -11,8 +11,8 @@
  *    and via `resolveDeepCanonicalPath` (symlink/junction traversal), and MUST NOT
  *    target `bots.json`, `routines.json`, or an existing regular file.
  *  - Emits strictly `<= 8` files (`FIELD_REPORT_BUNDLE_FILES`).
- *  - Two-stage sanitization: Stage-1 Scrubber (`field-report-scrubber.ts`) followed
- *    by Stage-2 Independent Pre-Write Output Scanner (`field-report-scanner.ts`)
+ *  - Two-stage independent sanitization: Stage-1 Scrubber (`field-report-scrubber.ts`)
+ *    followed by Stage-2 Independent Pre-Write Output Scanner (`field-report-scanner.ts`)
  *    inspecting all serialized file buffers in RAM BEFORE `fs.mkdirSync` or any
  *    disk write. Any scanner match aborts with `process.exitCode = 1` and `0` files written.
  */
@@ -41,11 +41,19 @@ import {
   type FieldTimelineRecord,
   type LatencyDistribution,
 } from './field-report-anomalies.js';
-import { scanSerializedFieldReportOutputs } from './field-report-scanner.js';
+import {
+  type FieldReportScanViolation,
+  scanSerializedFieldReportOutputs,
+} from './field-report-scanner.js';
 import {
   scrubFieldReportString,
   scrubFieldReportValue,
 } from './field-report-scrubber.js';
+import {
+  collectFieldReportSecretContextReadOnly,
+  extractTickFreeTextNote,
+  parseJsonTickLogLineSummary,
+} from './field-report-secrets-context.js';
 
 export const FIELD_REPORT_BUNDLE_FILES = [
   'summary.json',
@@ -71,6 +79,7 @@ export interface FieldReportCommandOptions {
   stateDir?: string | undefined;
   config?: string | undefined;
   configPath?: string | undefined;
+  env?: NodeJS.ProcessEnv | undefined;
   errorRateThreshold?: number | string | undefined;
   expectedIntervalMs?: number | string | undefined;
   slowTickMs?: number | string | undefined;
@@ -207,9 +216,7 @@ export function assertFieldReportOutDir(
   if (fs.existsSync(lexicalOut)) {
     const st = fs.statSync(lexicalOut);
     if (!st.isDirectory()) {
-      throw new Error(
-        'INVALID_ARGUMENT: --out path already exists and is not a directory.'
-      );
+      throw new Error('INVALID_ARGUMENT: --out path already exists and is not a directory.');
     }
   }
 
@@ -322,7 +329,10 @@ interface ConfigShapeSkeleton {
   };
 }
 
-function readConfigShapeReadOnly(explicitConfigPath?: string): ConfigShapeSkeleton {
+function readConfigShapeReadOnly(
+  explicitConfigPath?: string,
+  env: NodeJS.ProcessEnv = process.env
+): ConfigShapeSkeleton {
   const empty: ConfigShapeSkeleton = {
     present: false,
     version: null,
@@ -336,8 +346,8 @@ function readConfigShapeReadOnly(explicitConfigPath?: string): ConfigShapeSkelet
   let candidatePath: string | null = null;
   if (typeof explicitConfigPath === 'string' && explicitConfigPath.trim().length > 0) {
     candidatePath = path.resolve(expandTilde(explicitConfigPath.trim()));
-  } else if (process.env['ROUTERSYNC_CONFIG']?.trim()) {
-    candidatePath = path.resolve(expandTilde(process.env['ROUTERSYNC_CONFIG'].trim()));
+  } else if (env['ROUTERSYNC_CONFIG']?.trim()) {
+    candidatePath = path.resolve(expandTilde(env['ROUTERSYNC_CONFIG'].trim()));
   }
 
   if (!candidatePath || !fs.existsSync(candidatePath)) {
@@ -466,6 +476,7 @@ interface ParsedTickLogEntry {
   unchanged: number;
   backoff: number;
   inboxAdded: number;
+  note: string | null;
   shrinkBlocksMap: Record<string, string[]>;
   resources: {
     rssBytes: number | null;
@@ -488,6 +499,21 @@ interface ParsedTickLogEntry {
 function parseTickLogLine(rawLine: string): ParsedTickLogEntry | null {
   const trimmed = rawLine.trim();
   if (!trimmed) return null;
+
+  if (trimmed.startsWith('{')) {
+    const jsonSummary = parseJsonTickLogLineSummary(trimmed);
+    return jsonSummary
+      ? {
+          ...jsonSummary,
+          shrinkBlocksMap: {},
+          resources: { rssBytes: null, heapUsedBytes: null, cpuUserMs: null, cpuSystemMs: null },
+          providers: [],
+          combos: [],
+          blockedRemovals: [],
+          sourceFile: 'tick.log',
+        }
+      : null;
+  }
 
   const firstSpace = trimmed.indexOf(' ');
   if (firstSpace <= 0) return null;
@@ -517,8 +543,21 @@ function parseTickLogLine(rawLine: string): ParsedTickLogEntry | null {
   const shrinkIdx = rest.indexOf(shrinkMarker);
   if (shrinkIdx !== -1) {
     const afterShrink = rest.slice(shrinkIdx + shrinkMarker.length);
-    const rqIdx = afterShrink.indexOf(' research_queue=');
-    const shrinkJson = (rqIdx !== -1 ? afterShrink.slice(0, rqIdx) : afterShrink).trim();
+    let endBrace = 0;
+    if (afterShrink.startsWith('{')) {
+      let depth = 0;
+      for (let i = 0; i < afterShrink.length; i += 1) {
+        if (afterShrink[i] === '{') depth += 1;
+        else if (afterShrink[i] === '}') {
+          depth -= 1;
+          if (depth === 0) {
+            endBrace = i + 1;
+            break;
+          }
+        }
+      }
+    }
+    const shrinkJson = endBrace > 0 ? afterShrink.slice(0, endBrace) : afterShrink.split(/\s+/)[0] ?? '{}';
     try {
       const parsed = JSON.parse(shrinkJson) as unknown;
       if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
@@ -541,6 +580,7 @@ function parseTickLogLine(rawLine: string): ParsedTickLogEntry | null {
   const unchanged = Number(readScalarToken('unchanged') ?? '0') || 0;
   const backoff = Number(readScalarToken('backoff') ?? '0') || 0;
   const inboxAdded = Number(readScalarToken('inbox_added') ?? '0') || 0;
+  const note = extractTickFreeTextNote(rest, telemetryObj);
 
   const startedAt =
     telemetryObj && typeof telemetryObj['startedAt'] === 'string'
@@ -635,6 +675,7 @@ function parseTickLogLine(rawLine: string): ParsedTickLogEntry | null {
     unchanged,
     backoff,
     inboxAdded,
+    note,
     shrinkBlocksMap,
     resources,
     providers,
@@ -682,12 +723,13 @@ function buildFieldReportReadmeVi(): string {
     '4. `models.json` — Lịch sử hiện diện / vắng mặt / chưa xác minh của từng model qua các lượt quét.',
     '5. `anomalies.json` — Kết quả phát hiện bất thường dựa hoàn toàn trên số đo thực tế kèm bằng chứng `evt-XXXX`.',
     '6. `resources.json` — Mức tiêu thụ RAM (`rssBytes`, `heapUsedBytes`), CPU và thời lượng mỗi lượt `tick`.',
-    '7. `config-shape.json` — Khung cấu trúc cấu hình (loại bỏ hoàn toàn khóa bí mật, URL chứa thông tin xác thực và đường dẫn cá nhân).',
+    '7. `config-shape.json` — Khung cấu trúc cấu hình đã khử nhạy cảm.',
     '8. `README.md` — Hướng dẫn đọc và chuyển giao gói báo cáo này.',
     '',
-    '## Bảo đảm an toàn 2 tầng',
-    '- **Tầng 1 (Bộ lọc khử nhạy cảm):** Tự động che khóa API, chuỗi xác thực, băm mật khẩu, URL chứa thông tin đăng nhập, đường dẫn thư mục cá nhân, tên tài khoản hệ điều hành và tên máy.',
-    '- **Tầng 2 (Bộ quét độc lập trước khi ghi):** Kiểm tra toàn bộ nội dung trên bộ nhớ trước khi tạo tệp; nếu còn bất kỳ mẫu nhạy cảm nào, lệnh từ chối ghi toàn cục (`0` tệp sinh ra).',
+    '## Bộ lọc bảo vệ 2 tầng độc lập',
+    '- **Tầng 1 (Bộ khử nhạy cảm):** Che theo tên trường (kể cả phần tử mảng), giá trị biến môi trường (thô và mã hóa URL), tiền tố nhà cung cấp/tùy chỉnh, chuỗi entropy cao và đường dẫn/danh tính máy cá nhân.',
+    '- **Tầng 2 (Bộ quét từ chối độc lập trước khi ghi):** Kiểm tra độc lập toàn bộ bộ đệm theo giá trị bí mật, entropy thông tin và cấu trúc xác thực/PII; nếu phát hiện vi phạm sẽ hủy toàn cục (`0` tệp sinh ra).',
+    '- **Lưu ý bắt buộc ở lần xuất đầu tiên:** Chủ dự án phải mở thư mục này và kiểm tra bằng mắt các tệp trước khi chia sẻ gói báo cáo ra bên ngoài.',
     '',
     '## Quy trình phân loại',
     'Gửi thư mục này cho nhóm phụ trách theo đúng sổ tay `docs/runbook/FIELD-FINDINGS.md` để `Data-AI` phân loại từng mục trong `anomalies.json`.',
@@ -700,6 +742,7 @@ export async function runFieldReportCommand(
 ): Promise<FieldReportRunResult> {
   const nowMs = options.nowMs ?? Date.now();
   const generatedAt = new Date(nowMs).toISOString();
+  const effectiveEnv = options.env ?? process.env;
   const stateDir = resolveControlStateDir(options.stateDir);
   const outDir = assertFieldReportOutDir(options.out, stateDir);
 
@@ -724,7 +767,8 @@ export async function runFieldReportCommand(
     DEFAULT_SLOW_TICK_MS;
 
   const configPathInput = options.config ?? options.configPath;
-  const configShape = readConfigShapeReadOnly(configPathInput);
+  const configShape = readConfigShapeReadOnly(configPathInput, effectiveEnv);
+  const secretCtx = collectFieldReportSecretContextReadOnly(configPathInput, effectiveEnv);
   const expectedIntervalMs =
     explicitExpectedIntervalMs ?? configShape.schedule.expectedIntervalMs;
 
@@ -786,6 +830,7 @@ export async function runFieldReportCommand(
         unchanged: 0,
         backoff: 0,
         inboxAdded: 0,
+        note: null,
         shrinkBlocksMap: {},
         resources: { rssBytes: null, heapUsedBytes: null, cpuUserMs: null, cpuSystemMs: null },
         providers: statusProviders,
@@ -796,7 +841,6 @@ export async function runFieldReportCommand(
     }
   }
 
-  // Enrich legacy tick.log lines lacking field_telemetry.providers from status.json when single tick matches
   if (
     parsedTicks.length === 1 &&
     parsedTicks[0]!.providers.length === 0 &&
@@ -827,7 +871,7 @@ export async function runFieldReportCommand(
     );
   }
 
-  // 2. Assemble chronological raw timeline events (tick + apply + rollback + freeze + unfreeze)
+  // 2. Assemble chronological raw timeline events
   interface PendingTimelineItem {
     sortMs: number;
     sortOrder: number;
@@ -846,6 +890,16 @@ export async function runFieldReportCommand(
 
   parsedTicks.forEach((t, idx) => {
     const hasProviderErrors = t.providers.some((p) => p.scanned && !p.ok);
+    const tickMeta: Record<string, unknown> = {
+      requests: t.requests,
+      changed: t.changed,
+      unchanged: t.unchanged,
+      backoff: t.backoff,
+      inboxAdded: t.inboxAdded,
+    };
+    if (t.note) {
+      tickMeta['note'] = t.note;
+    }
     pendingTimeline.push({
       sortMs: Date.parse(t.startedAt),
       sortOrder: 1,
@@ -857,13 +911,7 @@ export async function runFieldReportCommand(
       mode: t.mode,
       outcome: hasProviderErrors ? 'degraded' : 'ok',
       sourceFile: t.sourceFile,
-      metadata: {
-        requests: t.requests,
-        changed: t.changed,
-        unchanged: t.unchanged,
-        backoff: t.backoff,
-        inboxAdded: t.inboxAdded,
-      },
+      metadata: tickMeta,
     });
   });
 
@@ -910,7 +958,6 @@ export async function runFieldReportCommand(
     }
   }
 
-  // Freeze / unfreeze events from freeze.json history or current fields
   const rawFreezeHistory = Array.isArray(rawFreezeJson?.['history'])
     ? (rawFreezeJson!['history'] as Array<Record<string, unknown>>)
     : [];
@@ -1103,7 +1150,6 @@ export async function runFieldReportCommand(
     }
   }
 
-  // Fallback shrinkBlocks from tick-plan.json if within window and not already captured
   if (
     shrinkBlocks.length === 0 &&
     tickPlanJson &&
@@ -1133,7 +1179,6 @@ export async function runFieldReportCommand(
     }
   }
 
-  // Fallback provider summary from tick-catalog.json ONLY when no window filter excluded ticks and providerMap is empty
   const rawCatalogProviders =
     catalogJson && catalogJson['providers'] && typeof catalogJson['providers'] === 'object'
       ? (catalogJson['providers'] as Record<string, Record<string, unknown>>)
@@ -1180,7 +1225,6 @@ export async function runFieldReportCommand(
       sourceFile: acc.sourceFile,
     }));
 
-  // Build combo map and model presence history
   const activeCombos = [...latestCombosMap.values()];
   const combosByStep = new Map<string, Set<string>>();
   for (const c of activeCombos) {
@@ -1281,7 +1325,6 @@ export async function runFieldReportCommand(
     }
   }
 
-  // Catalog snapshots for T2 codes 7 & 8
   const providerCatalogIds: Record<string, FieldCatalogSnapshot> = {};
   const routerModelIds: Record<string, FieldCatalogSnapshot> = {};
   for (const [providerId, acc] of providerMap.entries()) {
@@ -1306,7 +1349,6 @@ export async function runFieldReportCommand(
     }
   }
 
-  // Window bounds for T2 interval drift
   const tickRecords = timeline.filter((t) => t.kind === 'tick');
   const observedStartMs =
     tickRecords.length > 0 ? Date.parse(tickRecords[0]!.startedAt) : null;
@@ -1369,7 +1411,7 @@ export async function runFieldReportCommand(
     },
   };
 
-  // 5. Build inbox summary & summary.json
+  // 5. Build inbox summary & summary.json (cap raised to 100 per C50-K1)
   const rawInboxItems = Array.isArray(inboxJson?.['items'])
     ? (inboxJson!['items'] as Array<Record<string, unknown>>)
     : [];
@@ -1418,7 +1460,7 @@ export async function runFieldReportCommand(
     },
     inboxSummary: {
       totalItems: filteredInboxItems.length,
-      recentItems: filteredInboxItems.slice(0, 25).map((item) => ({
+      recentItems: filteredInboxItems.slice(0, 100).map((item) => ({
         id: typeof item['id'] === 'string' ? item['id'] : 'unknown',
         type: typeof item['type'] === 'string' ? item['type'] : 'info',
         label: typeof item['label'] === 'string' ? item['label'] : null,
@@ -1431,11 +1473,15 @@ export async function runFieldReportCommand(
 
   // 6. Stage-1 Scrubber across all 8 payloads in memory
   const applyStage1 = !options._unsafeSkipStage1ScrubberForScannerTest;
+  const stage1Options = {
+    extraPrefixes: secretCtx.extraSecretPrefixes,
+    extraLiterals: secretCtx.secretLiterals,
+  };
   let totalRedactedCount = 0;
 
   const scrubObj = <T>(val: T): T => {
     if (!applyStage1) return val;
-    const res = scrubFieldReportValue(val);
+    const res = scrubFieldReportValue(val, stage1Options);
     totalRedactedCount += res.redactedCount;
     return res.value;
   };
@@ -1465,7 +1511,7 @@ export async function runFieldReportCommand(
   });
   const rawReadme = buildFieldReportReadmeVi();
   const readmeScrubRes = applyStage1
-    ? scrubFieldReportString(rawReadme)
+    ? scrubFieldReportString(rawReadme, stage1Options)
     : { value: rawReadme, redactedCount: 0 };
   totalRedactedCount += readmeScrubRes.redactedCount;
 
@@ -1494,16 +1540,20 @@ export async function runFieldReportCommand(
   };
 
   // 7. Stage-2 Independent Pre-Write Output Scanner (All-or-Nothing Gate)
-  const scanSummary = scanSerializedFieldReportOutputs(serializedBundle);
+  const scanSummary = scanSerializedFieldReportOutputs(serializedBundle, {
+    secretLiterals: secretCtx.secretLiterals,
+  });
   if (!scanSummary.clean) {
     process.exitCode = 1;
     const summaryTokens = scanSummary.violations
       .slice(0, 8)
       .map((v) => `${v.file}:${v.line}:${v.ruleCode}`)
       .join(', ');
-    throw new Error(
+    const scanErr = new Error(
       `FIELD_REPORT_SECRET_SCAN_BLOCKED: Pre-write security scanner detected ${scanSummary.violations.length} violation(s) [${summaryTokens}]. Zero files were written.`
-    );
+    ) as Error & { violations: FieldReportScanViolation[] };
+    scanErr.violations = scanSummary.violations;
+    throw scanErr;
   }
 
   // 8. Safe to create outDir and write <= 8 files

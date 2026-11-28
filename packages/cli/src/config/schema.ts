@@ -143,6 +143,15 @@ export const ResearchConfigSchema = z.object({
   maxWeeklyResearchSessions: z.number().int().min(0).max(1000).default(5),
 });
 
+/**
+ * C50-K1 (`Phục vụ: S9, S10`): Optional custom prefixes and env-var secret declarations
+ * for `routersync field-report` two-stage secret filtering.
+ */
+export const FieldReportConfigSchema = z.object({
+  extraSecretPrefixes: z.array(z.string().min(2)).optional(),
+  extraSecretEnvVars: z.array(z.string().min(1)).optional(),
+});
+
 export const RouterSyncConfigSchema = z
   .object({
     version: z.literal(1),
@@ -176,11 +185,12 @@ export const RouterSyncConfigSchema = z
      * C45-WP8: Optional weekly Tier-1 research session cap (default 5).
      */
     research: ResearchConfigSchema.optional(),
+    /**
+     * C50-K1: Optional extra secret prefixes and secret env var names for field-report.
+     */
+    fieldReport: FieldReportConfigSchema.optional(),
   })
   .superRefine((data, ctx) => {
-    // C4o/O2: Each router in config.yaml must use a distinct adapter.
-    // setConfiguredRouterDbPaths stores paths keyed by adapter name ('9router' | 'omniroute').
-    // Multiple routers with the same adapter would collide on path registry and invariants.
     const seenAdapters = new Set<string>();
     for (const r of data.routers) {
       if (seenAdapters.has(r.adapter)) {
@@ -194,7 +204,6 @@ export const RouterSyncConfigSchema = z
       seenAdapters.add(r.adapter);
     }
 
-    // Condition G0-7: If policy.mode is higher than manual/shadow, all routers must be validated (REAL evidence)
     if (data.policy.mode !== 'manual' && data.policy.mode !== 'shadow') {
       const unvalidated = data.routers.filter((r) => !r.validated);
       if (unvalidated.length > 0) {
@@ -206,10 +215,11 @@ export const RouterSyncConfigSchema = z
         });
       }
     }
-    // D26 / Spec §33.3: 9Router serving-path reflection is UNCONFIRMED (Gate L, COPY, Windows:
-    // kind='custom' rows never appear on GET /v1/models; kind=null reflects within ~20s).
-    // Until the owner confirms, 9Router is capped at manual/shadow regardless of `validated`.
-    if (data.routers.some((r) => r.adapter === '9router') && data.policy.mode !== 'manual' && data.policy.mode !== 'shadow') {
+    if (
+      data.routers.some((r) => r.adapter === '9router') &&
+      data.policy.mode !== 'manual' &&
+      data.policy.mode !== 'shadow'
+    ) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['policy', 'mode'],
@@ -229,3 +239,4 @@ export type AdoptSpec = z.infer<typeof AdoptSpecSchema>;
 export type WebhookConfig = z.infer<typeof WebhookConfigSchema>;
 export type ScheduleConfig = z.infer<typeof ScheduleConfigSchema>;
 export type ResearchConfig = z.infer<typeof ResearchConfigSchema>;
+export type FieldReportConfig = z.infer<typeof FieldReportConfigSchema>;
