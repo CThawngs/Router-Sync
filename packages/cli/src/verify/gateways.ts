@@ -10,6 +10,9 @@
  */
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const MODULE_DIR = path.dirname(fileURLToPath(import.meta.url));
 
 export interface GatewayEntry {
   id: string;
@@ -18,9 +21,8 @@ export interface GatewayEntry {
   reason: string;
 }
 
-/** Find registry/gateways.yaml by walking up from `cwd`. */
-export function findGatewaysFile(cwd: string = process.cwd()): string | null {
-  let dir = path.resolve(cwd);
+function walkUpForGatewaysYaml(startDir: string): string | null {
+  let dir = path.resolve(startDir);
   for (let i = 0; i < 10; i++) {
     const candidate = path.join(dir, 'registry', 'gateways.yaml');
     if (fs.existsSync(candidate)) return candidate;
@@ -29,6 +31,11 @@ export function findGatewaysFile(cwd: string = process.cwd()): string | null {
     dir = parent;
   }
   return null;
+}
+
+/** Find registry/gateways.yaml by walking up from `cwd`, falling back to shipped module location. */
+export function findGatewaysFile(cwd: string = process.cwd()): string | null {
+  return walkUpForGatewaysYaml(cwd) ?? walkUpForGatewaysYaml(MODULE_DIR);
 }
 
 /** Parse the flat gateway list from registry/gateways.yaml. */

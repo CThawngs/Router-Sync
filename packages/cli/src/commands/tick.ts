@@ -76,7 +76,7 @@ import {
   resolveEffectiveHarnessHomeDir,
 } from '../apps/write-adapter.js';
 import { buildViews } from './sync/sync-plan.js';
-import { fetchModelList, type ProviderTarget } from '../sync/providers.js';
+import { canonicalPrefix, fetchModelList, type ProviderTarget } from '../sync/providers.js';
 import {
   computeDetectionLatencyMs,
   enforceTargetShrinkCap,
@@ -782,7 +782,16 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
   const readClock = options.clock ?? (() => Date.now());
   const nowMs = hasInjectedClock ? readClock() : (options.nowMs ?? Date.now());
   const readPhaseClock = options.nowMs !== undefined && !hasInjectedClock ? () => nowMs : readClock;
-  const lock = tryAcquireTickLock(sDir, process.pid, nowMs);
+  const rawHandoffParentPid = (options.env ?? process.env)['ROUTERSYNC_LOCK_HANDOFF_PARENT_PID'];
+  const parsedHandoffParentPid =
+    typeof rawHandoffParentPid === 'string' && /^[1-9]\d*$/.test(rawHandoffParentPid.trim())
+      ? Number(rawHandoffParentPid.trim())
+      : undefined;
+  const handoffParentPid =
+    parsedHandoffParentPid !== undefined && Number.isSafeInteger(parsedHandoffParentPid)
+      ? parsedHandoffParentPid
+      : undefined;
+  const lock = tryAcquireTickLock(sDir, process.pid, nowMs, undefined, handoffParentPid);
   if (!lock.acquired) {
     throw new Error(`Another tick instance (pid ${lock.holderPid}) already holds ${lock.lockPath}`);
   }
@@ -952,7 +961,11 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
     }
 
     const directRouterStateByAdapter = new Map<string, RouterModelState>();
-    function readDirectRouterModelsFor(routerName: string, prefix: string): string[] | null {
+    function readDirectRouterModelsFor(
+      routerName: string,
+      prefix: string,
+      providerId?: string
+    ): string[] | null {
       const matchedCfg = config.routers.find(
         (r) =>
           r.id.toLowerCase() === routerName.toLowerCase() ||
@@ -975,8 +988,17 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
       }
       const dState = directRouterStateByAdapter.get(adapterNorm);
       if (!dState) return null;
-      const aliases = getProviderAliases(prefix);
-      const hasEvidence = aliases.some((a) => dState.availabilityProviders.has(a));
+      const candidateAliases = new Set(
+        [
+          ...getProviderAliases(prefix),
+          ...getProviderAliases(canonicalPrefix(prefix)),
+          ...(providerId ? getProviderAliases(providerId) : []),
+        ].map((a) => a.toLowerCase())
+      );
+      const lowerAvailabilityProviders = new Set(
+        [...dState.availabilityProviders].map((p) => p.toLowerCase())
+      );
+      const hasEvidence = [...candidateAliases].some((a) => lowerAvailabilityProviders.has(a));
       if (!hasEvidence) return null;
       const found = new Set<string>();
       for (const full of dState.availableModels) {
@@ -984,7 +1006,7 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
         if (slash <= 0) continue;
         const p = full.slice(0, slash).toLowerCase();
         const m = full.slice(slash + 1);
-        if (aliases.includes(p) && m.length > 0) {
+        if (candidateAliases.has(p) && m.length > 0) {
           found.add(m);
         }
       }
@@ -1302,7 +1324,7 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
           latencyMs: null,
           unverifiable: true,
           scannedModels: null,
-          routerModels: readDirectRouterModelsFor(t.router, t.prefix),
+          routerModels: readDirectRouterModelsFor(t.router, t.prefix, t.id),
         });
         providerSummaries.push({
           prefix: t.prefix,
@@ -1333,7 +1355,7 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
           latencyMs: null,
           unverifiable: true,
           scannedModels: null,
-          routerModels: readDirectRouterModelsFor(t.router, t.prefix),
+          routerModels: readDirectRouterModelsFor(t.router, t.prefix, t.id),
         });
         providerSummaries.push({
           prefix: t.prefix,
@@ -1372,7 +1394,7 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
           latencyMs: null,
           unverifiable: false,
           scannedModels: null,
-          routerModels: readDirectRouterModelsFor(t.router, t.prefix),
+          routerModels: readDirectRouterModelsFor(t.router, t.prefix, t.id),
         });
         providerSummaries.push({
           prefix: t.prefix,
@@ -1479,7 +1501,7 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
           latencyMs: scanLatencyMs,
           unverifiable: true,
           scannedModels: null,
-          routerModels: readDirectRouterModelsFor(t.router, t.prefix),
+          routerModels: readDirectRouterModelsFor(t.router, t.prefix, t.id),
         });
         providerSummaries.push({
           prefix: t.prefix,
@@ -1526,7 +1548,7 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
           latencyMs: scanLatencyMs,
           unverifiable: false,
           scannedModels: (prev!.ids ?? []).filter((id) => (prev!.absenceCounts?.[id] ?? 0) === 0),
-          routerModels: readDirectRouterModelsFor(t.router, t.prefix),
+          routerModels: readDirectRouterModelsFor(t.router, t.prefix, t.id),
         });
         providerSummaries.push({
           prefix: t.prefix,
@@ -1595,7 +1617,7 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
           latencyMs: scanLatencyMs,
           unverifiable: false,
           scannedModels: fetchedIds,
-          routerModels: readDirectRouterModelsFor(t.router, t.prefix),
+          routerModels: readDirectRouterModelsFor(t.router, t.prefix, t.id),
         });
         providerSummaries.push({
           prefix: t.prefix,
@@ -1656,7 +1678,7 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
             latencyMs: scanLatencyMs,
             unverifiable: true,
             scannedModels: null,
-            routerModels: readDirectRouterModelsFor(t.router, t.prefix),
+            routerModels: readDirectRouterModelsFor(t.router, t.prefix, t.id),
           });
           providerSummaries.push({
             prefix: t.prefix,
@@ -1998,7 +2020,7 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
         latencyMs: scanLatencyMs,
         unverifiable: false,
         scannedModels: fetchedIds,
-        routerModels: readDirectRouterModelsFor(t.router, t.prefix),
+        routerModels: readDirectRouterModelsFor(t.router, t.prefix, t.id),
       });
       providerSummaries.push({
         prefix: t.prefix,
