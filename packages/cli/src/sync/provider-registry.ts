@@ -14,6 +14,9 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as os from 'node:os';
+import { fileURLToPath } from 'node:url';
+
+const MODULE_DIR = path.dirname(fileURLToPath(import.meta.url));
 
 export interface ProviderRegistry {
   providers: Record<string, string>;
@@ -24,9 +27,8 @@ export interface ProviderRegistry {
 
 const EMPTY: ProviderRegistry = { providers: {}, alias: {}, noKeyPublic: [], officialSources: {} };
 
-/** Find registry/providers.yaml by walking up from `cwd`. */
-export function findProviderRegistryFile(cwd: string = process.cwd()): string | null {
-  let dir = path.resolve(cwd);
+function walkUpForProvidersYaml(startDir: string): string | null {
+  let dir = path.resolve(startDir);
   for (let i = 0; i < 10; i++) {
     const candidate = path.join(dir, 'registry', 'providers.yaml');
     if (fs.existsSync(candidate)) return candidate;
@@ -35,6 +37,11 @@ export function findProviderRegistryFile(cwd: string = process.cwd()): string | 
     dir = parent;
   }
   return null;
+}
+
+/** Find registry/providers.yaml by walking up from `cwd`, falling back to shipped module location. */
+export function findProviderRegistryFile(cwd: string = process.cwd()): string | null {
+  return walkUpForProvidersYaml(cwd) ?? walkUpForProvidersYaml(MODULE_DIR);
 }
 
 /**

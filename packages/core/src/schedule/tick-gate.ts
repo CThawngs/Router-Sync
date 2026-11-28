@@ -155,15 +155,21 @@ function writeExclusiveLockFile(lockPath: string, payload: TickLockPayload): boo
 /**
  * Acquires `<stateDir>/tick.lock` atomically via `wx` exclusive open.
  *
- * Non-reentrant by design: if an active non-stale lock is already held (even by
- * `process.pid`), returns `{ acquired: false, holderPid }` so concurrent async
- * triggers inside the same process cannot spawn duplicate ticks.
+ * Non-reentrant by design when `handoffParentPid` is omitted: if an active
+ * non-stale lock is already held (even by `process.pid`), returns
+ * `{ acquired: false, holderPid }` so concurrent async triggers inside the
+ * same process cannot spawn duplicate ticks.
+ *
+ * When `handoffParentPid` is a positive integer (passed from `tick_if_due`
+ * to its detached `tick --mode observe` child), an alive non-stale lock held
+ * by either `pid` or `handoffParentPid` is atomically adopted by `pid`.
  */
 export function tryAcquireTickLock(
   stateDir: string,
   pid: number = process.pid,
   nowMs: number = Date.now(),
-  isAliveFn: (candidatePid: number) => boolean = isProcessAlive
+  isAliveFn: (candidatePid: number) => boolean = isProcessAlive,
+  handoffParentPid?: number
 ): TickLockAcquireResult {
   fs.mkdirSync(stateDir, { recursive: true });
   const lockPath = path.join(stateDir, 'tick.lock');
@@ -175,6 +181,13 @@ export function tryAcquireTickLock(
   if (writeExclusiveLockFile(lockPath, payload)) {
     return { acquired: true, staleRecovered: false, holderPid: pid, lockPath };
   }
+
+  const validHandoffParentPid =
+    typeof handoffParentPid === 'number' &&
+    Number.isInteger(handoffParentPid) &&
+    handoffParentPid > 0
+      ? handoffParentPid
+      : undefined;
 
   let existing: TickLockPayload | null = null;
   try {
@@ -188,6 +201,18 @@ export function tryAcquireTickLock(
     const lockAgeMs = Number.isFinite(startedMs) ? nowMs - startedMs : Number.POSITIVE_INFINITY;
     const holderAlive = isAliveFn(existing.pid);
     if (holderAlive && lockAgeMs <= STALE_LOCK_MAX_AGE_MS) {
+      if (
+        validHandoffParentPid !== undefined &&
+        (existing.pid === pid || existing.pid === validHandoffParentPid)
+      ) {
+        updateTickLockOwner(stateDir, pid, nowMs);
+        return {
+          acquired: true,
+          staleRecovered: false,
+          holderPid: pid,
+          lockPath,
+        };
+      }
       return {
         acquired: false,
         staleRecovered: false,

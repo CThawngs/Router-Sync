@@ -10,6 +10,9 @@
 import { createHash } from 'node:crypto';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const MODULE_DIR = path.dirname(fileURLToPath(import.meta.url));
 import {
   assertAllowedOutboundUrl,
   createGuardedFetch,
@@ -34,20 +37,22 @@ export interface UpstreamSourceEntry {
 
 const DEFAULT_L3_MIN_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
 
+function walkUpForSourcesYaml(startDir: string): string | null {
+  let dir = path.resolve(startDir);
+  for (let i = 0; i < 10; i++) {
+    const candidate = path.join(dir, 'registry', 'sources.yaml');
+    if (fs.existsSync(candidate)) return candidate;
+    const parent = path.dirname(dir);
+    if (parent === dir) break;
+    dir = parent;
+  }
+  return null;
+}
+
 export function readRegistrySources(sourcesFilePath?: string): UpstreamSourceEntry[] {
-  let p = sourcesFilePath;
+  let p: string | undefined = sourcesFilePath;
   if (!p) {
-    const candidates = [
-      path.join(process.cwd(), 'registry', 'sources.yaml'),
-      path.join(process.cwd(), '..', '..', 'registry', 'sources.yaml'),
-      path.join(process.cwd(), '..', 'registry', 'sources.yaml'),
-    ];
-    for (const c of candidates) {
-      if (fs.existsSync(c)) {
-        p = c;
-        break;
-      }
-    }
+    p = (walkUpForSourcesYaml(process.cwd()) ?? walkUpForSourcesYaml(MODULE_DIR)) ?? undefined;
   }
   if (!p || !fs.existsSync(p)) return [];
   const text = fs.readFileSync(p, 'utf8');

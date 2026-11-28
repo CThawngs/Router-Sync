@@ -26,6 +26,7 @@ export type SpawnTickFn = (params: {
   args: string[];
   stateDir: string;
   configPath?: string | undefined;
+  env?: NodeJS.ProcessEnv | undefined;
 }) => { pid?: number | undefined; unref?: () => void };
 
 export interface TickIfDueResult {
@@ -97,17 +98,23 @@ export function runTickIfDue(options: RunTickIfDueOptions): TickIfDueResult {
       };
     }
 
+    const childEnv: NodeJS.ProcessEnv = {
+      ...process.env,
+      ROUTERSYNC_LOCK_HANDOFF_PARENT_PID: String(process.pid),
+    };
     const child = options.spawnTickFn
       ? options.spawnTickFn({
           execPath: process.execPath,
           args: cliArgs,
           stateDir: options.stateDir,
           configPath: options.configPath,
+          env: childEnv,
         })
       : spawn(process.execPath, cliArgs, {
           detached: true,
           stdio: 'ignore',
           windowsHide: true,
+          env: childEnv,
         });
 
     const childPid = typeof child.pid === 'number' && child.pid > 0 ? child.pid : null;
