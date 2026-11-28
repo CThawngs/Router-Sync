@@ -77,6 +77,7 @@ import {
 } from '../apps/write-adapter.js';
 import { buildViews } from './sync/sync-plan.js';
 import { canonicalPrefix, fetchModelList, type ProviderTarget } from '../sync/providers.js';
+import { isPublicRegistryMissing } from '../registry/bundled.js';
 import {
   computeDetectionLatencyMs,
   enforceTargetShrinkCap,
@@ -412,6 +413,8 @@ export interface TickFieldTelemetry {
   providers: TickFieldProviderTelemetry[];
   combos: Array<{ router: string; name: string; models: string[] }>;
   blockedRemovals: BlockedRemovalRecord[];
+  /** C52-R1: true when no public registry is reachable; never merged into provider-error codes. */
+  registryMissing?: boolean | undefined;
 }
 
 export interface TickRunSummary {
@@ -3838,6 +3841,7 @@ export async function runTickCommand(options: TickCommandOptions = {}): Promise<
       providers: fieldProviderTelemetry,
       combos: allCombos.map((c) => ({ router: c.router, name: c.name, models: [...c.models] })),
       blockedRemovals,
+      registryMissing: isPublicRegistryMissing(),
     };
 
     const summary: TickRunSummary = {

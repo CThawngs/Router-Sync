@@ -25,6 +25,10 @@ import {
   resolveRouterKey,
 } from '@routersync/core';
 import { loadConfigFile, getDefaultConfigPath, resolveRouterDbPath } from '../config/loader.js';
+import {
+  describePublicRegistry,
+  type PublicRegistryStatus,
+} from '../sync/provider-registry.js';
 import type { RouterConfig, RouterSyncConfig } from '../config/schema.js';
 import { isLowResource, lowResourceReason } from '../low-resource.js';
 import { LINUX_CRON_MARKER, WINDOWS_TASK_NAME } from './schedule.js';
@@ -135,6 +139,8 @@ export interface DoctorReport {
   tickStateDir: string;
   syncStateDir: string;
   configPath: string | null;
+  /** C52-R1: public registry availability; REGISTRY_MISSING when unavailable. */
+  registry: PublicRegistryStatus;
   rankingPolicy: RankingPolicyDiagnostic;
   routers: RouterDiagnostic[];
   apps: AppDiagnostic[];
@@ -898,6 +904,7 @@ export async function runDoctorCommand(options: DoctorCommandOptions = {}): Prom
     tickStateDir,
     syncStateDir,
     configPath: configPath ? configPath : null,
+    registry: describePublicRegistry(),
     rankingPolicy,
     routers,
     apps,

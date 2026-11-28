@@ -21,10 +21,11 @@
   "types": "./dist/index.d.ts",
   "files": [
     "dist",
-    "!dist/**/*.map"
+    "!dist/**/*.map",
+    "dist/registry/*.yaml"
   ],
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && node scripts/copy-registry.mjs",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },

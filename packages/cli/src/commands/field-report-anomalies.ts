@@ -23,7 +23,9 @@ export type FieldAnomalyCode =
   | 'COMBO_SHRINK_CAP_BLOCKED'
   | 'VACUOUS_DETECTION'
   | 'PROVIDER_ROUTER_LIST_MISMATCH'
-  | 'COMBO_MODEL_MISSING_FROM_CATALOGS';
+  | 'COMBO_MODEL_MISSING_FROM_CATALOGS'
+  /** C52-R1: public registry unavailable; distinct from provider scan errors. */
+  | 'REGISTRY_MISSING';
 
 export type FieldAnomalySeverity = 'info' | 'warn' | 'high' | 'critical';
 
@@ -146,6 +148,26 @@ function fallbackEvidence(timeline: readonly FieldTimelineRecord[]): string[] {
 export function detectFieldAnomalies(input: DetectFieldAnomaliesInput): FieldAnomalyEntry[] {
   const anomalies: FieldAnomalyEntry[] = [];
   const tickEvents = input.timeline.filter((e) => e.kind === 'tick');
+
+  // C52-R1: a missing public registry is its own root cause. Keep it out of
+  // PROVIDER_ERROR_OR_UNVERIFIABLE_HIGH so the two buckets stay comparable.
+  const registryMissingTicks = tickEvents.filter(
+    (e) => e.metadata?.['registryMissing'] === true
+  );
+  const registryMissingIds = new Set(registryMissingTicks.map((e) => e.id));
+  if (registryMissingTicks.length > 0) {
+    anomalies.push({
+      code: 'REGISTRY_MISSING',
+      severity: 'critical',
+      subject: 'registry:providers',
+      metrics: { affectedTicks: registryMissingTicks.length },
+      evidence: [...registryMissingIds],
+      sourceFile: 'tick.log',
+      message:
+        'Public registry unavailable in this install; provider counts are not trustworthy.',
+    });
+  }
+
   const totalProviderScans = input.providers.reduce(
     (acc, p) => acc + p.scanCount + p.unverifiableCount,
     0
@@ -231,6 +253,7 @@ export function detectFieldAnomalies(input: DetectFieldAnomaliesInput): FieldAno
       prov.errorEvidenceIds && prov.errorEvidenceIds.length > 0
         ? [...new Set(prov.errorEvidenceIds)]
         : fallbackEvidence(tickEvents);
+    if (registryMissingIds.size > 0 && evIds.every((id) => registryMissingIds.has(id))) continue;
 
     anomalies.push({
       code: 'PROVIDER_ERROR_OR_UNVERIFIABLE_HIGH',

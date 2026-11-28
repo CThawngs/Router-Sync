@@ -8,6 +8,10 @@
 import type { ProviderTarget } from './providers.js';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { findBundledRegistryFile } from '../registry/bundled.js';
+
+const MODULE_DIR = path.dirname(fileURLToPath(import.meta.url));
 /**
  * C3r R3a: một nguồn sự thật cho QUOTA — scan --completeness và
  * health COVERAGE cùng gọi. 429 = giới hạn mức, không phải "chưa quét".
@@ -27,7 +31,11 @@ export function loadCatalogTrust(cwd = process.cwd()): CatalogTrustEntry[] {
     dir = parent;
     p = path.join(dir, 'registry', 'catalog-trust.yaml');
   }
-  if (!fs.existsSync(p)) return [];
+  if (!fs.existsSync(p)) {
+    const bundled = findBundledRegistryFile(MODULE_DIR, 'catalog-trust.yaml');
+    if (!bundled) return [];
+    p = bundled;
+  }
   const text = fs.readFileSync(p, 'utf8');
   const out: CatalogTrustEntry[] = [];
   let cur: Record<string, string> | null = null;

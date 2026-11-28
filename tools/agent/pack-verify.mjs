@@ -15,6 +15,7 @@
  */
 
 import { spawnSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -46,6 +47,21 @@ export const PUBLISHABLE_PACKAGES = Object.freeze([
 
 export const TARBALL_ENTRY_ALLOWLIST_RE =
   /^package\/(?:package\.json|README\.md|LICENSE|dist\/.+\.(?:js|mjs|cjs|d\.ts|json))$/;
+
+/** C52-R1: the exact set of public runtime registry files bundled with the CLI. */
+export const BUNDLED_REGISTRY_FILES = Object.freeze([
+  'providers.yaml',
+  'gateways.yaml',
+  'sources.yaml',
+  'aliases.yaml',
+  'catalog-trust.yaml',
+  'models.yaml',
+  'dead-models.yaml',
+]);
+
+const BUNDLED_REGISTRY_ENTRY_RE = new RegExp(
+  `^package/dist/registry/(?:${BUNDLED_REGISTRY_FILES.join('|')})$`
+);
 
 const FORBIDDEN_ENTRY_RULES = Object.freeze([
   { name: 'source-map (.map)', regex: /\.map$/i },
@@ -93,8 +109,17 @@ export function auditTarballEntries(pkgName, fileEntries) {
       }
     }
 
-    if (!TARBALL_ENTRY_ALLOWLIST_RE.test(entry)) {
+    if (!TARBALL_ENTRY_ALLOWLIST_RE.test(entry) && !BUNDLED_REGISTRY_ENTRY_RE.test(entry)) {
       violations.push(`${pkgName}: entry outside allowlist "${entry}"`);
+    }
+  }
+
+  if (pkgName === '@routersync/cli') {
+    for (const name of BUNDLED_REGISTRY_FILES) {
+      const expected = `package/dist/registry/${name}`;
+      if (!normalizedEntries.includes(expected)) {
+        violations.push(`${pkgName}: missing bundled runtime registry entry "${expected}"`);
+      }
     }
   }
 
@@ -102,6 +127,31 @@ export function auditTarballEntries(pkgName, fileEntries) {
     ok: violations.length === 0,
     violations,
   };
+}
+
+/**
+ * C52-R1: compare the repository registry with the copy bundled into the
+ * package. Returns synthetic-friendly names only; no file contents or host
+ * paths are included in the result.
+ */
+export function verifyBundledRegistrySet(repoRoot, bundledDir) {
+  const missing = [];
+  const mismatched = [];
+  const digest = (file) => createHash('sha256').update(fs.readFileSync(file)).digest('hex');
+  for (const name of BUNDLED_REGISTRY_FILES) {
+    const source = path.join(repoRoot, 'registry', name);
+    const bundled = path.join(bundledDir, name);
+    if (!fs.existsSync(bundled)) {
+      missing.push(name);
+      continue;
+    }
+    if (!fs.existsSync(source)) {
+      mismatched.push(name);
+      continue;
+    }
+    if (digest(source) !== digest(bundled)) mismatched.push(name);
+  }
+  return { ok: missing.length === 0 && mismatched.length === 0, missing, mismatched };
 }
 
 /**
@@ -574,14 +624,34 @@ function runCleanInstallAndSmokePhase(packages, repoRoot, workDir, runNpm) {
   delete isolatedEnv.NINE_ROUTER_DB_PATH;
   delete isolatedEnv.DATA_DIR;
 
-  const runInstalledCli = (cliArgs) =>
+  const runInstalledCli = (cliArgs, cwd = cleanInstallDir) =>
     spawnSync(process.execPath, [installedCliEntry, ...cliArgs], {
-      cwd: cleanInstallDir,
+      cwd,
       env: isolatedEnv,
       encoding: 'utf8',
       timeout: 60000,
       windowsHide: true,
     });
+
+  // C52-R1: the installed package must carry a byte-identical registry copy.
+  const installedRegistryDir = path.join(
+    cleanInstallDir,
+    'node_modules',
+    '@routersync',
+    'cli',
+    'dist',
+    'registry'
+  );
+  const bundledRegistry = verifyBundledRegistrySet(repoRoot, installedRegistryDir);
+  if (!bundledRegistry.ok) {
+    throw new Error(
+      `Clean install registry mismatch (missing=${bundledRegistry.missing.join(',')} mismatched=${bundledRegistry.mismatched.join(',')})`
+    );
+  }
+
+  // C52-R1: run from a cwd far away from both the repo and the install dir.
+  const farCwd = path.join(workDir, 'far-cwd');
+  fs.mkdirSync(farCwd, { recursive: true });
 
   // 1. --version
   const verRes = runInstalledCli(['--version']);
@@ -606,6 +676,34 @@ function runCleanInstallAndSmokePhase(packages, repoRoot, workDir, runNpm) {
   }
   if (!doctorPayload || typeof doctorPayload !== 'object') {
     throw new Error('Clean CLI doctor --json returned empty payload');
+  }
+  if (
+    !doctorPayload.registry ||
+    doctorPayload.registry.available !== true ||
+    !(doctorPayload.registry.providerCount > 0)
+  ) {
+    throw new Error(
+      `Clean CLI doctor registry invalid (REGISTRY_MISSING): ${JSON.stringify(doctorPayload.registry)}`
+    );
+  }
+
+  // C52-R1: same check from a cwd outside repo and outside the install tree.
+  const farDocRes = runInstalledCli(['doctor', '--json'], farCwd);
+  if (farDocRes.status !== 0) {
+    throw new Error(
+      `Far-cwd doctor --json failed (exit ${farDocRes.status}): ${(farDocRes.stderr || farDocRes.stdout || '').slice(0, 500)}`
+    );
+  }
+  let farDoctorPayload;
+  try {
+    farDoctorPayload = JSON.parse(farDocRes.stdout);
+  } catch {
+    throw new Error('Far-cwd doctor --json emitted invalid JSON');
+  }
+  if (!farDoctorPayload.registry?.available || !(farDoctorPayload.registry.providerCount > 0)) {
+    throw new Error(
+      `Far-cwd doctor registry invalid (REGISTRY_MISSING): ${JSON.stringify(farDoctorPayload.registry)}`
+    );
   }
 
   // 3a. combos stale --router 9router
@@ -633,6 +731,11 @@ function runCleanInstallAndSmokePhase(packages, repoRoot, workDir, runNpm) {
       doctorJsonOk: true,
       combosStaleExit: staleRes.status,
       verifyExit: verifyRes.status,
+    },
+    registry: {
+      bundledBytesMatch: true,
+      providerCount: doctorPayload.registry.providerCount,
+      farCwdDoctorOk: true,
     },
   };
 }
@@ -760,7 +863,7 @@ function main() {
       }
     }
     console.log(
-      `PACK_CLEAN_SMOKE ok=true installMs=${phaseD.installMs} nodeGyp=false version=${phaseD.commands.version} doctorJson=true combosStale=0 verify=0`
+      `PACK_CLEAN_SMOKE ok=true installMs=${phaseD.installMs} nodeGyp=false version=${phaseD.commands.version} doctorJson=true combosStale=0 verify=0 registryBytesMatch=true providerCount=${phaseD.registry.providerCount} farCwdDoctorOk=true`
     );
   } catch (err) {
     console.error(`PACK_VERIFY FAIL: ${err instanceof Error ? err.message : String(err)}`);
