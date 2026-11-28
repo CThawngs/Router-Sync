@@ -24,6 +24,7 @@ import {
   C50_CFG_SECRET_RAW,
   C50_ENV_SECRET_ENCODED,
   C50_ENV_SECRET_RAW,
+  C50_ENV_SECRET_RFC3986,
   buildC50SecretFormatsFixture,
 } from './helpers/c50-secret-fixtures.js';
 
@@ -225,6 +226,7 @@ describe('C50-K1 & K3: 28 Secrets × 4 Free-Text Sources Rehearsal in os.tmpdir(
     }
     expect(combinedOutput).not.toContain(C50_ENV_SECRET_RAW);
     expect(combinedOutput).not.toContain(C50_ENV_SECRET_ENCODED);
+    expect(combinedOutput).not.toContain(C50_ENV_SECRET_RFC3986);
     expect(combinedOutput).not.toContain(C50_CFG_SECRET_RAW);
 
     // Negative preservation check in Run A output
@@ -285,7 +287,7 @@ describe('C50-K1 & K3: 28 Secrets × 4 Free-Text Sources Rehearsal in os.tmpdir(
       `${JSON.stringify({
         timestamp: '2026-11-28T01:00:00.000Z',
         mode: 'observe',
-        note: `Raw=${interpVal} Encoded=${encodeURIComponent(interpVal)} Extra=${extraEnvVal}`,
+        note: `Raw=${interpVal} Rfc3986=Interp99%21%40%23%24 Extra=${extraEnvVal}`,
       })}\n`,
       'utf8'
     );
@@ -324,7 +326,7 @@ describe('C50-K1 & K3: 28 Secrets × 4 Free-Text Sources Rehearsal in os.tmpdir(
     expect(res.summary.scrubSummary.redactedCount).toBeGreaterThanOrEqual(3);
     const timelineText = fs.readFileSync(path.join(outClean, 'timeline.jsonl'), 'utf8');
     expect(timelineText).not.toContain(interpVal);
-    expect(timelineText).not.toContain(encodeURIComponent(interpVal));
+    expect(timelineText).not.toContain('Interp99%21%40%23%24');
     expect(timelineText).not.toContain(extraEnvVal);
   });
 });

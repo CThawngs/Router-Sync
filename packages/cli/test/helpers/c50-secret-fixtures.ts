@@ -15,6 +15,7 @@ export interface C50SecretFixtureItem {
 
 export const C50_ENV_SECRET_RAW = 'EnvShort99!@';
 export const C50_ENV_SECRET_ENCODED = encodeURIComponent(C50_ENV_SECRET_RAW);
+export const C50_ENV_SECRET_RFC3986 = 'EnvShort99%21%40';
 export const C50_CFG_SECRET_RAW = 'CfgCred88$#!';
 
 export const SHORT_PREFIXED_KEYS_M4 = [
@@ -186,10 +187,10 @@ export function buildC50SecretFormatsFixture(): C50SecretFixtureItem[] {
       probeToken: C50_ENV_SECRET_RAW,
     },
     {
-      id: '25-env-secret-urlencoded',
-      label: '12-char *SECRET* env var URL-encoded',
-      value: C50_ENV_SECRET_ENCODED,
-      probeToken: C50_ENV_SECRET_ENCODED,
+      id: '25-env-secret-rfc3986-urlencoded',
+      label: '12-char *SECRET* env var strict RFC-3986 URL-encoded (%21%40)',
+      value: C50_ENV_SECRET_RFC3986,
+      probeToken: C50_ENV_SECRET_RFC3986,
     },
     {
       id: '26-config-api-key-env-12',

@@ -52,6 +52,7 @@ import {
 import {
   collectFieldReportSecretContextReadOnly,
   extractTickFreeTextNote,
+  parseJsonTickLogLineSummary,
 } from './field-report-secrets-context.js';
 
 export const FIELD_REPORT_BUNDLE_FILES = [
@@ -500,49 +501,18 @@ function parseTickLogLine(rawLine: string): ParsedTickLogEntry | null {
   if (!trimmed) return null;
 
   if (trimmed.startsWith('{')) {
-    try {
-      const obj = JSON.parse(trimmed) as Record<string, unknown>;
-      if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return null;
-      const tsCandidate =
-        typeof obj['timestamp'] === 'string'
-          ? obj['timestamp']
-          : typeof obj['startedAt'] === 'string'
-            ? obj['startedAt']
-            : '';
-      if (!tsCandidate || !Number.isFinite(Date.parse(tsCandidate))) return null;
-      const tele =
-        obj['field_telemetry'] && typeof obj['field_telemetry'] === 'object'
-          ? (obj['field_telemetry'] as Record<string, unknown>)
-          : obj;
-      const noteParts: string[] = [];
-      for (const k of ['note', 'error', 'reason'] as const) {
-        if (typeof obj[k] === 'string' && obj[k].trim()) noteParts.push(obj[k].trim());
-        else if (tele !== obj && typeof tele[k] === 'string' && tele[k].trim()) {
-          noteParts.push(tele[k].trim());
+    const jsonSummary = parseJsonTickLogLineSummary(trimmed);
+    return jsonSummary
+      ? {
+          ...jsonSummary,
+          shrinkBlocksMap: {},
+          resources: { rssBytes: null, heapUsedBytes: null, cpuUserMs: null, cpuSystemMs: null },
+          providers: [],
+          combos: [],
+          blockedRemovals: [],
+          sourceFile: 'tick.log',
         }
-      }
-      return {
-        timestamp: tsCandidate,
-        startedAt: typeof tele['startedAt'] === 'string' ? tele['startedAt'] : tsCandidate,
-        endedAt: typeof tele['endedAt'] === 'string' ? tele['endedAt'] : tsCandidate,
-        durationMs: typeof tele['durationMs'] === 'number' ? tele['durationMs'] : null,
-        mode: typeof obj['mode'] === 'string' ? obj['mode'] : 'observe',
-        requests: typeof obj['requests'] === 'number' ? obj['requests'] : 0,
-        changed: typeof obj['changed'] === 'number' ? obj['changed'] : 0,
-        unchanged: typeof obj['unchanged'] === 'number' ? obj['unchanged'] : 0,
-        backoff: typeof obj['backoff'] === 'number' ? obj['backoff'] : 0,
-        inboxAdded: typeof obj['inboxAdded'] === 'number' ? obj['inboxAdded'] : 0,
-        note: noteParts.length > 0 ? noteParts.join(' | ') : null,
-        shrinkBlocksMap: {},
-        resources: { rssBytes: null, heapUsedBytes: null, cpuUserMs: null, cpuSystemMs: null },
-        providers: [],
-        combos: [],
-        blockedRemovals: [],
-        sourceFile: 'tick.log',
-      };
-    } catch {
-      return null;
-    }
+      : null;
   }
 
   const firstSpace = trimmed.indexOf(' ');
